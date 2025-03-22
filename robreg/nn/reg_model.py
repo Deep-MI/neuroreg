@@ -2,7 +2,7 @@ from typing import Optional, Union, Any
 import torch
 import torch.nn as nn
 from torch import Tensor
-import robreg.transforms.transforms as trans
+import robreg.transforms.matrices as trans
 
 
 class RegModel(nn.Module):
