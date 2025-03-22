@@ -167,8 +167,8 @@ def register_pyramid(
             sname = "pyramidS-rr" + str(count) + ".mgz"
             tname = "pyramidT-rr" + str(count) + ".mgz"
             ltaname = "pyramid_S2T_rr" + str(count) + ".lta"
-            smgh = nib.MGHImage(si.squeeze().numpy(), sa, src.header)
-            tmgh = nib.MGHImage(ti.squeeze().numpy(), ta, trg.header)
+            smgh = nib.MGHImage(si.squeeze().numpy(), sa.numpy(), src.header)
+            tmgh = nib.MGHImage(ti.squeeze().numpy(), ta.numpy(), trg.header)
             smgh.to_filename(sname)
             tmgh.to_filename(tname)
             write_lta(ltaname, Mr2r.numpy(), sname, smgh.header, tname, tmgh.header)
