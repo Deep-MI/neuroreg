@@ -4,12 +4,12 @@ from typing import Optional, Union
 import nibabel as nib
 import torch
 from torch import Tensor
-from transforms.initialize import get_ixform_centroids
-from transforms.lta import write_lta
 
 from .image.pyramid import build_gaussian_pyramid
 from .nn.reg_model import RegModel
 from .nn.training import training_loop
+from .transforms.initialize import get_ixform_centroids
+from .transforms.lta import write_lta
 
 
 def register(
