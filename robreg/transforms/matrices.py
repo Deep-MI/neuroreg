@@ -58,14 +58,14 @@ def compute_sqrtm(matrix: Tensor, num_iters: int = 100) -> tuple[Tensor, Tensor]
     # Compute initial normalization
     norm_of_matrix = matrix.norm(p='fro')
     Y = matrix.div(norm_of_matrix)  # Initial normalization
-    I = torch.eye(dim, dim, requires_grad=False).to(matrix)  # Identity matrix
+    Id = torch.eye(dim, dim, requires_grad=False).to(matrix)  # Identity matrix
     Z = torch.eye(dim, dim, requires_grad=False).to(matrix)  # Initialize Z
     # Initialize placeholders
     s_matrix = torch.empty_like(matrix)
     error = torch.empty(1).to(matrix)
     # Iterate using Newton-Schulz method
     for _ in range(num_iters):
-        T = 0.5 * (3.0 * I - Z.mm(Y))  # Compute transformation matrix
+        T = 0.5 * (3.0 * Id - Z.mm(Y))  # Compute transformation matrix
         Y = Y.mm(T)  # Update Y
         Z = T.mm(Z)  # Update Z
         # Approximate the square root of the matrix
@@ -187,7 +187,8 @@ def get_rotation_rodrigues(rotvec: torch.Tensor) -> torch.Tensor:
              -rotvec[1], rotvec[0], zero], dim=-1
         ).view((3,3))
     angle2 = angle * angle
-    if angle2 == 0: angle2 = 1
+    if angle2 == 0:
+        angle2 = 1
     rmat = ((torch.eye(3, dtype=rotvec.dtype, device=rotvec.device) +
             torch.sinc(angle / torch.pi) * cross_mat) +
             ((1 - torch.cos(angle)) / angle2) * (cross_mat @ cross_mat))
@@ -259,7 +260,8 @@ def convert_v2v_to_torch(v2v: torch.Tensor, source_shape, target_shape=None) -> 
     """
     Converts a vox2vox affine transformation matrix to a torch transformation matrix.
 
-    This function accounts for scaling and translation based on the 3D shapes of the source and target volumes.
+    This function accounts for scaling and translation based on the 3D shapes of the source and
+    target volumes.
 
     Parameters
     ==========
@@ -270,7 +272,8 @@ def convert_v2v_to_torch(v2v: torch.Tensor, source_shape, target_shape=None) -> 
 
     Returns
     =======
-        torch.Tensor: A PyTorch-compatible affine transformation matrix (3x4) suitable for grid-sampling operations.
+        torch.Tensor: A PyTorch-compatible affine transformation matrix (3x4) suitable for
+            grid-sampling operations.
     """
     if target_shape is None:
         target_shape = source_shape
@@ -309,7 +312,8 @@ def convert_torch_to_v2v(torch_transform: torch.Tensor, source_shape, target_sha
     Parameters:
         torch_transform (torch.Tensor): A 3x4 transformation matrix (torch format).
         source_shape (tuple/list): Shape of the source image (D, H, W).
-        target_shape (tuple/list, optional): Shape of the target image (D, H, W). If not provided, it defaults to source_shape.
+        target_shape (tuple/list, optional): Shape of the target image (D, H, W).
+            If not provided, it defaults to source_shape.
 
     Returns:
         torch.Tensor: A 4x4 vox2vox transformation matrix.

@@ -80,17 +80,17 @@ def training_loop(
             else:
                 raise ValueError(f"Unknown loss name: {loss_name}")
             loss.backward()
-            if verbose:
-                print(f"Loss (it {i})", loss.sqrt().detach().numpy())
-                for name, param in model.named_parameters():
-                    if param.grad is not None:
-                        print(f"Gradient of {name}: {param.grad}")
-                    else:
-                        print(f"No gradient for {name}")
             losses.append(loss.sqrt())
             return loss
 
         optimizer.step(closure)
+        if verbose:
+            print(f"Loss (it {i})",losses[-1].detach().numpy())
+            for name, param in model.named_parameters():
+                if param.grad is not None:
+                    print(f"Gradient of {name}: {param.grad}")
+                else:
+                    print(f"No gradient for {name}")
 
         if early_stopper.early_stop(losses[-1]):
             print("!!! Early Stop (loss stable) !!!")

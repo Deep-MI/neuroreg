@@ -76,7 +76,8 @@ def register(
         print("v2v_init from centroid alignment:", v2v_init)
     m = RegModel(dof=dof, v2v_init=v2v_init, source_shape=simg.shape, target_shape=timg.shape, device=device)
     opt = torch.optim.RMSprop(m.parameters(), lr=0.001)
-    # opt = torch.optim.Adam(m.parameters(), lr=0.001) # when choosing these, update also parameter to stop early in training loop
+    # when choosing these, update also parameter to stop early in training loop
+    # opt = torch.optim.Adam(m.parameters(), lr=0.001)
     # opt = torch.optim.SGD(m.parameters(), lr=0.001) # does not seem to work
     # opt = torch.optim.LBFGS(m.parameters(), lr=0.001) # neither this one
     losses = training_loop(m, opt, simg.to(device), timg.to(device), n=n, verbose=verbose)
@@ -92,12 +93,13 @@ def register_pyramid(
     device: str = 'cpu'
 ) -> Tensor:
     """
-    Perform multi-resolution image registration using a pyramid approach and iterative coarse-to-fine alignment.
+    Perform multi-resolution image registration using an iterative coarse-to-fine alignment.
 
-    This function aligns two 3D images (`src` and `trg`) by building Gaussian pyramids for the images and
-    progressively registering lower-resolution versions of the images first. The resulting transformation
-    is then refined for higher-resolution levels in the pyramid to compute a final voxel-to-voxel
-    transformation matrix that aligns the source image to the target image.
+    This function aligns two 3D images (`src` and `trg`) by building Gaussian pyramids for the
+    images and progressively registering lower-resolution versions of the images first. The
+    resulting transformation is then refined for higher-resolution levels in the pyramid to
+    compute a final voxel-to-voxel transformation matrix that aligns the source image to the
+    target image.
 
     Parameters
     ----------

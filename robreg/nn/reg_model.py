@@ -25,7 +25,7 @@ class RegModel(nn.Module):
             device: str = 'cpu'
     ) -> None:
         """
-        Initializes the registration model with specified degrees of freedom and optional parameters.
+        Initializes the registration model with degrees of freedom and optional parameters.
 
         Parameters
         ----------
@@ -33,20 +33,22 @@ class RegModel(nn.Module):
             Degrees of freedom for the transformation. Supported values are 3, 6, 9, or 12.
             Defaults to 6.
         v2v_init : Optional[torch.Tensor], optional
-            An optional tensor for vertex-to-vertex (v2v) initialization. If provided, it is converted
-            to the transformation matrix using the `source_shape` and `target_shape`. Defaults to None.
+            An optional tensor for vertex-to-vertex (v2v) initialization. If provided, it is
+            converted to the transformation matrix using the `source_shape` and `target_shape`.
+            Defaults to None.
         source_shape : Optional, optional
             The shape of the source object. Only used if `v2v_init` is provided. Defaults to None.
         target_shape : Optional, optional
             The shape of the target object. Only used if `v2v_init` is provided. Defaults to None.
         device : str, optional
-            The device where the parameters will be stored. Can be 'cpu' or 'cuda'. Defaults to 'cpu'.
+            The device where the parameters will be stored. Can be 'cpu' or 'cuda'. Defaults to
+            'cpu'.
 
         Attributes
         ----------
         weights : torch.nn.Parameter
-            A learnable parameter tensor that holds the transformation weights, initialized based on
-            the specified degrees of freedom (`dof`).
+            A learnable parameter tensor that holds the transformation weights, initialized based
+            on the specified degrees of freedom (`dof`).
         ixform : Optional[torch.Tensor]
             The precomputed transformation matrix if `v2v_init` is provided. Otherwise, set to None.
 
@@ -54,8 +56,8 @@ class RegModel(nn.Module):
         -------------
         1. Initializes the `self.weights` parameter tensor using the `init_weights` method
            based on the specified degrees of freedom (`dof`) and device.
-        2. Uses the `v2v_init` tensor, if provided, to compute and store an initial transformation matrix
-           (`ixform`) via the `convert_v2v_to_torch` method.
+        2. Uses the `v2v_init` tensor, if provided, to compute and store an initial transformation
+           matrix (`ixform`) via the `convert_v2v_to_torch` method.
 
         Example
         -------
@@ -173,7 +175,11 @@ class RegModel(nn.Module):
         -------
         None
         """
-        self.ixform = trans.convert_v2v_to_torch(v2v_init, source_shape, target_shape).type(torch.float32).to(self.device)
+        self.ixform = (
+            trans.convert_v2v_to_torch(v2v_init, source_shape, target_shape)
+            .type(torch.float32)
+            .to(self.device)
+        )
 
     def get_torch_transform_from_weights(self) -> torch.Tensor:
         """
@@ -237,7 +243,8 @@ class RegModel(nn.Module):
             affine = self.weights.view((3,4))
         else:
             # For translation, use three weights as translation entries in 4th column
-            affine = torch.cat((torch.eye(3,device=self.weights.device), self.weights[0:3].unsqueeze(dim=1)), dim=1)
+            affine = torch.cat((torch.eye(3,device=self.weights.device),
+                                self.weights[0:3].unsqueeze(dim=1)), dim=1)
             if self.weights.size(0) > 3:
                 # For rigid get rotation from Euler angles
                 # and insert into 3x3 block
@@ -248,7 +255,11 @@ class RegModel(nn.Module):
         if self.ixform is not None:
             # affine and ixform are 3x4 so we have to multiply step wise:
             affine[:3, :3] = affine[:3, :3].type(self.ixform.dtype) @ self.ixform[:3, :3]
-            affine[:3, 3] = affine[:3, :3].type(self.ixform.dtype) @ self.ixform[:3, 3] + affine[:3, 3].type(self.ixform.dtype)
+            affine[:3, 3] = (
+                    affine[:3, :3].type(self.ixform.dtype) @ self.ixform[:3, 3]
+                    + affine[:3, 3].type(self.ixform.dtype)
+            )
+
         return affine
 
 
@@ -295,7 +306,8 @@ class RegModel(nn.Module):
 
         Notes
         -----
-        - If `tshape` is not provided, it is assumed that the transformation applies within the same shape as the `sshape`.
+        - If `tshape` is not provided, it is assumed that the transformation applies within the
+          same shape as the `sshape`.
         - The transformation matrix is returned as a CPU tensor detached from computational graphs.
         """
         Atorch = torch.eye(4, device=self.weights.device)

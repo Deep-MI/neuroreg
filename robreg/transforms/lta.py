@@ -1,4 +1,4 @@
-from typing import Dict, Union
+from typing import Union
 
 import numpy as np
 import numpy.typing as npt
@@ -8,9 +8,9 @@ def write_lta(
         filename: str,
         T: npt.ArrayLike,
         src_fname: str,
-        src_header: Dict[str, Union[list[float], np.ndarray]],
+        src_header: dict[str, Union[list[float], np.ndarray]],
         dst_fname: str,
-        dst_header: Dict[str, Union[list[float], np.ndarray]]
+        dst_header: dict[str, Union[list[float], np.ndarray]]
 ) -> None:
     """
     Write linear transform array information to a `.lta` (linear transform array) file.
@@ -27,7 +27,7 @@ def write_lta(
         The transformation matrix (4x4 linear transform array) to save.
     src_fname : str
         The filename of the source image.
-    src_header : Dict[str, Union[list[float], np.ndarray]]
+    src_header : dict[str, Union[list[float], np.ndarray]]
         Header information of the source image, expected to contain:
           - "dims" (List[float]): Dimensions of the image (3D: x, y, z).
           - "delta" (List[float]): Voxel sizes in mm along each axis.
@@ -35,7 +35,7 @@ def write_lta(
           - "Pxyz_c" (np.ndarray): The RAS coordinates of the voxel center (3D).
     dst_fname : str
         The filename of the destination image.
-    dst_header : Dict[str, Union[list[float], np.ndarray]]
+    dst_header : dict[str, Union[list[float], np.ndarray]]
         Header information of the destination image, expected to contain:
           - "dims" (list[float]): Dimensions of the image (3D: x, y, z).
           - "delta" (list[float]): Voxel sizes in mm along each axis.
