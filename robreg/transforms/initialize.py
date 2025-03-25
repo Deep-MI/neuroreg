@@ -1,6 +1,8 @@
 import torch
 from torch import Tensor
+
 from ..image.centroid import compute_centroid
+
 
 def get_ixform_centroids(simg: Tensor, timg: Tensor) -> Tensor:
     """

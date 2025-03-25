@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
+
 def get_gaussian_kernel(kernel_size: int = 5, sigma: float = 1.08, dim: int = 3) -> Tensor:
     """
     Generates a Gaussian kernel for smoothing in 1D, 2D, or 3D.

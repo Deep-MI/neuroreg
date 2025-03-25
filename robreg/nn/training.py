@@ -1,9 +1,10 @@
 import time
+
 import torch
 import torch.nn as nn
+from stopper import EarlyStopper
 from torch.functional import F
 
-from stopper import EarlyStopper
 
 def training_loop(
     model: nn.Module,

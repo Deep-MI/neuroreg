@@ -1,6 +1,7 @@
+from typing import Optional
+
 import torch
 from torch import Tensor
-from typing import Optional
 
 
 def compute_sqrtm(matrix: Tensor, num_iters: int = 100) -> tuple[Tensor, Tensor]:

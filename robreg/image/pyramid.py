@@ -1,7 +1,9 @@
-import torch
-from torch import Tensor
 from typing import Optional
+
+import torch
 from smooth import smooth_image
+from torch import Tensor
+
 
 def get_pyramid_limits(
         shape1: torch.Size,

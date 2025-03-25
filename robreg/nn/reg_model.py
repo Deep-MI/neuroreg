@@ -1,7 +1,9 @@
-from typing import Optional, Union, Any
+from typing import Any, Optional, Union
+
 import torch
 import torch.nn as nn
 from torch import Tensor
+
 import robreg.transforms.matrices as trans
 
 
