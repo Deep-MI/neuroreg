@@ -150,6 +150,5 @@ precision = 2
 
 [tool.codespell]
 skip = "*/data/*,./robreg-data"
-ignore-words-list = ""
-
+#ignore-words-list = ""
 
