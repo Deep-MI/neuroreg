@@ -1,8 +1,9 @@
 from typing import Optional
 
 import torch
-from smooth import smooth_image
 from torch import Tensor
+
+from .smooth import smooth_image
 
 
 def get_pyramid_limits(

@@ -1,5 +1,6 @@
 import torch
-from reg_model import RegModel
+
+from .reg_model import RegModel
 
 
 class RegModelSym(RegModel):
