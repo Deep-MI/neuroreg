@@ -8,7 +8,7 @@ version = '0.1.0-dev'
 description = 'A package for 3D image registration with PyTorch.'
 readme = 'README.md'
 license = {file = 'LICENSE'}
-requires-python = '>=3.9'
+requires-python = '>=3.10'
 authors = [{name = 'Martin Reuter'}]
 maintainers = [{name = 'Martin Reuter'}]
 keywords = [
@@ -22,7 +22,6 @@ classifiers = [
     'Operating System :: OS Independent',
     'Environment :: Console',
     'Programming Language :: Python :: 3 :: Only',
-    'Programming Language :: Python :: 3.9',
     'Programming Language :: Python :: 3.10',
     'Programming Language :: Python :: 3.11',
     'Programming Language :: Python :: 3.12',
