@@ -1,0 +1,155 @@
+[build-system]
+requires = ['setuptools >= 61.0.0']
+build-backend = 'setuptools.build_meta'
+
+[project]
+name = 'robreg'
+version = '0.1.0-dev'
+description = 'A package for 3D image registration with PyTorch.'
+readme = 'README.md'
+license = {file = 'LICENSE'}
+requires-python = '>=3.9'
+authors = [{name = 'Martin Reuter'}]
+maintainers = [{name = 'Martin Reuter'}]
+keywords = [
+    'python',
+    'Registration',
+    '3D Image',
+    'MRI',
+    'PyTorch',
+]
+classifiers = [
+    'Operating System :: OS Independent',
+    'Environment :: Console',
+    'Programming Language :: Python :: 3 :: Only',
+    'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: 3.13',
+    'Natural Language :: English',
+    'License :: OSI Approved :: MIT License',
+    'Intended Audience :: Science/Research',
+]
+dependencies = [
+    'nibabel>=5.1',
+    'numpy>=1.25',
+    'torch>=2.0.1',
+]
+
+[project.optional-dependencies]
+build = [
+    'build',
+    'twine',
+]
+doc = [
+    'furo!=2023.8.17',
+    'matplotlib>=3.5',
+    'memory-profiler',
+    'numpydoc',
+    'sphinx>=7.3,<8',
+    'sphinxcontrib-bibtex',
+    'sphinx-copybutton',
+    'sphinx-design',
+    'sphinx-gallery',
+    'sphinx-issues',
+    'pypandoc',
+    'nbsphinx',
+    'IPython', # For syntax highlighting in notebooks
+    'ipykernel',
+]
+style = [
+    'bibclean',
+    'codespell',
+    'pydocstyle[toml]',
+    'ruff',
+]
+test = [
+    'pytest>=8.2.2',
+    'pytest-cov',
+    'pytest-timeout',
+]
+all = [
+    'robreg[build]',
+    'robreg[doc]',
+    'robreg[style]',
+    'robreg[test]',
+]
+full = [
+    'robreg[all]',
+]
+
+[project.urls]
+homepage = 'https://Deep-MI.github.io/robreg/dev/index.html'
+documentation = 'https://Deep-MI.github.io/robreg/dev/index.html'
+source = 'https://github.com/Deep-MI/robreg'
+tracker = 'https://github.com/Deep-MI/robreg/issues'
+
+[project.scripts]
+robreg-sys_info = 'robreg.cmdline.sys_info:run'
+reobreg-register = 'robreg.cmdline.robreg:main'
+
+[tool.setuptools]
+include-package-data = false
+
+[tool.setuptools.packages.find]
+include = ['robreg*']
+exclude = ['robreg*tests']
+
+[tool.pydocstyle]
+convention = 'numpy'
+ignore-decorators = '(copy_doc|property|.*setter|.*getter|pyqtSlot|Slot)'
+match = '^(?!setup|__init__|test_).*\.py'
+match-dir = '^robreg.*'
+add_ignore = 'D100,D104,D107'
+
+[tool.ruff]
+line-length = 99
+extend-exclude = [
+    "doc",
+    ".github",
+    "data",
+]
+
+[tool.ruff.lint]
+# https://docs.astral.sh/ruff/linter/#rule-selection
+select = [
+    "E",   # pycodestyle
+    "F",   # Pyflakes
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "I",   # isort
+    # "SIM", # flake8-simplify
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"examples/*" = ["E501"]   # ignore too long lines in example ipynb
+
+[tool.pytest.ini_options]
+minversion = '6.0'
+addopts = '--durations 20 --junit-xml=junit-results.xml --verbose'
+filterwarnings = []
+
+[tool.coverage.run]
+branch = true
+cover_pylib = false
+omit = [
+    '**/__init__.py',
+    '**/robreg/_version.py',
+    '**/robreg/cmdline/*',
+    '**/tests/**',
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    'pragma: no cover',
+    'if __name__ == .__main__.:',
+]
+precision = 2
+
+[tool.codespell]
+skip = "*/data/*,./robreg-data"
+ignore-words-list = ""
+
+
