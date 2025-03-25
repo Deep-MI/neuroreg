@@ -23,7 +23,7 @@ def register(
         device: str = 'cpu'
 ) -> tuple[Tensor, list[float], "RegModel"]:
     """
-    Registers (aligns) two images using a transformation optimization model (RegModel).
+    Register (align) two images using a transformation optimization model (RegModel).
 
     This function performs an alignment of two images by optimizing a transformation
     model with a specified degree of freedom (dof). The alignment process can be initialized

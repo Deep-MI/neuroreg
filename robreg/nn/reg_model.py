@@ -25,7 +25,7 @@ class RegModel(nn.Module):
             device: str = 'cpu'
     ) -> None:
         """
-        Initializes the registration model with degrees of freedom and optional parameters.
+        Initialize the registration model with degrees of freedom and optional parameters.
 
         Parameters
         ----------
@@ -183,7 +183,7 @@ class RegModel(nn.Module):
 
     def get_torch_transform_from_weights(self) -> torch.Tensor:
         """
-        Constructs a transformation matrix from the weights tensor.
+        Construct a transformation matrix from the weights tensor.
 
         Depending on the number of weights in the `self.weights` tensor,
         the function generates a transformation matrix that includes translation,
@@ -266,7 +266,7 @@ class RegModel(nn.Module):
     def get_v2v_from_weights(self, sshape: tuple[int, int, int],
                              tshape: Optional[tuple[int, int, int]] = None) -> Tensor:
         """
-        Converts transformation weights into a voxel-to-voxel transformation matrix.
+        Convert transformation weights into a voxel-to-voxel transformation matrix.
 
         This function generates a voxel-to-voxel (v2v) transformation matrix by
         combining the weights tensor into an affine transformation matrix (4x4)
@@ -323,7 +323,7 @@ class RegModel(nn.Module):
                 tshape: Optional[tuple[int, int, int]] = None
     ) -> Tensor:
         """
-        Computes the RAS-to-RAS (r2r) transformation matrix from transformation weights.
+        Compute the RAS-to-RAS (r2r) transformation matrix from transformation weights.
 
         This function calculates the r2r transformation, which transforms coordinates
         from the reference space of the source volume to the reference space of the
@@ -392,7 +392,7 @@ class RegModel(nn.Module):
             mode: str = 'bilinear'
     ) -> torch.Tensor:
         """
-        Maps an input image to another space using the inverse transformation matrix.
+        Map an input image to another space using the inverse transformation matrix.
 
         Parameters
         ----------
@@ -453,7 +453,7 @@ class RegModel(nn.Module):
 
     def forward(self, X: torch.Tensor) -> torch.Tensor:
         """
-        Forward pass of the model, mapping the input image according to the transformation weights.
+        Perform a forward pass, mapping the input image according to the transformation weights.
 
         Parameters
         ----------

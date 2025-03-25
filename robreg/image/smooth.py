@@ -5,7 +5,7 @@ from torch import Tensor
 
 def get_gaussian_kernel(kernel_size: int = 5, sigma: float = 1.08, dim: int = 3) -> Tensor:
     """
-    Generates a Gaussian kernel for smoothing in 1D, 2D, or 3D.
+    Generate a Gaussian kernel for smoothing in 1D, 2D, or 3D.
 
     Parameters
     ----------
@@ -56,7 +56,7 @@ def get_gaussian_kernel(kernel_size: int = 5, sigma: float = 1.08, dim: int = 3)
 
 def smooth_image(image: Tensor, kernel_size: int = 5, sigma: float = 1.08) -> Tensor:
     """
-    Smooths a 3D image using a Gaussian kernel with separable convolution.
+    Smooth a 3D image using a Gaussian kernel with separable convolution.
 
     Parameters
     ----------

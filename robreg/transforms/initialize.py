@@ -6,8 +6,7 @@ from ..image.centroid import compute_centroid
 
 def get_ixform_centroids(simg: Tensor, timg: Tensor) -> Tensor:
     """
-    Computes an initial voxel-to-voxel transformation between a source image
-    and a target image by aligning their centroids.
+    Compute an initial voxel-to-voxel transformation by aligning image centroids.
 
     Note
     ----
@@ -50,7 +49,7 @@ def get_ixform_centroids(simg: Tensor, timg: Tensor) -> Tensor:
 
 def get_vox2vox_from_header(saffine: Tensor, taffine: Tensor) -> Tensor:
     """
-    Computes the initial transformation between source and target images based on their affine matrices.
+    Compute the initial transformation based on image affine matrices (from headers).
 
     Parameters
     ----------

@@ -16,7 +16,7 @@ def training_loop(
     verbose: bool = False
 ) -> list[torch.Tensor]:
     """
-    A generic training loop for optimizing a PyTorch model.
+    Optimize a PyTorch model using an optimizer and a loss function for image registration.
 
     This function performs training for a specified number of iterations while monitoring
     a loss function. It tracks losses, applies early stopping, and stops the training

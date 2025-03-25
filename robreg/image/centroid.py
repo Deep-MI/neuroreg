@@ -5,7 +5,7 @@ from torch import Tensor
 
 def compute_centroid(image: Tensor) -> Tensor:
     """
-    Computes the weighted centroid of a 3D image based on its intensities.
+    Compute the weighted centroid of a 3D image based on its intensities.
 
     Parameters
     ----------

@@ -12,7 +12,7 @@ def get_pyramid_limits(
         maxsize: Optional[int] = None
 ) -> tuple[Tensor, Tensor]:
     """
-    Computes the minimum and maximum levels for a pyramid representation of shapes.
+    Compute the minimum and maximum levels for a pyramid representation of shapes.
 
     Parameters
     ----------
@@ -61,7 +61,7 @@ def build_gaussian_pyramid(
         limits: Optional[tuple[Tensor, Tensor]] = None
 ) -> tuple[list[Tensor], list[Tensor]]:
     """
-    Builds a Gaussian pyramid for a 3D image, including its downsampled versions.
+    Build a Gaussian pyramid for a 3D image, including its downsampled versions.
 
     Parameters
     ----------

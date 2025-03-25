@@ -6,7 +6,7 @@ from torch import Tensor
 
 def compute_sqrtm(matrix: Tensor, num_iters: int = 100) -> tuple[Tensor, Tensor]:
     r"""
-    Computes the square root of a matrix using the Newton-Schulz iterative method.
+    Compute the square root of a matrix using the Newton-Schulz iterative method.
 
     This method iteratively approximates the square root of a positive definite matrix.
     It is based on the source: https://github.com/msubhransu/matrix-sqrt.
@@ -80,7 +80,7 @@ def compute_sqrtm(matrix: Tensor, num_iters: int = 100) -> tuple[Tensor, Tensor]
 
 def matrix_decompose(matrix: Tensor) -> tuple[Tensor, Tensor, Tensor, Tensor]:
     """
-    Decomposes a 3x3 or 4x4 matrix into four components: rotation, shear, scale, and translation.
+    Decompose a 3x3 or 4x4 matrix into four components: rotation, shear, scale, and translation.
 
     This function performs singular value decomposition (SVD) to decompose the input matrix.
     If the matrix is 4x4, it extracts the translation vector from the last column and decomposes
@@ -258,7 +258,7 @@ def get_affine(translation: torch.Tensor,
 
 def convert_v2v_to_torch(v2v: torch.Tensor, source_shape, target_shape=None) -> torch.tensor:
     """
-    Converts a vox2vox affine transformation matrix to a torch transformation matrix.
+    Convert a vox2vox affine transformation matrix to a torch transformation matrix.
 
     This function accounts for scaling and translation based on the 3D shapes of the source and
     target volumes.
@@ -308,7 +308,7 @@ def convert_v2v_to_torch(v2v: torch.Tensor, source_shape, target_shape=None) -> 
 
 def convert_torch_to_v2v(torch_transform: torch.Tensor, source_shape, target_shape=None) -> torch.tensor:
     """
-    Converts a torch transformation matrix (3x4) to a vox2vox transformation matrix (4x4).
+    Convert a torch transformation matrix (3x4) to a vox2vox transformation matrix (4x4).
     Parameters:
         torch_transform (torch.Tensor): A 3x4 transformation matrix (torch format).
         source_shape (tuple/list): Shape of the source image (D, H, W).
