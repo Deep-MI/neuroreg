@@ -1,4 +1,3 @@
-from typing import Union
 
 import numpy as np
 import numpy.typing as npt
@@ -8,9 +7,9 @@ def write_lta(
         filename: str,
         T: npt.ArrayLike,
         src_fname: str,
-        src_header: dict[str, Union[list[float], np.ndarray]],
+        src_header: dict[str, list[float] | np.ndarray],
         dst_fname: str,
-        dst_header: dict[str, Union[list[float], np.ndarray]]
+        dst_header: dict[str, list[float] | np.ndarray]
 ) -> None:
     """
     Write linear transform array information to a `.lta` (linear transform array) file.

@@ -1,4 +1,3 @@
-from typing import Optional
 
 import torch
 from torch import Tensor
@@ -235,8 +234,8 @@ def get_scaling(scales: torch.Tensor) -> torch.Tensor:
 
 
 def get_affine(translation: torch.Tensor,
-               rotvec: Optional[torch.Tensor] = None,
-               scales: Optional[torch.Tensor] = None) -> torch.Tensor:
+               rotvec: torch.Tensor | None = None,
+               scales: torch.Tensor | None = None) -> torch.Tensor:
     """
     Generate a 4x4 affine transformation matrix from translation, rotation, and scaling.
 

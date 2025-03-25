@@ -1,4 +1,4 @@
-from typing import Any, Optional, Union
+from typing import Any
 
 import torch
 import torch.nn as nn
@@ -19,9 +19,9 @@ class RegModel(nn.Module):
     def __init__(
             self,
             dof: int = 6,
-            v2v_init: Optional[torch.Tensor] = None,
-            source_shape: Optional[Any] = None,
-            target_shape: Optional[Any] = None,
+            v2v_init: torch.Tensor | None = None,
+            source_shape: Any | None = None,
+            target_shape: Any | None = None,
             device: str = 'cpu'
     ) -> None:
         """
@@ -80,7 +80,7 @@ class RegModel(nn.Module):
         else:
             self.ixform = None
 
-    def init_weights(self, dof: int = 6, device: Union[str, torch.device] = 'cpu') -> Tensor:
+    def init_weights(self, dof: int = 6, device: str | torch.device = 'cpu') -> Tensor:
         """
         Initialize transformation weights based on degrees of freedom (DOF).
 
@@ -264,7 +264,7 @@ class RegModel(nn.Module):
 
 
     def get_v2v_from_weights(self, sshape: tuple[int, int, int],
-                             tshape: Optional[tuple[int, int, int]] = None) -> Tensor:
+                             tshape: tuple[int, int, int] | None = None) -> Tensor:
         """
         Convert transformation weights into a voxel-to-voxel transformation matrix.
 
@@ -320,7 +320,7 @@ class RegModel(nn.Module):
                 saffine: Tensor,
                 taffine: Tensor,
                 sshape: tuple[int, int, int],
-                tshape: Optional[tuple[int, int, int]] = None
+                tshape: tuple[int, int, int] | None = None
     ) -> Tensor:
         """
         Compute the RAS-to-RAS (r2r) transformation matrix from transformation weights.
@@ -388,7 +388,7 @@ class RegModel(nn.Module):
     def map_image(
             self,
             image: torch.Tensor,
-            torch_transform: Optional[torch.Tensor] = None,
+            torch_transform: torch.Tensor | None = None,
             mode: str = 'bilinear'
     ) -> torch.Tensor:
         """

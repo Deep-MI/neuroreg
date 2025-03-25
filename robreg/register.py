@@ -1,5 +1,4 @@
 import time
-from typing import Optional, Union
 
 import nibabel as nib
 import torch
@@ -16,7 +15,7 @@ def register(
         simg: Tensor,
         timg: Tensor,
         dof: int = 6,
-        v2v_init: Optional[Tensor] = None,
+        v2v_init: Tensor | None = None,
         centroid_init: bool = True,
         n: int = 30,
         verbose: bool = False,
@@ -87,10 +86,10 @@ def register(
 
 
 def register_pyramid(
-    src: Union[str, nib.Nifti1Image],
-    trg: Union[str, nib.Nifti1Image],
-    lta_name: Optional[str] = None,
-    mapped_name: Optional[str] = None,
+    src: str | nib.Nifti1Image,
+    trg: str | nib.Nifti1Image,
+    lta_name: str | None = None,
+    mapped_name: str | None = None,
     device: str = 'cpu'
 ) -> Tensor:
     """
@@ -153,7 +152,7 @@ def register_pyramid(
     debug = False
     n = 10
     torch.set_printoptions(precision=8, sci_mode=False)
-    for si, sa, ti, ta in zip(reversed(simgs), reversed(saffines), reversed(timgs), reversed(taffines)):
+    for si, sa, ti, ta in zip(reversed(simgs), reversed(saffines), reversed(timgs), reversed(taffines), strict=False):
         print("\n===============================================")
         print("Resolution: ", count, si.size())
         if count == 0:
