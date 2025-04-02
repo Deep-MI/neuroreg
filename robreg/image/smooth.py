@@ -54,7 +54,7 @@ def get_gaussian_kernel(kernel_size: int = 5, sigma: float = 1.08, dim: int = 3)
     return gaussian_kernel
 
 
-def smooth_image(image: Tensor, kernel_size: int = 5, sigma: float = 1.08) -> Tensor:
+def smooth(image: Tensor, kernel_size: int = 5, sigma: float = 1.08) -> Tensor:
     """
     Smooth a 3D image using a Gaussian kernel with separable convolution.
 
@@ -81,7 +81,7 @@ def smooth_image(image: Tensor, kernel_size: int = 5, sigma: float = 1.08) -> Te
     Example
     -------
     >>> input_image = torch.rand(64, 64, 64)  # Example 3D image
-    >>> smoothed_image = smooth_image(input_image, kernel_size=3, sigma=1.0)
+    >>> smoothed_image = smooth(input_image, kernel_size=3, sigma=1.0)
     >>> print(smoothed_image.shape)
     torch.Size([64, 64, 64])
     """

@@ -2,7 +2,7 @@
 import torch
 from torch import Tensor
 
-from .smooth import smooth_image
+from .smooth import smooth
 
 
 def get_pyramid_limits(
@@ -101,12 +101,12 @@ def build_gaussian_pyramid(
     affines = []
     # Check if original image (smoothed) needs to be stored
     if limits[0] == 0:
-        smoothed = smooth_image(image)
+        smoothed = smooth(image)
         imgs.append(smoothed.squeeze())
         affines.append(last_affine)
     smoothed = image
     for i in range(limits[1]):
-        smoothed = smooth_image(smoothed)
+        smoothed = smooth(smoothed)
         smoothed = torch.nn.functional.avg_pool3d(smoothed, 2)
         last_affine = last_affine @ downM
         if i >= limits[0]:
