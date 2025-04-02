@@ -5,6 +5,7 @@ import torch.nn as nn
 from torch import Tensor
 
 import robreg.transforms.matrices as trans
+import robreg.image.map
 
 
 class RegModel(nn.Module):
@@ -76,7 +77,7 @@ class RegModel(nn.Module):
         if v2v_init is not None:
             if source_shape is None or target_shape is None:
                 raise ValueError("Source and target shapes must be provided if v2v_init is provided.")
-            self.set_ixform(v2v_init, source_shape, target_shape)
+            self.set_ixform(v2v_init, source_shape, target_shape, device=device)
         else:
             self.ixform = None
 
@@ -152,7 +153,8 @@ class RegModel(nn.Module):
             self,
             v2v_init: torch.Tensor,
             source_shape: tuple[int, int, int],
-            target_shape: tuple[int, int, int]
+            target_shape: tuple[int, int, int],
+            device: str | torch.device = 'cpu'
     ) -> None:
         """
         Update the initial vox2vox transformation matrix.
@@ -178,7 +180,7 @@ class RegModel(nn.Module):
         self.ixform = (
             trans.convert_v2v_to_torch(v2v_init, source_shape, target_shape)
             .type(torch.float32)
-            .to(self.device)
+            .to(device)
         )
 
     def get_torch_transform_from_weights(self) -> torch.Tensor:
@@ -437,19 +439,8 @@ class RegModel(nn.Module):
         """
         if torch_transform is None:
             torch_transform = self.get_torch_transform_from_weights()
-        torch_transform = torch_transform[:3, :]  # Convert to 3x4 for affine_grid
-        grid = nn.functional.affine_grid(
-            torch_transform.unsqueeze(0).float(),
-            image.unsqueeze(0).unsqueeze(0).size(),
-            align_corners=False
-        )
-        return nn.functional.grid_sample(
-            image.unsqueeze(0).unsqueeze(0),
-            grid,
-            mode=mode,
-            padding_mode='zeros',
-            align_corners=False
-        ).squeeze()
+        return robreg.image.map(image, torch_transform, mode=mode)
+
 
     def forward(self, X: torch.Tensor) -> torch.Tensor:
         """
