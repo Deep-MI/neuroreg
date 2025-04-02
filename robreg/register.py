@@ -90,6 +90,8 @@ def register_pyramid(
     trg: str | nib.Nifti1Image,
     lta_name: str | None = None,
     mapped_name: str | None = None,
+    return_v2v: bool = False,
+    centroid_init: bool = True,
     device: str = 'cpu'
 ) -> Tensor:
     """
@@ -113,6 +115,10 @@ def register_pyramid(
         The output filename for saving the final transformation matrix in LTA format (default is None).
     mapped_name : Optional[str], optional
         The output filename for saving the mapped version of the source image after registration (default is None).
+    return_v2v : bool, optional
+        Return vox-to-vox transformation matrix after registration (default is False, returns ras-to-ras instead).
+    centroid_init : bool, optional
+        Whether to initialize the transformation based on centroid alignment (default is True).
     device : str, optional
         The device to use for computation, such as 'cpu' or 'cuda' (default is 'cpu').
 
@@ -156,7 +162,7 @@ def register_pyramid(
         print("\n===============================================")
         print("Resolution: ", count, si.size())
         if count == 0:
-            Mv2v, losses, m = register(si, ti, centroid_init=True, n=n, device=device)
+            Mv2v, losses, m = register(si, ti, centroid_init=centroid_init, n=n, device=device)
         else:
             Mv2v_init = torch.inverse(ta) @ Mr2r @ sa
             print("Mv2v_init", Mv2v_init)
@@ -187,4 +193,6 @@ def register_pyramid(
         mapped_img = nib.MGHImage(mapped.squeeze().numpy(), src.affine, src.header)
         mapped_img.to_filename(mapped_name)
     print("Total time: ", time.perf_counter() - start)
+    if return_v2v:
+        return Mv2v
     return Mr2r
