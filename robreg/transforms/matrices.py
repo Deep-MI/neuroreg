@@ -168,7 +168,7 @@ def get_translation(translation: torch.Tensor) -> torch.Tensor:
 
 def get_rotation_rodrigues(rotvec: torch.Tensor) -> torch.Tensor:
     """
-    Generate a 3x3 rotation matrix using a Rodrigues vector.
+    Generate a 4x4 rotation matrix using a Rodrigues vector.
 
     Parameters
     ==========
@@ -176,7 +176,7 @@ def get_rotation_rodrigues(rotvec: torch.Tensor) -> torch.Tensor:
 
     Returns
     =======
-        torch.Tensor: A 3x3 rotation matrix.
+        torch.Tensor: A 4x4 rotation matrix.
     """
     angle = torch.norm(rotvec)
     zero = torch.zeros(1, dtype=rotvec.dtype, device=rotvec.device).squeeze()
@@ -191,12 +191,14 @@ def get_rotation_rodrigues(rotvec: torch.Tensor) -> torch.Tensor:
     rmat = ((torch.eye(3, dtype=rotvec.dtype, device=rotvec.device) +
             torch.sinc(angle / torch.pi) * cross_mat) +
             ((1 - torch.cos(angle)) / angle2) * (cross_mat @ cross_mat))
-    return rmat
+    r4x4 = torch.eye(4, dtype=rotvec.dtype, device=rotvec.device)
+    r4x4[:3, :3] = rmat
+    return r4x4
 
 
 def get_rotation_euler(angles: torch.Tensor) -> torch.Tensor:
     """
-    Generate a 3x3 rotation matrix using Euler angles X,Y,Z.
+    Generate a 4x4 rotation matrix using Euler angles X,Y,Z.
 
     Parameters
     ==========
@@ -204,7 +206,7 @@ def get_rotation_euler(angles: torch.Tensor) -> torch.Tensor:
 
     Returns
     =======
-        torch.Tensor: A 3x3 rotation matrix.
+        torch.Tensor: A 4x4 rotation matrix.
     """
     cos = torch.cos(angles)
     sin = torch.sin(angles)
@@ -216,7 +218,10 @@ def get_rotation_euler(angles: torch.Tensor) -> torch.Tensor:
     R_x = torch.stack(R_x, -1).view((3, 3))
     R_y = torch.stack(R_y, -1).view((3, 3))
     R_z = torch.stack(R_z, -1).view((3, 3))
-    return torch.matmul(torch.matmul(R_x, R_y), R_z)
+    rmat = torch.matmul(torch.matmul(R_x, R_y), R_z)
+    r4x4 = torch.eye(4, dtype=angles.dtype, device=angles.device)
+    r4x4[:3, :3] = rmat
+    return r4x4
 
 
 def get_scaling(scales: torch.Tensor) -> torch.Tensor:
@@ -281,7 +286,7 @@ def convert_v2v_to_torch(v2v: torch.Tensor, source_shape, target_shape=None) -> 
         raise ValueError(f"Expected v2v of shape (4, 4), but got {v2v.shape}.")
     inv_transform = torch.inverse(v2v)
     ndim = 3
-    device = inv_transform.device
+    device = v2v.device
     # Prepare scale factors for source and target grid spaces
     scale_factor_source = torch.tensor(list(reversed(source_shape)), dtype=v2v.dtype, device=device) / 2.0
     scale_factor_target = torch.tensor(list(reversed(target_shape)), dtype=v2v.dtype, device=device) / 2.0
