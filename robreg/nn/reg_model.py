@@ -4,8 +4,8 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-import robreg.transforms.matrices as trans
 import robreg.image.map
+import robreg.transforms.matrices as trans
 
 
 class RegModel(nn.Module):

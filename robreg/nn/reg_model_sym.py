@@ -2,8 +2,8 @@ from typing import Any
 
 import torch
 
-from .reg_model import RegModel
 from ..transforms.matrices import compute_sqrtm
+from .reg_model import RegModel
 
 
 class RegModelSym(RegModel):
@@ -24,9 +24,10 @@ class RegModelSym(RegModel):
     ) -> None:
         """
         """
-        super().__init__(dof=dof, source_shape=source_shape, target_shape=target_shape, device=device)  # Call the parent constructor
+        # Call the parent constructor
+        super().__init__(dof=dof, source_shape=source_shape, target_shape=target_shape, device=device)
         v2v_init_sqrt = compute_sqrtm(v2v_init)
-
+        print(f"The initial transformation matrix is: {v2v_init_sqrt}")
 
     def additional_feature(self) -> None:
         """
