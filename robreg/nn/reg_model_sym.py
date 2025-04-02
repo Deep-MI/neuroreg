@@ -1,31 +1,32 @@
+from typing import Any
+
 import torch
 
 from .reg_model import RegModel
+from ..transforms.matrices import compute_sqrtm
 
 
 class RegModelSym(RegModel):
     """
     A RegModel for symmetric registration.
 
-    This class inherits from RegModel and extends it to add symmetric registration into a midspace. It will be
-    slower as both src and trg images are mapped to the midspace in each step.
+    This class inherits from RegModel and extends it to add symmetric registration into a midspace.
+    It will map and interpolate both src and trg images to the midspace in each step.
     """
 
-    def __init__(self, new_param: int, *args, **kwargs):
+    def __init__(
+            self,
+            dof: int = 6,
+            v2v_init: torch.Tensor | None = None,
+            source_shape: Any | None = None,
+            target_shape: Any | None = None,
+            device: str = 'cpu'
+    ) -> None:
         """
-        Initialize the CustomRegModel with additional parameters.
+        """
+        super().__init__(dof=dof, source_shape=source_shape, target_shape=target_shape, device=device)  # Call the parent constructor
+        v2v_init_sqrt = compute_sqrtm(v2v_init)
 
-        Parameters
-        ----------
-        new_param : int
-            A custom parameter for the new model.
-        *args : tuple
-            Positional arguments to pass to the RegModel constructor.
-        **kwargs : dict
-            Keyword arguments to pass to the RegModel constructor.
-        """
-        super().__init__(*args, **kwargs)  # Call the parent constructor
-        self.new_param = new_param
 
     def additional_feature(self) -> None:
         """
