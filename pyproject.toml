@@ -126,6 +126,12 @@ select = [
 "__init__.py" = ["F401"]
 "examples/*" = ["E501"]   # ignore too long lines in example ipynb
 
+[tool.codespell]
+#ignore-words-list = 'coo,daty'
+check-filenames = true
+check-hidden = true
+skip = './.git,./build,./.mypy_cache,./.pytest_cache,*/data/*,./robreg-data'
+
 [tool.pytest.ini_options]
 minversion = '6.0'
 addopts = '--durations 20 --junit-xml=junit-results.xml --verbose'
@@ -147,8 +153,4 @@ exclude_lines = [
     'if __name__ == .__main__.:',
 ]
 precision = 2
-
-[tool.codespell]
-skip = "*/data/*,./robreg-data"
-#ignore-words-list = ""
 
