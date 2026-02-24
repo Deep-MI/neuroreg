@@ -9,12 +9,13 @@ def write_lta(
         src_fname: str,
         src_header: dict[str, list[float] | np.ndarray],
         dst_fname: str,
-        dst_header: dict[str, list[float] | np.ndarray]
+        dst_header: dict[str, list[float] | np.ndarray],
+        lta_type: int = 1
 ) -> None:
     """
     Write linear transform array information to a `.lta` (linear transform array) file.
 
-    This function saves a voxel-to-voxel transformation matrix (T) to an LTA file along with
+    This function saves a transformation matrix (T) to an LTA file along with
     metadata about the source and destination image volumes, including dimensions, voxel
     sizes, direction cosines, and centroids.
 
@@ -40,6 +41,8 @@ def write_lta(
           - "delta" (list[float]): Voxel sizes in mm along each axis.
           - "Mdc" (np.ndarray): Voxel-to-RAS direction cosine matrix (3x3).
           - "Pxyz_c" (np.ndarray): The RAS coordinates of the voxel center (3D).
+    lta_type : int, optional
+        Transform type: 0 = LINEAR_VOX_TO_VOX, 1 = LINEAR_RAS_TO_RAS (default).
 
     Raises
     ------
@@ -84,13 +87,14 @@ def write_lta(
                 f"writeLTA Error: dst_header is missing required field: {field}"
             )
 
-    src_dims = str(src_header["dims"][0:3]).replace("[", "").replace("]", "")
-    src_vsize = str(src_header["delta"][0:3]).replace("[", "").replace("]", "")
+    # Format dims and voxelsize as space-separated (no commas)
+    src_dims = " ".join(str(int(x)) for x in src_header["dims"][0:3])
+    src_vsize = " ".join(f"{float(x):.15e}" for x in src_header["delta"][0:3])
     src_v2r = src_header["Mdc"]
     src_c = src_header["Pxyz_c"]
 
-    dst_dims = str(dst_header["dims"][0:3]).replace("[", "").replace("]", "")
-    dst_vsize = str(dst_header["delta"][0:3]).replace("[", "").replace("]", "")
+    dst_dims = " ".join(str(int(x)) for x in dst_header["dims"][0:3])
+    dst_vsize = " ".join(f"{float(x):.15e}" for x in dst_header["delta"][0:3])
     dst_v2r = dst_header["Mdc"]
     dst_c = dst_header["Pxyz_c"]
 
@@ -99,7 +103,9 @@ def write_lta(
         f.write(
             f"# created by {getpass.getuser()} on {datetime.now().ctime()}\n\n"
         )
-        f.write("type      = 1 # LINEAR_RAS_TO_RAS\n")
+        # Write type based on parameter
+        type_name = "LINEAR_VOX_TO_VOX" if lta_type == 0 else "LINEAR_RAS_TO_RAS"
+        f.write(f"type      = {lta_type} # {type_name}\n")
         f.write("nxforms   = 1\n")
         f.write("mean      = 0.0 0.0 0.0\n")
         f.write("sigma     = 1.0\n")
@@ -111,16 +117,17 @@ def write_lta(
         f.write(f"filename = {src_fname}\n")
         f.write(f"volume = {src_dims}\n")
         f.write(f"voxelsize = {src_vsize}\n")
-        f.write(f"xras   = {src_v2r[0, :]}\n".replace("[", "").replace("]", ""))
-        f.write(f"yras   = {src_v2r[1, :]}\n".replace("[", "").replace("]", ""))
-        f.write(f"zras   = {src_v2r[2, :]}\n".replace("[", "").replace("]", ""))
-        f.write(f"cras   = {src_c}\n".replace("[", "").replace("]", ""))
+        f.write("xras   = " + " ".join(f"{x:.15e}" for x in src_v2r[0, :]) + "\n")
+        f.write("yras   = " + " ".join(f"{x:.15e}" for x in src_v2r[1, :]) + "\n")
+        f.write("zras   = " + " ".join(f"{x:.15e}" for x in src_v2r[2, :]) + "\n")
+        f.write("cras   = " + " ".join(f"{x:.15e}" for x in src_c) + "\n")
         f.write("dst volume info\n")
         f.write("valid = 1  # volume info valid\n")
         f.write(f"filename = {dst_fname}\n")
         f.write(f"volume = {dst_dims}\n")
         f.write(f"voxelsize = {dst_vsize}\n")
-        f.write(f"xras   = {dst_v2r[0, :]}\n".replace("[", "").replace("]", ""))
-        f.write(f"yras   = {dst_v2r[1, :]}\n".replace("[", "").replace("]", ""))
-        f.write(f"zras   = {dst_v2r[2, :]}\n".replace("[", "").replace("]", ""))
-        f.write(f"cras   = {dst_c}\n".replace("[", "").replace("]", ""))
+        f.write("xras   = " + " ".join(f"{x:.15e}" for x in dst_v2r[0, :]) + "\n")
+        f.write("yras   = " + " ".join(f"{x:.15e}" for x in dst_v2r[1, :]) + "\n")
+        f.write("zras   = " + " ".join(f"{x:.15e}" for x in dst_v2r[2, :]) + "\n")
+        f.write("cras   = " + " ".join(f"{x:.15e}" for x in dst_c) + "\n")
+
