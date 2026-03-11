@@ -69,8 +69,8 @@ def sample_volume_at_vertices(
     elif volume.ndim == 4:
         volume = volume.unsqueeze(0)
 
-    # Get volume dimensions
-    _, _, H, W, D = volume.shape
+    # Volume shape from nibabel is (i, j, k) stored as (B, C, i, j, k)
+    _, _, Si, Sj, Sk = volume.shape
 
     # Convert vertices to homogeneous coordinates (N, 4)
     n_vertices = vertices_tkras.shape[0]
@@ -81,20 +81,20 @@ def sample_volume_at_vertices(
 
     # Apply registration transform if provided
     if reg_matrix is not None:
-        # vertices_mov = reg_matrix @ vertices_tkras
         vertices_hom = torch.matmul(reg_matrix, vertices_hom.T).T  # (N, 4)
 
     # Transform from tkRAS to voxel coordinates
-    # vox = inv(vox2ras_tkr) @ tkras
+    # vox = inv(vox2ras_tkr) @ tkras  -> (i, j, k)
     ras2vox_tkr = torch.inverse(vox2ras_tkr.to(device).to(dtype))
-    vertices_vox = torch.matmul(ras2vox_tkr, vertices_hom.T).T[:, :3]  # (N, 3)
+    vertices_vox = torch.matmul(ras2vox_tkr, vertices_hom.T).T[:, :3]  # (N, 3): (i, j, k)
 
-    # Normalize to [-1, 1] range for grid_sample
-    # grid_sample expects: x in [-1, 1] maps to [0, W-1]
+    # grid_sample with a 5D volume (B, C, i, j, k) expects grid coords (x, y, z)
+    # where x indexes the LAST dim (k), y the middle dim (j), z the first spatial dim (i).
+    # So: x = normalise(k, Sk), y = normalise(j, Sj), z = normalise(i, Si)
     grid = torch.zeros((n_vertices, 3), device=device, dtype=dtype)
-    grid[:, 0] = 2.0 * vertices_vox[:, 0] / (D - 1) - 1.0  # x -> depth
-    grid[:, 1] = 2.0 * vertices_vox[:, 1] / (H - 1) - 1.0  # y -> height
-    grid[:, 2] = 2.0 * vertices_vox[:, 2] / (W - 1) - 1.0  # z -> width
+    grid[:, 0] = 2.0 * vertices_vox[:, 2] / (Sk - 1) - 1.0  # x -> k (last dim)
+    grid[:, 1] = 2.0 * vertices_vox[:, 1] / (Sj - 1) - 1.0  # y -> j
+    grid[:, 2] = 2.0 * vertices_vox[:, 0] / (Si - 1) - 1.0  # z -> i (first spatial dim)
 
     # Reshape for grid_sample: (1, N, 1, 1, 3)
     grid = grid.unsqueeze(0).unsqueeze(2).unsqueeze(3)  # (1, N, 1, 1, 3)
