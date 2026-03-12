@@ -1,7 +1,7 @@
 """Helper functions for working with nibabel image headers."""
 
-import numpy as np
 import nibabel as nib
+import numpy as np
 
 
 def header_to_dict(img: nib.Nifti1Image | nib.MGHImage) -> dict:
