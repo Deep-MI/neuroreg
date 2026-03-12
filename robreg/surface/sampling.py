@@ -5,16 +5,17 @@ Handles sampling image intensities at transformed vertex locations,
 managing coordinate system transformations (tkRAS -> voxel).
 """
 
+from typing import Literal
+
 import torch
 import torch.nn.functional as F
-from typing import Optional, Literal
 
 
 def sample_volume_at_vertices(
     volume: torch.Tensor,
     vertices_tkras: torch.Tensor,
     vox2ras_tkr: torch.Tensor,
-    reg_matrix: Optional[torch.Tensor] = None,
+    reg_matrix: torch.Tensor | None = None,
     interpolation: Literal['nearest', 'bilinear', 'trilinear'] = 'trilinear',
     padding_mode: str = 'zeros',
     align_corners: bool = True
@@ -125,7 +126,7 @@ def sample_volume_at_vertices(
 
 def compute_volume_gradient(
     volume: torch.Tensor,
-    voxel_size: Optional[tuple[float, float, float]] = None
+    voxel_size: tuple[float, float, float] | None = None
 ) -> torch.Tensor:
     """
     Compute 3D gradient of volume.
@@ -191,8 +192,8 @@ def sample_gradient_at_vertices(
     volume: torch.Tensor,
     vertices_tkras: torch.Tensor,
     vox2ras_tkr: torch.Tensor,
-    reg_matrix: Optional[torch.Tensor] = None,
-    voxel_size: Optional[tuple[float, float, float]] = None,
+    reg_matrix: torch.Tensor | None = None,
+    voxel_size: tuple[float, float, float] | None = None,
     interpolation: str = 'trilinear'
 ) -> torch.Tensor:
     """

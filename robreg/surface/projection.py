@@ -5,8 +5,8 @@ Implements vertex normal computation and projection along normals,
 following the approach used in lapy but with PyTorch for GPU support.
 """
 
+
 import torch
-from typing import Optional
 
 
 def compute_vertex_normals(
@@ -77,8 +77,8 @@ def project_vertices(
     vertices: torch.Tensor,
     normals: torch.Tensor,
     distance: float = 0.0,
-    thickness: Optional[torch.Tensor] = None,
-    fraction: Optional[float] = None
+    thickness: torch.Tensor | None = None,
+    fraction: float | None = None
 ) -> torch.Tensor:
     """
     Project vertices along surface normals.
@@ -136,11 +136,11 @@ def project_vertices(
 def create_wm_gm_surfaces(
     white_vertices: torch.Tensor,
     faces: torch.Tensor,
-    normals: Optional[torch.Tensor] = None,
-    thickness: Optional[torch.Tensor] = None,
+    normals: torch.Tensor | None = None,
+    thickness: torch.Tensor | None = None,
     wm_proj_abs: float = 2.0,
     gm_proj_frac: float = 0.5,
-    gm_proj_abs: Optional[float] = None
+    gm_proj_abs: float | None = None
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Create WM and GM surfaces from white surface for BBR.

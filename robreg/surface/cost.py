@@ -1,13 +1,15 @@
 """Cost functions for surface-based registration."""
+
 import torch
-from typing import Optional
+
+
 def bbr_contrast_cost(
     vwm: torch.Tensor,
     vctx: torch.Tensor,
     slope: float = 0.5,
     center: float = 0.0,
     contrast_sign: int = 1,
-    mask: Optional[torch.Tensor] = None,
+    mask: torch.Tensor | None = None,
     eps: float = 1e-6
 ) -> torch.Tensor:
     """
@@ -62,7 +64,7 @@ def bbr_contrast_cost(
 def gradient_magnitude_cost(
     volume_gradient: torch.Tensor,
     normals: torch.Tensor,
-    mask: Optional[torch.Tensor] = None,
+    mask: torch.Tensor | None = None,
     use_normal_component: bool = True
 ) -> torch.Tensor:
     """Compute cost based on image gradient magnitude."""

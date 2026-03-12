@@ -5,19 +5,19 @@ Handles loading surface geometry from FreeSurfer .surf files and associated
 data like thickness, curvature, etc. Correctly manages tkRAS coordinate system.
 """
 
+from pathlib import Path
+
+import nibabel as nib
 import numpy as np
 import torch
-from pathlib import Path
-from typing import Tuple, Optional, Dict
-import nibabel as nib
 from nibabel.freesurfer import read_geometry, read_morph_data
 
 
 def load_surface(
     surf_path: str,
-    thickness_path: Optional[str] = None,
+    thickness_path: str | None = None,
     device: str = 'cpu'
-) -> Dict[str, torch.Tensor]:
+) -> dict[str, torch.Tensor]:
     """
     Load a FreeSurfer surface file and optional associated data.
 
@@ -79,10 +79,10 @@ def load_surface(
 def load_surface_pair(
     lh_surf_path: str,
     rh_surf_path: str,
-    lh_thickness_path: Optional[str] = None,
-    rh_thickness_path: Optional[str] = None,
+    lh_thickness_path: str | None = None,
+    rh_thickness_path: str | None = None,
     device: str = 'cpu'
-) -> Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]]:
+) -> tuple[dict[str, torch.Tensor], dict[str, torch.Tensor]]:
     """
     Load left and right hemisphere surfaces.
 
@@ -118,7 +118,7 @@ def load_surface_from_subject(
     surf_name: str = 'white',
     load_thickness: bool = True,
     device: str = 'cpu'
-) -> Dict[str, torch.Tensor]:
+) -> dict[str, torch.Tensor]:
     """
     Load surface from FreeSurfer subject directory structure.
 

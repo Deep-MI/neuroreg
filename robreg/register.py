@@ -1,19 +1,23 @@
+import logging
 import time
+from pathlib import Path
+from typing import Literal
 
 import nibabel as nib
+import numpy as np
 import torch
 from torch import Tensor
-from typing import Optional, Literal
-from pathlib import Path
 
 from .image.pyramid import build_gaussian_pyramid
 from .nn.reg_model import RegModel
 from .nn.training import training_loop
+from .surface.io import get_vox2ras_tkr, load_surface, load_surface_from_subject
+from .surface.optimize import BBRModel
+from .transforms.headers import header_to_dict, ras_to_vox_transform
 from .transforms.initialize import get_ixform_centroids
 from .transforms.lta import write_lta
-from .transforms.headers import header_to_dict, ras_to_vox_transform
-from .surface.io import load_surface, load_surface_pair, load_surface_from_subject, get_vox2ras_tkr
-from .surface.optimize import BBRModel
+
+logger = logging.getLogger(__name__)
 
 
 def register(
@@ -73,12 +77,11 @@ def register(
     - This function utilizes a PyTorch optimization loop with RMSProp as the optimizer.
     """
     if v2v_init is not None and centroid_init:
-        # cannot do both
-        print("WARNING: register: cannot pass v2v_init and centroid_init=True, will use v2v_init")
+        logger.warning("register: cannot pass v2v_init and centroid_init=True, will use v2v_init")
         centroid_init = False
     if centroid_init:
         v2v_init = get_ixform_centroids(simg, timg)
-        print("v2v_init from centroid alignment:", v2v_init)
+        logger.debug("v2v_init from centroid alignment: %s", v2v_init)
     m = RegModel(dof=dof, v2v_init=v2v_init, source_shape=simg.shape, target_shape=timg.shape, device=device)
     opt = torch.optim.RMSprop(m.parameters(), lr=0.001)
     # when choosing these, update also parameter to stop early in training loop
@@ -164,18 +167,17 @@ def register_pyramid(
     n = 10
     torch.set_printoptions(precision=8, sci_mode=False)
     for si, sa, ti, ta in zip(reversed(simgs), reversed(saffines), reversed(timgs), reversed(taffines), strict=False):
-        print("\n===============================================")
-        print("Resolution: ", count, si.size())
+        logger.info("Resolution level %d: %s", count, list(si.size()))
         if count == 0:
             Mv2v, losses, m = register(si, ti, centroid_init=centroid_init, n=n, device=device)
         else:
             Mv2v_init = torch.inverse(ta) @ Mr2r @ sa
-            print("Mv2v_init", Mv2v_init)
+            logger.debug("Mv2v_init: %s", Mv2v_init)
             Mv2v, losses, m = register(si, ti, v2v_init=Mv2v_init, centroid_init=False, n=n, device=device)
         Mv2v = Mv2v.double()
-        print("Mv2v", Mv2v)
+        logger.debug("Mv2v: %s", Mv2v)
         Mr2r = ta @ Mv2v @ torch.inverse(sa)
-        print("Mr2r", Mr2r)
+        logger.debug("Mr2r: %s", Mr2r)
         if debug:
             sname = "pyramidS-rr" + str(count) + ".mgz"
             tname = "pyramidT-rr" + str(count) + ".mgz"
@@ -187,17 +189,14 @@ def register_pyramid(
             write_lta(ltaname, Mr2r.numpy(), sname, smgh.header, tname, tmgh.header)
         count = count + 1
     if lta_name is not None:
-        print ('Writing final LTA file: ', lta_name, ' ...')
+        logger.info("Writing final LTA file: %s", lta_name)
         write_lta(lta_name, Mr2r.numpy(), src.get_filename(), src.header, trg.get_filename(), trg.header)
     if mapped_name is not None:
-        # the linear mapping here is not great and smoothes the images a lot.
-        # cubic does not work in 3D so it is recommended to map the image
-        # on the command line with other tools (like mri_convert from FreeSurfer)
-        print('Writing mapped image: ', mapped_name, ' ...')
+        logger.info("Writing mapped image: %s", mapped_name)
         mapped = m.map_image(sdata, mode='bilinear').detach()
         mapped_img = nib.MGHImage(mapped.squeeze().numpy(), src.affine, src.header)
         mapped_img.to_filename(mapped_name)
-    print("Total time: ", time.perf_counter() - start)
+    logger.info("register_pyramid total time: %.2f s", time.perf_counter() - start)
     if return_v2v:
         return Mv2v
     return Mr2r
@@ -205,14 +204,15 @@ def register_pyramid(
 
 def register_surface(
     mov: str | nib.Nifti1Image,
-    lh_surf: Optional[str] = None,
-    rh_surf: Optional[str] = None,
-    subject_dir: Optional[str] = None,
-    lta_name: Optional[str] = None,
+    lh_surf: str | None = None,
+    rh_surf: str | None = None,
+    subject_dir: str | None = None,
+    lta_name: str | None = None,
     dof: int = 6,
     contrast: Literal['t1', 't2'] = 't2',
     init_type: Literal['header', 'centroid', 'lta'] = 'header',
-    init_lta: Optional[str] = None,
+    init_lta: str | None = None,
+    init_ras: np.ndarray | None = None,
     cost_type: Literal['contrast', 'gradient', 'both'] = 'contrast',
     wm_proj_abs: float = 2.0,
     gm_proj_frac: float = 0.5,
@@ -221,80 +221,71 @@ def register_surface(
     subsample: int = 1,
     n_iters: int = 100,
     lr: float = 0.01,
-    verbose: bool = True,
     device: str = 'cpu'
 ) -> torch.Tensor:
     """
     Register moving image to target anatomy using cortical surface boundaries (BBR).
 
-    This implements boundary-based registration similar to FreeSurfer's bbregister,
-    where alignment is optimized by sampling intensities at cortical surface locations.
+    Implements boundary-based registration (BBR) analogous to FreeSurfer's
+    bbregister / mri_segreg.  Alignment is optimised by sampling intensities
+    from the moving image at cortical surface vertices that are projected
+    inward (WM sample) and outward (GM sample) along surface normals.
+
+    Progress and debug information are emitted via the standard :mod:`logging`
+    module (logger ``robreg.register``).  To see iteration-level output, set
+    that logger to ``INFO``; for matrix dumps use ``DEBUG``.
 
     Parameters
     ----------
     mov : str or nibabel.Nifti1Image
-        Moving image to register (e.g., functional scan)
+        Moving image to register (e.g., functional or T2 scan).
     lh_surf : str, optional
-        Path to left hemisphere surface (e.g., lh.white)
+        Path to left hemisphere white surface (e.g. ``surf/lh.white``).
+        Used when *subject_dir* is not provided.
     rh_surf : str, optional
-        Path to right hemisphere surface (e.g., rh.white)
+        Path to right hemisphere white surface.
+        Used when *subject_dir* is not provided.
     subject_dir : str, optional
-        FreeSurfer subject directory. If provided, surfaces are loaded from
-        {subject_dir}/surf/lh.white and {subject_dir}/surf/rh.white
+        FreeSurfer subject directory.  If given, surfaces are loaded from
+        ``{subject_dir}/surf/lh.white`` and ``rh.white``, and the
+        registration target is set to ``{subject_dir}/mri/orig.mgz``.
     lta_name : str, optional
-        Output LTA filename to save transformation
+        Output LTA filename.  Written as vox-to-vox (type 0).
     dof : int
-        Degrees of freedom: 6 (rigid), 9 (rigid+scale), 12 (affine)
-    contrast : str
-        Expected tissue contrast: 't1' (WM>GM) or 't2' (GM>WM, default)
-    init_type : str
-        Initialization method: 'header', 'centroid', or 'lta'
+        Degrees of freedom: 6 (rigid), 9 (rigid + scale), 12 (affine).
+    contrast : {'t1', 't2'}
+        Expected tissue contrast: ``'t1'`` (WM > GM) or ``'t2'`` (GM > WM).
+    init_type : {'header', 'centroid', 'lta'}
+        Initialisation strategy when *init_ras* is not provided.
+        ``'header'`` uses identity (relies on image headers being aligned).
     init_lta : str, optional
-        Path to LTA file for initialization (if init_type='lta')
-    cost_type : str
-        Cost function: 'contrast' (BBR), 'gradient', or 'both'
+        Path to LTA file used when ``init_type='lta'`` (not yet implemented).
+    init_ras : np.ndarray, shape (4, 4), optional
+        Explicit trg_RAS → mov_RAS initialisation matrix, e.g. from a prior
+        image-based registration step.  Overrides *init_type* when supplied.
+    cost_type : {'contrast', 'gradient', 'both'}
+        BBR cost term to minimise.
     wm_proj_abs : float
-        Distance (mm) to project into white matter (default: 2.0)
+        Absolute projection depth into white matter (mm).
     gm_proj_frac : float
-        Fraction of cortical thickness for GM projection (default: 0.5)
+        Fractional projection into grey matter relative to cortical thickness.
     slope : float
-        BBR cost function slope (default: 0.5)
+        Slope of the BBR sigmoid cost function.
     gradient_weight : float
-        Weight for gradient cost if cost_type='both' (default: 0.0)
+        Weight for the gradient cost term when ``cost_type='both'``.
     subsample : int
-        Subsample surface vertices every N (default: 1, no subsampling)
+        Use every *n*-th surface vertex (1 = all vertices).
     n_iters : int
-        Number of optimization iterations (default: 100)
+        Number of RMSprop optimisation iterations.
     lr : float
-        Learning rate (default: 0.01)
-    verbose : bool
-        Print progress (default: True)
+        Optimiser learning rate.
     device : str
-        Device: 'cpu' or 'cuda'
+        PyTorch device, e.g. ``'cpu'`` or ``'cuda'``.
 
     Returns
     -------
-    torch.Tensor
-        Final transformation matrix (4x4) in RAS-to-RAS space
-
-    Examples
-    --------
-    # Register fMRI to anatomy using surfaces from subject directory
-    >>> transform = register_surface(
-    ...     mov='bold_mean.nii.gz',
-    ...     subject_dir='/data/subjects/sub-01',
-    ...     lta_name='bold2anat.lta',
-    ...     contrast='t2',
-    ...     device='cuda'
-    ... )
-
-    # Register with explicit surface paths
-    >>> transform = register_surface(
-    ...     mov='bold_mean.nii.gz',
-    ...     lh_surf='surf/lh.white',
-    ...     rh_surf='surf/rh.white',
-    ...     lta_name='registration.lta'
-    ... )
+    torch.Tensor, shape (4, 4)
+        Final trg_RAS → mov_RAS transformation matrix.
     """
     start = time.perf_counter()
 
@@ -310,8 +301,7 @@ def register_surface(
 
     # Load surfaces
     if subject_dir is not None:
-        if verbose:
-            print(f"Loading surfaces from subject directory: {subject_dir}")
+        logger.info("Loading surfaces from subject directory: %s", subject_dir)
         lh_data = load_surface_from_subject(
             subject_dir, hemi='lh', surf_name='white',
             load_thickness=True, device=device
@@ -321,21 +311,15 @@ def register_surface(
             load_thickness=True, device=device
         )
 
-        # Load orig.mgz as target reference (like bbregister does)
-        # Surfaces are defined in this space
         orig_path = Path(subject_dir) / 'mri' / 'orig.mgz'
         if orig_path.exists():
             trg_img = nib.load(str(orig_path))
             trg_path = str(orig_path)
-            if verbose:
-                print(f"Target reference: {orig_path}")
-                print(f"  Shape: {trg_img.shape[:3]}")
-                print(f"  Voxel size: {trg_img.header.get_zooms()[:3]}")
+            logger.info("Target reference: %s  shape=%s  voxel size=%s",
+                        orig_path, trg_img.shape[:3], trg_img.header.get_zooms()[:3])
         else:
-            # Fallback to using moving image as target
-            if verbose:
-                print(f"WARNING: orig.mgz not found at {orig_path}")
-                print(f"  Using moving image as target reference")
+            logger.warning("orig.mgz not found at %s — using moving image as target reference",
+                           orig_path)
             trg_img = mov_img
             trg_path = mov_path
     else:
@@ -347,16 +331,14 @@ def register_surface(
         rh_data = None
 
         if lh_surf is not None:
-            if verbose:
-                print(f"Loading left hemisphere surface: {lh_surf}")
+            logger.info("Loading left hemisphere surface: %s", lh_surf)
             lh_thickness_path = str(Path(lh_surf).parent / 'lh.thickness')
             if not Path(lh_thickness_path).exists():
                 lh_thickness_path = None
             lh_data = load_surface(lh_surf, lh_thickness_path, device=device)
 
         if rh_surf is not None:
-            if verbose:
-                print(f"Loading right hemisphere surface: {rh_surf}")
+            logger.info("Loading right hemisphere surface: %s", rh_surf)
             rh_thickness_path = str(Path(rh_surf).parent / 'rh.thickness')
             if not Path(rh_thickness_path).exists():
                 rh_thickness_path = None
@@ -366,43 +348,41 @@ def register_surface(
         trg_img = mov_img
         trg_path = mov_path
 
-    # Get vox2ras_tkr matrix for the moving image
-    vox2ras_tkr = torch.from_numpy(get_vox2ras_tkr(mov_img)).float()
+    # Surfaces live in target tkRAS space.
+    # trg_tkras2ras maps target tkRAS → scanner RAS.
+    trg_vox2tkras = get_vox2ras_tkr(trg_img)                    # vox → tkRAS
+    trg_tkras2ras = trg_img.affine @ np.linalg.inv(trg_vox2tkras)  # tkRAS → RAS
+    trg_tkras2ras_t = torch.from_numpy(trg_tkras2ras).float()
 
-    if verbose:
-        print(f"Moving image shape: {mov_data.shape}")
-        print(f"vox2ras_tkr matrix:\n{vox2ras_tkr}")
-        if lh_data is not None:
-            print(f"LH vertices: {lh_data['vertices'].shape[0]}")
-        if rh_data is not None:
-            print(f"RH vertices: {rh_data['vertices'].shape[0]}")
+    # Moving image affine: RAS → moving vox  (inv is applied inside BBRModel)
+    mov_affine_t = torch.from_numpy(mov_img.affine).float()
+
+    logger.info("Moving image shape: %s", list(mov_data.shape))
+    logger.debug("Target tkRAS→RAS:\n%s", trg_tkras2ras)
+    logger.debug("Moving affine:\n%s", mov_img.affine)
+    if lh_data is not None:
+        logger.info("LH surface: %d vertices", lh_data['vertices'].shape[0])
+    if rh_data is not None:
+        logger.info("RH surface: %d vertices", rh_data['vertices'].shape[0])
 
     # Handle initialization
     init_transform = None
-    if init_type == 'lta':
+    if init_ras is not None:
+        init_transform = torch.from_numpy(init_ras).float()
+        logger.info("Using provided RAS-to-RAS init:\n%s", init_ras)
+    elif init_type == 'lta':
         if init_lta is None:
             raise ValueError("init_lta must be provided when init_type='lta'")
-        # TODO: Load LTA and convert to transform matrix
-        # For now, use identity
-        if verbose:
-            print(f"WARNING: LTA initialization not yet implemented, using identity")
+        logger.warning("LTA initialization not yet implemented, using identity")
         init_transform = torch.eye(4, dtype=torch.float32)
     elif init_type == 'centroid':
-        # TODO: Implement centroid-based initialization for surfaces
-        if verbose:
-            print("WARNING: Centroid initialization not yet implemented, using identity")
+        logger.warning("Centroid initialization not yet implemented, using identity")
         init_transform = torch.eye(4, dtype=torch.float32)
     else:  # header
-        # Use header-based alignment (identity in tkRAS space)
         init_transform = torch.eye(4, dtype=torch.float32)
 
-    # Create BBR model
-    if verbose:
-        print(f"\nInitializing BBR model...")
-        print(f"  DOF: {dof}")
-        print(f"  Contrast: {contrast}")
-        print(f"  Cost type: {cost_type}")
-        print(f"  Subsample: {subsample}")
+    logger.info("Initializing BBR model  dof=%d  contrast=%s  cost=%s  subsample=%d",
+                dof, contrast, cost_type, subsample)
 
     model = BBRModel(
         moving_volume=mov_data,
@@ -412,7 +392,8 @@ def register_surface(
         rh_faces=rh_data['faces'] if rh_data is not None else None,
         lh_thickness=lh_data.get('thickness') if lh_data is not None else None,
         rh_thickness=rh_data.get('thickness') if rh_data is not None else None,
-        vox2ras_tkr=vox2ras_tkr,
+        trg_tkras2ras=trg_tkras2ras_t,   # target tkRAS → scanner RAS
+        mov_affine=mov_affine_t,          # moving image vox-to-RAS affine
         dof=dof,
         init_transform=init_transform,
         contrast=contrast,
@@ -425,13 +406,7 @@ def register_surface(
         device=device
     ).to(device)
 
-    # Optimize
-    if verbose:
-        print(f"\nOptimizing registration...")
-        print(f"  Iterations: {n_iters}")
-        print(f"  Learning rate: {lr}")
-
-    # Use RMSprop like image-based registration (better for this type of optimization)
+    logger.info("Optimizing: %d iterations  lr=%.4f", n_iters, lr)
     optimizer = torch.optim.RMSprop(model.parameters(), lr=lr)
 
     losses = []
@@ -443,43 +418,31 @@ def register_surface(
 
         losses.append(cost.item())
 
-        if verbose and (iteration % 10 == 0 or iteration == n_iters - 1):
-            print(f"  Iteration {iteration:4d}: cost = {cost.item():.6f}")
+        if iteration % 10 == 0 or iteration == n_iters - 1:
+            logger.info("  iter %4d  cost = %.6f", iteration, cost.item())
 
-    # Get final transformation
     final_transform = model.get_transform_matrix()
+    elapsed = time.perf_counter() - start
+    logger.info("Registration finished in %.2f s", elapsed)
+    logger.debug("Final transform (trg_RAS→mov_RAS):\n%s", final_transform)
 
-    if verbose:
-        print(f"\nFinal transformation matrix:")
-        print(final_transform)
-        print(f"\nTotal time: {time.perf_counter() - start:.2f} seconds")
-
-    # Save LTA if requested
     if lta_name is not None:
-        if verbose:
-            print(f"Writing LTA file: {lta_name}")
+        logger.info("Writing LTA file: %s", lta_name)
 
-        # Convert nibabel headers to dictionary format
         mov_header_dict = header_to_dict(mov_img)
         trg_header_dict = header_to_dict(trg_img)
 
-        # Convert RAS-to-RAS transform to vox-to-vox using target affine
-        # Formula: Mv2v = inv(dst_affine) @ Mr2r @ src_affine
-        # This matches bbregister: src=fMRI, dst=orig.mgz
+        # BBRModel returns trg_RAS → mov_RAS; LTA vox-to-vox needs mov_vox → trg_vox.
         ras_transform_np = final_transform.detach().cpu().numpy()
+        ras_mov_to_trg = np.linalg.inv(ras_transform_np)
         vox_transform = ras_to_vox_transform(
-            ras_transform_np,
+            ras_mov_to_trg,
             mov_img.affine,
-            trg_img.affine  # Use target (orig.mgz) affine
+            trg_img.affine
         )
 
-        if verbose:
-            print(f"  Transform type: VOX_TO_VOX (src → target)")
-            print(f"  Source: {mov_path}")
-            print(f"  Target: {trg_path}")
-            print(f"  Vox-to-vox matrix:\n{vox_transform}")
+        logger.debug("Vox-to-vox transform (src→target):\n%s", vox_transform)
 
-        # Write LTA with vox-to-vox transform (type=0)
         write_lta(
             lta_name,
             vox_transform,
