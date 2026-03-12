@@ -216,7 +216,7 @@ def register_surface(
     subject_dir: str | None = None,
     lta_name: str | None = None,
     dof: int = 6,
-    contrast: Literal['t1', 't2'] = 't2',
+    contrast: Literal['t1', 't2'] | None = None,
     init_type: Literal['header', 'centroid', 'lta'] = 'header',
     init_lta: str | None = None,
     init_ras: np.ndarray | None = None,
@@ -271,8 +271,11 @@ def register_surface(
         Output LTA filename.  Written as vox-to-vox (type 0).
     dof : int
         Degrees of freedom: 6 (rigid), 9 (rigid + scale), 12 (affine).
-    contrast : {'t1', 't2'}
+    contrast : {'t1', 't2'} or None, optional
         Expected tissue contrast: ``'t1'`` (WM > GM) or ``'t2'`` (GM > WM).
+        If ``None`` (default), the contrast direction is auto-detected from
+        the image by sampling WM and GM intensities at the surface vertices
+        and checking which direction the majority of vertices support.
     init_type : {'header', 'centroid', 'lta'}
         Initialisation strategy when *init_ras* is not provided.
         ``'header'`` uses identity (relies on image headers being aligned).

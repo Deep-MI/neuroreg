@@ -50,8 +50,9 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--dof", type=int, default=6, choices=[6, 9, 12],
                    metavar="{6,9,12}",
                    help="Degrees of freedom: 6=rigid, 9=rigid+scale, 12=affine.")
-    p.add_argument("--contrast", default="t2", choices=["t1", "t2"],
-                   help="Expected tissue contrast: 't1' (WM>GM) or 't2' (GM>WM).")
+    p.add_argument("--contrast", default=None, choices=["t1", "t2"],
+                   help="Tissue contrast: 't1' (WM>GM) or 't2' (GM>WM). "
+                        "Auto-detected from the image when not specified.")
 
     # ── cost function ────────────────────────────────────────────────────────
     p.add_argument("--cost", default="contrast", choices=["contrast", "gradient", "both"],

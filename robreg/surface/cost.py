@@ -1,6 +1,10 @@
 """Cost functions for surface-based registration."""
 
+import logging
+
 import torch
+
+logger = logging.getLogger(__name__)
 
 
 def bbr_contrast_cost(
@@ -61,6 +65,8 @@ def bbr_contrast_cost(
     else:
         cost = cost_per_vertex.mean()
     return cost
+
+
 def gradient_magnitude_cost(
     volume_gradient: torch.Tensor,
     normals: torch.Tensor,
@@ -87,3 +93,40 @@ def gradient_magnitude_cost(
         else:
             cost = -grad_magnitude.mean()
     return cost
+
+
+def detect_contrast(
+    vwm: torch.Tensor,
+    vgm: torch.Tensor,
+) -> str:
+    """Auto-detect image contrast direction from sampled WM and GM intensities.
+
+    Computes the percent contrast ``(vgm - vwm) / mean`` at each vertex and
+    looks at the **median** across all vertices:
+
+    * Positive median → GM is brighter than WM → **T2** contrast.
+    * Negative median → WM is brighter than GM → **T1** contrast.
+
+    Parameters
+    ----------
+    vwm : torch.Tensor, shape (N,)
+        Sampled intensities at white-matter sample points.
+    vgm : torch.Tensor, shape (N,)
+        Sampled intensities at grey-matter sample points.
+
+    Returns
+    -------
+    str
+        ``'t2'`` or ``'t1'``.
+    """
+    eps = 1e-6
+    mean_intensity = (vgm + vwm) / 2.0 + eps
+    percent_contrast = (vgm - vwm) / mean_intensity
+    median_contrast = torch.median(percent_contrast).item()
+    detected = 't2' if median_contrast >= 0 else 't1'
+    logger.info(
+        "Auto-detected contrast: %s  (median percent contrast = %.4f)",
+        detected, median_contrast
+    )
+    return detected
+

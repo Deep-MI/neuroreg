@@ -6,7 +6,7 @@ from typing import Literal
 import torch
 import torch.nn as nn
 
-from .cost import bbr_contrast_cost, gradient_magnitude_cost
+from .cost import bbr_contrast_cost, detect_contrast, gradient_magnitude_cost
 from .projection import compute_vertex_normals, create_wm_gm_surfaces
 from .sampling import sample_gradient_at_vertices, sample_volume_at_vertices
 
@@ -61,8 +61,11 @@ class BBRModel(nn.Module):
         Degrees of freedom: 6 (rigid), 9 (rigid + scale), 12 (affine).
     init_transform : torch.Tensor, shape (4, 4), optional
         Initial trg_RAS → mov_RAS transform.  Defaults to identity.
-    contrast : {'t1', 't2'}
+    contrast : {'t1', 't2'} or None
         Expected tissue contrast.  ``'t1'``: WM > GM; ``'t2'``: GM > WM.
+        If ``None`` (default), the contrast direction is **auto-detected** by
+        sampling WM and GM intensities at the surface vertices using the
+        initial transform and choosing the direction of the majority signal.
     wm_proj_abs : float
         Absolute projection distance into white matter (mm).
     gm_proj_frac : float
@@ -92,7 +95,7 @@ class BBRModel(nn.Module):
         mov_affine: torch.Tensor | None = None,
         dof: int = 6,
         init_transform: torch.Tensor | None = None,
-        contrast: Literal['t1', 't2'] = 't2',
+        contrast: Literal['t1', 't2'] | None = None,
         wm_proj_abs: float = 2.0,
         gm_proj_frac: float = 0.5,
         slope: float = 0.5,
@@ -198,6 +201,35 @@ class BBRModel(nn.Module):
             logger.debug("RH white surface: %d vertices (subsampled: %d)",
                          rh_white_vertices.shape[0], self.rh_wm_vertices.shape[0])
 
+        # ── contrast auto-detection ----------------------------------------
+        # If contrast is not specified, sample both hemispheres with the
+        # current (initial) transform and determine the majority direction.
+        if contrast is None:
+            combined = self.mov_ras2vox @ self._params_to_matrix() @ self.trg_tkras2ras
+            wm_samples, gm_samples = [], []
+            if self.use_lh:
+                wm_samples.append(sample_volume_at_vertices(
+                    self.moving_volume, self.lh_wm_vertices, self._identity,
+                    combined, interpolation='trilinear'
+                ))
+                gm_samples.append(sample_volume_at_vertices(
+                    self.moving_volume, self.lh_gm_vertices, self._identity,
+                    combined, interpolation='trilinear'
+                ))
+            if self.use_rh:
+                wm_samples.append(sample_volume_at_vertices(
+                    self.moving_volume, self.rh_wm_vertices, self._identity,
+                    combined, interpolation='trilinear'
+                ))
+                gm_samples.append(sample_volume_at_vertices(
+                    self.moving_volume, self.rh_gm_vertices, self._identity,
+                    combined, interpolation='trilinear'
+                ))
+            vwm_all = torch.cat(wm_samples)
+            vgm_all = torch.cat(gm_samples)
+            contrast = detect_contrast(vwm_all, vgm_all)
+
+        self.contrast = contrast
         # +1 for t2 (GM > WM), -1 for t1 (WM > GM)
         self.contrast_sign = -1 if contrast == 't1' else 1
 
