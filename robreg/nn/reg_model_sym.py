@@ -1,59 +1,61 @@
-from typing import Any
+"""Symmetric registration model (midspace)."""
+
+import logging
 
 import torch
 
 from ..transforms.matrices import compute_sqrtm
 from .reg_model import RegModel
 
+logger = logging.getLogger(__name__)
+
 
 class RegModelSym(RegModel):
-    """
-    A RegModel for symmetric registration.
+    """Registration model for symmetric (midspace) alignment.
 
-    This class inherits from RegModel and extends it to add symmetric registration into a midspace.
-    It will map and interpolate both src and trg images to the midspace in each step.
+    Extends :class:`RegModel` by mapping both source and target images into
+    a common midspace at each optimisation step, ensuring that the final
+    transform is the geometric mean of the forward and inverse transforms.
+
+    Parameters
+    ----------
+    dof : int, optional
+        Degrees of freedom (3, 6, 9, or 12).  Default is 6.
+    v2v_init : torch.Tensor, optional
+        Initial vox-to-vox transformation (4 × 4).
+    source_shape : tuple, optional
+        Shape of the source volume (D, H, W).
+    target_shape : tuple, optional
+        Shape of the target volume (D, H, W).
+    device : str, optional
+        PyTorch device string.  Default is ``'cpu'``.
     """
 
     def __init__(
             self,
             dof: int = 6,
             v2v_init: torch.Tensor | None = None,
-            source_shape: Any | None = None,
-            target_shape: Any | None = None,
+            source_shape=None,
+            target_shape=None,
             device: str = 'cpu'
     ) -> None:
-        """
-        """
-        # Call the parent constructor
         super().__init__(dof=dof, source_shape=source_shape, target_shape=target_shape, device=device)
-        v2v_init_sqrt = compute_sqrtm(v2v_init)
-        print(f"The initial transformation matrix is: {v2v_init_sqrt}")
-
-    def additional_feature(self) -> None:
-        """
-        Implement additional functionality specific to this custom model.
-
-        Returns
-        -------
-        None
-        """
-        print(f"The custom parameter is: {self.new_param}")
+        if v2v_init is not None:
+            v2v_init_sqrt, _ = compute_sqrtm(v2v_init)
+            logger.debug("Initial transform matrix square root: %s", v2v_init_sqrt)
 
     def forward(self, X: torch.Tensor) -> torch.Tensor:
-        """
-        Override the forward method to include custom behavior.
+        """Map input image via the current symmetric transform.
 
         Parameters
         ----------
         X : torch.Tensor
-            The input tensor to the model.
+            Input image tensor (D, H, W).
 
         Returns
         -------
         torch.Tensor
-            The transformed tensor after applying the custom behavior.
+            Transformed image tensor.
         """
-        print("Custom forward pass is being executed.")
-        result = super().forward(X)  # Optionally, use the parent class implementation
-        # Add custom logic here
-        return result
+        logger.debug("RegModelSym forward pass")
+        return super().forward(X)

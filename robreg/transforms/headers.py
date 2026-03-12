@@ -91,6 +91,3 @@ def ras_to_vox_transform(
 
 
 
-
-
-

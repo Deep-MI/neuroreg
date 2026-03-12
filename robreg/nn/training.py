@@ -1,3 +1,6 @@
+"""Training loop for image-registration models."""
+
+import logging
 import time
 
 import torch
@@ -5,6 +8,8 @@ import torch.nn as nn
 from torch.functional import F
 
 from .stopper import EarlyStopper
+
+logger = logging.getLogger(__name__)
 
 
 def training_loop(
@@ -16,55 +21,45 @@ def training_loop(
     loss_name: str = "mse",
     verbose: bool = False
 ) -> list[torch.Tensor]:
-    """
-    Optimize a PyTorch model using an optimizer and a loss function for image registration.
+    """Optimise a registration model for a fixed number of iterations.
 
-    This function performs training for a specified number of iterations while monitoring
-    a loss function. It tracks losses, applies early stopping, and stops the training
-    if the computed transformation stabilizes over iterations.
+    Runs a training loop with optional early stopping triggered either by
+    loss plateau or by the vox-to-vox transform becoming stable.
 
     Parameters
     ----------
     model : nn.Module
-        The PyTorch model to be trained. It must define a forward pass and relevant
-        methods for transformation calculations.
+        Registration model with a ``get_v2v_from_weights`` method.
     optimizer : torch.optim.Optimizer
-        An optimizer object for optimizing the `model` parameters.
+        Optimiser for the model parameters.
     src_image : torch.Tensor
-        The tensor representing the source image.
+        Source image tensor.
     trg_image : torch.Tensor
-        The tensor representing the target image.
+        Target image tensor.
     n : int, optional
-        The number of training iterations to perform, by default 10.
-    loss_name : str, optional
-        The name of the loss function to be used for optimization, by default "mse".
-        Supported options: "mse", "huber", "smooth_l1", "l1".
+        Maximum number of iterations.  Default is 10.
+    loss_name : {'mse', 'huber', 'smooth_l1', 'l1'}, optional
+        Loss function name.  Default is ``'mse'``.
     verbose : bool, optional
-        If True, prints detailed logging information during training, by default False.
+        If ``True``, log gradients and weight values at each iteration
+        (``DEBUG`` level).  Default is ``False``.
 
     Returns
     -------
     list[torch.Tensor]
-        A list containing the square root of the loss values at each iteration.
+        Square-root loss value at each completed iteration.
 
     Raises
     ------
     ValueError
-        If an invalid `loss_name` is provided, i.e., not one of the supported options.
-
-    Notes
-    -----
-    - The function uses an early stopping mechanism to terminate training early
-      if the monitored loss changes very little over a specified patience period.
-    - The training halts if the transformation matrix stabilizes (L2 norm difference
-      between consecutive transformations is below a threshold).
+        If *loss_name* is not one of the supported options.
     """
     losses: list[torch.Tensor] = []
     early_stopper = EarlyStopper(patience=4, min_delta=0.001)
     last_v2v = model.get_v2v_from_weights(src_image.shape)
 
     for i in range(n):
-        print(f"Iteration: {i}")
+        logger.debug("Iteration %d", i)
         start = time.perf_counter()
         optimizer.zero_grad()
 
@@ -79,22 +74,26 @@ def training_loop(
             elif loss_name == "l1":
                 loss = F.l1_loss(preds, trg_image.view(preds.size()))
             else:
-                raise ValueError(f"Unknown loss name: {loss_name}")
+                raise ValueError(
+                    f"Unknown loss_name '{loss_name}'. "
+                    "Choose from: 'mse', 'huber', 'smooth_l1', 'l1'."
+                )
             loss.backward()
             losses.append(loss.sqrt())
             return loss
 
         optimizer.step(closure)
+
         if verbose:
-            print(f"Loss (it {i})",losses[-1].detach().numpy())
+            logger.debug("Loss (iter %d): %s", i, losses[-1].detach().numpy())
             for name, param in model.named_parameters():
                 if param.grad is not None:
-                    print(f"Gradient of {name}: {param.grad}")
+                    logger.debug("Gradient of %s: %s", name, param.grad)
                 else:
-                    print(f"No gradient for {name}")
+                    logger.debug("No gradient for %s", name)
 
         if early_stopper.early_stop(losses[-1]):
-            print("!!! Early Stop (loss stable) !!!")
+            logger.info("Early stop at iter %d: loss plateau", i)
             break
 
         v2v = model.get_v2v_from_weights(src_image.shape)
@@ -102,12 +101,15 @@ def training_loop(
         last_v2v = v2v
 
         if verbose:
-            print("weights optimized:", model.weights)
-            print("v2v:", v2v)
-            print(f"sec per iteration ({i}): {time.perf_counter()-start}")
-        print("  -- diff. to prev. transform: ", diff.detach().numpy())
+            logger.debug("weights: %s", model.weights)
+            logger.debug("v2v: %s", v2v)
+            logger.debug("sec per iter %d: %.3f", i, time.perf_counter() - start)
+
+        logger.debug("iter %d  transform diff: %.6f", i, diff.item())
+
         if diff < 0.01:
-            print("!!! Early Stop (vox2vox transform stable) !!!")
+            logger.info("Early stop at iter %d: vox2vox transform stable (diff=%.6f)", i, diff.item())
             break
 
     return losses
+

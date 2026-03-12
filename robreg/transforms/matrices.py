@@ -1,3 +1,4 @@
+"""Affine / rigid transformation matrix utilities."""
 
 import torch
 from torch import Tensor
@@ -150,16 +151,17 @@ def matrix_decompose(matrix: Tensor) -> tuple[Tensor, Tensor, Tensor, Tensor]:
 
 
 def get_translation(translation: torch.Tensor) -> torch.Tensor:
-    """
-    Generate a 4x4 translation matrix (homogeneous coordinates).
+    """Generate a 4 × 4 translation matrix (homogeneous coordinates).
 
     Parameters
-    ==========
-        translation (torch.Tensor): 3D translation vector of shape (3,).
+    ----------
+    translation : torch.Tensor, shape (3,)
+        3-D translation vector.
 
     Returns
-    =======
-        torch.Tensor: A 4x4 translation matrix.
+    -------
+    torch.Tensor, shape (4, 4)
+        Translation matrix.
     """
     trans = torch.eye(4, device=translation.device, dtype=translation.dtype)
     trans[:3, 3] = translation[:3]
@@ -167,16 +169,17 @@ def get_translation(translation: torch.Tensor) -> torch.Tensor:
 
 
 def get_rotation_rodrigues(rotvec: torch.Tensor) -> torch.Tensor:
-    """
-    Generate a 4x4 rotation matrix using a Rodrigues vector.
+    """Generate a 4 × 4 rotation matrix from a Rodrigues vector.
 
     Parameters
-    ==========
-        rotvec (torch.Tensor): 3D rotation vector of shape (3,).
+    ----------
+    rotvec : torch.Tensor, shape (3,)
+        Rotation vector whose magnitude is the rotation angle (radians).
 
     Returns
-    =======
-        torch.Tensor: A 4x4 rotation matrix.
+    -------
+    torch.Tensor, shape (4, 4)
+        Rotation matrix.
     """
     angle = torch.norm(rotvec)
     zero = torch.zeros(1, dtype=rotvec.dtype, device=rotvec.device).squeeze()
@@ -197,16 +200,17 @@ def get_rotation_rodrigues(rotvec: torch.Tensor) -> torch.Tensor:
 
 
 def get_rotation_euler(angles: torch.Tensor) -> torch.Tensor:
-    """
-    Generate a 4x4 rotation matrix using Euler angles X,Y,Z.
+    """Generate a 4 × 4 rotation matrix from Euler angles (X → Y → Z).
 
     Parameters
-    ==========
-        angles (torch.Tensor): Euler angles X,Y,Z vector of shape (3,).
+    ----------
+    angles : torch.Tensor, shape (3,)
+        Euler angles [rx, ry, rz] in radians.
 
     Returns
-    =======
-        torch.Tensor: A 4x4 rotation matrix.
+    -------
+    torch.Tensor, shape (4, 4)
+        Rotation matrix.
     """
     cos = torch.cos(angles)
     sin = torch.sin(angles)
@@ -225,14 +229,17 @@ def get_rotation_euler(angles: torch.Tensor) -> torch.Tensor:
 
 
 def get_scaling(scales: torch.Tensor) -> torch.Tensor:
-    """
-    Generate a 4x4 scaling matrix.
+    """Generate a 4 × 4 diagonal scaling matrix.
 
-    Parameters:
-        scales (torch.Tensor): 3D scaling factors of shape (3,).
+    Parameters
+    ----------
+    scales : torch.Tensor, shape (3,)
+        Scaling factors along x, y, z.
 
-    Returns:
-        torch.Tensor: A 4x4 scaling matrix.
+    Returns
+    -------
+    torch.Tensor, shape (4, 4)
+        Scaling matrix.
     """
     S = torch.diag(torch.cat((scales, torch.tensor([1.0], device=scales.device))))
     return S
@@ -241,16 +248,21 @@ def get_scaling(scales: torch.Tensor) -> torch.Tensor:
 def get_affine(translation: torch.Tensor,
                rotvec: torch.Tensor | None = None,
                scales: torch.Tensor | None = None) -> torch.Tensor:
-    """
-    Generate a 4x4 affine transformation matrix from translation, rotation, and scaling.
+    """Generate a 4 × 4 affine matrix from translation, rotation, and scale.
 
-    Parameters:
-        translation (torch.Tensor): Translation vector of shape (3,).
-        rotvec (Optional[torch.Tensor]): Euler X,Y,Z angles of shape (3,).
-        scales (Optional[torch.Tensor]): Scaling factors of shape (3,).
+    Parameters
+    ----------
+    translation : torch.Tensor, shape (3,)
+        Translation vector.
+    rotvec : torch.Tensor, shape (3,), optional
+        Euler angles [rx, ry, rz] in radians.
+    scales : torch.Tensor, shape (3,), optional
+        Per-axis scaling factors.
 
-    Returns:
-        torch.Tensor: A 4x4 affine transformation matrix.
+    Returns
+    -------
+    torch.Tensor, shape (4, 4)
+        Affine transformation matrix.
     """
     matrix = get_translation(translation)
     if rotvec is not None:
@@ -260,24 +272,31 @@ def get_affine(translation: torch.Tensor,
     return matrix
 
 
-def convert_v2v_to_torch(v2v: torch.Tensor, source_shape, target_shape=None) -> torch.tensor:
-    """
-    Convert a vox2vox affine transformation matrix to a torch transformation matrix.
+def convert_v2v_to_torch(v2v: torch.Tensor, source_shape, target_shape=None) -> torch.Tensor:
+    """Convert a vox-to-vox affine matrix to PyTorch grid-sample format.
 
-    This function accounts for scaling and translation based on the 3D shapes of the source and
-    target volumes.
+    Accounts for the coordinate-system differences between voxel space and
+    PyTorch's normalised ``[-1, 1]`` grid space.
 
     Parameters
-    ==========
-        v2v (torch.Tensor): vox2vox transformation matrix (4x4) from source to target space.
-        source_shape (tuple[int]): Shape of the source image (Depth, Height, Width).
-        target_shape (Optional[tuple[int]]): Shape of the target image (Depth, Height, Width).
-            If not provided, it defaults to `source_shape`.
+    ----------
+    v2v : torch.Tensor, shape (4, 4)
+        Vox-to-vox transformation matrix (source → target voxels).
+    source_shape : tuple[int, int, int]
+        Shape of the source image (D, H, W).
+    target_shape : tuple[int, int, int], optional
+        Shape of the target image (D, H, W).  Defaults to *source_shape*.
 
     Returns
-    =======
-        torch.Tensor: A PyTorch-compatible affine transformation matrix (3x4) suitable for
-            grid-sampling operations.
+    -------
+    torch.Tensor, shape (3, 4)
+        PyTorch-compatible affine matrix for use with
+        :func:`torch.nn.functional.affine_grid`.
+
+    Raises
+    ------
+    ValueError
+        If *v2v* is not shape (4, 4).
     """
     if target_shape is None:
         target_shape = source_shape
@@ -310,17 +329,27 @@ def convert_v2v_to_torch(v2v: torch.Tensor, source_shape, target_shape=None) -> 
     return torch_transform[:3,:4]
 
 
-def convert_torch_to_v2v(torch_transform: torch.Tensor, source_shape, target_shape=None) -> torch.tensor:
-    """
-    Convert a torch transformation matrix (3x4) to a vox2vox transformation matrix (4x4).
-    Parameters:
-        torch_transform (torch.Tensor): A 3x4 transformation matrix (torch format).
-        source_shape (tuple/list): Shape of the source image (D, H, W).
-        target_shape (tuple/list, optional): Shape of the target image (D, H, W).
-            If not provided, it defaults to source_shape.
+def convert_torch_to_v2v(torch_transform: torch.Tensor, source_shape, target_shape=None) -> torch.Tensor:
+    """Convert a PyTorch grid-sample affine matrix back to vox-to-vox format.
 
-    Returns:
-        torch.Tensor: A 4x4 vox2vox transformation matrix.
+    Parameters
+    ----------
+    torch_transform : torch.Tensor, shape (4, 4)
+        PyTorch-format affine matrix (must be passed as 4 × 4).
+    source_shape : tuple[int, int, int]
+        Shape of the source image (D, H, W).
+    target_shape : tuple[int, int, int], optional
+        Shape of the target image (D, H, W).  Defaults to *source_shape*.
+
+    Returns
+    -------
+    torch.Tensor, shape (4, 4)
+        Vox-to-vox transformation matrix.
+
+    Raises
+    ------
+    ValueError
+        If *torch_transform* is not shape (4, 4).
     """
     if target_shape is None:
         target_shape = source_shape
