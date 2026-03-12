@@ -1,5 +1,7 @@
 """Affine / rigid transformation matrix utilities."""
 
+import numpy as np
+import numpy.typing as npt
 import torch
 from torch import Tensor
 
@@ -379,4 +381,69 @@ def convert_torch_to_v2v(torch_transform: torch.Tensor, source_shape, target_sha
     v2v_inv = v2v_inv[..., ii, :]
     v2v_inv = v2v_inv[..., ii]
     return torch.inverse(v2v_inv)
+
+
+# LTA / FreeSurfer transform type constants (also re-exported from lta.py)
+LINEAR_VOX_TO_VOX = 0
+LINEAR_RAS_TO_RAS = 1
+
+
+def convert_transform_type(
+    matrix: npt.ArrayLike,
+    src_affine: npt.ArrayLike,
+    dst_affine: npt.ArrayLike,
+    from_type: int,
+    to_type: int,
+) -> np.ndarray:
+    """Convert a transformation matrix between vox-to-vox and RAS-to-RAS.
+
+    Parameters
+    ----------
+    matrix : array-like, shape (4, 4)
+        Input transformation matrix.
+    src_affine : array-like, shape (4, 4)
+        Source image voxel-to-RAS affine (nibabel ``img.affine``).
+    dst_affine : array-like, shape (4, 4)
+        Destination image voxel-to-RAS affine.
+    from_type : int
+        Type of the input matrix:
+        ``LINEAR_VOX_TO_VOX`` (0) or ``LINEAR_RAS_TO_RAS`` (1).
+    to_type : int
+        Desired output type:
+        ``LINEAR_VOX_TO_VOX`` (0) or ``LINEAR_RAS_TO_RAS`` (1).
+
+    Returns
+    -------
+    np.ndarray, shape (4, 4)
+        Converted transformation matrix.  Returns a copy when
+        ``from_type == to_type``.
+
+    Raises
+    ------
+    ValueError
+        If *from_type* or *to_type* is not 0 or 1.
+
+    Notes
+    -----
+    Conversion formulae (M = matrix, A_s = src_affine, A_d = dst_affine):
+
+    * vox→vox to RAS→RAS:  ``A_d @ M @ inv(A_s)``
+    * RAS→RAS to vox→vox:  ``inv(A_d) @ M @ A_s``
+    """
+    if from_type not in (LINEAR_VOX_TO_VOX, LINEAR_RAS_TO_RAS):
+        raise ValueError(f"from_type must be 0 or 1, got {from_type}")
+    if to_type not in (LINEAR_VOX_TO_VOX, LINEAR_RAS_TO_RAS):
+        raise ValueError(f"to_type must be 0 or 1, got {to_type}")
+
+    if from_type == to_type:
+        return np.asarray(matrix, dtype=float).copy()
+
+    M  = np.asarray(matrix, dtype=float)
+    As = np.asarray(src_affine, dtype=float)
+    Ad = np.asarray(dst_affine, dtype=float)
+
+    if from_type == LINEAR_VOX_TO_VOX:   # → RAS-to-RAS
+        return Ad @ M @ np.linalg.inv(As)
+    else:                                 # RAS-to-RAS → vox-to-vox
+        return np.linalg.inv(Ad) @ M @ As
 

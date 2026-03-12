@@ -8,14 +8,18 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from .image.pyramid import build_gaussian_pyramid
-from .nn.reg_model import RegModel
-from .nn.training import training_loop
+from .image import build_gaussian_pyramid
+from .nn import RegModel, training_loop
 from .surface.io import get_vox2ras_tkr, load_surface, load_surface_from_subject
 from .surface.optimize import BBRModel
-from .transforms.headers import header_to_dict, ras_to_vox_transform
-from .transforms.initialize import get_ixform_centroids
-from .transforms.lta import write_lta
+from .transforms import (
+    LINEAR_RAS_TO_RAS,
+    LINEAR_VOX_TO_VOX,
+    convert_transform_type,
+    get_ixform_centroids,
+    header_to_dict,
+    write_lta,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -435,10 +439,12 @@ def register_surface(
         # BBRModel returns trg_RAS → mov_RAS; LTA vox-to-vox needs mov_vox → trg_vox.
         ras_transform_np = final_transform.detach().cpu().numpy()
         ras_mov_to_trg = np.linalg.inv(ras_transform_np)
-        vox_transform = ras_to_vox_transform(
+        vox_transform = convert_transform_type(
             ras_mov_to_trg,
             mov_img.affine,
-            trg_img.affine
+            trg_img.affine,
+            from_type=LINEAR_RAS_TO_RAS,
+            to_type=LINEAR_VOX_TO_VOX,
         )
 
         logger.debug("Vox-to-vox transform (src→target):\n%s", vox_transform)
