@@ -210,6 +210,9 @@ def register_surface(
     mov: str | nib.Nifti1Image,
     lh_surf: str | None = None,
     rh_surf: str | None = None,
+    lh_thickness: str | None = None,
+    rh_thickness: str | None = None,
+    ref: str | nib.Nifti1Image | None = None,
     subject_dir: str | None = None,
     lta_name: str | None = None,
     dof: int = 6,
@@ -249,6 +252,17 @@ def register_surface(
     rh_surf : str, optional
         Path to right hemisphere white surface.
         Used when *subject_dir* is not provided.
+    lh_thickness : str, optional
+        Path to left-hemisphere cortical thickness file.  When omitted,
+        a file named ``lh.thickness`` is looked up next to *lh_surf*.
+    rh_thickness : str, optional
+        Path to right-hemisphere cortical thickness file.  When omitted,
+        a file named ``rh.thickness`` is looked up next to *rh_surf*.
+    ref : str or nibabel image, optional
+        Reference (T1) image against which the surfaces were built.
+        Required for Mode B (explicit surfaces) when the surface coordinate
+        space differs from the moving image.  Ignored when *subject_dir*
+        is provided (``mri/orig.mgz`` is used automatically in that case).
     subject_dir : str, optional
         FreeSurfer subject directory.  If given, surfaces are loaded from
         ``{subject_dir}/surf/lh.white`` and ``rh.white``, and the
@@ -336,21 +350,32 @@ def register_surface(
 
         if lh_surf is not None:
             logger.info("Loading left hemisphere surface: %s", lh_surf)
-            lh_thickness_path = str(Path(lh_surf).parent / 'lh.thickness')
+            lh_thickness_path = lh_thickness or str(Path(lh_surf).parent / 'lh.thickness')
             if not Path(lh_thickness_path).exists():
                 lh_thickness_path = None
             lh_data = load_surface(lh_surf, lh_thickness_path, device=device)
 
         if rh_surf is not None:
             logger.info("Loading right hemisphere surface: %s", rh_surf)
-            rh_thickness_path = str(Path(rh_surf).parent / 'rh.thickness')
+            rh_thickness_path = rh_thickness or str(Path(rh_surf).parent / 'rh.thickness')
             if not Path(rh_thickness_path).exists():
                 rh_thickness_path = None
             rh_data = load_surface(rh_surf, rh_thickness_path, device=device)
 
-        # When using explicit paths, use moving image as target
-        trg_img = mov_img
-        trg_path = mov_path
+        # Use explicit ref image when provided, otherwise fall back to moving image
+        if ref is not None:
+            trg_img = nib.load(ref) if isinstance(ref, str) else ref
+            trg_path = ref if isinstance(ref, str) else (
+                trg_img.get_filename() if hasattr(trg_img, 'get_filename') else None
+            )
+            logger.info("Target reference: %s", trg_path)
+        else:
+            logger.warning(
+                "No --ref provided for Mode B; using moving image as target reference. "
+                "This is only correct if surfaces were built on the moving image."
+            )
+            trg_img = mov_img
+            trg_path = mov_path
 
     # Surfaces live in target tkRAS space.
     # trg_tkras2ras maps target tkRAS → scanner RAS.

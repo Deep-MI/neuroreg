@@ -86,8 +86,9 @@ source = 'https://github.com/Deep-MI/robreg'
 tracker = 'https://github.com/Deep-MI/robreg/issues'
 
 [project.scripts]
-robreg-sys_info = 'robreg.cmdline.sys_info:run'
-reobreg-register = 'robreg.cmdline.robreg:main'
+robreg           = "robreg.cmdline.robreg:main"
+bbreg            = "robreg.cmdline.bbreg:main"
+robreg-sys_info  = "robreg.cmdline.sys_info:run"
 
 [tool.setuptools]
 include-package-data = false
