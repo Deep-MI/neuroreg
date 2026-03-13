@@ -141,7 +141,7 @@ def create_wm_gm_surfaces(
     faces: torch.Tensor,
     normals: torch.Tensor | None = None,
     thickness: torch.Tensor | None = None,
-    wm_proj_abs: float = 2.0,
+    wm_proj_abs: float = 1.4,
     gm_proj_frac: float = 0.5,
     gm_proj_abs: float | None = None
 ) -> tuple[torch.Tensor, torch.Tensor]:
@@ -163,7 +163,7 @@ def create_wm_gm_surfaces(
     thickness : torch.Tensor, shape (N,), optional
         Cortical thickness (required if using gm_proj_frac)
     wm_proj_abs : float
-        Distance to project into WM (mm, default: 2.0)
+        Distance to project into WM (mm, default: 1.4)
     gm_proj_frac : float
         Fraction of thickness to project into GM (default: 0.5)
     gm_proj_abs : float, optional
@@ -196,14 +196,13 @@ def create_wm_gm_surfaces(
         )
     else:
         # No thickness available and no explicit gm_proj_abs supplied.
-        # Fall back to a fixed 1.4 mm absolute outward projection, matching
-        # the wm_proj_abs default.
-        _fallback_mm = 1.4
+        # Fall back to the same absolute distance used for the WM projection
+        # so both sample points are equidistant from the white surface.
         logger.info(
             "No cortical thickness provided; using gm_proj_abs=%.1f mm "
-            "(absolute GM projection fallback).", _fallback_mm
+            "(absolute GM projection fallback, matching wm_proj_abs).", wm_proj_abs
         )
-        gm_vertices = project_vertices(white_vertices, normals, distance=_fallback_mm)
+        gm_vertices = project_vertices(white_vertices, normals, distance=wm_proj_abs)
 
     return wm_vertices, gm_vertices
 
