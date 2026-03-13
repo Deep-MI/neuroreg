@@ -213,6 +213,7 @@ def register_surface(
     rh_thickness: str | None = None,
     ref: str | nib.Nifti1Image | None = None,
     subject_dir: str | None = None,
+    seg: str | None = None,
     lta_name: str | None = None,
     dof: int = 6,
     contrast: Literal['t1', 't2'] | None = None,
@@ -222,6 +223,9 @@ def register_surface(
     cost_type: Literal['contrast', 'gradient', 'both'] = 'contrast',
     wm_proj_abs: float = 1.4,
     gm_proj_frac: float = 0.5,
+    gm_proj_abs: float | None = None,
+    lh_cortex_label: str | None = None,
+    rh_cortex_label: str | None = None,
     slope: float = 0.5,
     gradient_weight: float = 0.0,
     subsample: int = 1,
@@ -266,6 +270,14 @@ def register_surface(
         FreeSurfer subject directory.  If given, surfaces are loaded from
         ``{subject_dir}/surf/lh.white`` and ``rh.white``, and the
         registration target is set to ``{subject_dir}/mri/orig.mgz``.
+    seg : str, optional
+        Path to a FreeSurfer parcellation file (``aparc+aseg.mgz``,
+        ``aseg.mgz``, or equivalent).  When provided, white-matter surfaces
+        are extracted automatically via marching cubes — no pre-computed
+        surface files are needed.  The segmentation header is used as the
+        target reference, so *ref* is not required.  Cortical thickness is
+        unavailable in this mode; a fixed outward projection distance is used
+        instead (controlled by *gm_proj_frac* via ``wm_proj_abs``).
     lta_name : str, optional
         Output LTA filename.  Written as vox-to-vox (type 0).
     dof : int
@@ -289,6 +301,20 @@ def register_surface(
         Absolute projection depth into white matter (mm). Default 1.4 mm.
     gm_proj_frac : float
         Fractional projection into grey matter relative to cortical thickness.
+        Used when thickness is available and *gm_proj_abs* is not set.
+    gm_proj_abs : float, optional
+        Absolute projection depth into grey matter (mm).  When set, overrides
+        *gm_proj_frac* regardless of whether thickness is available.  When
+        ``None`` (default), *gm_proj_frac* × thickness is used if thickness
+        is present; otherwise falls back to a fixed 1.4 mm absolute projection
+        (matching ``wm_proj_abs``).
+    lh_cortex_label : str, optional
+        Path to left-hemisphere cortex label file (e.g. ``label/lh.cortex.label``).
+        Only used when surfaces are supplied via *lh_surf* / *rh_surf* (explicit
+        mode).  When *subject_dir* is provided, the cortex label is discovered
+        automatically from ``{subject_dir}/label/lh.cortex.label``.
+    rh_cortex_label : str, optional
+        Same as *lh_cortex_label* for the right hemisphere.
     slope : float
         Slope of the BBR sigmoid cost function.
     gradient_weight : float
@@ -349,6 +375,23 @@ def register_surface(
                            orig_path)
             trg_header = mov_img.header
             trg_path = mov_path
+
+    elif seg is not None:
+        # ---- Mode C: extract surfaces from segmentation ----
+        from .image.segmentation import surfaces_from_segmentation
+        logger.info("Extracting WM surfaces from segmentation: %s", seg)
+        seg_img = nib.load(seg)
+        lh_data, rh_data = surfaces_from_segmentation(
+            seg_img, hemispheres=("lh", "rh"), device=device
+        )
+        # The segmentation header serves as the target reference
+        trg_header = seg_img.header
+        trg_path = seg
+        logger.info(
+            "Target reference from segmentation header: shape=%s  voxel size=%s",
+            trg_header.get_data_shape()[:3], trg_header.get_zooms()[:3],
+        )
+
     else:
         # Load from explicit paths
         if lh_surf is None and rh_surf is None:
@@ -359,17 +402,11 @@ def register_surface(
 
         if lh_surf is not None:
             logger.info("Loading left hemisphere surface: %s", lh_surf)
-            lh_thickness_path = lh_thickness or str(Path(lh_surf).parent / 'lh.thickness')
-            if not Path(lh_thickness_path).exists():
-                lh_thickness_path = None
-            lh_data = load_surface(lh_surf, lh_thickness_path, device=device)
+            lh_data = load_surface(lh_surf, lh_thickness, lh_cortex_label, device=device)
 
         if rh_surf is not None:
             logger.info("Loading right hemisphere surface: %s", rh_surf)
-            rh_thickness_path = rh_thickness or str(Path(rh_surf).parent / 'rh.thickness')
-            if not Path(rh_thickness_path).exists():
-                rh_thickness_path = None
-            rh_data = load_surface(rh_surf, rh_thickness_path, device=device)
+            rh_data = load_surface(rh_surf, rh_thickness, rh_cortex_label, device=device)
 
         # Use explicit ref image when provided, otherwise fall back to moving image
         if ref is not None:
@@ -430,6 +467,8 @@ def register_surface(
         rh_faces=rh_data['faces'] if rh_data is not None else None,
         lh_thickness=lh_data.get('thickness') if lh_data is not None else None,
         rh_thickness=rh_data.get('thickness') if rh_data is not None else None,
+        lh_cortex_mask=lh_data.get('cortex_mask') if lh_data is not None else None,
+        rh_cortex_mask=rh_data.get('cortex_mask') if rh_data is not None else None,
         trg_tkras2ras=trg_tkras2ras_t,   # target tkRAS → scanner RAS
         mov_affine=mov_affine_t,          # moving image vox-to-RAS affine
         dof=dof,
@@ -437,6 +476,7 @@ def register_surface(
         contrast=contrast,
         wm_proj_abs=wm_proj_abs,
         gm_proj_frac=gm_proj_frac,
+        gm_proj_abs=gm_proj_abs,
         slope=slope,
         cost_type=cost_type,
         gradient_weight=gradient_weight,

@@ -34,6 +34,8 @@ dependencies = [
     'nibabel>=5.1',
     'numpy>=1.25',
     'psutil',
+    'scikit-image>=0.21',
+    'scipy>=1.11',
     'torch>=2.0.1',
 ]
 

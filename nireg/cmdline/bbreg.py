@@ -16,6 +16,9 @@ def _build_parser() -> argparse.ArgumentParser:
             "  A) --subject_dir  : FreeSurfer / FastSurfer subject directory\n"
             "                      (surfaces and T1 reference loaded automatically)\n"
             "  B) --lh_surf / --rh_surf  : explicit surface file(s) + --ref\n"
+            "  C) --seg          : parcellation / aseg file; surfaces are extracted\n"
+            "                      automatically via marching cubes (no pre-built\n"
+            "                      surface files needed)\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -45,6 +48,24 @@ def _build_parser() -> argparse.ArgumentParser:
                        help="Left-hemisphere cortical thickness file.")
     grp_b.add_argument("--rh_thickness", metavar="FILE",
                        help="Right-hemisphere cortical thickness file.")
+
+    # ── surface input: mode C ────────────────────────────────────────────────
+    grp_c = p.add_argument_group(
+        "Mode C – segmentation (aparc+aseg / aseg)",
+        "White surfaces are extracted on-the-fly via marching cubes. "
+        "No pre-built surface files are needed and the segmentation header "
+        "provides the target reference geometry.",
+    )
+    grp_c.add_argument("--seg", metavar="FILE",
+                       help="Parcellation file (aparc+aseg.mgz, aseg.mgz, or NIfTI).")
+    grp_c.add_argument("--seg_smooth_sigma", type=float, default=0.5, metavar="SIGMA",
+                       help="Gaussian pre-blur sigma (voxels) before marching cubes. "
+                            "Default: 0.5.")
+    grp_c.add_argument("--seg_mc_level", type=float, default=0.45, metavar="LEVEL",
+                       help="Marching-cubes iso-level. Default: 0.45.")
+    grp_c.add_argument("--seg_smooth_iters", type=int, default=50, metavar="N",
+                       help="Taubin smoothing iterations after marching cubes. "
+                            "Default: 50.")
 
     # ── transform ───────────────────────────────────────────────────────────
     p.add_argument("--dof", type=int, default=6, choices=[6, 9, 12],
@@ -90,26 +111,40 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _validate_args(ns: argparse.Namespace, parser: argparse.ArgumentParser) -> str:
-    """Validate surface-input mode and return 'subject_dir' or 'explicit'."""
+    """Validate surface-input mode and return 'subject_dir', 'explicit', or 'seg'."""
     has_sdir = ns.subject_dir is not None
     has_explicit = ns.lh_surf is not None or ns.rh_surf is not None
+    has_seg = ns.seg is not None
 
-    if has_sdir and has_explicit:
+    n_modes = sum([has_sdir, has_explicit, has_seg])
+    if n_modes > 1:
         parser.error(
-            "--subject_dir cannot be combined with --lh_surf / --rh_surf. "
-            "Choose Mode A or Mode B."
+            "--subject_dir, --lh_surf/--rh_surf, and --seg are mutually exclusive. "
+            "Choose exactly one surface input mode."
         )
 
-    if not has_sdir and not has_explicit:
+    if n_modes == 0:
         parser.error(
-            "Surface input is required.  Provide either --subject_dir (Mode A) "
-            "or at least one of --lh_surf / --rh_surf (Mode B)."
+            "Surface input is required.  Provide one of:\n"
+            "  --subject_dir DIR   (Mode A)\n"
+            "  --lh_surf / --rh_surf FILE  (Mode B, also needs --ref)\n"
+            "  --seg FILE          (Mode C)"
         )
 
     if has_explicit and ns.ref is None:
         parser.error("--ref is required when using Mode B (explicit surface files).")
 
-    return "subject_dir" if has_sdir else "explicit"
+    if has_seg and ns.ref is not None:
+        parser.error(
+            "--ref is not needed with --seg (Mode C): the segmentation header "
+            "provides the target reference geometry."
+        )
+
+    if has_sdir:
+        return "subject_dir"
+    if has_seg:
+        return "seg"
+    return "explicit"
 
 
 def main(args=None) -> None:
@@ -149,6 +184,9 @@ def main(args=None) -> None:
     if mode == "subject_dir":
         logger.info("Mode A: subject directory %s", ns.subject_dir)
         kwargs["subject_dir"] = ns.subject_dir
+    elif mode == "seg":
+        logger.info("Mode C: segmentation file %s", ns.seg)
+        kwargs["seg"] = ns.seg
     else:
         logger.info("Mode B: explicit surface file(s)")
         if ns.lh_surf is not None:

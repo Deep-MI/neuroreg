@@ -5,8 +5,11 @@ Implements vertex normal computation and projection along normals,
 following the approach used in lapy but with PyTorch for GPU support.
 """
 
+import logging
 
 import torch
+
+logger = logging.getLogger(__name__)
 
 
 def compute_vertex_normals(
@@ -184,15 +187,23 @@ def create_wm_gm_surfaces(
     if gm_proj_abs is not None:
         # Use absolute distance
         gm_vertices = project_vertices(white_vertices, normals, distance=gm_proj_abs)
-    else:
-        # Use fractional thickness
-        if thickness is None:
-            raise ValueError("thickness required when using gm_proj_frac")
+    elif thickness is not None:
+        # Use fractional thickness (bbregister default: 50 % of local thickness)
         gm_vertices = project_vertices(
             white_vertices, normals,
             thickness=thickness,
             fraction=gm_proj_frac
         )
+    else:
+        # No thickness available and no explicit gm_proj_abs supplied.
+        # Fall back to a fixed 1.4 mm absolute outward projection, matching
+        # the wm_proj_abs default.
+        _fallback_mm = 1.4
+        logger.info(
+            "No cortical thickness provided; using gm_proj_abs=%.1f mm "
+            "(absolute GM projection fallback).", _fallback_mm
+        )
+        gm_vertices = project_vertices(white_vertices, normals, distance=_fallback_mm)
 
     return wm_vertices, gm_vertices
 

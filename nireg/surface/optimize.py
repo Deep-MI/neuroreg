@@ -51,6 +51,14 @@ class BBRModel(nn.Module):
         Left-hemisphere cortical thickness values (mm).
     rh_thickness : torch.Tensor, shape (N,), optional
         Right-hemisphere cortical thickness values (mm).
+    lh_cortex_mask : torch.Tensor of bool, shape (N,), optional
+        Boolean mask for left-hemisphere cortex vertices.  Vertices where the
+        mask is ``False`` (medial wall, brainstem boundary, corpus callosum
+        border, etc.) are excluded from the BBR cost, mirroring the behaviour
+        of ``lh.cortex.label`` in bbregister.  When ``None`` all vertices are
+        used.
+    rh_cortex_mask : torch.Tensor of bool, shape (N,), optional
+        Same as *lh_cortex_mask* for the right hemisphere.
     trg_tkras2ras : torch.Tensor, shape (4, 4)
         **Required.** Matrix mapping target tkRAS → scanner RAS.
         Computed as ``trg_affine @ inv(trg_vox2tkras)``.
@@ -70,6 +78,12 @@ class BBRModel(nn.Module):
         Absolute projection distance into white matter (mm). Default 1.4 mm.
     gm_proj_frac : float
         Fractional projection into grey matter relative to cortical thickness.
+        Used when thickness is available and *gm_proj_abs* is ``None``.
+    gm_proj_abs : float, optional
+        Absolute projection depth into grey matter (mm).  When set, overrides
+        *gm_proj_frac* regardless of whether thickness is available.  When
+        ``None`` (default), *gm_proj_frac* × thickness is used if thickness
+        is present; otherwise falls back to 1.4 mm.
     slope : float
         Slope of the BBR sigmoid cost function.
     cost_type : {'contrast', 'gradient', 'both'}
@@ -91,6 +105,8 @@ class BBRModel(nn.Module):
         rh_faces: torch.Tensor | None = None,
         lh_thickness: torch.Tensor | None = None,
         rh_thickness: torch.Tensor | None = None,
+        lh_cortex_mask: torch.Tensor | None = None,
+        rh_cortex_mask: torch.Tensor | None = None,
         trg_tkras2ras: torch.Tensor | None = None,
         mov_affine: torch.Tensor | None = None,
         dof: int = 6,
@@ -98,6 +114,7 @@ class BBRModel(nn.Module):
         contrast: Literal['t1', 't2'] | None = None,
         wm_proj_abs: float = 1.4,
         gm_proj_frac: float = 0.5,
+        gm_proj_abs: float | None = None,
         slope: float = 0.5,
         cost_type: Literal['contrast', 'gradient', 'both'] = 'contrast',
         gradient_weight: float = 0.0,
@@ -169,8 +186,19 @@ class BBRModel(nn.Module):
             lh_normals = compute_vertex_normals(lh_white_vertices, lh_faces)
             lh_wm, lh_gm = create_wm_gm_surfaces(
                 lh_white_vertices, lh_faces, lh_normals, lh_thickness,
-                wm_proj_abs=wm_proj_abs, gm_proj_frac=gm_proj_frac
+                wm_proj_abs=wm_proj_abs, gm_proj_frac=gm_proj_frac,
+                gm_proj_abs=gm_proj_abs,
             )
+            # Apply cortex label mask first (mimics lh.cortex.label in bbregister)
+            if lh_cortex_mask is not None:
+                mask = lh_cortex_mask.to(device=device, dtype=torch.bool)
+                lh_wm = lh_wm[mask]
+                lh_gm = lh_gm[mask]
+                lh_normals = lh_normals[mask]
+                logger.debug(
+                    "LH cortex mask: %d / %d vertices retained",
+                    int(mask.sum()), lh_white_vertices.shape[0]
+                )
             if subsample > 1:
                 idx = torch.arange(0, lh_wm.shape[0], subsample, device=device)
                 self.lh_wm_vertices = lh_wm[idx]
@@ -187,8 +215,19 @@ class BBRModel(nn.Module):
             rh_normals = compute_vertex_normals(rh_white_vertices, rh_faces)
             rh_wm, rh_gm = create_wm_gm_surfaces(
                 rh_white_vertices, rh_faces, rh_normals, rh_thickness,
-                wm_proj_abs=wm_proj_abs, gm_proj_frac=gm_proj_frac
+                wm_proj_abs=wm_proj_abs, gm_proj_frac=gm_proj_frac,
+                gm_proj_abs=gm_proj_abs,
             )
+            # Apply cortex label mask first (mimics rh.cortex.label in bbregister)
+            if rh_cortex_mask is not None:
+                mask = rh_cortex_mask.to(device=device, dtype=torch.bool)
+                rh_wm = rh_wm[mask]
+                rh_gm = rh_gm[mask]
+                rh_normals = rh_normals[mask]
+                logger.debug(
+                    "RH cortex mask: %d / %d vertices retained",
+                    int(mask.sum()), rh_white_vertices.shape[0]
+                )
             if subsample > 1:
                 idx = torch.arange(0, rh_wm.shape[0], subsample, device=device)
                 self.rh_wm_vertices = rh_wm[idx]
