@@ -104,7 +104,7 @@ bbreg --mov <moving.nii.gz> --lh_surf <lh.white> --rh_surf <rh.white> \
 | `--n_iters N` | `500` | Number of RMSprop optimisation iterations. |
 | `--lr LR` | `0.005` | Optimiser learning rate. |
 | `--subsample N` | `2` | Use every N-th surface vertex (1 = all). |
-| `--init_lta FILE` | — | Initialise from an existing LTA transform. |
+| `--init_lta FILE` | — | Initialise from an existing LTA transform (e.g. from a prior `robreg` run). |
 | `--device DEVICE` | `cpu` | PyTorch device, e.g. `cpu` or `cuda`. |
 | `--verbose` | off | Enable INFO-level logging. |
 | `--debug` | off | Enable DEBUG-level logging. |
@@ -127,15 +127,10 @@ bbreg --mov T2.nii.gz \
 
 ```python
 from nireg import register_pyramid, register_surface
-import nibabel as nib
-import torch
 
-# Image-to-image registration
-mov = nib.load("T2.nii.gz")
-ref = nib.load("T1.mgz")
-mov_data = torch.as_tensor(mov.get_fdata(), dtype=torch.float32)
-ref_data = torch.as_tensor(ref.get_fdata(), dtype=torch.float32)
-transform, losses, _ = register_pyramid(mov_data, ref_data, mov.affine, ref.affine, dof=6)
+# Image-to-image registration — pass file paths (or pre-loaded nibabel images).
+# Returns a single vox-to-vox Tensor when return_v2v=True, or RAS-to-RAS by default.
+transform = register_pyramid("T2.nii.gz", "T1.mgz", return_v2v=True, dof=6)
 
 # Surface-based (BBR) registration
 transform, model = register_surface(

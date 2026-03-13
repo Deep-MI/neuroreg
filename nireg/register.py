@@ -475,8 +475,12 @@ def register_surface(
     elif init_type == 'lta':
         if init_lta is None:
             raise ValueError("init_lta must be provided when init_type='lta'")
-        logger.warning("LTA initialization not yet implemented, using identity")
-        init_transform = torch.eye(4, dtype=torch.float32)
+        logger.info("Loading init transform from LTA: %s", init_lta)
+        # Request LINEAR_RAS_TO_RAS (type 1) directly — read_lta converts if needed.
+        # The stored convention is mov_RAS → trg_RAS; invert to get trg_RAS → mov_RAS.
+        ras_mov_to_trg = read_lta(init_lta, lta_type=1)['matrix']
+        init_transform = torch.from_numpy(np.linalg.inv(ras_mov_to_trg)).float()
+        logger.info("Loaded init transform (trg_RAS→mov_RAS) from %s", init_lta)
     elif init_type == 'centroid':
         logger.warning("Centroid initialization not yet implemented, using identity")
         init_transform = torch.eye(4, dtype=torch.float32)
