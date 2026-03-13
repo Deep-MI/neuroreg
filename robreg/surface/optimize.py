@@ -67,7 +67,7 @@ class BBRModel(nn.Module):
         sampling WM and GM intensities at the surface vertices using the
         initial transform and choosing the direction of the majority signal.
     wm_proj_abs : float
-        Absolute projection distance into white matter (mm).
+        Absolute projection distance into white matter (mm). Default 1.4 mm.
     gm_proj_frac : float
         Fractional projection into grey matter relative to cortical thickness.
     slope : float
@@ -96,7 +96,7 @@ class BBRModel(nn.Module):
         dof: int = 6,
         init_transform: torch.Tensor | None = None,
         contrast: Literal['t1', 't2'] | None = None,
-        wm_proj_abs: float = 2.0,
+        wm_proj_abs: float = 1.4,
         gm_proj_frac: float = 0.5,
         slope: float = 0.5,
         cost_type: Literal['contrast', 'gradient', 'both'] = 'contrast',
@@ -334,6 +334,39 @@ class BBRModel(nn.Module):
         torch.Tensor, shape (4, 4)
         """
         return self._params_to_matrix()
+
+    # ------------------------------------------------------------------
+    def eval_cost_at_ras2ras(self, ras2ras: torch.Tensor) -> float:
+        """Evaluate the BBR cost at an arbitrary trg_RAS → mov_RAS transform.
+
+        Useful for comparing cost at our optimised solution against an
+        external reference transform (e.g. a bbregister result) without
+        altering the model's optimisable parameters.
+
+        Parameters
+        ----------
+        ras2ras : torch.Tensor, shape (4, 4)
+            trg_RAS → mov_RAS transform to evaluate.
+
+        Returns
+        -------
+        float
+            Scalar BBR cost value.
+        """
+        with torch.no_grad():
+            total = torch.tensor(0.0, device=self.device)
+            n = 0
+            if self.use_lh:
+                total = total + self._compute_hemisphere_cost(
+                    self.lh_wm_vertices, self.lh_gm_vertices, self.lh_normals, ras2ras
+                )
+                n += 1
+            if self.use_rh:
+                total = total + self._compute_hemisphere_cost(
+                    self.rh_wm_vertices, self.rh_gm_vertices, self.rh_normals, ras2ras
+                )
+                n += 1
+            return float(total / n)
 
     # ------------------------------------------------------------------
     def _params_to_matrix(self) -> torch.Tensor:

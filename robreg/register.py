@@ -221,7 +221,7 @@ def register_surface(
     init_lta: str | None = None,
     init_ras: np.ndarray | None = None,
     cost_type: Literal['contrast', 'gradient', 'both'] = 'contrast',
-    wm_proj_abs: float = 2.0,
+    wm_proj_abs: float = 1.4,
     gm_proj_frac: float = 0.5,
     slope: float = 0.5,
     gradient_weight: float = 0.0,
@@ -287,7 +287,7 @@ def register_surface(
     cost_type : {'contrast', 'gradient', 'both'}
         BBR cost term to minimise.
     wm_proj_abs : float
-        Absolute projection depth into white matter (mm).
+        Absolute projection depth into white matter (mm). Default 1.4 mm.
     gm_proj_frac : float
         Fractional projection into grey matter relative to cortical thickness.
     slope : float
@@ -305,8 +305,14 @@ def register_surface(
 
     Returns
     -------
-    torch.Tensor, shape (4, 4)
-        Final trg_RAS → mov_RAS transformation matrix.
+    tuple[torch.Tensor, BBRModel]
+        A tuple of:
+
+        * **transform** (*torch.Tensor*, shape (4, 4)) –
+          Final trg_RAS → mov_RAS transformation matrix.
+        * **model** (*BBRModel*) –
+          The fitted model, which can be used to evaluate the cost at
+          arbitrary transforms via :meth:`~BBRModel.eval_cost_at_ras2ras`.
     """
     start = time.perf_counter()
 
@@ -487,5 +493,5 @@ def register_surface(
             lta_type=0  # VOX_TO_VOX
         )
 
-    return final_transform.detach()
+    return final_transform.detach(), model
 

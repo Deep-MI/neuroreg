@@ -57,7 +57,7 @@ def _build_parser() -> argparse.ArgumentParser:
     # ── cost function ────────────────────────────────────────────────────────
     p.add_argument("--cost", default="contrast", choices=["contrast", "gradient", "both"],
                    help="BBR cost term.")
-    p.add_argument("--wm_proj_abs", type=float, default=2.0, metavar="MM",
+    p.add_argument("--wm_proj_abs", type=float, default=1.4, metavar="MM",
                    help="Absolute WM projection depth (mm).")
     p.add_argument("--gm_proj_frac", type=float, default=0.5, metavar="FRAC",
                    help="GM projection fraction of cortical thickness.")
