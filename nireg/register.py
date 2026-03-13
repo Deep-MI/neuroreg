@@ -232,7 +232,7 @@ def register_surface(
     n_iters: int = 100,
     lr: float = 0.01,
     device: str = 'cpu'
-) -> torch.Tensor:
+) -> tuple[torch.Tensor, BBRModel]:
     """
     Register moving image to target anatomy using cortical surface boundaries (BBR).
 
