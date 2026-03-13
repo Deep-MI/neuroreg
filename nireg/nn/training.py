@@ -20,7 +20,7 @@ def training_loop(
     n: int = 10,
     loss_name: str = "mse",
     verbose: bool = False
-) -> list[torch.Tensor]:
+) -> list[float]:
     """Optimise a registration model for a fixed number of iterations.
 
     Runs a training loop with optional early stopping triggered either by
@@ -46,7 +46,7 @@ def training_loop(
 
     Returns
     -------
-    list[torch.Tensor]
+    list[float]
         Square-root loss value at each completed iteration.
 
     Raises
@@ -54,7 +54,7 @@ def training_loop(
     ValueError
         If *loss_name* is not one of the supported options.
     """
-    losses: list[torch.Tensor] = []
+    losses: list[float] = []
     early_stopper = EarlyStopper(patience=4, min_delta=0.001)
     last_v2v = model.get_v2v_from_weights(src_image.shape)
 
@@ -79,13 +79,13 @@ def training_loop(
                     "Choose from: 'mse', 'huber', 'smooth_l1', 'l1'."
                 )
             loss.backward()
-            losses.append(loss.sqrt())
+            losses.append(float(loss.sqrt()))
             return loss
 
         optimizer.step(closure)
 
         if verbose:
-            logger.debug("Loss (iter %d): %s", i, losses[-1].detach().numpy())
+            logger.debug("Loss (iter %d): %s", i, losses[-1])
             for name, param in model.named_parameters():
                 if param.grad is not None:
                     logger.debug("Gradient of %s: %s", name, param.grad)
