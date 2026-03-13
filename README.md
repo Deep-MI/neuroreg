@@ -104,7 +104,7 @@ bbreg --mov <moving.nii.gz> --lh_surf <lh.white> --rh_surf <rh.white> \
 | `--n_iters N` | `500` | Number of RMSprop optimisation iterations. |
 | `--lr LR` | `0.005` | Optimiser learning rate. |
 | `--subsample N` | `2` | Use every N-th surface vertex (1 = all). |
-| `--init_lta FILE` | — | Initialise from an existing LTA transform (e.g. from a prior `robreg` run). |
+| `--init_lta FILE` | — | Initialise from an existing LTA transform (e.g. from a prior `robreg` run or a previous `bbreg` pass). |
 | `--device DEVICE` | `cpu` | PyTorch device, e.g. `cpu` or `cuda`. |
 | `--verbose` | off | Enable INFO-level logging. |
 | `--debug` | off | Enable DEBUG-level logging. |

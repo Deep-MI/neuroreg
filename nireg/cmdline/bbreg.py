@@ -97,7 +97,8 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # ── initialisation ───────────────────────────────────────────────────────
     p.add_argument("--init_lta", metavar="FILE",
-                   help="Initialise from an existing LTA transform file.")
+                   help="Initialise registration from an existing LTA file "
+                        "(e.g. from a prior robreg run, or a previous bbreg pass).")
 
     # ── misc ─────────────────────────────────────────────────────────────────
     p.add_argument("--device", default="cpu", metavar="DEVICE",
