@@ -151,12 +151,21 @@ def sample_volume_at_vertices(
     vk = vertices_vox[:, 2]
 
     if interpolation == 'nearest':
-        # nearest-neighbour: just round and clamp
+        # Compute OOB mask *before* clamping so that padding_mode='zeros'
+        # returns 0 for out-of-bounds vertices.  Without this the clamp
+        # would silently act as padding_mode='border' regardless of what
+        # the caller requested.
+        if padding_mode == 'zeros':
+            oob = ((vi < 0) | (vi > Si - 1) |
+                   (vj < 0) | (vj > Sj - 1) |
+                   (vk < 0) | (vk > Sk - 1))
         ii = vi.round().long().clamp(0, Si - 1)
         jj = vj.round().long().clamp(0, Sj - 1)
         kk = vk.round().long().clamp(0, Sk - 1)
-        vol3 = volume[0, 0]
-        return vol3[ii, jj, kk]
+        values = volume[0, 0][ii, jj, kk]
+        if padding_mode == 'zeros':
+            values = values.masked_fill(oob, 0.0)
+        return values
 
     # ── choose backend based on device ─────────────────────────────────────
     # F.grid_sample is not implemented for MPS (PyTorch 2.x), so we use a
