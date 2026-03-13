@@ -354,6 +354,7 @@ class BBRModel(nn.Module):
             Scalar BBR cost value.
         """
         with torch.no_grad():
+            ras2ras = ras2ras.to(device=self.device, dtype=torch.float32)
             total = torch.tensor(0.0, device=self.device)
             n = 0
             if self.use_lh:

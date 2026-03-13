@@ -11,55 +11,111 @@ import torch
 import torch.nn.functional as F
 
 
+def _trilinear_manual(
+    volume: torch.Tensor,
+    vi: torch.Tensor,
+    vj: torch.Tensor,
+    vk: torch.Tensor,
+    Si: int, Sj: int, Sk: int,
+    dtype: torch.dtype,
+    padding_mode: str,
+) -> torch.Tensor:
+    """MPS-compatible trilinear interpolation using only native index ops.
+
+    Called by :func:`sample_volume_at_vertices` on MPS devices where
+    ``F.grid_sample`` is unavailable.  Gradients flow through the fractional
+    weights ``fi/fj/fk`` via ``vi - vi.detach().floor()``; the integer corner
+    indices are detached so that ``.long()`` casting does not break autograd.
+
+    Parameters
+    ----------
+    volume : torch.Tensor, shape (1, 1, Si, Sj, Sk)
+        Volume to sample (already 5-D).
+    vi, vj, vk : torch.Tensor, shape (N,)
+        Voxel coordinates along i, j, k axes.
+    Si, Sj, Sk : int
+        Volume dimensions.
+    dtype : torch.dtype
+        Target dtype for fractional weights.
+    padding_mode : str
+        ``'zeros'`` or ``'border'``.
+    """
+    i0 = vi.detach().floor().long()
+    i1 = i0 + 1
+    j0 = vj.detach().floor().long()
+    j1 = j0 + 1
+    k0 = vk.detach().floor().long()
+    k1 = k0 + 1
+
+    # fractional parts — carry grad through vi/vj/vk
+    fi = (vi - vi.detach().floor()).to(dtype)
+    fj = (vj - vj.detach().floor()).to(dtype)
+    fk = (vk - vk.detach().floor()).to(dtype)
+
+    # clamp indices to valid range
+    i0 = i0.clamp(0, Si - 1)
+    i1 = i1.clamp(0, Si - 1)
+    j0 = j0.clamp(0, Sj - 1)
+    j1 = j1.clamp(0, Sj - 1)
+    k0 = k0.clamp(0, Sk - 1)
+    k1 = k1.clamp(0, Sk - 1)
+
+    if padding_mode == 'zeros':
+        oob = ((vi < 0) | (vi > Si - 1) |
+               (vj < 0) | (vj > Sj - 1) |
+               (vk < 0) | (vk > Sk - 1))
+
+    v = volume[0, 0]
+    c00 = torch.lerp(v[i0, j0, k0], v[i1, j0, k0], fi)
+    c01 = torch.lerp(v[i0, j0, k1], v[i1, j0, k1], fi)
+    c10 = torch.lerp(v[i0, j1, k0], v[i1, j1, k0], fi)
+    c11 = torch.lerp(v[i0, j1, k1], v[i1, j1, k1], fi)
+    c0  = torch.lerp(c00, c10, fj)
+    c1  = torch.lerp(c01, c11, fj)
+    values = torch.lerp(c0, c1, fk)
+
+    if padding_mode == 'zeros':
+        values = values.masked_fill(oob, 0.0)
+
+    return values
+
+
 def sample_volume_at_vertices(
     volume: torch.Tensor,
     vertices_tkras: torch.Tensor,
     vox2ras_tkr: torch.Tensor,
     reg_matrix: torch.Tensor | None = None,
-    interpolation: Literal['nearest', 'bilinear', 'trilinear'] = 'trilinear',
+    interpolation: Literal['nearest', 'trilinear'] = 'trilinear',
     padding_mode: str = 'zeros',
-    align_corners: bool = True
 ) -> torch.Tensor:
-    """
-    Sample volume intensities at surface vertex locations.
+    """Sample volume intensities at surface vertex locations.
 
-    This function handles the complete transformation pipeline:
-    1. Apply registration transform to vertices (if provided)
-    2. Transform from tkRAS to voxel coordinates
-    3. Sample volume using grid_sample
+    Applies the full coordinate pipeline, then samples the volume using
+    manual trilinear interpolation with only MPS/CUDA/CPU-native ops —
+    avoiding ``F.grid_sample`` which is not implemented for MPS in
+    PyTorch 2.x.
 
     Parameters
     ----------
     volume : torch.Tensor, shape (H, W, D) or (1, 1, H, W, D)
-        Volume to sample from
+        Volume to sample from.
     vertices_tkras : torch.Tensor, shape (N, 3)
-        Vertex coordinates in tkRAS space
+        Vertex coordinates in tkRAS space.
     vox2ras_tkr : torch.Tensor, shape (4, 4)
-        Voxel-to-tkRAS transformation matrix
+        Voxel-to-tkRAS transformation matrix.
     reg_matrix : torch.Tensor, shape (4, 4), optional
-        Registration matrix (transforms vertices before sampling)
-        If None, uses identity (no transformation)
-    interpolation : str
-        Interpolation mode: 'nearest', 'bilinear', or 'trilinear'
-    padding_mode : str
-        How to handle out-of-bounds: 'zeros', 'border', 'reflection'
-    align_corners : bool
-        Align corners for grid_sample (default: True)
+        Registration matrix applied to vertices before sampling.
+        If ``None`` the identity is used (no transformation).
+    interpolation : {'nearest', 'trilinear'}
+        Interpolation mode.
+    padding_mode : {'zeros', 'border'}
+        Out-of-bounds handling: ``'zeros'`` returns 0 for vertices outside
+        the volume; ``'border'`` clamps to the nearest edge voxel.
 
     Returns
     -------
     values : torch.Tensor, shape (N,)
-        Sampled intensity values at each vertex
-
-    Notes
-    -----
-    The transformation pipeline is:
-        vertices_tkras -> [reg_matrix] -> vertices_mov_tkras
-                      -> [inv(vox2ras_tkr)] -> vertices_vox
-                      -> normalize to [-1, 1] -> sample
-
-    Out-of-bounds vertices (outside volume) will have value determined
-    by padding_mode (typically 0).
+        Sampled intensity values at each vertex.
     """
     device = volume.device
     dtype = volume.dtype
@@ -89,39 +145,41 @@ def sample_volume_at_vertices(
     ras2vox_tkr = torch.inverse(vox2ras_tkr.to(device).to(dtype))
     vertices_vox = torch.matmul(ras2vox_tkr, vertices_hom.T).T[:, :3]  # (N, 3): (i, j, k)
 
-    # grid_sample with a 5D volume (B, C, i, j, k) expects grid coords (x, y, z)
-    # where x indexes the LAST dim (k), y the middle dim (j), z the first spatial dim (i).
-    # So: x = normalise(k, Sk), y = normalise(j, Sj), z = normalise(i, Si)
-    grid = torch.zeros((n_vertices, 3), device=device, dtype=dtype)
-    grid[:, 0] = 2.0 * vertices_vox[:, 2] / (Sk - 1) - 1.0  # x -> k (last dim)
-    grid[:, 1] = 2.0 * vertices_vox[:, 1] / (Sj - 1) - 1.0  # y -> j
-    grid[:, 2] = 2.0 * vertices_vox[:, 0] / (Si - 1) - 1.0  # z -> i (first spatial dim)
+    # voxel coordinates: i, j, k  (first/second/third spatial dim)
+    vi = vertices_vox[:, 0]
+    vj = vertices_vox[:, 1]
+    vk = vertices_vox[:, 2]
 
-    # Reshape for grid_sample: (1, N, 1, 1, 3)
+    if interpolation == 'nearest':
+        # nearest-neighbour: just round and clamp
+        ii = vi.round().long().clamp(0, Si - 1)
+        jj = vj.round().long().clamp(0, Sj - 1)
+        kk = vk.round().long().clamp(0, Sk - 1)
+        vol3 = volume[0, 0]
+        return vol3[ii, jj, kk]
+
+    # ── choose backend based on device ─────────────────────────────────────
+    # F.grid_sample is not implemented for MPS (PyTorch 2.x), so we use a
+    # manual trilinear interpolation there.  On CPU and CUDA we keep
+    # F.grid_sample because its internal fused kernel gives a different
+    # (and empirically better-converging) float32 rounding path.
+    if volume.device.type == 'mps':
+        return _trilinear_manual(volume, vi, vj, vk, Si, Sj, Sk, dtype, padding_mode)
+
+    # ── F.grid_sample path (CPU / CUDA) ────────────────────────────────────
+    # grid_sample expects coords in [-1, 1] with x→last dim, y→middle, z→first.
+    grid = torch.zeros((n_vertices, 3), device=device, dtype=dtype)
+    grid[:, 0] = 2.0 * vk / (Sk - 1) - 1.0  # x → k (last dim)
+    grid[:, 1] = 2.0 * vj / (Sj - 1) - 1.0  # y → j
+    grid[:, 2] = 2.0 * vi / (Si - 1) - 1.0  # z → i (first spatial dim)
     grid = grid.unsqueeze(0).unsqueeze(2).unsqueeze(3)  # (1, N, 1, 1, 3)
 
-    # Map interpolation mode
-    mode_map = {
-        'nearest': 'nearest',
-        'bilinear': 'bilinear',  # Actually trilinear for 3D
-        'trilinear': 'bilinear'
-    }
-    mode = mode_map.get(interpolation, 'bilinear')
-
-    # Sample the volume
-    # grid_sample expects grid with shape (B, H_out, W_out, D_out, 3)
     sampled = F.grid_sample(
-        volume,
-        grid,
-        mode=mode,
+        volume, grid, mode='bilinear',
         padding_mode=padding_mode,
-        align_corners=align_corners
-    )  # (1, 1, N, 1, 1)
-
-    # Extract values: (N,)
-    values = sampled.squeeze()
-
-    return values
+        align_corners=True
+    )
+    return sampled.squeeze()
 
 
 def compute_volume_gradient(
