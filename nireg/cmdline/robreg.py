@@ -48,7 +48,6 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(args=None) -> None:
     """Entry point for the ``robreg`` command."""
     import nibabel as nib
-    import torch
 
     from nireg import register_pyramid
     from nireg.transforms import write_lta
@@ -61,7 +60,7 @@ def main(args=None) -> None:
     logging.basicConfig(level=level, format="%(levelname)s %(name)s: %(message)s")
     logger = logging.getLogger("nireg.cli.robreg")
 
-    # ── load images ─────────────────────────────────────────────────────────
+    # ── load images (needed for write_lta geometry metadata) ────────────────
     logger.info("Loading moving image:    %s", ns.mov)
     logger.info("Loading reference image: %s", ns.ref)
     try:
@@ -71,21 +70,19 @@ def main(args=None) -> None:
         print(f"ERROR loading image: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    mov_data = torch.as_tensor(mov_img.get_fdata(), dtype=torch.float32)
-    ref_data = torch.as_tensor(ref_img.get_fdata(), dtype=torch.float32)
-
     # ── register ────────────────────────────────────────────────────────────
-    kwargs = dict(dof=ns.dof, device=ns.device)
+    # Pass paths so register_pyramid handles loading internally.
+    # return_v2v=True → vox-to-vox matrix, consistent with lta_type=0 below.
+    kwargs = dict(dof=ns.dof, device=ns.device, return_v2v=True)
     if ns.n_iters is not None:
         kwargs["n"] = ns.n_iters
 
     logger.info("Starting image-to-image registration (dof=%d) …", ns.dof)
-    v2v, losses, _ = register_pyramid(mov_data, ref_data,
-                                      mov_img.affine, ref_img.affine,
-                                      **kwargs)
-    logger.info("Final loss: %.6f", float(losses[-1]))
+    v2v = register_pyramid(ns.mov, ns.ref, **kwargs)
 
     # ── write LTA ───────────────────────────────────────────────────────────
+    # lta_type=0 (LINEAR_VOX_TO_VOX) matches the vox-to-vox matrix returned
+    # by register_pyramid(..., return_v2v=True).
     write_lta(ns.out, v2v.numpy(), ns.mov, mov_img, ns.ref, ref_img, lta_type=0)
     logger.info("Wrote LTA: %s", ns.out)
     print(f"Output: {ns.out}")

@@ -103,6 +103,8 @@ def register_pyramid(
     mapped_name: str | None = None,
     return_v2v: bool = False,
     centroid_init: bool = True,
+    dof: int = 6,
+    n: int = 10,
     device: str = 'cpu'
 ) -> Tensor:
     """
@@ -130,6 +132,11 @@ def register_pyramid(
         Return vox-to-vox transformation matrix after registration (default is False, returns ras-to-ras instead).
     centroid_init : bool, optional
         Whether to initialize the transformation based on centroid alignment (default is True).
+    dof : int, optional
+        Degrees of freedom passed to each ``register`` call: 6=rigid, 9=rigid+scale,
+        12=affine (default is 6).
+    n : int, optional
+        Number of optimisation iterations per pyramid level (default is 10).
     device : str, optional
         The device to use for computation, such as 'cpu' or 'cuda' (default is 'cpu').
 
@@ -167,16 +174,15 @@ def register_pyramid(
     Mr2r = torch.eye(4, 4, dtype=saffines[0].dtype)
     count = 0
     debug = False
-    n = 10
     torch.set_printoptions(precision=8, sci_mode=False)
     for si, sa, ti, ta in zip(reversed(simgs), reversed(saffines), reversed(timgs), reversed(taffines), strict=False):
         logger.info("Resolution level %d: %s", count, list(si.size()))
         if count == 0:
-            Mv2v, losses, m = register(si, ti, centroid_init=centroid_init, n=n, device=device)
+            Mv2v, losses, m = register(si, ti, dof=dof, centroid_init=centroid_init, n=n, device=device)
         else:
             Mv2v_init = torch.inverse(ta) @ Mr2r @ sa
             logger.debug("Mv2v_init: %s", Mv2v_init)
-            Mv2v, losses, m = register(si, ti, v2v_init=Mv2v_init, centroid_init=False, n=n, device=device)
+            Mv2v, losses, m = register(si, ti, dof=dof, v2v_init=Mv2v_init, centroid_init=False, n=n, device=device)
         Mv2v = Mv2v.double()
         logger.debug("Mv2v: %s", Mv2v)
         Mr2r = ta @ Mv2v @ torch.inverse(sa)
