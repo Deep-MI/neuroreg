@@ -17,7 +17,6 @@ from .transforms import (
     LINEAR_VOX_TO_VOX,
     convert_transform_type,
     get_ixform_centroids,
-    header_to_dict,
     write_lta,
 )
 
@@ -190,11 +189,11 @@ def register_pyramid(
             tmgh = nib.MGHImage(ti.squeeze().numpy(), ta.numpy(), trg.header)
             smgh.to_filename(sname)
             tmgh.to_filename(tname)
-            write_lta(ltaname, Mr2r.numpy(), sname, smgh.header, tname, tmgh.header)
+            write_lta(ltaname, Mr2r.numpy(), sname, smgh, tname, tmgh)
         count = count + 1
     if lta_name is not None:
         logger.info("Writing final LTA file: %s", lta_name)
-        write_lta(lta_name, Mr2r.numpy(), src.get_filename(), src.header, trg.get_filename(), trg.header)
+        write_lta(lta_name, Mr2r.numpy(), src.get_filename(), src, trg.get_filename(), trg)
     if mapped_name is not None:
         logger.info("Writing mapped image: %s", mapped_name)
         mapped = m.map_image(sdata, mode='bilinear').detach()
@@ -340,14 +339,15 @@ def register_surface(
 
         orig_path = Path(subject_dir) / 'mri' / 'orig.mgz'
         if orig_path.exists():
-            trg_img = nib.load(str(orig_path))
+            trg_header = nib.load(str(orig_path)).header
             trg_path = str(orig_path)
             logger.info("Target reference: %s  shape=%s  voxel size=%s",
-                        orig_path, trg_img.shape[:3], trg_img.header.get_zooms()[:3])
+                        orig_path, trg_header.get_data_shape()[:3],
+                        trg_header.get_zooms()[:3])
         else:
             logger.warning("orig.mgz not found at %s — using moving image as target reference",
                            orig_path)
-            trg_img = mov_img
+            trg_header = mov_img.header
             trg_path = mov_path
     else:
         # Load from explicit paths
@@ -373,9 +373,9 @@ def register_surface(
 
         # Use explicit ref image when provided, otherwise fall back to moving image
         if ref is not None:
-            trg_img = nib.load(ref) if isinstance(ref, str) else ref
+            trg_header = (nib.load(ref) if isinstance(ref, str) else ref).header
             trg_path = ref if isinstance(ref, str) else (
-                trg_img.get_filename() if hasattr(trg_img, 'get_filename') else None
+                trg_header.get_filename() if hasattr(trg_header, 'get_filename') else None
             )
             logger.info("Target reference: %s", trg_path)
         else:
@@ -383,13 +383,13 @@ def register_surface(
                 "No --ref provided for Mode B; using moving image as target reference. "
                 "This is only correct if surfaces were built on the moving image."
             )
-            trg_img = mov_img
+            trg_header = mov_img.header
             trg_path = mov_path
 
     # Surfaces live in target tkRAS space.
     # trg_tkras2ras maps target tkRAS → scanner RAS.
-    trg_vox2tkras = get_vox2ras_tkr(trg_img)                    # vox → tkRAS
-    trg_tkras2ras = trg_img.affine @ np.linalg.inv(trg_vox2tkras)  # tkRAS → RAS
+    trg_vox2tkras = get_vox2ras_tkr(trg_header)                              # vox → tkRAS
+    trg_tkras2ras = trg_header.get_best_affine() @ np.linalg.inv(trg_vox2tkras)  # tkRAS → RAS
     trg_tkras2ras_t = torch.from_numpy(trg_tkras2ras).float()
 
     # Moving image affine: RAS → moving vox  (inv is applied inside BBRModel)
@@ -453,9 +453,7 @@ def register_surface(
         cost = model()
         cost.backward()
         optimizer.step()
-
         losses.append(cost.item())
-
         if iteration % 10 == 0 or iteration == n_iters - 1:
             logger.info("  iter %4d  cost = %.6f", iteration, cost.item())
 
@@ -466,30 +464,24 @@ def register_surface(
 
     if lta_name is not None:
         logger.info("Writing LTA file: %s", lta_name)
-
-        mov_header_dict = header_to_dict(mov_img)
-        trg_header_dict = header_to_dict(trg_img)
-
         # BBRModel returns trg_RAS → mov_RAS; LTA vox-to-vox needs mov_vox → trg_vox.
         ras_transform_np = final_transform.detach().cpu().numpy()
         ras_mov_to_trg = np.linalg.inv(ras_transform_np)
         vox_transform = convert_transform_type(
             ras_mov_to_trg,
             mov_img.affine,
-            trg_img.affine,
+            trg_header.get_best_affine(),
             from_type=LINEAR_RAS_TO_RAS,
             to_type=LINEAR_VOX_TO_VOX,
         )
-
         logger.debug("Vox-to-vox transform (src→target):\n%s", vox_transform)
-
         write_lta(
             lta_name,
             vox_transform,
             mov_path if mov_path else "moving.mgz",
-            mov_header_dict,
+            mov_img,
             trg_path if trg_path else "target.mgz",
-            trg_header_dict,
+            trg_header,
             lta_type=0  # VOX_TO_VOX
         )
 

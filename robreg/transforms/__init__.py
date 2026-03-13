@@ -1,6 +1,5 @@
-"""Transform utilities: matrices, LTA file I/O, headers, initialisation."""
+"""Transform utilities: matrices, LTA file I/O, initialisation."""
 
-from .headers import header_to_dict
 from .initialize import get_ixform_centroids, get_vox2vox_from_header
 from .lta import read_lta, write_lta
 from .matrices import (
@@ -19,8 +18,6 @@ from .matrices import (
 )
 
 __all__ = [
-    # headers
-    "header_to_dict",
     # initialize
     "get_ixform_centroids",
     "get_vox2vox_from_header",

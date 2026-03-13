@@ -51,7 +51,7 @@ def main(args=None) -> None:
     import torch
 
     from robreg import register_pyramid
-    from robreg.transforms import header_to_dict, write_lta
+    from robreg.transforms import write_lta
 
     parser = _build_parser()
     ns = parser.parse_args(args)
@@ -86,9 +86,7 @@ def main(args=None) -> None:
     logger.info("Final loss: %.6f", float(losses[-1]))
 
     # ── write LTA ───────────────────────────────────────────────────────────
-    src_header = header_to_dict(mov_img)
-    dst_header = header_to_dict(ref_img)
-    write_lta(ns.out, v2v.numpy(), ns.mov, src_header, ns.ref, dst_header, lta_type=0)
+    write_lta(ns.out, v2v.numpy(), ns.mov, mov_img, ns.ref, ref_img, lta_type=0)
     logger.info("Wrote LTA: %s", ns.out)
     print(f"Output: {ns.out}")
 

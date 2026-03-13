@@ -1,111 +1,134 @@
+import logging
+from pathlib import Path
+
+import nibabel as nib
 import numpy as np
 import numpy.typing as npt
 
 from .matrices import convert_transform_type
 
+logger = logging.getLogger(__name__)
+
+# ── internal helper ────────────────────────────────────────────────────────
+
+_AnyHeader = (
+    "str | Path | nib.nifti1.Nifti1Header | nib.freesurfer.mghformat.MGHHeader"
+    " | nib.nifti1.Nifti1Image | nib.MGHImage | dict"
+)
+
+
+def _header_info(src: _AnyHeader) -> dict:
+    """Extract LTA volume-info fields from various input types.
+
+    Accepted inputs
+    ---------------
+    * **str / Path** – file path: the header is loaded without reading image data.
+    * **nibabel header** (``Nifti1Header``, ``MGHHeader``, …) – used directly;
+      the affine is obtained via ``header.get_best_affine()``.
+    * **nibabel image** (``Nifti1Image``, ``MGHImage``, …) – ``img.affine`` and
+      ``img.header`` are used.  Because ``nib.load`` is lazy, no voxel data is
+      read unless the caller has already called ``get_fdata()``.
+    * **dict** with keys ``dims``, ``delta``, ``Mdc``, ``Pxyz_c`` – returned
+      unchanged (legacy / internal path).
+
+    Convention
+    ----------
+    ``Mdc`` columns are the unit direction cosines of the x/y/z voxel axes in
+    scanner-RAS (``affine[:3,:3] / zooms``).  ``Pxyz_c`` uses FreeSurfer's
+    ``shape/2`` centre-voxel convention.
+    """
+    if isinstance(src, dict):
+        return src
+
+    # path string → load header only (no data)
+    if isinstance(src, (str, Path)):
+        src = nib.load(src).header
+
+    # nibabel image → extract header and affine
+    if hasattr(src, 'affine'):
+        affine = src.affine
+        header = src.header
+    else:
+        # bare nibabel header
+        affine = src.get_best_affine()
+        header = src
+
+    shape = [int(x) for x in header.get_data_shape()[:3]]
+    zooms = np.array(header.get_zooms()[:3], dtype=float)
+
+    return {
+        'dims':   shape,
+        'delta':  zooms.tolist(),
+        'Mdc':    affine[:3, :3] / zooms,
+        'Pxyz_c': affine[:3, :3] @ (np.array(shape) / 2.0) + affine[:3, 3],
+    }
+
+
+# ── public API ─────────────────────────────────────────────────────────────
 
 def write_lta(
         filename: str,
         T: npt.ArrayLike,
         src_fname: str,
-        src_header: dict[str, list[float] | np.ndarray],
+        src_img: _AnyHeader,
         dst_fname: str,
-        dst_header: dict[str, list[float] | np.ndarray],
+        dst_img: _AnyHeader,
         lta_type: int = 1
 ) -> None:
-    """
-    Write linear transform array information to a `.lta` (linear transform array) file.
-
-    This function saves a transformation matrix (T) to an LTA file along with
-    metadata about the source and destination image volumes, including dimensions, voxel
-    sizes, direction cosines, and centroids.
+    """Write a FreeSurfer ``.lta`` file.
 
     Parameters
     ----------
     filename : str
-        The name of the file to save the linear transformation.
-    T : npt.ArrayLike
-        The transformation matrix (4x4 linear transform array) to save.
+        Output path.
+    T : array-like, shape (4, 4)
+        Transformation matrix to store.
     src_fname : str
-        The filename of the source image.
-    src_header : dict[str, Union[list[float], np.ndarray]]
-        Header information of the source image, expected to contain:
-          - "dims" (List[float]): Dimensions of the image (3D: x, y, z).
-          - "delta" (List[float]): Voxel sizes in mm along each axis.
-          - "Mdc" (np.ndarray): Voxel-to-RAS direction cosine matrix (3x3).
-          - "Pxyz_c" (np.ndarray): The RAS coordinates of the voxel center (3D).
+        Filename of the source (moving) image, stored as metadata.
+    src_img : path, nibabel header, nibabel image, or dict
+        Source image geometry.  Accepted types:
+
+        * ``str`` / ``Path`` – file is opened for the header only (no data loaded).
+        * nibabel header (``Nifti1Header``, ``MGHHeader``, …).
+        * nibabel image (``Nifti1Image``, ``MGHImage``, …) – data is not read.
+        * ``dict`` with keys ``dims``, ``delta``, ``Mdc``, ``Pxyz_c`` (legacy).
     dst_fname : str
-        The filename of the destination image.
-    dst_header : dict[str, Union[list[float], np.ndarray]]
-        Header information of the destination image, expected to contain:
-          - "dims" (list[float]): Dimensions of the image (3D: x, y, z).
-          - "delta" (list[float]): Voxel sizes in mm along each axis.
-          - "Mdc" (np.ndarray): Voxel-to-RAS direction cosine matrix (3x3).
-          - "Pxyz_c" (np.ndarray): The RAS coordinates of the voxel center (3D).
-    lta_type : int, optional
-        Transform type: 0 = LINEAR_VOX_TO_VOX, 1 = LINEAR_RAS_TO_RAS (default).
-
-    Raises
-    ------
-    ValueError
-        If the `src_header` or `dst_header` is missing one or more of the required fields.
-
-    Notes
-    -----
-    - The .lta format is specific to the FreeSurfer software suite and contains metadata
-      as well as the transformation matrix.
-    - The transformation matrix is assumed to be in RAS-to-RAS space (LINEAR_RAS_TO_RAS).
-    - The "created by" line captures the current username and time of file creation.
-
-    Examples
-    --------
-    >>> src_header = {
-    ...     "dims": [256, 256, 256],
-    ...     "delta": [1.0, 1.0, 1.0],
-    ...     "Mdc": np.eye(3),
-    ...     "Pxyz_c": np.array([0.0, 0.0, 0.0])
-    ... }
-    >>> dst_header = {
-    ...     "dims": [128, 128, 128],
-    ...     "delta": [2.0, 2.0, 2.0],
-    ...     "Mdc": np.eye(3),
-    ...     "Pxyz_c": np.array([0.0, 0.0, 0.0])
-    ... }
-    >>> T = np.eye(4)
-    >>> writeLTA("transform.lta", T, "source.mgz", src_header, "target.mgz", dst_header)
+        Filename of the destination (target) image, stored as metadata.
+    dst_img : path, nibabel header, nibabel image, or dict
+        Destination image geometry (same accepted types as *src_img*).
+    lta_type : {0, 1}
+        Transform type: ``0`` = LINEAR_VOX_TO_VOX, ``1`` = LINEAR_RAS_TO_RAS
+        (default).
     """
     import getpass
     from datetime import datetime
 
-    fields = ("dims", "delta", "Mdc", "Pxyz_c")
-    for field in fields:
-        if field not in src_header:
-            raise ValueError(
-                f"writeLTA Error: src_header is missing required field: {field}"
-            )
-        if field not in dst_header:
-            raise ValueError(
-                f"writeLTA Error: dst_header is missing required field: {field}"
-            )
+    src = _header_info(src_img)
+    dst = _header_info(dst_img)
 
-    # Format dims and voxelsize as space-separated (no commas)
-    src_dims = " ".join(str(int(x)) for x in src_header["dims"][0:3])
-    src_vsize = " ".join(f"{float(x):.15e}" for x in src_header["delta"][0:3])
-    src_v2r = src_header["Mdc"]
-    src_c = src_header["Pxyz_c"]
+    # validate required keys (only matters for the dict path)
+    for role, info in (("src", src), ("dst", dst)):
+        for field in ("dims", "delta", "Mdc", "Pxyz_c"):
+            if field not in info:
+                raise ValueError(
+                    f"write_lta: {role} header dict is missing required field '{field}'"
+                )
 
-    dst_dims = " ".join(str(int(x)) for x in dst_header["dims"][0:3])
-    dst_vsize = " ".join(f"{float(x):.15e}" for x in dst_header["delta"][0:3])
-    dst_v2r = dst_header["Mdc"]
-    dst_c = dst_header["Pxyz_c"]
+    src_dims  = " ".join(str(int(x)) for x in src["dims"])
+    src_vsize = " ".join(f"{float(x):.15e}" for x in src["delta"])
+    src_mdc   = src["Mdc"]
+    src_c     = src["Pxyz_c"]
+
+    dst_dims  = " ".join(str(int(x)) for x in dst["dims"])
+    dst_vsize = " ".join(f"{float(x):.15e}" for x in dst["delta"])
+    dst_mdc   = dst["Mdc"]
+    dst_c     = dst["Pxyz_c"]
+
+    type_name = "LINEAR_VOX_TO_VOX" if lta_type == 0 else "LINEAR_RAS_TO_RAS"
 
     with open(filename, "w") as f:
         f.write(f"# transform file {filename}\n")
-        f.write(
-            f"# created by {getpass.getuser()} on {datetime.now().ctime()}\n\n"
-        )
-        # Write type based on parameter
-        type_name = "LINEAR_VOX_TO_VOX" if lta_type == 0 else "LINEAR_RAS_TO_RAS"
+        f.write(f"# created by {getpass.getuser()} on {datetime.now().ctime()}\n\n")
         f.write(f"type      = {lta_type} # {type_name}\n")
         f.write("nxforms   = 1\n")
         f.write("mean      = 0.0 0.0 0.0\n")
@@ -118,20 +141,21 @@ def write_lta(
         f.write(f"filename = {src_fname}\n")
         f.write(f"volume = {src_dims}\n")
         f.write(f"voxelsize = {src_vsize}\n")
-        f.write("xras   = " + " ".join(f"{x:.15e}" for x in src_v2r[0, :]) + "\n")
-        f.write("yras   = " + " ".join(f"{x:.15e}" for x in src_v2r[1, :]) + "\n")
-        f.write("zras   = " + " ".join(f"{x:.15e}" for x in src_v2r[2, :]) + "\n")
+        f.write("xras   = " + " ".join(f"{x:.15e}" for x in src_mdc[:, 0]) + "\n")
+        f.write("yras   = " + " ".join(f"{x:.15e}" for x in src_mdc[:, 1]) + "\n")
+        f.write("zras   = " + " ".join(f"{x:.15e}" for x in src_mdc[:, 2]) + "\n")
         f.write("cras   = " + " ".join(f"{x:.15e}" for x in src_c) + "\n")
         f.write("dst volume info\n")
         f.write("valid = 1  # volume info valid\n")
         f.write(f"filename = {dst_fname}\n")
         f.write(f"volume = {dst_dims}\n")
         f.write(f"voxelsize = {dst_vsize}\n")
-        f.write("xras   = " + " ".join(f"{x:.15e}" for x in dst_v2r[0, :]) + "\n")
-        f.write("yras   = " + " ".join(f"{x:.15e}" for x in dst_v2r[1, :]) + "\n")
-        f.write("zras   = " + " ".join(f"{x:.15e}" for x in dst_v2r[2, :]) + "\n")
+        f.write("xras   = " + " ".join(f"{x:.15e}" for x in dst_mdc[:, 0]) + "\n")
+        f.write("yras   = " + " ".join(f"{x:.15e}" for x in dst_mdc[:, 1]) + "\n")
+        f.write("zras   = " + " ".join(f"{x:.15e}" for x in dst_mdc[:, 2]) + "\n")
         f.write("cras   = " + " ".join(f"{x:.15e}" for x in dst_c) + "\n")
 
+    logger.debug("Wrote LTA (%s): %s", type_name, filename)
 
 def read_lta(filename: str, lta_type: int | None = None) -> dict:
     """Read a FreeSurfer LTA file and return its contents.

@@ -7,7 +7,7 @@ data like thickness, curvature, etc. Correctly manages tkRAS coordinate system.
 
 from pathlib import Path
 
-import nibabel as nib
+import nibabel as nib  # noqa: F401 – used in string type annotations
 import numpy as np
 import torch
 from nibabel.freesurfer import read_geometry, read_morph_data
@@ -152,53 +152,64 @@ def load_surface_from_subject(
     return load_surface(str(surf_path), thickness_path, device)
 
 
-def get_vox2ras_tkr(ref_volume: nib.Nifti1Image) -> np.ndarray:
-    """
-    Get voxel-to-tkRAS transformation matrix for a reference volume.
+_AnyVolRef = (
+    "nib.Nifti1Image | nib.MGHImage"
+    " | nib.nifti1.Nifti1Header | nib.freesurfer.mghformat.MGHHeader"
+)
 
-    This is the transformation that converts voxel coordinates to the
-    tkRAS (FreeSurfer) coordinate system that surface vertices use.
+
+def get_vox2ras_tkr(ref_volume: _AnyVolRef) -> np.ndarray:
+    """Get voxel-to-tkRAS transformation matrix for a reference volume.
+
+    tkRAS is the FreeSurfer coordinate system in which surface vertices are
+    stored.  It is a voxel-centred RAS space that ignores the scanner
+    position but preserves the voxel size and orientation.
 
     Parameters
     ----------
-    ref_volume : nibabel image
-        Reference volume (e.g., orig.mgz or T1.mgz)
+    ref_volume : nibabel image or nibabel header
+        Reference volume or its header (e.g., orig.mgz or T1.mgz).
+        Passing a header avoids loading voxel data entirely.
 
     Returns
     -------
     vox2ras_tkr : np.ndarray, shape (4, 4)
-        Voxel to tkRAS transformation matrix
+        Voxel-to-tkRAS transformation matrix.
 
     Notes
     -----
-    For MGZ files from FreeSurfer, nibabel provides this via the header.
-    For regular NIfTI files, we compute it based on the volume dimensions.
-    """
-    header = ref_volume.header
+    **MGH/MGZ files** store ``vox2ras_tkr`` explicitly in the header, so
+    nibabel's ``MGHHeader.get_vox2ras_tkr()`` is used directly.
 
-    # Try to get it from header (MGZ files)
+    **NIfTI files** have no such field.  ``nibabel.freesurfer.mghformat
+    .MGHHeader.from_header()`` is *not* used here because it ignores the
+    actual voxel size and shape of the NIfTI and returns an incorrect
+    near-identity matrix.  Instead we compute the standard FreeSurfer
+    tkRAS convention explicitly: a diagonal matrix scaled by voxel size
+    with the origin at the image centre (``shape / 2``), with the x-axis
+    negated to match RAS orientation.
+    """
+    # Accept either an image or a bare header
+    if hasattr(ref_volume, 'header'):
+        header = ref_volume.header
+    else:
+        header = ref_volume
+
+    # MGH/MGZ: use the stored field directly
     if hasattr(header, 'get_vox2ras_tkr'):
         return header.get_vox2ras_tkr()
 
-    # For NIfTI, compute tkRAS transform
-    # tkRAS centers the volume at (0, 0, 0)
-    shape = ref_volume.shape[:3]
-    voxsize = ref_volume.header.get_zooms()[:3]
+    # NIfTI (and any other format): compute from voxel size and shape
+    shape   = header.get_data_shape()[:3]
+    voxsize = header.get_zooms()[:3]
 
-    # Create centered coordinate system
     M = np.eye(4)
-    M[0, 0] = -voxsize[0]  # RAS: R increases to the right (flip x)
-    M[1, 1] = voxsize[1]   # A increases anterior
-    M[2, 2] = voxsize[2]   # S increases superior
-
-    # Center the volume
-    M[0, 3] = voxsize[0] * shape[0] / 2.0
+    M[0, 0] = -voxsize[0]   # x flipped to match RAS convention
+    M[1, 1] =  voxsize[1]
+    M[2, 2] =  voxsize[2]
+    M[0, 3] =  voxsize[0] * shape[0] / 2.0   # centre origin
     M[1, 3] = -voxsize[1] * shape[1] / 2.0
     M[2, 3] = -voxsize[2] * shape[2] / 2.0
 
     return M
-
-
-
-
 
