@@ -477,6 +477,12 @@ class BBRModel(nn.Module):
             trg_RAS → mov_RAS transformation matrix to decompose.
         """
         with torch.no_grad():
+            # Ensure matrix is on the same device/dtype as transform_params
+            # before any .copy_() or arithmetic.  Callers (register_surface)
+            # may pass a CPU tensor (e.g. torch.eye(4) or torch.from_numpy(...))
+            # even when the model is on cuda/mps.
+            matrix = matrix.to(device=self.device, dtype=torch.float32)
+
             if self.dof == 12:
                 self.transform_params.copy_(matrix[:3, :].flatten())
                 return
