@@ -188,19 +188,18 @@ def register_pyramid(
     count = 0
     debug = False
     m = None  # initialise so mapped_name block is safe if the loop never executes
-    torch.set_printoptions(precision=8, sci_mode=False)
     for si, sa, ti, ta in zip(reversed(simgs), reversed(saffines), reversed(timgs), reversed(taffines), strict=False):
         logger.info("Resolution level %d: %s", count, list(si.size()))
         if count == 0:
             Mv2v, losses, m = register(si, ti, dof=dof, centroid_init=centroid_init, n=n, device=device)
         else:
             Mv2v_init = torch.inverse(ta) @ Mr2r @ sa
-            logger.debug("Mv2v_init: %s", Mv2v_init)
+            logger.debug("Mv2v_init:\n%s", Mv2v_init.numpy())
             Mv2v, losses, m = register(si, ti, dof=dof, v2v_init=Mv2v_init, centroid_init=False, n=n, device=device)
         Mv2v = Mv2v.double()
-        logger.debug("Mv2v: %s", Mv2v)
+        logger.debug("Mv2v:\n%s", Mv2v.numpy())
         Mr2r = ta @ Mv2v @ torch.inverse(sa)
-        logger.debug("Mr2r: %s", Mr2r)
+        logger.debug("Mr2r:\n%s", Mr2r.numpy())
         if debug:
             sname = "pyramidS-rr" + str(count) + ".mgz"
             tname = "pyramidT-rr" + str(count) + ".mgz"
