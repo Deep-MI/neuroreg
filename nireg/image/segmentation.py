@@ -34,6 +34,8 @@ import nibabel as nib
 import numpy as np
 from scipy.ndimage import uniform_filter
 
+from nireg.surface.io import get_vox2ras_tkr
+
 if TYPE_CHECKING:
     import numpy.typing as npt
 
@@ -401,7 +403,7 @@ def extract_wm_surface(
     )
 
     # ---- convert voxel → tkRAS ----
-    vox2tkras = _get_vox2tkras(seg_header)
+    vox2tkras = np.array(get_vox2ras_tkr(seg_header), dtype=np.float32)
     ones = np.ones((len(verts_vox), 1), dtype=np.float32)
     verts_hom = np.hstack([verts_vox.astype(np.float32), ones])  # (V, 4)
     verts_tkras = (vox2tkras @ verts_hom.T).T[:, :3].astype(np.float32)
@@ -599,7 +601,7 @@ def compute_cortex_mask(
     gm_label = _LH_GM if hemi == "lh" else _RH_GM
 
     # Convert tkRAS → voxel using the inverse of vox2tkras
-    vox2tkras = _get_vox2tkras(seg_img.header)
+    vox2tkras = np.array(get_vox2ras_tkr(seg_img.header), dtype=np.float64)
     tkras2vox = np.linalg.inv(vox2tkras)
 
     ones = np.ones((len(vertices_tkras), 1), dtype=np.float64)
@@ -612,42 +614,6 @@ def compute_cortex_mask(
         hemi, mask.sum(), len(mask), 100.0 * mask.sum() / max(len(mask), 1),
     )
     return mask
-
-
-def _get_vox2tkras(header: nib.filebasedimages.FileBasedHeader) -> np.ndarray:
-    """Return the voxel-to-tkRAS matrix from an image header.
-
-    Works for MGH/MGZ headers (``get_vox2ras_tkr``) and falls back to a
-    centre-origin approximation for NIfTI headers.
-
-    Parameters
-    ----------
-    header : nibabel header
-        Image header with ``get_zooms()`` and ``get_data_shape()`` at minimum.
-
-    Returns
-    -------
-    vox2tkras : ndarray, shape (4, 4), float64
-    """
-    if hasattr(header, "get_vox2ras_tkr"):
-        return np.array(header.get_vox2ras_tkr(), dtype=np.float64)
-
-    # NIfTI fallback: build centre-origin tkRAS from voxel size and shape
-    logger.warning(
-        "Header does not provide get_vox2ras_tkr(); using centre-origin "
-        "approximation for vox→tkRAS.  For best results use an MGZ file."
-    )
-    zooms = np.array(header.get_zooms()[:3], dtype=np.float64)
-    shape = np.array(header.get_data_shape()[:3], dtype=np.float64)
-    centre = (shape - 1) / 2.0
-    mat = np.eye(4, dtype=np.float64)
-    mat[0, 0] = zooms[0]
-    mat[0, 3] = -centre[0] * zooms[0]
-    mat[1, 1] = zooms[1]
-    mat[1, 3] = -centre[1] * zooms[1]
-    mat[2, 2] = zooms[2]
-    mat[2, 3] = -centre[2] * zooms[2]
-    return mat
 
 
 def _taubin_smooth_numpy(
