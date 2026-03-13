@@ -171,9 +171,23 @@ def register_pyramid(
     simgs, saffines = build_gaussian_pyramid(sdata, src.affine)
     timgs, taffines = build_gaussian_pyramid(tdata, trg.affine)
 
+    if not simgs:
+        raise ValueError(
+            f"build_gaussian_pyramid returned no levels for the source image "
+            f"(shape {list(sdata.shape)}). The image may be too small — "
+            f"the default minimum dimension is 32 voxels."
+        )
+    if not timgs:
+        raise ValueError(
+            f"build_gaussian_pyramid returned no levels for the target image "
+            f"(shape {list(tdata.shape)}). The image may be too small — "
+            f"the default minimum dimension is 32 voxels."
+        )
+
     Mr2r = torch.eye(4, 4, dtype=saffines[0].dtype)
     count = 0
     debug = False
+    m = None  # initialise so mapped_name block is safe if the loop never executes
     torch.set_printoptions(precision=8, sci_mode=False)
     for si, sa, ti, ta in zip(reversed(simgs), reversed(saffines), reversed(timgs), reversed(taffines), strict=False):
         logger.info("Resolution level %d: %s", count, list(si.size()))
@@ -201,10 +215,17 @@ def register_pyramid(
         logger.info("Writing final LTA file: %s", lta_name)
         write_lta(lta_name, Mr2r.numpy(), src.get_filename(), src, trg.get_filename(), trg)
     if mapped_name is not None:
-        logger.info("Writing mapped image: %s", mapped_name)
-        mapped = m.map_image(sdata, mode='bilinear').detach()
-        mapped_img = nib.MGHImage(mapped.squeeze().numpy(), src.affine, src.header)
-        mapped_img.to_filename(mapped_name)
+        if m is None:
+            logger.warning(
+                "Skipping mapped image output ('%s'): no registration model "
+                "was produced (pyramid loop did not execute).",
+                mapped_name,
+            )
+        else:
+            logger.info("Writing mapped image: %s", mapped_name)
+            mapped = m.map_image(sdata, mode='bilinear').detach()
+            mapped_img = nib.MGHImage(mapped.squeeze().numpy(), src.affine, src.header)
+            mapped_img.to_filename(mapped_name)
     logger.info("register_pyramid total time: %.2f s", time.perf_counter() - start)
     if return_v2v:
         return Mv2v
