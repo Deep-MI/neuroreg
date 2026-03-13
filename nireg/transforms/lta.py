@@ -252,7 +252,7 @@ def read_lta(filename: str, lta_type: int | None = None) -> dict:
     # ── optional type conversion ────────────────────────────────────
     if lta_type is not None and lta_type != result["type"]:
         def _affine_from_info(info: dict, role: str) -> np.ndarray:
-            required = ("xras", "yras", "zras", "cras", "voxelsize")
+            required = ("xras", "yras", "zras", "cras", "voxelsize", "volume")
             missing = [k for k in required if k not in info]
             if missing:
                 raise ValueError(
@@ -264,7 +264,12 @@ def read_lta(filename: str, lta_type: int | None = None) -> dict:
             A[:3, 0] = np.array(info["xras"]) * vs[0]
             A[:3, 1] = np.array(info["yras"]) * vs[1]
             A[:3, 2] = np.array(info["zras"]) * vs[2]
-            A[:3, 3] = np.array(info["cras"])
+            # cras is the RAS coordinate of the centre voxel (dims/2), not voxel 0.
+            # Affine convention: ras = A[:3,:3] @ vox + A[:3,3]
+            # => at vox = dims/2: cras = A[:3,:3] @ (dims/2) + A[:3,3]
+            # => A[:3,3] = cras - A[:3,:3] @ (dims/2)
+            dims = np.array(info["volume"], dtype=float)
+            A[:3, 3] = np.array(info["cras"]) - A[:3, :3] @ (dims / 2.0)
             return A
 
         src_affine = _affine_from_info(result["src"], "src")
