@@ -4,8 +4,8 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-import robreg.image.map
-import robreg.transforms.matrices as trans
+import nireg.image.map
+import nireg.transforms.matrices as trans
 
 
 class RegModel(nn.Module):
@@ -439,7 +439,7 @@ class RegModel(nn.Module):
         """
         if torch_transform is None:
             torch_transform = self.get_torch_transform_from_weights()
-        return robreg.image.map(image, torch_transform, mode=mode)
+        return nireg.image.map(image, torch_transform, mode=mode)
 
 
     def forward(self, X: torch.Tensor) -> torch.Tensor:

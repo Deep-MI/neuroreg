@@ -3,9 +3,9 @@ requires = ['setuptools >= 61.0.0']
 build-backend = 'setuptools.build_meta'
 
 [project]
-name = 'robreg'
+name = 'nireg'
 version = '0.1.0-dev'
-description = 'A package for 3D image registration with PyTorch.'
+description = 'A package for 3D neuroimaging registration with PyTorch.'
 readme = 'README.md'
 license = {file = 'LICENSE'}
 requires-python = '>=3.10'
@@ -70,38 +70,38 @@ test = [
     'pytest-timeout',
 ]
 all = [
-    'robreg[build]',
-    'robreg[doc]',
-    'robreg[style]',
-    'robreg[test]',
+    'nireg[build]',
+    'nireg[doc]',
+    'nireg[style]',
+    'nireg[test]',
 ]
 full = [
-    'robreg[all]',
+    'nireg[all]',
 ]
 
 [project.urls]
-homepage = 'https://Deep-MI.github.io/robreg/dev/index.html'
-documentation = 'https://Deep-MI.github.io/robreg/dev/index.html'
-source = 'https://github.com/Deep-MI/robreg'
-tracker = 'https://github.com/Deep-MI/robreg/issues'
+homepage = 'https://Deep-MI.github.io/nireg/dev/index.html'
+documentation = 'https://Deep-MI.github.io/nireg/dev/index.html'
+source = 'https://github.com/Deep-MI/nireg'
+tracker = 'https://github.com/Deep-MI/nireg/issues'
 
 [project.scripts]
-robreg           = "robreg.cmdline.robreg:main"
-bbreg            = "robreg.cmdline.bbreg:main"
-robreg-sys_info  = "robreg.cmdline.sys_info:run"
+robreg          = "nireg.cmdline.robreg:main"
+bbreg           = "nireg.cmdline.bbreg:main"
+nireg-sys_info  = "nireg.cmdline.sys_info:run"
 
 [tool.setuptools]
 include-package-data = false
 
 [tool.setuptools.packages.find]
-include = ['robreg*']
-exclude = ['robreg*tests']
+include = ['nireg*']
+exclude = ['nireg*tests']
 
 [tool.pydocstyle]
 convention = 'numpy'
 ignore-decorators = '(copy_doc|property|.*setter|.*getter|pyqtSlot|Slot)'
 match = '^(?!setup|__init__|test_).*\.py'
-match-dir = '^robreg.*'
+match-dir = '^nireg.*'
 add_ignore = 'D100,D104,D107'
 
 [tool.ruff]
@@ -131,7 +131,7 @@ select = [
 #ignore-words-list = 'coo,daty'
 check-filenames = true
 check-hidden = true
-skip = './.git,./build,./.mypy_cache,./.pytest_cache,*/data/*,./robreg-data'
+skip = './.git,./build,./.mypy_cache,./.pytest_cache,*/data/*,./nireg-data'
 
 [tool.pytest.ini_options]
 minversion = '6.0'
@@ -143,8 +143,8 @@ branch = true
 cover_pylib = false
 omit = [
     '**/__init__.py',
-    '**/robreg/_version.py',
-    '**/robreg/cmdline/*',
+    '**/nireg/_version.py',
+    '**/nireg/cmdline/*',
     '**/tests/**',
 ]
 

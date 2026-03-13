@@ -1,7 +1,7 @@
-"""Command-line entry points for robreg tools.
+"""Command-line entry points for nireg tools.
 
-Entry points
-------------
+Available commands
+------------------
 robreg   Robust image-to-image registration (analogous to mri_robust_register).
 bbreg    Boundary-based registration using cortical surfaces (analogous to bbregister).
 """

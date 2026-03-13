@@ -50,8 +50,8 @@ def main(args=None) -> None:
     import nibabel as nib
     import torch
 
-    from robreg import register_pyramid
-    from robreg.transforms import write_lta
+    from nireg import register_pyramid
+    from nireg.transforms import write_lta
 
     parser = _build_parser()
     ns = parser.parse_args(args)
@@ -59,7 +59,7 @@ def main(args=None) -> None:
     # ── logging ─────────────────────────────────────────────────────────────
     level = logging.DEBUG if ns.debug else (logging.INFO if ns.verbose else logging.WARNING)
     logging.basicConfig(level=level, format="%(levelname)s %(name)s: %(message)s")
-    logger = logging.getLogger("robreg.cli.robreg")
+    logger = logging.getLogger("nireg.cli.robreg")
 
     # ── load images ─────────────────────────────────────────────────────────
     logger.info("Loading moving image:    %s", ns.mov)

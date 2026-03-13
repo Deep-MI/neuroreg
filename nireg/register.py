@@ -238,7 +238,7 @@ def register_surface(
     inward (WM sample) and outward (GM sample) along surface normals.
 
     Progress and debug information are emitted via the standard :mod:`logging`
-    module (logger ``robreg.register``).  To see iteration-level output, set
+    module (logger ``nireg.register``).  To see iteration-level output, set
     that logger to ``INFO``; for matrix dumps use ``DEBUG``.
 
     Parameters

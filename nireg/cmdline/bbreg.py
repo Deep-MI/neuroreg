@@ -114,7 +114,7 @@ def _validate_args(ns: argparse.Namespace, parser: argparse.ArgumentParser) -> s
 
 def main(args=None) -> None:
     """Entry point for the ``bbreg`` command."""
-    from robreg import register_surface
+    from nireg import register_surface
 
     parser = _build_parser()
     ns = parser.parse_args(args)
@@ -123,7 +123,7 @@ def main(args=None) -> None:
     # ── logging ──────────────────────────────────────────────────────────────
     level = logging.DEBUG if ns.debug else (logging.INFO if ns.verbose else logging.WARNING)
     logging.basicConfig(level=level, format="%(levelname)s %(name)s: %(message)s")
-    logger = logging.getLogger("robreg.cli.bbreg")
+    logger = logging.getLogger("nireg.cli.bbreg")
 
     # ── build kwargs for register_surface ───────────────────────────────────
     kwargs: dict = dict(

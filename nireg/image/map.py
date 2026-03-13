@@ -3,7 +3,7 @@
 import torch
 import torch.nn as nn
 
-import robreg.transforms.matrices as trans
+import nireg.transforms.matrices as trans
 
 
 def map(
@@ -25,7 +25,7 @@ def map(
     is_torch_mat : bool, optional
         If ``True`` (default), *transform* is already in PyTorch grid-sample
         format (3 × 4 or 4 × 4).  If ``False``, it is treated as a vox-to-vox
-        matrix and converted via :func:`~robreg.transforms.matrices.convert_v2v_to_torch`.
+        matrix and converted via :func:`~nireg.transforms.matrices.convert_v2v_to_torch`.
     target_shape : tuple[int, int, int], optional
         Shape of the output grid ``(D, H, W)``.  Only used when
         ``is_torch_mat=False``.  Defaults to the shape of *image*.

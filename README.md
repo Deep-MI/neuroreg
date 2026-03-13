@@ -1,7 +1,7 @@
-[![PyPI version](https://badge.fury.io/py/robreg.svg)](https://pypi.org/project/robreg/)
-# robreg
+[![PyPI version](https://badge.fury.io/py/nireg.svg)](https://pypi.org/project/nireg/)
+# nireg
 
-Robreg is a tool for the robust registration of 3D medical images (e.g. MRI).
+Nireg is a tool for the robust registration of 3D neuroimaging data (e.g. MRI).
 It uses PyTorch's automatic differentiation for gradient-based optimisation and
 can run efficiently on a GPU.
 
@@ -17,7 +17,7 @@ This project is a work-in-progress in an early development stage.
 ## Installation
 
 ```bash
-pip install robreg
+pip install nireg
 ```
 
 ## Command-line interface
@@ -126,7 +126,7 @@ bbreg --mov T2.nii.gz \
 ## Python API
 
 ```python
-from robreg import register_pyramid, register_surface
+from nireg import register_pyramid, register_surface
 import nibabel as nib
 import torch
 
@@ -161,7 +161,7 @@ Both `robreg` and `bbreg` support the following `--dof` settings:
 
 ## API Documentation
 
-The API Documentation can be found at https://deep-mi.org/robreg .
+The API Documentation can be found at https://deep-mi.org/nireg .
 
 ## References
 
