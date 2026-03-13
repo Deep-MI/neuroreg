@@ -8,7 +8,11 @@ import torch.nn as nn
 
 from .cost import bbr_contrast_cost, detect_contrast, gradient_magnitude_cost
 from .projection import compute_vertex_normals, create_wm_gm_surfaces
-from .sampling import sample_gradient_at_vertices, sample_volume_at_vertices
+from .sampling import (
+    compute_volume_gradient,
+    sample_gradient_at_vertices,
+    sample_volume_at_vertices,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -272,6 +276,23 @@ class BBRModel(nn.Module):
         # +1 for t2 (GM > WM), -1 for t1 (WM > GM)
         self.contrast_sign = -1 if contrast == 't1' else 1
 
+        # ── precompute gradient volume ─────────────────────────────────────
+        # moving_volume is constant throughout optimisation — only
+        # transform_params change.  Pre-computing the gradient here avoids
+        # three full conv3d passes every iteration when cost_type involves
+        # the gradient term.
+        if self.cost_type in ('gradient', 'both'):
+            with torch.no_grad():
+                self._moving_grad_volume: torch.Tensor = compute_volume_gradient(
+                    self.moving_volume
+                ).detach()
+            logger.debug(
+                "Precomputed gradient volume: shape %s",
+                list(self._moving_grad_volume.shape),
+            )
+        else:
+            self._moving_grad_volume = None
+
     # ------------------------------------------------------------------
     def forward(self) -> torch.Tensor:
         """Compute BBR cost for the current transform parameters.
@@ -348,7 +369,8 @@ class BBRModel(nn.Module):
         if self.cost_type == 'gradient':
             white_vertices = (wm_vertices + gm_vertices) / 2.0
             grad = sample_gradient_at_vertices(
-                self.moving_volume, white_vertices, self._identity, combined
+                self.moving_volume, white_vertices, self._identity, combined,
+                precomputed_grad=self._moving_grad_volume,
             )
             return gradient_magnitude_cost(grad, normals)
 
@@ -357,7 +379,8 @@ class BBRModel(nn.Module):
                                        contrast_sign=self.contrast_sign)
             white_vertices = (wm_vertices + gm_vertices) / 2.0
             grad = sample_gradient_at_vertices(
-                self.moving_volume, white_vertices, self._identity, combined
+                self.moving_volume, white_vertices, self._identity, combined,
+                precomputed_grad=self._moving_grad_volume,
             )
             cost_g = gradient_magnitude_cost(grad, normals)
             return cost_c + self.gradient_weight * cost_g

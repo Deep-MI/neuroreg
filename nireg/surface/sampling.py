@@ -261,7 +261,8 @@ def sample_gradient_at_vertices(
     vox2ras_tkr: torch.Tensor,
     reg_matrix: torch.Tensor | None = None,
     voxel_size: tuple[float, float, float] | None = None,
-    interpolation: str = 'trilinear'
+    interpolation: str = 'trilinear',
+    precomputed_grad: torch.Tensor | None = None,
 ) -> torch.Tensor:
     """
     Sample volume gradient at surface vertex locations.
@@ -269,7 +270,8 @@ def sample_gradient_at_vertices(
     Parameters
     ----------
     volume : torch.Tensor, shape (H, W, D)
-        Volume to compute gradient from
+        Volume to compute gradient from.  Ignored when *precomputed_grad*
+        is supplied.
     vertices_tkras : torch.Tensor, shape (N, 3)
         Vertex coordinates in tkRAS space
     vox2ras_tkr : torch.Tensor, shape (4, 4)
@@ -277,17 +279,26 @@ def sample_gradient_at_vertices(
     reg_matrix : torch.Tensor, shape (4, 4), optional
         Registration matrix
     voxel_size : tuple of float, optional
-        Voxel dimensions for gradient computation
+        Voxel dimensions for gradient computation.  Ignored when
+        *precomputed_grad* is supplied.
     interpolation : str
         Interpolation mode
+    precomputed_grad : torch.Tensor, shape (3, H, W, D), optional
+        Pre-computed gradient volume (e.g. cached in the model).  When
+        provided the three ``conv3d`` passes are skipped entirely, which
+        avoids redundant work during iterative optimisation where the
+        moving volume — and therefore its gradient — never changes.
 
     Returns
     -------
     gradients : torch.Tensor, shape (N, 3)
         Gradient vectors at each vertex location
     """
-    # Compute volume gradient
-    grad_volume = compute_volume_gradient(volume, voxel_size)  # (3, H, W, D)
+    # Use caller-supplied gradient volume when available; otherwise compute.
+    if precomputed_grad is not None:
+        grad_volume = precomputed_grad          # (3, H, W, D)
+    else:
+        grad_volume = compute_volume_gradient(volume, voxel_size)  # (3, H, W, D)
 
     # Sample each gradient component
     grad_x = sample_volume_at_vertices(
@@ -300,8 +311,5 @@ def sample_gradient_at_vertices(
         grad_volume[2], vertices_tkras, vox2ras_tkr, reg_matrix, interpolation
     )
 
-    # Stack into (N, 3)
-    gradients = torch.stack([grad_x, grad_y, grad_z], dim=1)
-
-    return gradients
+    return torch.stack([grad_x, grad_y, grad_z], dim=1)
 
