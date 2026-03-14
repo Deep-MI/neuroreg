@@ -161,8 +161,24 @@ def simplify_segmentation(
     * **42** — right-hemisphere grey matter  (RH-GM)
     * **0** — background / excluded structures
 
-    Excluded structures (cerebellum, brainstem, ventricles, hippocampus,
-    amygdala, CSF) are mapped to background.
+    Mapping rules (applied in order):
+
+    1. **Cortical parcels** (aparc labels 1000–1999 / 2000–2999) → LH-GM / RH-GM.
+    2. **Subcortical fill → WM** — a set of subcortical structures that sit
+       *inside* or immediately adjacent to the WM volume are absorbed into the
+       nearest hemisphere's WM label so that the extracted WM surface has no
+       interior holes.  This group includes the **lateral ventricles**
+       (labels 4 / 43), thalamus, caudate, putamen, pallidum, accumbens,
+       ventral DC, vessel, and choroid plexus.  Filling the lateral ventricles
+       is intentional: treating them as background would leave a void in the
+       centre of the WM and cause marching cubes to generate spurious interior
+       surfaces.
+    3. **Corpus callosum** (251–255) → split between LH-WM / RH-WM by local
+       neighbourhood vote; tied midline voxels → background.
+    4. **WM hypointensities** (77) → LH-WM / RH-WM by local neighbourhood vote.
+    5. **Everything else** (cerebellum, brainstem, hippocampus, amygdala,
+       inferior lateral ventricles, CSF, and any unlabelled voxels) → **0**
+       (background).
 
     Parameters
     ----------

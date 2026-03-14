@@ -148,7 +148,15 @@ def write_lta(
         f.write("mean      = 0.0 0.0 0.0\n")
         f.write("sigma     = 1.0\n")
         f.write("1 4 4\n")
-        f.write(str(T).replace(" [", "").replace("[", "").replace("]", ""))
+        # Normalise T to a plain (4, 4) float64 ndarray regardless of whether
+        # the caller passed a np.ndarray, torch.Tensor, or other array-like.
+        if hasattr(T, 'detach'):          # torch.Tensor
+            T_arr = T.detach().cpu().numpy()
+        else:
+            T_arr = np.asarray(T)
+        T_arr = T_arr.reshape(4, 4).astype(float)
+        for row in T_arr:
+            f.write(" ".join(f"{v:.15e}" for v in row) + "\n")
         f.write("\n")
         f.write("src volume info\n")
         f.write("valid = 1  # volume info valid\n")

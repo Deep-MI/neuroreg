@@ -244,7 +244,7 @@ def register_surface(
     lta_name: str | None = None,
     dof: int = 6,
     contrast: Literal['t1', 't2'] | None = None,
-    init_type: Literal['header', 'centroid', 'lta'] = 'header',
+    init_type: Literal['header', 'lta'] = 'header',
     init_lta: str | None = None,
     init_ras: np.ndarray | None = None,
     cost_type: Literal['contrast', 'gradient', 'both'] = 'contrast',
@@ -314,11 +314,14 @@ def register_surface(
         If ``None`` (default), the contrast direction is auto-detected from
         the image by sampling WM and GM intensities at the surface vertices
         and checking which direction the majority of vertices support.
-    init_type : {'header', 'centroid', 'lta'}
+    init_type : {'header', 'lta'}
         Initialisation strategy when *init_ras* is not provided.
         ``'header'`` uses identity (relies on image headers being aligned).
+        ``'lta'`` loads an existing transform from *init_lta*.
     init_lta : str, optional
-        Path to LTA file used when ``init_type='lta'`` (not yet implemented).
+        Path to an LTA file used when ``init_type='lta'``.  The stored
+        mov_RAS → trg_RAS matrix is read and inverted to obtain the
+        trg_RAS → mov_RAS initialisation transform.
     init_ras : np.ndarray, shape (4, 4), optional
         Explicit trg_RAS → mov_RAS initialisation matrix, e.g. from a prior
         image-based registration step.  Overrides *init_type* when supplied.
@@ -482,8 +485,13 @@ def register_surface(
         init_transform = torch.from_numpy(np.linalg.inv(ras_mov_to_trg)).float()
         logger.info("Loaded init transform (trg_RAS→mov_RAS) from %s", init_lta)
     elif init_type == 'centroid':
-        logger.warning("Centroid initialization not yet implemented, using identity")
-        init_transform = torch.eye(4, dtype=torch.float32)
+        raise ValueError(
+            "init_type='centroid' is not supported for surface-based registration: "
+            "centroid alignment requires a pair of image volumes, but register_surface "
+            "operates on surface meshes without a target image tensor. "
+            "Use init_type='header' (identity) or supply an existing transform via "
+            "init_type='lta' / init_ras."
+        )
     else:  # header
         init_transform = torch.eye(4, dtype=torch.float32)
 
