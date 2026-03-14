@@ -117,6 +117,17 @@ def sample_volume_at_vertices(
     values : torch.Tensor, shape (N,)
         Sampled intensity values at each vertex.
     """
+    _VALID_INTERPOLATION = ('nearest', 'trilinear')
+    _VALID_PADDING = ('zeros', 'border')
+    if interpolation not in _VALID_INTERPOLATION:
+        raise ValueError(
+            f"interpolation must be one of {_VALID_INTERPOLATION}, got '{interpolation}'."
+        )
+    if padding_mode not in _VALID_PADDING:
+        raise ValueError(
+            f"padding_mode must be one of {_VALID_PADDING}, got '{padding_mode}'."
+        )
+
     device = volume.device
     dtype = volume.dtype
 

@@ -39,7 +39,8 @@ def map(
     Returns
     -------
     torch.Tensor
-        Resampled image with the same shape as *image*.
+        Resampled image with shape *target_shape* (or the shape of *image* if
+        *target_shape* is ``None``).
 
     Raises
     ------
@@ -57,9 +58,11 @@ def map(
         torch_transform = trans.convert_v2v_to_torch(transform, image.shape, target_shape)
     else:
         torch_transform = transform[:3, :]
+    out_shape = target_shape if target_shape is not None else image.shape
+    grid_size = (1, 1) + tuple(out_shape)
     grid = nn.functional.affine_grid(
         torch_transform.unsqueeze(0).float(),
-        image.unsqueeze(0).unsqueeze(0).size(),
+        grid_size,
         align_corners=False
     )
     return nn.functional.grid_sample(
