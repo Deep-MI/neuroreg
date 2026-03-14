@@ -243,7 +243,7 @@ def get_scaling(scales: torch.Tensor) -> torch.Tensor:
     torch.Tensor, shape (4, 4)
         Scaling matrix.
     """
-    S = torch.diag(torch.cat((scales, torch.tensor([1.0], device=scales.device))))
+    S = torch.diag(torch.cat((scales, scales.new_tensor([1.0]))))
     return S
 
 
@@ -312,11 +312,11 @@ def convert_v2v_to_torch(v2v: torch.Tensor, source_shape, target_shape=None) -> 
     scale_factor_source = torch.tensor(list(reversed(source_shape)), dtype=v2v.dtype, device=device) / 2.0
     scale_factor_target = torch.tensor(list(reversed(target_shape)), dtype=v2v.dtype, device=device) / 2.0
     # Rescale from relative coordinates (-1, 1) --> image coordinates and move center
-    scale_factor_target = torch.cat((scale_factor_target, torch.tensor([1.0], device=device)))
+    scale_factor_target = torch.cat((scale_factor_target, scale_factor_target.new_tensor([1.0])))
     source2relative = torch.diag(scale_factor_target)
     source2relative[:-1, -1] += scale_factor_target[:-1] - 0.5
     # Rescale to relative coordinates and move center to align with PyTorch's grid-space
-    scale_factor_source = torch.cat((scale_factor_source, torch.tensor([1.0], device=device)))
+    scale_factor_source = torch.cat((scale_factor_source, scale_factor_source.new_tensor([1.0])))
     relative2target = torch.diag(1.0 / scale_factor_source)
     relative2target[:-1, -1] += -1 + 0.5 / scale_factor_source[:-1]
     # Combine transformations to get the final affine transformation
@@ -362,8 +362,8 @@ def convert_torch_to_v2v(torch_transform: torch.Tensor, source_shape, target_sha
     scale_factor_source = torch.as_tensor(list(reversed(source_shape))) / 2.0
     scale_factor_target = torch.as_tensor(list(reversed(target_shape))) / 2.0
     # Create diagonal scaling and translation matrices
-    scale_factor_source = torch.cat((scale_factor_source, torch.tensor([1.0])), dim=0)
-    scale_factor_target = torch.cat((scale_factor_target, torch.tensor([1.0])), dim=0)
+    scale_factor_source = torch.cat((scale_factor_source, scale_factor_source.new_tensor([1.0])), dim=0)
+    scale_factor_target = torch.cat((scale_factor_target, scale_factor_target.new_tensor([1.0])), dim=0)
     # Rescale relative coordinates (-1, 1) --> (-0.5, (n-1)+0.5) and move center
     relative2target = torch.diag(scale_factor_source)
     relative2target[..., :-1, -1] += scale_factor_source[:-1] - 0.5
