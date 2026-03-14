@@ -31,6 +31,8 @@ Gaussian pyramid with robust cost functions.
 robreg --mov <moving.nii.gz> --ref <reference.nii.gz> --out <output.lta> [options]
 ```
 
+Run `robreg -h` for a full argument summary with defaults.
+
 **Required arguments**
 
 | Argument | Description |
@@ -64,7 +66,7 @@ Registers a moving image to a T1 anatomy using cortical surface meshes
 (T1-like: WM > GM, or T2-like: GM > WM) is auto-detected from the image
 when not specified.
 
-Surface input can be provided in two ways:
+Surface input can be provided in three ways:
 
 **Mode A — FreeSurfer / FastSurfer subject directory** (recommended)
 
@@ -82,6 +84,17 @@ bbreg --mov <moving.nii.gz> --lh_surf <lh.white> --rh_surf <rh.white> \
       --ref <T1.mgz> --out <output.lta> [options]
 ```
 
+**Mode C — segmentation file (no pre-built surfaces needed)**
+
+```
+bbreg --mov <moving.nii.gz> --seg <aparc+aseg.mgz> --out <output.lta> [options]
+```
+
+The WM/GM boundary surface is extracted on-the-fly from a parcellation or
+aseg file (e.g. `aparc+aseg.mgz`, `aseg.mgz`, or NIfTI) via marching cubes.
+The segmentation header provides the reference geometry; `--ref` must *not* be
+specified in this mode.
+
 **Required arguments**
 
 | Argument | Description |
@@ -91,6 +104,7 @@ bbreg --mov <moving.nii.gz> --lh_surf <lh.white> --rh_surf <rh.white> \
 | `--subject_dir DIR` | *(Mode A)* Subject directory with surfaces and `mri/orig.mgz`. |
 | `--lh_surf / --rh_surf FILE` | *(Mode B)* Explicit left / right white surface files. |
 | `--ref FILE` | *(Mode B)* Reference T1 image (required with explicit surfaces). |
+| `--seg FILE` | *(Mode C)* Parcellation / aseg file; surfaces extracted automatically. |
 
 **Options**
 
@@ -101,9 +115,15 @@ bbreg --mov <moving.nii.gz> --lh_surf <lh.white> --rh_surf <rh.white> \
 | `--cost {contrast,gradient,both}` | `contrast` | BBR cost term. |
 | `--wm_proj_abs MM` | `1.4` | WM projection depth in mm. |
 | `--gm_proj_frac FRAC` | `0.5` | GM projection as fraction of cortical thickness. |
+| `--slope SLOPE` | `0.5` | Slope of the BBR sigmoid cost function. |
+| `--gradient_weight W` | `0.0` | Weight for gradient cost term when `--cost=both`. |
 | `--n_iters N` | `500` | Number of RMSprop optimisation iterations. |
 | `--lr LR` | `0.005` | Optimiser learning rate. |
 | `--subsample N` | `2` | Use every N-th surface vertex (1 = all). |
+| `--lh_thickness / --rh_thickness FILE` | — | *(Mode B)* Cortical thickness files for GM projection. |
+| `--seg_smooth_sigma SIGMA` | `0.5` | *(Mode C)* Gaussian pre-blur sigma (voxels) before marching cubes. |
+| `--seg_mc_level LEVEL` | `0.45` | *(Mode C)* Marching-cubes iso-level. |
+| `--seg_smooth_iters N` | `50` | *(Mode C)* Taubin smoothing iterations after marching cubes. |
 | `--init_lta FILE` | — | Initialise from an existing LTA transform (e.g. from a prior `robreg` run or a previous `bbreg` pass). |
 | `--device DEVICE` | `cpu` | PyTorch device, e.g. `cpu` or `cuda`. |
 | `--verbose` | off | Enable INFO-level logging. |
@@ -115,13 +135,21 @@ bbreg --mov <moving.nii.gz> --lh_surf <lh.white> --rh_surf <rh.white> \
 # Mode A: register fMRI to T1 using a FastSurfer subject directory
 bbreg --mov fMRI.nii.gz --subject_dir /data/subjects/sub-01 --out fMRI_to_T1.lta
 
-# Mode B: register T2 to T1 with explicit surfaces
+# Mode B: register T2 to T1 with explicit surfaces and thickness files
 bbreg --mov T2.nii.gz \
       --lh_surf /data/subjects/sub-01/surf/lh.white \
       --rh_surf /data/subjects/sub-01/surf/rh.white \
+      --lh_thickness /data/subjects/sub-01/surf/lh.thickness \
+      --rh_thickness /data/subjects/sub-01/surf/rh.thickness \
       --ref /data/subjects/sub-01/mri/orig.mgz \
       --out T2_to_T1.lta --contrast t2
+
+# Mode C: register fMRI using a segmentation (no surface files required)
+bbreg --mov fMRI.nii.gz --seg /data/subjects/sub-01/mri/aparc+aseg.mgz \
+      --out fMRI_to_T1.lta
 ```
+
+Run `bbreg -h` for a full argument summary with defaults.
 
 ## Python API
 
@@ -132,12 +160,31 @@ from nireg import register_pyramid, register_surface
 # Returns a single vox-to-vox Tensor when return_v2v=True, or RAS-to-RAS by default.
 transform = register_pyramid("T2.nii.gz", "T1.mgz", return_v2v=True, dof=6)
 
-# Surface-based (BBR) registration
+# Surface-based (BBR) registration — Mode A: subject directory
 transform, model = register_surface(
     mov="fMRI.nii.gz",
     subject_dir="/data/subjects/sub-01",
     lta_name="fMRI_to_T1.lta",
     dof=6,
+)
+
+# Surface-based (BBR) registration — Mode B: explicit surface files
+transform, model = register_surface(
+    mov="T2.nii.gz",
+    lh_surf="/data/subjects/sub-01/surf/lh.white",
+    rh_surf="/data/subjects/sub-01/surf/rh.white",
+    lh_thickness="/data/subjects/sub-01/surf/lh.thickness",
+    rh_thickness="/data/subjects/sub-01/surf/rh.thickness",
+    ref="/data/subjects/sub-01/mri/orig.mgz",
+    lta_name="T2_to_T1.lta",
+    contrast="t2",
+)
+
+# Surface-based (BBR) registration — Mode C: segmentation (no surface files needed)
+transform, model = register_surface(
+    mov="fMRI.nii.gz",
+    seg="/data/subjects/sub-01/mri/aparc+aseg.mgz",
+    lta_name="fMRI_to_T1.lta",
 )
 ```
 
