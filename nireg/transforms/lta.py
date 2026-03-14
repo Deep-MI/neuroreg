@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import logging
 from pathlib import Path
+from typing import TypeAlias
 
 import nibabel as nib
 import numpy as np
@@ -11,9 +14,14 @@ logger = logging.getLogger(__name__)
 
 # ── internal helper ────────────────────────────────────────────────────────
 
-_AnyHeader = (
-    "str | Path | nib.nifti1.Nifti1Header | nib.freesurfer.mghformat.MGHHeader"
-    " | nib.nifti1.Nifti1Image | nib.MGHImage | dict"
+_AnyHeader: TypeAlias = (
+    str
+    | Path
+    | nib.nifti1.Nifti1Header
+    | nib.freesurfer.mghformat.MGHHeader
+    | nib.nifti1.Nifti1Image
+    | nib.MGHImage
+    | dict
 )
 
 
@@ -102,6 +110,12 @@ def write_lta(
     """
     import getpass
     from datetime import datetime
+
+    if lta_type not in (0, 1):
+        raise ValueError(
+            f"write_lta: lta_type must be 0 (LINEAR_VOX_TO_VOX) or "
+            f"1 (LINEAR_RAS_TO_RAS), got {lta_type!r}."
+        )
 
     src = _header_info(src_img)
     dst = _header_info(dst_img)

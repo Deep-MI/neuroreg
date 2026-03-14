@@ -17,6 +17,7 @@ from .transforms import (
     LINEAR_VOX_TO_VOX,
     convert_transform_type,
     get_ixform_centroids,
+    read_lta,
     write_lta,
 )
 

@@ -1,20 +1,22 @@
-"""
-Surface I/O utilities for loading FreeSurfer surface meshes.
-
-Handles loading surface geometry from FreeSurfer .surf files and associated
-data like thickness, curvature, etc. Correctly manages tkRAS coordinate system.
-"""
+from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import TypeAlias
 
-import nibabel as nib  # noqa: F401 – used in string type annotations
+import nibabel as nib
 import numpy as np
 import torch
 from nibabel.freesurfer import read_geometry, read_morph_data
 
 logger = logging.getLogger(__name__)
 
+_AnyVolRef: TypeAlias = (
+        nib.Nifti1Image
+        | nib.MGHImage
+        | nib.nifti1.Nifti1Header
+        | nib.freesurfer.mghformat.MGHHeader
+)
 
 def load_surface(
     surf_path: str,
@@ -185,12 +187,6 @@ def load_surface_from_subject(
         )
 
     return load_surface(str(surf_path), thickness_path, cortex_label_path, device)
-
-
-_AnyVolRef = (
-    "nib.Nifti1Image | nib.MGHImage"
-    " | nib.nifti1.Nifti1Header | nib.freesurfer.mghformat.MGHHeader"
-)
 
 
 def get_vox2ras_tkr(ref_volume: _AnyVolRef) -> np.ndarray:

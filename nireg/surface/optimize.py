@@ -187,6 +187,11 @@ class BBRModel(nn.Module):
             )
 
         if self.use_lh:
+            # Move all surface tensors to the target device before any computation.
+            lh_white_vertices = lh_white_vertices.to(device=device, dtype=torch.float32)
+            lh_faces          = lh_faces.to(device=device)
+            if lh_thickness is not None:
+                lh_thickness = lh_thickness.to(device=device, dtype=torch.float32)
             lh_normals = compute_vertex_normals(lh_white_vertices, lh_faces)
             lh_wm, lh_gm = create_wm_gm_surfaces(
                 lh_white_vertices, lh_faces, lh_normals, lh_thickness,
@@ -216,6 +221,11 @@ class BBRModel(nn.Module):
                          lh_white_vertices.shape[0], self.lh_wm_vertices.shape[0])
 
         if self.use_rh:
+            # Move all surface tensors to the target device before any computation.
+            rh_white_vertices = rh_white_vertices.to(device=device, dtype=torch.float32)
+            rh_faces          = rh_faces.to(device=device)
+            if rh_thickness is not None:
+                rh_thickness = rh_thickness.to(device=device, dtype=torch.float32)
             rh_normals = compute_vertex_normals(rh_white_vertices, rh_faces)
             rh_wm, rh_gm = create_wm_gm_surfaces(
                 rh_white_vertices, rh_faces, rh_normals, rh_thickness,
