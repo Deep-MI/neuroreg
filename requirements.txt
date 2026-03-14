@@ -1,4 +1,0 @@
-    nibabel>=5.1
-    numpy>=1.25
-    psutil
-    torch>=2.0.1
