@@ -40,14 +40,14 @@ jobs:
         run: nireg-sys_info --developer
       - name: Run pytest
         run: pytest --cov=nireg --cov-report=xml --cov-config=pyproject.toml
-      - name: Upload to codecov
-        if: ${{ matrix.os == 'ubuntu' && matrix.python-version == '3.11' }}
-        uses: codecov/codecov-action@v5
-        with:
-          files: ./coverage.xml
-          flags: unittests # optional
-          name: codecov-umbrella # optional
-          fail_ci_if_error: true # optional (default = false)
-          verbose: true # optional (default = false)
-          token: ${{ secrets.CODECOV_TOKEN }}
-          slug: deep-mi/nireg
+#      - name: Upload to codecov
+#        if: ${{ matrix.os == 'ubuntu' && matrix.python-version == '3.11' }}
+#        uses: codecov/codecov-action@v5
+#        with:
+#          files: ./coverage.xml
+#          flags: unittests # optional
+#          name: codecov-umbrella # optional
+#          fail_ci_if_error: true # optional (default = false)
+#          verbose: true # optional (default = false)
+#          token: ${{ secrets.CODECOV_TOKEN }}
+#          slug: deep-mi/nireg
