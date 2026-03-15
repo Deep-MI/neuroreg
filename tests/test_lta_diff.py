@@ -395,6 +395,20 @@ class TestLtaDiffCLI:
         main([rigid_lta, rigid_lta, "--dist", "2", "--vox"])
         assert float(capsys.readouterr().out.strip()) == pytest.approx(0.0, abs=1e-10)
 
+    def test_vox_identity_nonunit_voxelsize(self, tmp_path, capsys):
+        # Identity V2V with non-1-mm voxel sizes must still give distance 0.
+        geom_2mm = {
+            "dims": [128, 128, 128],
+            "delta": [2.0, 2.0, 2.0],
+            "Mdc": np.eye(3),
+            "Pxyz_c": np.zeros(3),
+        }
+        lta_path = str(tmp_path / "identity_2mm.lta")
+        write_lta(lta_path, _IDENTITY, "src.mgz", geom_2mm, "dst.mgz", geom_2mm,
+                  lta_type=0)  # store as V2V to exercise that branch too
+        main([lta_path, "--dist", "2", "--vox"])
+        assert float(capsys.readouterr().out.strip()) == pytest.approx(0.0, abs=1e-10)
+
     # ── error handling ────────────────────────────────────────────────────────
 
     def test_missing_lta_file_exits(self, tmp_path):

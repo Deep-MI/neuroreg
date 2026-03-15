@@ -53,24 +53,37 @@ def _to_ras(lta: dict) -> np.ndarray:
     )
 
 
+def _to_v2v(lta: dict) -> np.ndarray:
+    """Return the raw vox-to-vox matrix for an LTA dict."""
+    if lta['type'] == LINEAR_VOX_TO_VOX:
+        return lta['matrix'].copy()
+    src_aff = _affine_from_info(lta['src'])
+    dst_aff = _affine_from_info(lta['dst'])
+    return convert_transform_type(
+        lta['matrix'], src_aff, dst_aff,
+        from_type=LINEAR_RAS_TO_RAS, to_type=LINEAR_VOX_TO_VOX,
+    )
+
+
 def _to_iso_vox(lta: dict) -> np.ndarray:
     """Return the vox-to-vox matrix scaled to isotropic mm units (getIsoVOX).
 
-    Equivalent to ``diag(dst_vs) @ V2V @ diag(src_vs)``, which is the
-    matrix used by FreeSurfer's ``lta_diff --vox``.
+    Maps from *src* mm-vox space to *dst* mm-vox space::
+
+        iso_vox = diag(dst_vs) @ V2V @ inv(diag(src_vs))
+
+    ``V2V`` maps src voxel indices → dst voxel indices.  Right-multiplying by
+    ``inv(diag(src_vs))`` converts the incoming mm-vox coordinates back to raw
+    src voxel indices before applying ``V2V``; left-multiplying by
+    ``diag(dst_vs)`` then converts the resulting dst voxel indices to mm-vox.
+
+    An identity ``V2V`` with matching src/dst voxel sizes therefore yields the
+    identity matrix, as expected.
     """
-    src_aff = _affine_from_info(lta['src'])
-    dst_aff = _affine_from_info(lta['dst'])
-    if lta['type'] == LINEAR_RAS_TO_RAS:
-        v2v = convert_transform_type(
-            lta['matrix'], src_aff, dst_aff,
-            from_type=LINEAR_RAS_TO_RAS, to_type=LINEAR_VOX_TO_VOX,
-        )
-    else:
-        v2v = lta['matrix'].copy()
+    v2v    = _to_v2v(lta)
     src_vs = np.diag([*lta['src']['voxelsize'], 1.0])
     dst_vs = np.diag([*lta['dst']['voxelsize'], 1.0])
-    return dst_vs @ v2v @ src_vs
+    return dst_vs @ v2v @ np.linalg.inv(src_vs)
 
 
 def _invert(lta: dict) -> dict:
@@ -151,6 +164,23 @@ def _build_parser() -> argparse.ArgumentParser:
 # ── dist implementations ─────────────────────────────────────────────────────
 
 def _run_dist(ns: argparse.Namespace, lta1: dict, lta2: dict | None) -> None:
+    # dist 3 works directly with RAS or raw V2V matrices — handle it before
+    # _diff_matrix() so the iso-vox conversion is never triggered unnecessarily
+    # (which would fail for LTAs whose volume-info lacks direction-cosine fields).
+    if ns.dist == 3:
+        src_shape = tuple(lta1['src']['volume'])
+        if ns.vox:
+            M1 = _to_v2v(lta1)
+            M2 = _to_v2v(lta2) if lta2 is not None else None
+            result = corner_diff(M1, src_shape, M2=M2, src_affine=None)
+        else:
+            M1 = _to_ras(lta1)
+            M2 = _to_ras(lta2) if lta2 is not None else None
+            result = corner_diff(M1, src_shape, M2=M2,
+                                 src_affine=_affine_from_info(lta1['src']))
+        print(f'{result / ns.normdiv}')
+        return
+
     M1, M2 = _diff_matrix(lta1, lta2, ns.vox)
 
     if ns.dist == 1:
@@ -159,37 +189,6 @@ def _run_dist(ns: argparse.Namespace, lta1: dict, lta2: dict | None) -> None:
 
     elif ns.dist == 2:
         result = affine_dist(M1, M2, radius=ns.radius)
-        print(f'{result / ns.normdiv}')
-
-    elif ns.dist == 3:
-        src_info  = lta1['src']
-        src_shape = tuple(src_info['volume'])
-        src_affine = None if ns.vox else _affine_from_info(src_info)
-        if ns.vox:
-            # pass the raw V2V (not iso-vox) since corner_diff works in voxels
-            src_aff = _affine_from_info(src_info)
-            dst_aff = _affine_from_info(lta1['dst'])
-            if lta1['type'] == LINEAR_RAS_TO_RAS:
-                v2v1 = convert_transform_type(
-                    lta1['matrix'], src_aff, dst_aff,
-                    from_type=LINEAR_RAS_TO_RAS, to_type=LINEAR_VOX_TO_VOX,
-                )
-            else:
-                v2v1 = lta1['matrix'].copy()
-            v2v2 = None
-            if lta2 is not None:
-                src_aff2 = _affine_from_info(lta2['src'])
-                dst_aff2 = _affine_from_info(lta2['dst'])
-                if lta2['type'] == LINEAR_RAS_TO_RAS:
-                    v2v2 = convert_transform_type(
-                        lta2['matrix'], src_aff2, dst_aff2,
-                        from_type=LINEAR_RAS_TO_RAS, to_type=LINEAR_VOX_TO_VOX,
-                    )
-                else:
-                    v2v2 = lta2['matrix'].copy()
-            result = corner_diff(v2v1, src_shape, M2=v2v2, src_affine=None)
-        else:
-            result = corner_diff(M1, src_shape, M2=M2, src_affine=src_affine)
         print(f'{result / ns.normdiv}')
 
     elif ns.dist == 4:
@@ -206,19 +205,19 @@ def _run_dist(ns: argparse.Namespace, lta1: dict, lta2: dict | None) -> None:
     elif ns.dist == 7:
         M = M1 if M2 is None else M1 @ M2
         d = decompose_transform(M)
-        np.set_printoptions(precision=10, suppress=False)
-        print('\nDecompose into Rot · Shear · diag(Scales) + Trans:\n')
-        print('Rot =')
-        print(d['rotation'])
-        print(f'\nRotVec   = {d["rot_vec"]}  (rad)')
-        print(f'RotAngle = {np.radians(d["rot_angle_deg"]):.6f} rad  '
-              f'= {d["rot_angle_deg"]:.6f} deg')
-        print('\nShear =')
-        print(d['shear'])
-        print(f'\nScales   = {d["scales"]}')
-        print(f'\nTrans    = {d["translation"]}')
-        print(f'AbsTrans = {d["abs_trans"]:.6f} mm')
-        print(f'\nDeterminant = {d["determinant"]:.6f}')
+        with np.printoptions(precision=10, suppress=False):
+            print('\nDecompose into Rot · Shear · diag(Scales) + Trans:\n')
+            print('Rot =')
+            print(d['rotation'])
+            print(f'\nRotVec   = {d["rot_vec"]}  (rad)')
+            print(f'RotAngle = {np.radians(d["rot_angle_deg"]):.6f} rad  '
+                  f'= {d["rot_angle_deg"]:.6f} deg')
+            print('\nShear =')
+            print(d['shear'])
+            print(f'\nScales   = {d["scales"]}')
+            print(f'\nTrans    = {d["translation"]}')
+            print(f'AbsTrans = {d["abs_trans"]:.6f} mm')
+            print(f'\nDeterminant = {d["determinant"]:.6f}')
 
 
 # ── entry point ───────────────────────────────────────────────────────────────
