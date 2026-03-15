@@ -151,6 +151,64 @@ bbreg --mov fMRI.nii.gz --seg /data/subjects/sub-01/mri/aparc+aseg.mgz \
 
 Run `bbreg -h` for a full argument summary with defaults.
 
+---
+
+### `lta-diff` — LTA transform comparison
+
+Computes distance metrics between two LTA transforms, or between a single
+transform and identity.  Replicates the functionality of FreeSurfer's
+`lta_diff` utility.
+
+```
+lta-diff LTA1 [LTA2] [--dist {1,2,3,4,5,7}] [--radius MM] [--normdiv FLOAT]
+              [--invert1] [--invert2] [--vox]
+```
+
+**Distance types**
+
+| `--dist` | Metric |
+|----------|--------|
+| `1` | Rigid transform distance: √(‖log R_d‖² + ‖T_d‖²) |
+| `2` | Affine RMS distance (Jenkinson 1999) — **default** |
+| `3` | Mean displacement at the 8 corners of the source volume (mm or vox with `--vox`) |
+| `4` | Max displacement on a sphere of radius `r` |
+| `5` | Determinant of M1 (or M1·M2 when two transforms are given) |
+| `7` | Polar decomposition: rotation, shear, scales, translation, determinant |
+
+**Options**
+
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `--dist {1,2,3,4,5,7}` | `2` | Distance type (see table above). |
+| `--radius MM` | `100` | Sphere / RMS radius in mm (used by dist 2 and 4). |
+| `--normdiv FLOAT` | `1` | Divide the final distance by this value. |
+| `--invert1` | off | Invert LTA1 before comparison. |
+| `--invert2` | off | Invert LTA2 before comparison (requires a second LTA). |
+| `--vox` | off | Work in voxel coordinates scaled to mm (iso-vox, matching FreeSurfer `--vox`). For dist 3, distances are reported in voxels. |
+
+**Examples**
+
+```bash
+# Affine RMS distance between two registrations (default metric)
+lta-diff myreg.lta ref.lta
+
+# Rigid distance
+lta-diff myreg.lta ref.lta --dist 1
+
+# Corner displacement, voxel units
+lta-diff myreg.lta ref.lta --dist 3 --vox
+
+# Polar decomposition of a single transform
+lta-diff myreg.lta --dist 7
+```
+
+**Notes**
+
+- All metrics are numerically matched to FreeSurfer's `lta_diff` (except for a
+  known bug in the C++ single-transform corner metric, which is fixed here).
+- When only one LTA is supplied, the transform is compared against identity.
+- Run `lta-diff -h` for a full argument summary.
+
 ## Python API
 
 ```python

@@ -90,6 +90,7 @@ tracker = 'https://github.com/Deep-MI/nireg/issues'
 [project.scripts]
 robreg          = "nireg.cmdline.robreg:main"
 bbreg           = "nireg.cmdline.bbreg:main"
+lta-diff        = "nireg.cmdline.lta_diff:main"
 nireg-sys_info  = "nireg.cmdline.sys_info:run"
 
 [tool.setuptools]
@@ -138,6 +139,7 @@ skip = './.git,./build,./.mypy_cache,./.pytest_cache,*/data/*,./nireg-data'
 [tool.pytest.ini_options]
 minversion = '6.0'
 addopts = '--durations 20 --junit-xml=junit-results.xml --verbose'
+testpaths = ['tests']
 filterwarnings = []
 
 [tool.coverage.run]

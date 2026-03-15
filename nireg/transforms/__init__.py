@@ -1,7 +1,15 @@
 """Transform utilities: matrices, LTA file I/O, initialisation."""
 
 from .initialize import get_ixform_centroids, get_vox2vox_from_header
-from .lta import read_lta, write_lta
+from .lta import (
+    affine_dist,
+    corner_diff,
+    decompose_transform,
+    read_lta,
+    rigid_dist,
+    sphere_diff,
+    write_lta,
+)
 from .matrices import (
     LINEAR_RAS_TO_RAS,
     LINEAR_VOX_TO_VOX,
@@ -22,7 +30,12 @@ __all__ = [
     "get_ixform_centroids",
     "get_vox2vox_from_header",
     # lta
+    "affine_dist",
+    "corner_diff",
+    "decompose_transform",
     "read_lta",
+    "rigid_dist",
+    "sphere_diff",
     "write_lta",
     # matrices
     "LINEAR_RAS_TO_RAS",

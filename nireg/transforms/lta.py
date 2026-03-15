@@ -304,3 +304,287 @@ def read_lta(filename: str, lta_type: int | None = None) -> dict:
 
     return result
 
+
+# ── transform comparison metrics ────────────────────────────────────────────
+
+def _rot_log_norm(R: np.ndarray) -> float:
+    """Frobenius norm of the matrix logarithm of a 3×3 rotation matrix.
+
+    Equal to ``sqrt(2) * theta`` where *theta* is the rotation angle in
+    radians.  Equivalent to the geodesic distance on SO(3).
+
+    This is the helper used by :func:`rigid_dist`.
+    """
+    # tr R = 1 + 2 cos(theta)  →  cos(theta) = (tr - 1) / 2
+    cos_theta = np.clip(0.5 * (np.trace(R[:3, :3]) - 1.0), -1.0, 1.0)
+    theta = np.arccos(cos_theta)
+    return float(np.sqrt(2.0) * theta)
+
+
+def rigid_dist(
+        M1: npt.ArrayLike,
+        M2: npt.ArrayLike | None = None,
+) -> float:
+    """Rigid-transform distance between *M1* and *M2* (or *M1* vs identity).
+
+    .. math::
+
+        D = \\sqrt{\\|T_d\\|^2 + \\|\\log R_d\\|_F^2}
+
+    where :math:`d = M_1^{-1} M_2` when *M2* is given, else :math:`d = M_1`.
+    :math:`T_d` is the translation part and :math:`\\|\\log R_d\\|_F` is the
+    Frobenius norm of the rotation-matrix logarithm (``sqrt(2)`` × rotation
+    angle in radians).
+
+    Corresponds to **dist type 1** in FreeSurfer's ``lta_diff``.
+
+    Parameters
+    ----------
+    M1 : array-like, shape (4, 4)
+        First (or only) rigid transform.
+    M2 : array-like, shape (4, 4), optional
+        Second rigid transform.  When ``None``, the distance to the
+        identity is returned.
+
+    Returns
+    -------
+    float
+        Rigid-transform distance in mixed units (mm for translation,
+        radians for rotation, added in quadrature).
+    """
+    M1a = np.asarray(M1, dtype=float)
+    d = M1a if M2 is None else (np.linalg.inv(M1a) @ np.asarray(M2, dtype=float))
+    tdq = float(np.dot(d[:3, 3], d[:3, 3]))
+    rd = _rot_log_norm(d[:3, :3])
+    return float(np.sqrt(rd * rd + tdq))
+
+
+def affine_dist(
+        M1: npt.ArrayLike,
+        M2: npt.ArrayLike | None = None,
+        radius: float = 100.0,
+) -> float:
+    """RMS affine-transform distance (Jenkinson 1999).
+
+    .. math::
+
+        D = \\sqrt{\\frac{r^2}{5} \\operatorname{Tr}(A^\\top A) + \\|T_d\\|^2}
+
+    where :math:`d = M_1 - M_2` (or :math:`M_1 - I` when *M2* is ``None``),
+    *A* is the upper-left 3×3 linear part of *d*, and :math:`T_d` is the
+    translation column.  *r* is the assumed brain radius in mm.
+
+    Reference: Jenkinson (1999), *A method for motion correction of
+    fMRI time-series*, FMRIB Technical Report TR99MJ1.
+
+    Corresponds to **dist type 2** in FreeSurfer's ``lta_diff``.
+
+    Parameters
+    ----------
+    M1 : array-like, shape (4, 4)
+    M2 : array-like, shape (4, 4), optional
+        When ``None``, the distance to identity is returned.
+    radius : float
+        Radius of the brain sphere in mm (default 100).
+
+    Returns
+    -------
+    float
+        RMS displacement in mm.
+    """
+    M1a = np.asarray(M1, dtype=float)
+    d = M1a - (np.eye(4) if M2 is None else np.asarray(M2, dtype=float))
+    tdq = float(np.dot(d[:3, 3], d[:3, 3]))
+    A = d[:3, :3]
+    tr = float(np.trace(A.T @ A))
+    return float(np.sqrt((radius ** 2 / 5.0) * tr + tdq))
+
+
+def corner_diff(
+        M: npt.ArrayLike,
+        src_shape: tuple[int, int, int],
+        M2: npt.ArrayLike | None = None,
+        src_affine: npt.ArrayLike | None = None,
+) -> float:
+    """Mean displacement at the 8 corners of a volume.
+
+    Each of the 8 corners of the source volume is mapped through *M* (and
+    *M2* when given), and the mean Euclidean distance between the two mapped
+    positions is returned.  When *M2* is ``None``, the distance from each
+    mapped corner to its original position is used (i.e. displacement from
+    identity).
+
+    Corresponds to **dist type 3** in FreeSurfer's ``lta_diff``.
+
+    Parameters
+    ----------
+    M : array-like, shape (4, 4)
+        First (or only) transform matrix.
+    src_shape : tuple of int (i_size, j_size, k_size)
+        Voxel dimensions of the source volume, used to place the corners.
+    M2 : array-like, shape (4, 4), optional
+        Second transform.  When ``None``, displacement from identity is
+        measured.
+    src_affine : array-like, shape (4, 4), optional
+        Voxel-to-RAS affine of the source image.  When given, corner voxel
+        coordinates are first converted to RAS (mm) space before applying
+        *M* / *M2*; the returned distance is in mm.  When ``None``, corners
+        remain in voxel units and *M* is expected to be a vox-to-vox matrix.
+
+    Returns
+    -------
+    float
+        Mean displacement across the 8 corners (mm when *src_affine* is
+        provided, voxels otherwise).
+    """
+    Si, Sj, Sk = src_shape
+    # Build homogeneous voxel coordinates for all 8 corners
+    corners_vox = np.array(
+        [[i * (Si - 1), j * (Sj - 1), k * (Sk - 1), 1.0]
+         for i in (0, 1) for j in (0, 1) for k in (0, 1)],
+        dtype=float,
+    )  # (8, 4)
+
+    if src_affine is not None:
+        # map vox → RAS; M is then a RAS-to-RAS matrix
+        corners = (np.asarray(src_affine, dtype=float) @ corners_vox.T).T
+    else:
+        corners = corners_vox  # M is a vox-to-vox matrix
+
+    p1 = (np.asarray(M, dtype=float) @ corners.T).T
+    p2 = corners if M2 is None else (np.asarray(M2, dtype=float) @ corners.T).T
+    return float(np.mean(np.linalg.norm(p1[:, :3] - p2[:, :3], axis=1)))
+
+
+def sphere_diff(
+        M1: npt.ArrayLike,
+        M2: npt.ArrayLike | None = None,
+        radius: float = 100.0,
+) -> float:
+    """Maximum displacement on a sphere of given radius.
+
+    Samples roughly 1 600 points uniformly on a sphere of *radius* mm
+    centred at the coordinate origin and returns the maximum displacement
+    caused by the transform difference.
+
+    .. math::
+
+        M_d = M_1^{-1} M_2 \\quad (\\text{or } M_1 \\text{ when } M_2 = \\text{None})
+
+        \\text{displacement}(p) = \\|M_d \\, p - p\\|
+
+    Corresponds to **dist type 4** in FreeSurfer's ``lta_diff``.
+
+    Parameters
+    ----------
+    M1 : array-like, shape (4, 4)
+    M2 : array-like, shape (4, 4), optional
+        When ``None``, the maximum displacement of *M1* from identity is
+        returned.
+    radius : float
+        Sphere radius in mm (default 100, roughly the head radius).
+
+    Returns
+    -------
+    float
+        Maximum displacement in mm.
+    """
+    M1a = np.asarray(M1, dtype=float)
+    Md = M1a if M2 is None else (np.linalg.inv(M1a) @ np.asarray(M2, dtype=float))
+
+    # Replicate the C++ sampling loop from MyMatrix::sphereDiff / lta_diff.cpp
+    pts: list[list[float]] = [[0.0, 0.0, radius], [0.0, 0.0, -radius]]
+    n = 10  # latitude bands (same default as C++)
+    for i in range(-n + 1, n):
+        angle1 = (i * np.pi * 0.5) / n
+        r1 = np.cos(angle1)
+        h = np.sin(angle1)
+        n_long = int(4.0 * n * r1)
+        for j in range(n_long):
+            angle2 = (2.0 * np.pi * j) / n_long
+            pts.append([radius * r1 * np.cos(angle2),
+                        radius * r1 * np.sin(angle2),
+                        radius * h])
+
+    pts_arr = np.array(pts, dtype=float)                      # (N, 3)
+    hom = np.hstack([pts_arr, np.ones((len(pts_arr), 1))])    # (N, 4)
+    mapped = (Md @ hom.T).T                                   # (N, 4)
+    displacements = np.linalg.norm(mapped[:, :3] - pts_arr, axis=1)
+    return float(np.max(displacements))
+
+
+def decompose_transform(M: npt.ArrayLike) -> dict:
+    """Polar decomposition of a 4×4 affine matrix.
+
+    Decomposes the upper-left 3×3 linear part as
+
+    .. math::
+
+        A = R \\cdot S \\cdot \\operatorname{diag}(\\text{scales})
+
+    where *R* is a proper rotation matrix, *S* is a shear matrix (ones on
+    diagonal), and *diag(scales)* captures anisotropic scaling.
+
+    Corresponds to **dist type 7** in FreeSurfer's ``lta_diff`` (decompose).
+
+    Parameters
+    ----------
+    M : array-like, shape (4, 4)
+        Affine matrix to decompose.  Pre-compose transforms before calling
+        if a relative decomposition is needed (e.g. ``decompose_transform(M1 @ M2)``).
+
+    Returns
+    -------
+    dict
+        ``rotation`` : ndarray (3, 3)
+            Rotation matrix (det = +1).
+        ``rot_vec`` : ndarray (3,)
+            Rotation vector (axis × angle, in radians).
+        ``rot_angle_deg`` : float
+            Rotation angle in degrees.
+        ``shear`` : ndarray (3, 3)
+            Shear matrix (unit diagonal).
+        ``scales`` : ndarray (3,)
+            Per-axis scale factors.
+        ``translation`` : ndarray (3,)
+            Translation vector (mm).
+        ``abs_trans`` : float
+            Euclidean norm of the translation vector (mm).
+        ``determinant`` : float
+            Determinant of the full 4×4 matrix.
+    """
+    from scipy.linalg import polar
+    from scipy.spatial.transform import Rotation
+
+    M_arr = np.asarray(M, dtype=float)
+    A = M_arr[:3, :3]
+    t = M_arr[:3, 3].copy()
+
+    # Polar decomposition: A = R @ P  (R orthogonal, P positive semi-definite)
+    R, P = polar(A, side='right')
+
+    # Ensure proper rotation (det = +1)
+    if np.linalg.det(R) < 0:
+        R, P = -R, -P
+
+    # Decompose P further: P = S @ diag(scales)
+    # scales = diagonal entries of P; S = P with each column divided by scales[col]
+    scales = np.diag(P).copy()
+    S = P / np.where(scales != 0, scales, 1.0)[np.newaxis, :]
+
+    # Rotation vector and angle via scipy (handles edge cases at theta=0 and pi)
+    rot_obj = Rotation.from_matrix(R)
+    rot_vec = rot_obj.as_rotvec()              # axis × angle (radians)
+    rot_angle_deg = float(np.degrees(np.linalg.norm(rot_vec)))
+
+    return {
+        'rotation':       R,
+        'rot_vec':        rot_vec,
+        'rot_angle_deg':  rot_angle_deg,
+        'shear':          S,
+        'scales':         scales,
+        'translation':    t,
+        'abs_trans':      float(np.linalg.norm(t)),
+        'determinant':    float(np.linalg.det(M_arr)),
+    }
+
