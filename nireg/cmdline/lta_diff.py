@@ -10,7 +10,6 @@ import numpy as np
 
 from nireg.transforms import LTA, decompose_transform
 
-
 # ── parser ───────────────────────────────────────────────────────────────────
 
 def _build_parser() -> argparse.ArgumentParser:

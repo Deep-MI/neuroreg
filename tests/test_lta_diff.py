@@ -35,8 +35,10 @@ def _rotation_z(deg: float) -> np.ndarray:
     """Return a 4×4 rotation matrix (z-axis, degrees)."""
     r = np.radians(deg)
     M = np.eye(4)
-    M[0, 0] = np.cos(r);  M[0, 1] = -np.sin(r)
-    M[1, 0] = np.sin(r);  M[1, 1] =  np.cos(r)
+    M[0, 0] = np.cos(r)
+    M[0, 1] = -np.sin(r)
+    M[1, 0] = np.sin(r)
+    M[1, 1] =  np.cos(r)
     return M
 
 

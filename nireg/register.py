@@ -15,9 +15,9 @@ from .surface.optimize import BBRModel
 from .transforms import (
     LINEAR_RAS_TO_RAS,
     LINEAR_VOX_TO_VOX,
+    LTA,
     convert_transform_type,
     get_ixform_centroids,
-    LTA,
 )
 
 logger = logging.getLogger(__name__)

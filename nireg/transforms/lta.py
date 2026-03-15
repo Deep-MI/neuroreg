@@ -429,7 +429,7 @@ class LTA:
     # ── construction ────────────────────────────────────────────────────────
 
     @classmethod
-    def read(cls, filename: str | Path, lta_type: int | None = None) -> 'LTA':
+    def read(cls, filename: str | Path, lta_type: int | None = None) -> LTA:
         """Read a FreeSurfer ``.lta`` file.
 
         Parameters
@@ -515,7 +515,7 @@ class LTA:
         dst_fname: str,
         dst_img: _AnyHeader,
         lta_type: int = 1,
-    ) -> 'LTA':
+    ) -> LTA:
         """Create an LTA from a matrix and image geometry.
 
         Parameters
@@ -632,7 +632,7 @@ class LTA:
 
     # ── operations ──────────────────────────────────────────────────────────
 
-    def invert(self) -> 'LTA':
+    def invert(self) -> LTA:
         """Return an inverted copy with src/dst swapped, stored as R2R."""
         return LTA(np.linalg.inv(self.r2r()), 1, self.dst, self.src)
 
@@ -652,14 +652,14 @@ class LTA:
 
     # ── distance methods ────────────────────────────────────────────────────
 
-    def rigid_dist(self, other: 'LTA | None' = None) -> float:
+    def rigid_dist(self, other: LTA | None = None) -> float:
         """Rigid-transform distance to *other* (or identity).
 
         Delegates to :func:`rigid_dist`.
         """
         return rigid_dist(self.r2r(), other.r2r() if other is not None else None)
 
-    def affine_dist(self, other: 'LTA | None' = None, radius: float = 100.) -> float:
+    def affine_dist(self, other: LTA | None = None, radius: float = 100.) -> float:
         """Affine RMS distance to *other* (Jenkinson 1999).
 
         Delegates to :func:`affine_dist`.
@@ -667,7 +667,7 @@ class LTA:
         return affine_dist(self.r2r(), other.r2r() if other is not None else None,
                            radius=radius)
 
-    def corner_dist(self, other: 'LTA | None' = None, vox: bool = False) -> float:
+    def corner_dist(self, other: LTA | None = None, vox: bool = False) -> float:
         """Mean displacement at the 8 volume corners.
 
         Parameters
@@ -687,7 +687,7 @@ class LTA:
         return corner_dist(self.r2r(), src_shape, M2=M2,
                            src_affine=_affine_from_info(self.src))
 
-    def sphere_dist(self, other: 'LTA | None' = None, radius: float = 100.) -> float:
+    def sphere_dist(self, other: LTA | None = None, radius: float = 100.) -> float:
         """Max displacement on a sphere of given radius.
 
         Delegates to :func:`sphere_dist`.
