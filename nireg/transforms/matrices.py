@@ -1,4 +1,7 @@
+"""Affine / rigid transformation matrix utilities."""
 
+import numpy as np
+import numpy.typing as npt
 import torch
 from torch import Tensor
 
@@ -150,16 +153,17 @@ def matrix_decompose(matrix: Tensor) -> tuple[Tensor, Tensor, Tensor, Tensor]:
 
 
 def get_translation(translation: torch.Tensor) -> torch.Tensor:
-    """
-    Generate a 4x4 translation matrix (homogeneous coordinates).
+    """Generate a 4 × 4 translation matrix (homogeneous coordinates).
 
     Parameters
-    ==========
-        translation (torch.Tensor): 3D translation vector of shape (3,).
+    ----------
+    translation : torch.Tensor, shape (3,)
+        3-D translation vector.
 
     Returns
-    =======
-        torch.Tensor: A 4x4 translation matrix.
+    -------
+    torch.Tensor, shape (4, 4)
+        Translation matrix.
     """
     trans = torch.eye(4, device=translation.device, dtype=translation.dtype)
     trans[:3, 3] = translation[:3]
@@ -167,16 +171,17 @@ def get_translation(translation: torch.Tensor) -> torch.Tensor:
 
 
 def get_rotation_rodrigues(rotvec: torch.Tensor) -> torch.Tensor:
-    """
-    Generate a 4x4 rotation matrix using a Rodrigues vector.
+    """Generate a 4 × 4 rotation matrix from a Rodrigues vector.
 
     Parameters
-    ==========
-        rotvec (torch.Tensor): 3D rotation vector of shape (3,).
+    ----------
+    rotvec : torch.Tensor, shape (3,)
+        Rotation vector whose magnitude is the rotation angle (radians).
 
     Returns
-    =======
-        torch.Tensor: A 4x4 rotation matrix.
+    -------
+    torch.Tensor, shape (4, 4)
+        Rotation matrix.
     """
     angle = torch.norm(rotvec)
     zero = torch.zeros(1, dtype=rotvec.dtype, device=rotvec.device).squeeze()
@@ -197,16 +202,17 @@ def get_rotation_rodrigues(rotvec: torch.Tensor) -> torch.Tensor:
 
 
 def get_rotation_euler(angles: torch.Tensor) -> torch.Tensor:
-    """
-    Generate a 4x4 rotation matrix using Euler angles X,Y,Z.
+    """Generate a 4 × 4 rotation matrix from Euler angles (X → Y → Z).
 
     Parameters
-    ==========
-        angles (torch.Tensor): Euler angles X,Y,Z vector of shape (3,).
+    ----------
+    angles : torch.Tensor, shape (3,)
+        Euler angles [rx, ry, rz] in radians.
 
     Returns
-    =======
-        torch.Tensor: A 4x4 rotation matrix.
+    -------
+    torch.Tensor, shape (4, 4)
+        Rotation matrix.
     """
     cos = torch.cos(angles)
     sin = torch.sin(angles)
@@ -225,32 +231,40 @@ def get_rotation_euler(angles: torch.Tensor) -> torch.Tensor:
 
 
 def get_scaling(scales: torch.Tensor) -> torch.Tensor:
-    """
-    Generate a 4x4 scaling matrix.
+    """Generate a 4 × 4 diagonal scaling matrix.
 
-    Parameters:
-        scales (torch.Tensor): 3D scaling factors of shape (3,).
+    Parameters
+    ----------
+    scales : torch.Tensor, shape (3,)
+        Scaling factors along x, y, z.
 
-    Returns:
-        torch.Tensor: A 4x4 scaling matrix.
+    Returns
+    -------
+    torch.Tensor, shape (4, 4)
+        Scaling matrix.
     """
-    S = torch.diag(torch.cat((scales, torch.tensor([1.0], device=scales.device))))
+    S = torch.diag(torch.cat((scales, scales.new_tensor([1.0]))))
     return S
 
 
 def get_affine(translation: torch.Tensor,
                rotvec: torch.Tensor | None = None,
                scales: torch.Tensor | None = None) -> torch.Tensor:
-    """
-    Generate a 4x4 affine transformation matrix from translation, rotation, and scaling.
+    """Generate a 4 × 4 affine matrix from translation, rotation, and scale.
 
-    Parameters:
-        translation (torch.Tensor): Translation vector of shape (3,).
-        rotvec (Optional[torch.Tensor]): Euler X,Y,Z angles of shape (3,).
-        scales (Optional[torch.Tensor]): Scaling factors of shape (3,).
+    Parameters
+    ----------
+    translation : torch.Tensor, shape (3,)
+        Translation vector.
+    rotvec : torch.Tensor, shape (3,), optional
+        Euler angles [rx, ry, rz] in radians.
+    scales : torch.Tensor, shape (3,), optional
+        Per-axis scaling factors.
 
-    Returns:
-        torch.Tensor: A 4x4 affine transformation matrix.
+    Returns
+    -------
+    torch.Tensor, shape (4, 4)
+        Affine transformation matrix.
     """
     matrix = get_translation(translation)
     if rotvec is not None:
@@ -260,24 +274,31 @@ def get_affine(translation: torch.Tensor,
     return matrix
 
 
-def convert_v2v_to_torch(v2v: torch.Tensor, source_shape, target_shape=None) -> torch.tensor:
-    """
-    Convert a vox2vox affine transformation matrix to a torch transformation matrix.
+def convert_v2v_to_torch(v2v: torch.Tensor, source_shape, target_shape=None) -> torch.Tensor:
+    """Convert a vox-to-vox affine matrix to PyTorch grid-sample format.
 
-    This function accounts for scaling and translation based on the 3D shapes of the source and
-    target volumes.
+    Accounts for the coordinate-system differences between voxel space and
+    PyTorch's normalised ``[-1, 1]`` grid space.
 
     Parameters
-    ==========
-        v2v (torch.Tensor): vox2vox transformation matrix (4x4) from source to target space.
-        source_shape (tuple[int]): Shape of the source image (Depth, Height, Width).
-        target_shape (Optional[tuple[int]]): Shape of the target image (Depth, Height, Width).
-            If not provided, it defaults to `source_shape`.
+    ----------
+    v2v : torch.Tensor, shape (4, 4)
+        Vox-to-vox transformation matrix (source → target voxels).
+    source_shape : tuple[int, int, int]
+        Shape of the source image (D, H, W).
+    target_shape : tuple[int, int, int], optional
+        Shape of the target image (D, H, W).  Defaults to *source_shape*.
 
     Returns
-    =======
-        torch.Tensor: A PyTorch-compatible affine transformation matrix (3x4) suitable for
-            grid-sampling operations.
+    -------
+    torch.Tensor, shape (3, 4)
+        PyTorch-compatible affine matrix for use with
+        :func:`torch.nn.functional.affine_grid`.
+
+    Raises
+    ------
+    ValueError
+        If *v2v* is not shape (4, 4).
     """
     if target_shape is None:
         target_shape = source_shape
@@ -291,11 +312,11 @@ def convert_v2v_to_torch(v2v: torch.Tensor, source_shape, target_shape=None) -> 
     scale_factor_source = torch.tensor(list(reversed(source_shape)), dtype=v2v.dtype, device=device) / 2.0
     scale_factor_target = torch.tensor(list(reversed(target_shape)), dtype=v2v.dtype, device=device) / 2.0
     # Rescale from relative coordinates (-1, 1) --> image coordinates and move center
-    scale_factor_target = torch.cat((scale_factor_target, torch.tensor([1.0], device=device)))
+    scale_factor_target = torch.cat((scale_factor_target, scale_factor_target.new_tensor([1.0])))
     source2relative = torch.diag(scale_factor_target)
     source2relative[:-1, -1] += scale_factor_target[:-1] - 0.5
     # Rescale to relative coordinates and move center to align with PyTorch's grid-space
-    scale_factor_source = torch.cat((scale_factor_source, torch.tensor([1.0], device=device)))
+    scale_factor_source = torch.cat((scale_factor_source, scale_factor_source.new_tensor([1.0])))
     relative2target = torch.diag(1.0 / scale_factor_source)
     relative2target[:-1, -1] += -1 + 0.5 / scale_factor_source[:-1]
     # Combine transformations to get the final affine transformation
@@ -310,17 +331,27 @@ def convert_v2v_to_torch(v2v: torch.Tensor, source_shape, target_shape=None) -> 
     return torch_transform[:3,:4]
 
 
-def convert_torch_to_v2v(torch_transform: torch.Tensor, source_shape, target_shape=None) -> torch.tensor:
-    """
-    Convert a torch transformation matrix (3x4) to a vox2vox transformation matrix (4x4).
-    Parameters:
-        torch_transform (torch.Tensor): A 3x4 transformation matrix (torch format).
-        source_shape (tuple/list): Shape of the source image (D, H, W).
-        target_shape (tuple/list, optional): Shape of the target image (D, H, W).
-            If not provided, it defaults to source_shape.
+def convert_torch_to_v2v(torch_transform: torch.Tensor, source_shape, target_shape=None) -> torch.Tensor:
+    """Convert a PyTorch grid-sample affine matrix back to vox-to-vox format.
 
-    Returns:
-        torch.Tensor: A 4x4 vox2vox transformation matrix.
+    Parameters
+    ----------
+    torch_transform : torch.Tensor, shape (4, 4)
+        PyTorch-format affine matrix (must be passed as 4 × 4).
+    source_shape : tuple[int, int, int]
+        Shape of the source image (D, H, W).
+    target_shape : tuple[int, int, int], optional
+        Shape of the target image (D, H, W).  Defaults to *source_shape*.
+
+    Returns
+    -------
+    torch.Tensor, shape (4, 4)
+        Vox-to-vox transformation matrix.
+
+    Raises
+    ------
+    ValueError
+        If *torch_transform* is not shape (4, 4).
     """
     if target_shape is None:
         target_shape = source_shape
@@ -331,8 +362,8 @@ def convert_torch_to_v2v(torch_transform: torch.Tensor, source_shape, target_sha
     scale_factor_source = torch.as_tensor(list(reversed(source_shape))) / 2.0
     scale_factor_target = torch.as_tensor(list(reversed(target_shape))) / 2.0
     # Create diagonal scaling and translation matrices
-    scale_factor_source = torch.cat((scale_factor_source, torch.tensor([1.0])), dim=0)
-    scale_factor_target = torch.cat((scale_factor_target, torch.tensor([1.0])), dim=0)
+    scale_factor_source = torch.cat((scale_factor_source, scale_factor_source.new_tensor([1.0])), dim=0)
+    scale_factor_target = torch.cat((scale_factor_target, scale_factor_target.new_tensor([1.0])), dim=0)
     # Rescale relative coordinates (-1, 1) --> (-0.5, (n-1)+0.5) and move center
     relative2target = torch.diag(scale_factor_source)
     relative2target[..., :-1, -1] += scale_factor_source[:-1] - 0.5
@@ -350,4 +381,69 @@ def convert_torch_to_v2v(torch_transform: torch.Tensor, source_shape, target_sha
     v2v_inv = v2v_inv[..., ii, :]
     v2v_inv = v2v_inv[..., ii]
     return torch.inverse(v2v_inv)
+
+
+# LTA / FreeSurfer transform type constants (also re-exported from lta.py)
+LINEAR_VOX_TO_VOX = 0
+LINEAR_RAS_TO_RAS = 1
+
+
+def convert_transform_type(
+    matrix: npt.ArrayLike,
+    src_affine: npt.ArrayLike,
+    dst_affine: npt.ArrayLike,
+    from_type: int,
+    to_type: int,
+) -> np.ndarray:
+    """Convert a transformation matrix between vox-to-vox and RAS-to-RAS.
+
+    Parameters
+    ----------
+    matrix : array-like, shape (4, 4)
+        Input transformation matrix.
+    src_affine : array-like, shape (4, 4)
+        Source image voxel-to-RAS affine (nibabel ``img.affine``).
+    dst_affine : array-like, shape (4, 4)
+        Destination image voxel-to-RAS affine.
+    from_type : int
+        Type of the input matrix:
+        ``LINEAR_VOX_TO_VOX`` (0) or ``LINEAR_RAS_TO_RAS`` (1).
+    to_type : int
+        Desired output type:
+        ``LINEAR_VOX_TO_VOX`` (0) or ``LINEAR_RAS_TO_RAS`` (1).
+
+    Returns
+    -------
+    np.ndarray, shape (4, 4)
+        Converted transformation matrix.  Returns a copy when
+        ``from_type == to_type``.
+
+    Raises
+    ------
+    ValueError
+        If *from_type* or *to_type* is not 0 or 1.
+
+    Notes
+    -----
+    Conversion formulae (M = matrix, A_s = src_affine, A_d = dst_affine):
+
+    * vox→vox to RAS→RAS:  ``A_d @ M @ inv(A_s)``
+    * RAS→RAS to vox→vox:  ``inv(A_d) @ M @ A_s``
+    """
+    if from_type not in (LINEAR_VOX_TO_VOX, LINEAR_RAS_TO_RAS):
+        raise ValueError(f"from_type must be 0 or 1, got {from_type}")
+    if to_type not in (LINEAR_VOX_TO_VOX, LINEAR_RAS_TO_RAS):
+        raise ValueError(f"to_type must be 0 or 1, got {to_type}")
+
+    if from_type == to_type:
+        return np.asarray(matrix, dtype=float).copy()
+
+    M  = np.asarray(matrix, dtype=float)
+    As = np.asarray(src_affine, dtype=float)
+    Ad = np.asarray(dst_affine, dtype=float)
+
+    if from_type == LINEAR_VOX_TO_VOX:   # → RAS-to-RAS
+        return Ad @ M @ np.linalg.inv(As)
+    else:                                 # RAS-to-RAS → vox-to-vox
+        return np.linalg.inv(Ad) @ M @ As
 

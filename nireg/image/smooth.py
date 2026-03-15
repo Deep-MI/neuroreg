@@ -89,7 +89,9 @@ def smooth(image: Tensor, kernel_size: int = 5, sigma: float = 1.08) -> Tensor:
     g = get_gaussian_kernel(kernel_size, sigma, dim=1).to(image.device)
     # Ensure the image tensor has at least 3 valid dimensions
     if image.dim() < 3:
-        raise Exception("ERROR: smooth_image: there need to be at least 3 image dimensions!")
+        raise ValueError(
+            f"smooth: image must have at least 3 dimensions, got {image.dim()}."
+        )
     # Add batch and channel dimensions if necessary
     if image.dim() < 4:
         image = image.unsqueeze(0)  # Add batch dimension
