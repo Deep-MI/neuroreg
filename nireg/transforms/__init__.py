@@ -2,13 +2,12 @@
 
 from .initialize import get_ixform_centroids, get_vox2vox_from_header
 from .lta import (
+    LTA,
     affine_dist,
-    corner_diff,
+    corner_dist,
     decompose_transform,
-    read_lta,
     rigid_dist,
-    sphere_diff,
-    write_lta,
+    sphere_dist,
 )
 from .matrices import (
     LINEAR_RAS_TO_RAS,
@@ -30,13 +29,12 @@ __all__ = [
     "get_ixform_centroids",
     "get_vox2vox_from_header",
     # lta
+    "LTA",
     "affine_dist",
-    "corner_diff",
+    "corner_dist",
     "decompose_transform",
-    "read_lta",
     "rigid_dist",
-    "sphere_diff",
-    "write_lta",
+    "sphere_dist",
     # matrices
     "LINEAR_RAS_TO_RAS",
     "LINEAR_VOX_TO_VOX",

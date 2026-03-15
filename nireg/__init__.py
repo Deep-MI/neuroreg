@@ -3,8 +3,7 @@ from nireg.register import register, register_pyramid, register_surface  # noqa:
 from nireg.transforms import (  # noqa: F401
     LINEAR_RAS_TO_RAS,
     LINEAR_VOX_TO_VOX,
+    LTA,
     convert_transform_type,
-    read_lta,
-    write_lta,
 )
 from nireg.utils._config import sys_info  # noqa: F401

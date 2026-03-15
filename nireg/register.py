@@ -17,8 +17,7 @@ from .transforms import (
     LINEAR_VOX_TO_VOX,
     convert_transform_type,
     get_ixform_centroids,
-    read_lta,
-    write_lta,
+    LTA,
 )
 
 logger = logging.getLogger(__name__)
@@ -209,11 +208,11 @@ def register_pyramid(
             tmgh = nib.MGHImage(ti.squeeze().numpy(), ta.numpy(), trg.header)
             smgh.to_filename(sname)
             tmgh.to_filename(tname)
-            write_lta(ltaname, Mr2r.numpy(), sname, smgh, tname, tmgh)
+            LTA.from_matrix(Mr2r.numpy(), sname, smgh, tname, tmgh).write(ltaname)
         count = count + 1
     if lta_name is not None:
         logger.info("Writing final LTA file: %s", lta_name)
-        write_lta(lta_name, Mr2r.numpy(), src.get_filename(), src, trg.get_filename(), trg)
+        LTA.from_matrix(Mr2r.numpy(), src.get_filename(), src, trg.get_filename(), trg).write(lta_name)
     if mapped_name is not None:
         if m is None:
             logger.warning(
@@ -479,9 +478,8 @@ def register_surface(
         if init_lta is None:
             raise ValueError("init_lta must be provided when init_type='lta'")
         logger.info("Loading init transform from LTA: %s", init_lta)
-        # Request LINEAR_RAS_TO_RAS (type 1) directly — read_lta converts if needed.
         # The stored convention is mov_RAS → trg_RAS; invert to get trg_RAS → mov_RAS.
-        ras_mov_to_trg = read_lta(init_lta, lta_type=1)['matrix']
+        ras_mov_to_trg = LTA.read(init_lta).r2r()
         init_transform = torch.from_numpy(np.linalg.inv(ras_mov_to_trg)).float()
         logger.info("Loaded init transform (trg_RAS→mov_RAS) from %s", init_lta)
     elif init_type == 'centroid':
@@ -554,15 +552,14 @@ def register_surface(
             to_type=LINEAR_VOX_TO_VOX,
         )
         logger.debug("Vox-to-vox transform (src→target):\n%s", vox_transform)
-        write_lta(
-            lta_name,
+        LTA.from_matrix(
             vox_transform,
             mov_path if mov_path else "moving.mgz",
             mov_img,
             trg_path if trg_path else "target.mgz",
             trg_header,
-            lta_type=0  # VOX_TO_VOX
-        )
+            lta_type=0,  # VOX_TO_VOX
+        ).write(lta_name)
 
     return final_transform.detach(), model
 

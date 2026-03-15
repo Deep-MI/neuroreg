@@ -8,106 +8,7 @@ import sys
 
 import numpy as np
 
-from nireg.transforms import (
-    affine_dist,
-    corner_diff,
-    decompose_transform,
-    read_lta,
-    rigid_dist,
-    sphere_diff,
-)
-from nireg.transforms.matrices import (
-    LINEAR_RAS_TO_RAS,
-    LINEAR_VOX_TO_VOX,
-    convert_transform_type,
-)
-
-# ── helpers ─────────────────────────────────────────────────────────────────
-
-def _affine_from_info(info: dict) -> np.ndarray:
-    """Reconstruct a voxel-to-RAS affine from an LTA volume-info dict."""
-    vs   = info['voxelsize']
-    dims = np.array(info['volume'], dtype=float)
-    A    = np.eye(4)
-    A[:3, 0] = np.array(info['xras']) * vs[0]
-    A[:3, 1] = np.array(info['yras']) * vs[1]
-    A[:3, 2] = np.array(info['zras']) * vs[2]
-    A[:3, 3] = np.array(info['cras']) - A[:3, :3] @ (dims / 2.0)
-    return A
-
-
-def _load(path: str) -> dict:
-    """Read an LTA file; return the raw dict (type unchanged)."""
-    return read_lta(path)
-
-
-def _to_ras(lta: dict) -> np.ndarray:
-    """Return the 4×4 RAS-to-RAS matrix for an LTA dict."""
-    if lta['type'] == LINEAR_RAS_TO_RAS:
-        return lta['matrix'].copy()
-    src_aff = _affine_from_info(lta['src'])
-    dst_aff = _affine_from_info(lta['dst'])
-    return convert_transform_type(
-        lta['matrix'], src_aff, dst_aff,
-        from_type=LINEAR_VOX_TO_VOX, to_type=LINEAR_RAS_TO_RAS,
-    )
-
-
-def _to_v2v(lta: dict) -> np.ndarray:
-    """Return the raw vox-to-vox matrix for an LTA dict."""
-    if lta['type'] == LINEAR_VOX_TO_VOX:
-        return lta['matrix'].copy()
-    src_aff = _affine_from_info(lta['src'])
-    dst_aff = _affine_from_info(lta['dst'])
-    return convert_transform_type(
-        lta['matrix'], src_aff, dst_aff,
-        from_type=LINEAR_RAS_TO_RAS, to_type=LINEAR_VOX_TO_VOX,
-    )
-
-
-def _to_iso_vox(lta: dict) -> np.ndarray:
-    """Return the vox-to-vox matrix scaled to isotropic mm units (getIsoVOX).
-
-    Maps from *src* mm-vox space to *dst* mm-vox space::
-
-        iso_vox = diag(dst_vs) @ V2V @ inv(diag(src_vs))
-
-    ``V2V`` maps src voxel indices → dst voxel indices.  Right-multiplying by
-    ``inv(diag(src_vs))`` converts the incoming mm-vox coordinates back to raw
-    src voxel indices before applying ``V2V``; left-multiplying by
-    ``diag(dst_vs)`` then converts the resulting dst voxel indices to mm-vox.
-
-    An identity ``V2V`` with matching src/dst voxel sizes therefore yields the
-    identity matrix, as expected.
-    """
-    v2v    = _to_v2v(lta)
-    src_vs = np.diag([*lta['src']['voxelsize'], 1.0])
-    dst_vs = np.diag([*lta['dst']['voxelsize'], 1.0])
-    return dst_vs @ v2v @ np.linalg.inv(src_vs)
-
-
-def _invert(lta: dict) -> dict:
-    """Invert an LTA (matrix inverted, src/dst geometries swapped)."""
-    M_ras     = _to_ras(lta)
-    M_ras_inv = np.linalg.inv(M_ras)
-    inv_lta   = dict(lta)
-    inv_lta['src'] = lta['dst']
-    inv_lta['dst'] = lta['src']
-    inv_lta['type'] = LINEAR_RAS_TO_RAS
-    inv_lta['matrix'] = M_ras_inv
-    return inv_lta
-
-
-def _get_matrix(lta: dict, vox: bool) -> np.ndarray:
-    """Return the comparison matrix honouring the ``--vox`` flag."""
-    return _to_iso_vox(lta) if vox else _to_ras(lta)
-
-
-def _diff_matrix(lta1: dict, lta2: dict | None, vox: bool) -> tuple[np.ndarray, np.ndarray | None]:
-    """Return (M1, M2) ready for the distance functions."""
-    M1 = _get_matrix(lta1, vox)
-    M2 = _get_matrix(lta2, vox) if lta2 is not None else None
-    return M1, M2
+from nireg.transforms import LTA, decompose_transform
 
 
 # ── parser ───────────────────────────────────────────────────────────────────
@@ -163,48 +64,30 @@ def _build_parser() -> argparse.ArgumentParser:
 
 # ── dist implementations ─────────────────────────────────────────────────────
 
-def _run_dist(ns: argparse.Namespace, lta1: dict, lta2: dict | None) -> None:
-    # dist 3 works directly with RAS or raw V2V matrices — handle it before
-    # _diff_matrix() so the iso-vox conversion is never triggered unnecessarily
-    # (which would fail for LTAs whose volume-info lacks direction-cosine fields).
-    if ns.dist == 3:
-        src_shape = tuple(lta1['src']['volume'])
-        if ns.vox:
-            M1 = _to_v2v(lta1)
-            M2 = _to_v2v(lta2) if lta2 is not None else None
-            result = corner_diff(M1, src_shape, M2=M2, src_affine=None)
-        else:
-            M1 = _to_ras(lta1)
-            M2 = _to_ras(lta2) if lta2 is not None else None
-            result = corner_diff(M1, src_shape, M2=M2,
-                                 src_affine=_affine_from_info(lta1['src']))
-        print(f'{result / ns.normdiv}')
-        return
-
-    M1, M2 = _diff_matrix(lta1, lta2, ns.vox)
+def _run_dist(ns: argparse.Namespace, lta1: LTA, lta2: LTA | None) -> None:
 
     if ns.dist == 1:
-        result = rigid_dist(M1, M2)
-        print(f'{result / ns.normdiv}')
+        print(f'{lta1.rigid_dist(lta2) / ns.normdiv}')
 
     elif ns.dist == 2:
-        result = affine_dist(M1, M2, radius=ns.radius)
-        print(f'{result / ns.normdiv}')
+        print(f'{lta1.affine_dist(lta2, radius=ns.radius) / ns.normdiv}')
+
+    elif ns.dist == 3:
+        print(f'{lta1.corner_dist(lta2, vox=ns.vox) / ns.normdiv}')
 
     elif ns.dist == 4:
-        result = sphere_diff(M1, M2, radius=ns.radius)
-        print(f'{result / ns.normdiv}')
+        print(f'{lta1.sphere_dist(lta2, radius=ns.radius) / ns.normdiv}')
 
     elif ns.dist == 5:
-        if M2 is None:
-            result = np.linalg.det(M1)
-        else:
-            result = np.linalg.det(M1 @ M2)
+        M1 = lta1.iso_vox() if ns.vox else lta1.r2r()
+        M2 = (lta2.iso_vox() if ns.vox else lta2.r2r()) if lta2 is not None else None
+        result = float(np.linalg.det(M1 if M2 is None else M1 @ M2))
         print(f'{result / ns.normdiv}')
 
     elif ns.dist == 7:
-        M = M1 if M2 is None else M1 @ M2
-        d = decompose_transform(M)
+        M1 = lta1.iso_vox() if ns.vox else lta1.r2r()
+        M  = M1 if lta2 is None else M1 @ (lta2.iso_vox() if ns.vox else lta2.r2r())
+        d  = decompose_transform(M)
         with np.printoptions(precision=10, suppress=False):
             print('\nDecompose into Rot · Shear · diag(Scales) + Trans:\n')
             print('Rot =')
@@ -227,13 +110,11 @@ def main(args=None) -> None:
     parser = _build_parser()
     ns     = parser.parse_args(args)
 
-    # validate invert2 requires a second LTA
     if ns.invert2 and ns.lta2 is None:
         parser.error('--invert2 requires a second LTA file.')
 
-    # load
     try:
-        lta1 = _load(ns.lta1)
+        lta1 = LTA.read(ns.lta1)
     except Exception as e:
         print(f'ERROR: cannot read {ns.lta1}: {e}', file=sys.stderr)
         sys.exit(1)
@@ -241,26 +122,24 @@ def main(args=None) -> None:
     lta2 = None
     if ns.lta2 is not None:
         try:
-            lta2 = _load(ns.lta2)
+            lta2 = LTA.read(ns.lta2)
         except Exception as e:
             print(f'ERROR: cannot read {ns.lta2}: {e}', file=sys.stderr)
             sys.exit(1)
 
-    # validate src geometry present for corner_diff
     if ns.dist == 3:
         required = ('xras', 'yras', 'zras', 'cras', 'voxelsize', 'volume')
-        missing  = [k for k in required if k not in lta1.get('src', {})]
+        missing  = [k for k in required if k not in lta1.src]
         if missing:
             parser.error(
                 f'dist 3 requires src volume info in {ns.lta1} '
                 f'(missing: {missing}).'
             )
 
-    # invert
     if ns.invert1:
-        lta1 = _invert(lta1)
+        lta1 = lta1.invert()
     if ns.invert2 and lta2 is not None:
-        lta2 = _invert(lta2)
+        lta2 = lta2.invert()
 
     try:
         _run_dist(ns, lta1, lta2)
