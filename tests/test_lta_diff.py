@@ -38,7 +38,7 @@ def _rotation_z(deg: float) -> np.ndarray:
     M[0, 0] = np.cos(r)
     M[0, 1] = -np.sin(r)
     M[1, 0] = np.sin(r)
-    M[1, 1] =  np.cos(r)
+    M[1, 1] = np.cos(r)
     return M
 
 
@@ -93,7 +93,7 @@ class TestAffineDist:
 # ---------------------------------------------------------------------------
 
 class TestCornerDist:
-    _SHAPE  = (256, 256, 256)
+    _SHAPE = (256, 256, 256)
     _AFFINE = np.eye(4)
 
     def test_identity(self):

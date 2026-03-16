@@ -608,16 +608,20 @@ class LTA:
 
     def r2r(self) -> np.ndarray:
         """Return the 4×4 RAS-to-RAS matrix."""
+        if self.type == 1:
+            return self.matrix.copy()
         return convert_transform_type(
             self.matrix, _affine_from_info(self.src), _affine_from_info(self.dst),
-            from_type=self.type, to_type=1,
+            from_type=0, to_type=1,
         )
 
     def v2v(self) -> np.ndarray:
         """Return the 4×4 voxel-to-voxel matrix."""
+        if self.type == 0:
+            return self.matrix.copy()
         return convert_transform_type(
             self.matrix, _affine_from_info(self.src), _affine_from_info(self.dst),
-            from_type=self.type, to_type=0,
+            from_type=1, to_type=0,
         )
 
     def iso_vox(self) -> np.ndarray:
@@ -675,14 +679,20 @@ class LTA:
         other : LTA, optional
             Second transform; ``None`` compares against identity.
         vox : bool
-            If ``True``, work in raw voxel space (V2V matrix, no src_affine).
+            If ``True``, work in iso-vox space (voxel-grid-aligned, mm units)
+            instead of scanner RAS.  Corners are scaled by src voxel size;
+            result is in mm.  Correct for images with different resolutions or
+            orientations.  If ``False`` (default), use R2R with the full
+            src affine; result is in RAS mm.
 
         Delegates to :func:`corner_dist`.
         """
         src_shape = tuple(self.src['volume'])
         if vox:
-            M2 = other.v2v() if other is not None else None
-            return corner_dist(self.v2v(), src_shape, M2=M2, src_affine=None)
+            vs         = self.src['voxelsize']
+            src_affine = np.diag([vs[0], vs[1], vs[2], 1.0])
+            M2         = other.iso_vox() if other is not None else None
+            return corner_dist(self.iso_vox(), src_shape, M2=M2, src_affine=src_affine)
         M2 = other.r2r() if other is not None else None
         return corner_dist(self.r2r(), src_shape, M2=M2,
                            src_affine=_affine_from_info(self.src))

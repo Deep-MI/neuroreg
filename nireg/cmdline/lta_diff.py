@@ -8,7 +8,7 @@ import sys
 
 import numpy as np
 
-from nireg.transforms import LTA, decompose_transform
+from nireg.transforms import LTA, affine_dist, decompose_transform, rigid_dist, sphere_dist
 
 # ── parser ───────────────────────────────────────────────────────────────────
 
@@ -53,40 +53,70 @@ def _build_parser() -> argparse.ArgumentParser:
                    help='Invert the second transform before comparison.')
     p.add_argument('--vox', action='store_true',
                    help=(
-                       'Work in voxel coordinates scaled to mm '
-                       '(iso-vox, like FreeSurfer --vox).  '
-                       'For dist 3, distances are reported in voxels.'
+                       'Work in iso-vox space (voxel-grid-aligned, mm units) '
+                       'instead of scanner RAS.  Applies to all dist types.  '
+                       'Strips image orientation so results are independent of '
+                       'scanner table angle / image obliquity.'
                    ))
 
     return p
+
+
+_VOL_FIELDS = ('xras', 'yras', 'zras', 'cras', 'voxelsize', 'volume')
+
+
+def _check_vol_info(
+        parser: argparse.ArgumentParser,
+        lta: LTA,
+        label: str,
+        blocks: tuple[str, ...] = ('src', 'dst'),
+) -> None:
+    """Emit a parser.error if any required volume-info field is absent."""
+    for block in blocks:
+        info    = getattr(lta, block)
+        missing = [k for k in _VOL_FIELDS if k not in info]
+        if missing:
+            parser.error(
+                f'{label} {block} volume info is missing required fields: {missing}'
+            )
+
+
+def _needs_vol_info(lta: LTA, ns: argparse.Namespace) -> bool:
+    """Return True when the chosen metric path will access volume-info fields.
+
+    False only for R2R-stored LTAs on a plain r2r() call (fast path, no
+    affine needed).  Everything else — V2V conversion, iso-vox, dist 3
+    corner placement — requires both src and dst volume info.
+    """
+    return ns.dist == 3 or ns.vox or lta.type == 0
 
 
 # ── dist implementations ─────────────────────────────────────────────────────
 
 def _run_dist(ns: argparse.Namespace, lta1: LTA, lta2: LTA | None) -> None:
 
+    M1 = lta1.iso_vox() if ns.vox else lta1.r2r()
+    M2 = (lta2.iso_vox() if ns.vox else lta2.r2r()) if lta2 is not None else None
+
     if ns.dist == 1:
-        print(f'{lta1.rigid_dist(lta2) / ns.normdiv}')
+        print(f'{rigid_dist(M1, M2) / ns.normdiv}')
 
     elif ns.dist == 2:
-        print(f'{lta1.affine_dist(lta2, radius=ns.radius) / ns.normdiv}')
+        print(f'{affine_dist(M1, M2, radius=ns.radius) / ns.normdiv}')
 
     elif ns.dist == 3:
         print(f'{lta1.corner_dist(lta2, vox=ns.vox) / ns.normdiv}')
 
     elif ns.dist == 4:
-        print(f'{lta1.sphere_dist(lta2, radius=ns.radius) / ns.normdiv}')
+        print(f'{sphere_dist(M1, M2, radius=ns.radius) / ns.normdiv}')
 
     elif ns.dist == 5:
-        M1 = lta1.iso_vox() if ns.vox else lta1.r2r()
-        M2 = (lta2.iso_vox() if ns.vox else lta2.r2r()) if lta2 is not None else None
         result = float(np.linalg.det(M1 if M2 is None else M1 @ M2))
         print(f'{result / ns.normdiv}')
 
     elif ns.dist == 7:
-        M1 = lta1.iso_vox() if ns.vox else lta1.r2r()
-        M  = M1 if lta2 is None else M1 @ (lta2.iso_vox() if ns.vox else lta2.r2r())
-        d  = decompose_transform(M)
+        M = M1 if M2 is None else M1 @ M2
+        d = decompose_transform(M)
         with np.printoptions(precision=10, suppress=False):
             print('\nDecompose into Rot · Shear · diag(Scales) + Trans:\n')
             print('Rot =')
@@ -126,14 +156,13 @@ def main(args=None) -> None:
             print(f'ERROR: cannot read {ns.lta2}: {e}', file=sys.stderr)
             sys.exit(1)
 
-    if ns.dist == 3:
-        required = ('xras', 'yras', 'zras', 'cras', 'voxelsize', 'volume')
-        missing  = [k for k in required if k not in lta1.src]
-        if missing:
-            parser.error(
-                f'dist 3 requires src volume info in {ns.lta1} '
-                f'(missing: {missing}).'
-            )
+    # ── volume-info validation ────────────────────────────────────────────────
+    # Check upfront so missing-field errors are actionable rather than cryptic.
+    # Covers: V2V→R2R conversion, iso-vox (--vox), and corner placement (dist 3).
+    ltas = [(lta1, 'LTA1')] + ([(lta2, 'LTA2')] if lta2 is not None else [])
+    for lta, label in ltas:
+        if _needs_vol_info(lta, ns):
+            _check_vol_info(parser, lta, label)
 
     if ns.invert1:
         lta1 = lta1.invert()
