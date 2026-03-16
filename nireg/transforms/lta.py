@@ -12,7 +12,7 @@ from .matrices import convert_transform_type
 
 logger = logging.getLogger(__name__)
 
-# ── internal helper ────────────────────────────────────────────────────────
+# ── type alias ─────────────────────────────────────────────────────────────
 
 _AnyHeader: TypeAlias = (
     str
@@ -24,6 +24,7 @@ _AnyHeader: TypeAlias = (
     | dict
 )
 
+# ── private helpers ────────────────────────────────────────────────────────
 
 def _header_info(src: _AnyHeader) -> dict:
     """Extract LTA volume-info fields from various input types.
@@ -48,16 +49,13 @@ def _header_info(src: _AnyHeader) -> dict:
     if isinstance(src, dict):
         return src
 
-    # path string → load header only (no data)
     if isinstance(src, (str, Path)):
         src = nib.load(src).header
 
-    # nibabel image → extract header and affine
     if hasattr(src, 'affine'):
         affine = src.affine
         header = src.header
     else:
-        # bare nibabel header
         affine = src.get_best_affine()
         header = src
 
@@ -72,235 +70,717 @@ def _header_info(src: _AnyHeader) -> dict:
     }
 
 
-# ── public API ─────────────────────────────────────────────────────────────
+def _affine_from_info(info: dict) -> np.ndarray:
+    """Reconstruct a 4×4 voxel-to-RAS affine from an LTA volume-info dict.
 
-def write_lta(
-        filename: str,
-        T: npt.ArrayLike,
+    Expects keys: ``xras``, ``yras``, ``zras``, ``cras``, ``voxelsize``,
+    ``volume``.  These are the fields written by :meth:`LTA.write` and parsed
+    by :meth:`LTA.read`.
+    """
+    required = ("xras", "yras", "zras", "cras", "voxelsize", "volume")
+    missing = [k for k in required if k not in info]
+    if missing:
+        raise ValueError(f"LTA volume info is missing required fields: {missing}")
+    vs   = info["voxelsize"]
+    dims = np.array(info["volume"], dtype=float)
+    A    = np.eye(4)
+    A[:3, 0] = np.array(info["xras"]) * vs[0]
+    A[:3, 1] = np.array(info["yras"]) * vs[1]
+    A[:3, 2] = np.array(info["zras"]) * vs[2]
+    A[:3, 3] = np.array(info["cras"]) - A[:3, :3] @ (dims / 2.0)
+    return A
+
+
+def _header_to_vol_info(hdr: dict, fname: str = '') -> dict:
+    """Convert a :func:`_header_info` dict to LTA volume-info format.
+
+    Maps the ``Mdc`` / ``Pxyz_c`` / ``dims`` / ``delta`` keys produced by
+    :func:`_header_info` to the ``xras`` / ``yras`` / ``zras`` / ``cras`` /
+    ``voxelsize`` / ``volume`` keys expected by :func:`_affine_from_info` and
+    stored in ``.lta`` files.
+    """
+    Mdc    = np.asarray(hdr['Mdc'])
+    Pxyz_c = np.asarray(hdr['Pxyz_c'])
+    return {
+        'filename': fname,
+        'volume':   list(hdr['dims']),
+        'voxelsize': list(hdr['delta']),
+        'xras': Mdc[:, 0].tolist(),
+        'yras': Mdc[:, 1].tolist(),
+        'zras': Mdc[:, 2].tolist(),
+        'cras': Pxyz_c.tolist(),
+    }
+
+
+# ── standalone distance functions ──────────────────────────────────────────
+
+def _rot_log_norm(R: np.ndarray) -> float:
+    """Frobenius norm of the matrix logarithm of a 3×3 rotation matrix.
+
+    Equal to ``sqrt(2) * theta`` where *theta* is the rotation angle in
+    radians.  Equivalent to the geodesic distance on SO(3).
+    """
+    # tr R = 1 + 2 cos(theta)  →  cos(theta) = (tr - 1) / 2
+    cos_theta = np.clip(0.5 * (np.trace(R[:3, :3]) - 1.0), -1.0, 1.0)
+    theta = np.arccos(cos_theta)
+    return float(np.sqrt(2.0) * theta)
+
+
+def rigid_dist(
+        M1: npt.ArrayLike,
+        M2: npt.ArrayLike | None = None,
+) -> float:
+    """Rigid-transform distance between *M1* and *M2* (or *M1* vs identity).
+
+    Both matrices must be **RAS-to-RAS**; the translation component is then
+    in mm and the result has consistent physical units.
+
+    .. math::
+
+        D = \\sqrt{\\|T_d\\|^2 + \\|\\log R_d\\|_F^2}
+
+    where :math:`d = M_1^{-1} M_2` when *M2* is given, else :math:`d = M_1`.
+    :math:`T_d` is the translation part (mm) and :math:`\\|\\log R_d\\|_F` is
+    the Frobenius norm of the rotation-matrix logarithm (``sqrt(2)`` × rotation
+    angle in radians).
+
+    Corresponds to **dist type 1** in FreeSurfer's ``lta_diff``.
+
+    Parameters
+    ----------
+    M1 : array-like, shape (4, 4)
+        First (or only) RAS-to-RAS rigid transform.
+    M2 : array-like, shape (4, 4), optional
+        Second RAS-to-RAS rigid transform.  When ``None``, the distance to the
+        identity is returned.
+
+    Returns
+    -------
+    float
+        Rigid-transform distance (mm and radians added in quadrature).
+    """
+    M1a = np.asarray(M1, dtype=float)
+    d   = M1a if M2 is None else (np.linalg.inv(M1a) @ np.asarray(M2, dtype=float))
+    tdq = float(np.dot(d[:3, 3], d[:3, 3]))
+    rd  = _rot_log_norm(d[:3, :3])
+    return float(np.sqrt(rd * rd + tdq))
+
+
+def affine_dist(
+        M1: npt.ArrayLike,
+        M2: npt.ArrayLike | None = None,
+        radius: float = 100.0,
+) -> float:
+    """RMS affine-transform distance (Jenkinson 1999).
+
+    Both matrices must be **RAS-to-RAS**; the translation component is then
+    in mm and *radius* has a consistent mm interpretation.
+
+    .. math::
+
+        D = \\sqrt{\\frac{r^2}{5} \\operatorname{Tr}(A^\\top A) + \\|T_d\\|^2}
+
+    where :math:`d = M_1 - M_2` (or :math:`M_1 - I` when *M2* is ``None``),
+    *A* is the upper-left 3×3 linear part of *d*, and :math:`T_d` is the
+    translation column (mm).  *r* is the assumed brain radius in mm.
+
+    Reference: Jenkinson (1999), *A method for motion correction of
+    fMRI time-series*, FMRIB Technical Report TR99MJ1.
+
+    Corresponds to **dist type 2** in FreeSurfer's ``lta_diff``.
+
+    Parameters
+    ----------
+    M1 : array-like, shape (4, 4)
+        First (or only) RAS-to-RAS transform.
+    M2 : array-like, shape (4, 4), optional
+        Second RAS-to-RAS transform.  When ``None``, the distance to
+        identity is returned.
+    radius : float
+        Radius of the brain sphere in mm (default 100).
+
+    Returns
+    -------
+    float
+        RMS displacement in mm.
+    """
+    M1a = np.asarray(M1, dtype=float)
+    d   = M1a - (np.eye(4) if M2 is None else np.asarray(M2, dtype=float))
+    tdq = float(np.dot(d[:3, 3], d[:3, 3]))
+    tr  = float(np.trace(d[:3, :3].T @ d[:3, :3]))
+    return float(np.sqrt((radius ** 2 / 5.0) * tr + tdq))
+
+
+def corner_dist(
+        M: npt.ArrayLike,
+        src_shape: tuple[int, int, int],
+        M2: npt.ArrayLike | None = None,
+        src_affine: npt.ArrayLike | None = None,
+) -> float:
+    """Mean displacement at the 8 corners of the source volume (mm).
+
+    Places the 8 corners of the source volume in RAS space using *src_affine*,
+    maps them through the RAS-to-RAS transform(s), and returns the mean
+    Euclidean displacement.
+
+    **Image-specific metric**: the result depends on the source image shape
+    and affine, not just the transform.  The corners are at the edges of the
+    source FOV — for a large or padded FOV they may be far from brain tissue,
+    making the result less representative than :func:`sphere_dist`.  When
+    comparing two transforms (*M* and *M2*), both must register the same
+    source image (so *src_affine* and *src_shape* are unambiguous).
+
+    Corresponds to **dist type 3** in FreeSurfer's ``lta_diff``.
+
+    Parameters
+    ----------
+    M : array-like, shape (4, 4)
+        First (or only) RAS-to-RAS transform.
+    src_shape : tuple of int (i_size, j_size, k_size)
+        Voxel dimensions of the source volume.
+    M2 : array-like, shape (4, 4), optional
+        Second RAS-to-RAS transform.  When ``None``, displacement from
+        identity is measured.
+    src_affine : array-like, shape (4, 4), optional
+        Voxel-to-RAS affine of the source image.  When given, corners are
+        converted to RAS (mm) before applying the transforms; result is in
+        mm.  When ``None``, corners remain in voxel units.
+
+    Returns
+    -------
+    float
+        Mean corner displacement in mm (or voxels if *src_affine* is ``None``).
+    """
+    Si, Sj, Sk = src_shape
+    # Build homogeneous voxel coordinates for all 8 corners
+    corners_vox = np.array(
+        [[i * (Si - 1), j * (Sj - 1), k * (Sk - 1), 1.0]
+         for i in (0, 1) for j in (0, 1) for k in (0, 1)],
+        dtype=float,
+    )
+    corners = (
+        (np.asarray(src_affine, dtype=float) @ corners_vox.T).T
+        if src_affine is not None else corners_vox
+    )
+    p1 = (np.asarray(M, dtype=float) @ corners.T).T
+    p2 = corners if M2 is None else (np.asarray(M2, dtype=float) @ corners.T).T
+    return float(np.mean(np.linalg.norm(p1[:, :3] - p2[:, :3], axis=1)))
+
+
+def sphere_dist(
+        M1: npt.ArrayLike,
+        M2: npt.ArrayLike | None = None,
+        radius: float = 100.0,
+) -> float:
+    """Maximum displacement on a sphere of given radius (mm).
+
+    Samples ~1 600 points on a sphere of *radius* mm centred at the RAS
+    origin and returns the peak displacement caused by the transform
+    difference.  Both matrices must be **RAS-to-RAS** so that the sphere
+    is in a meaningful physical space and displacements are in mm.
+
+    .. math::
+
+        M_d = M_1^{-1} M_2 \\quad (\\text{or } M_1 \\text{ when } M_2 = \\text{None})
+
+        \\text{displacement}(p) = \\|M_d \\, p - p\\|
+
+    Unlike :func:`corner_dist` this metric is image-independent: the sphere
+    is a canonical approximation of the head and the result is a pure property
+    of the transform.
+
+    Corresponds to **dist type 4** in FreeSurfer's ``lta_diff``.
+
+    Parameters
+    ----------
+    M1 : array-like, shape (4, 4)
+        First (or only) RAS-to-RAS transform.
+    M2 : array-like, shape (4, 4), optional
+        Second RAS-to-RAS transform.  When ``None``, displacement from
+        identity is returned.
+    radius : float
+        Sphere radius in mm (default 100, roughly the head radius).
+
+    Returns
+    -------
+    float
+        Maximum displacement in mm.
+    """
+    M1a = np.asarray(M1, dtype=float)
+    Md  = M1a if M2 is None else (np.linalg.inv(M1a) @ np.asarray(M2, dtype=float))
+
+    pts: list[list[float]] = [[0.0, 0.0, radius], [0.0, 0.0, -radius]]
+    n = 10
+    for i in range(-n + 1, n):
+        angle1 = (i * np.pi * 0.5) / n
+        r1 = np.cos(angle1)
+        h  = np.sin(angle1)
+        n_long = int(4.0 * n * r1)
+        for j in range(n_long):
+            angle2 = (2.0 * np.pi * j) / n_long
+            pts.append([radius * r1 * np.cos(angle2),
+                        radius * r1 * np.sin(angle2),
+                        radius * h])
+
+    pts_arr = np.array(pts, dtype=float)
+    hom     = np.hstack([pts_arr, np.ones((len(pts_arr), 1))])
+    mapped  = (Md @ hom.T).T
+    return float(np.max(np.linalg.norm(mapped[:, :3] - pts_arr, axis=1)))
+
+
+def decompose_transform(M: npt.ArrayLike) -> dict:
+    """Polar decomposition of a 4×4 affine matrix.
+
+    Decomposes the upper-left 3×3 linear part as
+
+    .. math::
+
+        A = R \\cdot S \\cdot \\operatorname{diag}(\\text{scales})
+
+    where *R* is a proper rotation matrix, *S* is a shear matrix (ones on
+    diagonal), and *diag(scales)* captures anisotropic scaling.  The
+    translation vector is in mm because the input is expected to be
+    RAS-to-RAS.
+
+    Corresponds to **dist type 7** in FreeSurfer's ``lta_diff`` (decompose).
+
+    Parameters
+    ----------
+    M : array-like, shape (4, 4)
+        Affine matrix to decompose.  Pre-compose transforms before calling
+        if a relative decomposition is needed (e.g. ``decompose_transform(M1 @ M2)``).
+
+    Returns
+    -------
+    dict
+        ``rotation`` : ndarray (3, 3)
+            Rotation matrix (det = +1).
+        ``rot_vec`` : ndarray (3,)
+            Rotation vector (axis × angle, radians).
+        ``rot_angle_deg`` : float
+            Rotation angle in degrees.
+        ``shear`` : ndarray (3, 3)
+            Shear matrix (unit diagonal).
+        ``scales`` : ndarray (3,)
+            Per-axis scale factors.
+        ``translation`` : ndarray (3,)
+            Translation vector in mm.
+        ``abs_trans`` : float
+            Euclidean norm of the translation vector (mm).
+        ``determinant`` : float
+            Determinant of the full 4×4 matrix.
+    """
+    from scipy.linalg import polar
+    from scipy.spatial.transform import Rotation
+
+    M_arr = np.asarray(M, dtype=float)
+    A = M_arr[:3, :3]
+    t = M_arr[:3, 3].copy()
+
+    # Polar decomposition: A = R @ P  (R orthogonal, P positive semi-definite)
+    R, P = polar(A, side='right')
+
+    # Ensure proper rotation (det = +1)
+    if np.linalg.det(R) < 0:
+        R, P = -R, -P
+
+    # Decompose P further: P = S @ diag(scales)
+    # scales = diagonal entries of P; S = P with each column divided by scales[col]
+    scales = np.diag(P).copy()
+    S = P / np.where(scales != 0, scales, 1.0)[np.newaxis, :]
+
+    rot_obj       = Rotation.from_matrix(R)
+    rot_vec       = rot_obj.as_rotvec()
+    rot_angle_deg = float(np.degrees(np.linalg.norm(rot_vec)))
+
+    return {
+        'rotation':      R,
+        'rot_vec':       rot_vec,
+        'rot_angle_deg': rot_angle_deg,
+        'shear':         S,
+        'scales':        scales,
+        'translation':   t,
+        'abs_trans':     float(np.linalg.norm(t)),
+        'determinant':   float(np.linalg.det(M_arr)),
+    }
+
+
+# ── LTA class ──────────────────────────────────────────────────────────────
+
+class LTA:
+    """FreeSurfer Linear Transform Array.
+
+    Wraps a 4×4 affine matrix together with source and destination volume
+    geometry, mirroring the ``.lta`` file format used by FreeSurfer.
+
+    Typical usage::
+
+        lta = LTA.read("T2_to_T1.lta")
+        print(lta.affine_dist())        # distance to identity
+        print(lta.affine_dist(other))   # distance to another LTA
+        lta.invert().write("T1_to_T2.lta")
+    """
+
+    def __init__(
+        self,
+        matrix: npt.ArrayLike,
+        lta_type: int,
+        src: dict,
+        dst: dict,
+    ) -> None:
+        """
+        Parameters
+        ----------
+        matrix : array-like, shape (4, 4)
+        lta_type : {0, 1}
+            0 = LINEAR_VOX_TO_VOX, 1 = LINEAR_RAS_TO_RAS.
+        src : dict
+            Source volume info (keys: volume, voxelsize, xras, yras, zras, cras).
+        dst : dict
+            Destination volume info (same keys).
+        """
+        if lta_type not in (0, 1):
+            raise ValueError(
+                f'lta_type must be 0 (LINEAR_VOX_TO_VOX) or 1 (LINEAR_RAS_TO_RAS), '
+                f'got {lta_type!r}'
+            )
+        self.matrix = np.asarray(matrix, dtype=float).reshape(4, 4)
+        self.type   = lta_type
+        self.src    = src
+        self.dst    = dst
+
+    # ── construction ────────────────────────────────────────────────────────
+
+    @classmethod
+    def read(cls, filename: str | Path, lta_type: int | None = None) -> LTA:
+        """Read a FreeSurfer ``.lta`` file.
+
+        Parameters
+        ----------
+        filename : str or Path
+        lta_type : {0, 1, None}, optional
+            If given, convert the stored matrix to this type on load.
+
+        Returns
+        -------
+        LTA
+        """
+        filename = str(filename)
+
+        if lta_type is not None and lta_type not in (0, 1):
+            raise ValueError(
+                f'lta_type must be 0 (LINEAR_VOX_TO_VOX) or 1 (LINEAR_RAS_TO_RAS), '
+                f'got {lta_type!r}'
+            )
+
+        with open(filename) as f:
+            lines = f.readlines()
+
+        stored_type: int = 1
+        nxforms: int = 1
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith('type') and '=' in stripped:
+                stored_type = int(stripped.split('=')[1].split('#')[0].strip())
+            elif stripped.startswith('nxforms') and '=' in stripped:
+                nxforms = int(stripped.split('=')[1].split('#')[0].strip())
+            elif stripped.startswith('1 4 4'):
+                break  # reached matrix; header fields are all above this
+
+        if nxforms != 1:
+            logger.warning(
+                '%s: nxforms = %d; only the first transform will be read.',
+                filename, nxforms,
+            )
+
+        if stored_type not in (0, 1):
+            raise ValueError(
+                f'{filename}: unsupported transform type {stored_type!r}; '
+                f'expected 0 (LINEAR_VOX_TO_VOX) or 1 (LINEAR_RAS_TO_RAS)'
+            )
+
+        mat: list[list[float]] = []
+        for i, line in enumerate(lines):
+            if '1 4 4' in line:
+                for row in lines[i + 1: i + 5]:
+                    mat.append([float(v) for v in row.strip().split()])
+                break
+        if len(mat) != 4:
+            raise ValueError(f'Could not parse 4×4 matrix from {filename}')
+
+        def _parse_vol_block(start: int) -> dict:
+            info: dict = {}
+            for line in lines[start:]:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                if line.startswith('valid'):
+                    info['valid'] = int(line.split('=', 1)[1].split('#')[0].strip())
+                elif line.startswith('filename'):
+                    info['filename'] = line.split('=', 1)[1].strip()
+                elif line.startswith('fname'):
+                    # Old-style alias; only fill in if 'filename' not yet seen
+                    info.setdefault('filename', line.split('=', 1)[1].strip())
+                elif line.startswith('subject'):
+                    # FreeSurfer writes "subject <name>" (no '=')
+                    parts = line.split(None, 1)
+                    if len(parts) == 2:
+                        info['subject'] = parts[1].strip()
+                    elif '=' in line:
+                        info['subject'] = line.split('=', 1)[1].strip()
+                elif line.startswith('volume'):
+                    info['volume'] = [int(v) for v in line.split('=', 1)[1].split()]
+                elif line.startswith('voxelsize'):
+                    info['voxelsize'] = [float(v) for v in line.split('=', 1)[1].split()]
+                elif line.startswith('xras'):
+                    info['xras'] = [float(v) for v in line.split('=', 1)[1].split()]
+                elif line.startswith('yras'):
+                    info['yras'] = [float(v) for v in line.split('=', 1)[1].split()]
+                elif line.startswith('zras'):
+                    info['zras'] = [float(v) for v in line.split('=', 1)[1].split()]
+                elif line.startswith('cras'):
+                    info['cras'] = [float(v) for v in line.split('=', 1)[1].split()]
+                elif line.startswith('dst volume info'):
+                    break
+            return info
+
+        src: dict = {}
+        dst: dict = {}
+        for i, line in enumerate(lines):
+            if line.strip().startswith('src volume info'):
+                src = _parse_vol_block(i + 1)
+            elif line.strip().startswith('dst volume info'):
+                dst = _parse_vol_block(i + 1)
+
+        for role, info in (('src', src), ('dst', dst)):
+            if info.get('valid', 1) == 0:
+                logger.warning(
+                    '%s: %s volume info has valid = 0; geometry may be unreliable.',
+                    filename, role,
+                )
+
+        lta = cls(np.array(mat), stored_type, src, dst)
+
+        if lta_type is not None and lta_type != stored_type:
+            lta = cls(
+                convert_transform_type(
+                    lta.matrix, _affine_from_info(src), _affine_from_info(dst),
+                    from_type=stored_type, to_type=lta_type,
+                ),
+                lta_type, src, dst,
+            )
+
+        return lta
+
+    @classmethod
+    def from_matrix(
+        cls,
+        matrix: npt.ArrayLike,
         src_fname: str,
         src_img: _AnyHeader,
         dst_fname: str,
         dst_img: _AnyHeader,
-        lta_type: int = 1
-) -> None:
-    """Write a FreeSurfer ``.lta`` file.
+        lta_type: int = 1,
+    ) -> LTA:
+        """Create an LTA from a matrix and image geometry.
 
-    Parameters
-    ----------
-    filename : str
-        Output path.
-    T : array-like, shape (4, 4)
-        Transformation matrix to store.
-    src_fname : str
-        Filename of the source (moving) image, stored as metadata.
-    src_img : path, nibabel header, nibabel image, or dict
-        Source image geometry.  Accepted types:
+        Parameters
+        ----------
+        matrix : array-like, shape (4, 4)
+            May be a ``torch.Tensor`` (detached automatically).
+        src_fname : str
+            Source filename stored as metadata in the ``.lta`` file.
+        src_img : path, nibabel header/image, or dict
+            Source image geometry.
+        dst_fname : str
+            Destination filename stored as metadata.
+        dst_img : path, nibabel header/image, or dict
+            Destination image geometry.
+        lta_type : {0, 1}
+            0 = LINEAR_VOX_TO_VOX, 1 = LINEAR_RAS_TO_RAS (default).
+        """
+        if hasattr(matrix, 'detach'):
+            matrix = matrix.detach().cpu().numpy()
+        M   = np.asarray(matrix, dtype=float).reshape(4, 4)
+        src = _header_to_vol_info(_header_info(src_img), src_fname)
+        dst = _header_to_vol_info(_header_info(dst_img), dst_fname)
+        return cls(M, lta_type, src, dst)
 
-        * ``str`` / ``Path`` – file is opened for the header only (no data loaded).
-        * nibabel header (``Nifti1Header``, ``MGHHeader``, …).
-        * nibabel image (``Nifti1Image``, ``MGHImage``, …) – data is not read.
-        * ``dict`` with keys ``dims``, ``delta``, ``Mdc``, ``Pxyz_c`` (legacy).
-    dst_fname : str
-        Filename of the destination (target) image, stored as metadata.
-    dst_img : path, nibabel header, nibabel image, or dict
-        Destination image geometry (same accepted types as *src_img*).
-    lta_type : {0, 1}
-        Transform type: ``0`` = LINEAR_VOX_TO_VOX, ``1`` = LINEAR_RAS_TO_RAS
-        (default).
-    """
-    import getpass
-    from datetime import datetime
+    def write(self, filename: str | Path, lta_type: int | None = None) -> None:
+        """Write to a FreeSurfer ``.lta`` file.
 
-    if lta_type not in (0, 1):
-        raise ValueError(
-            f"write_lta: lta_type must be 0 (LINEAR_VOX_TO_VOX) or "
-            f"1 (LINEAR_RAS_TO_RAS), got {lta_type!r}."
+        Parameters
+        ----------
+        filename : str or Path
+        lta_type : {0, 1, None}, optional
+            Output transform type.  ``0`` = LINEAR_VOX_TO_VOX,
+            ``1`` = LINEAR_RAS_TO_RAS.  When ``None`` (default) the matrix is
+            written as stored.  When given and different from the stored type,
+            the matrix is converted before writing; ``self`` is not mutated.
+        """
+        import getpass
+        from datetime import datetime
+
+        if lta_type is not None and lta_type not in (0, 1):
+            raise ValueError(f'lta_type must be 0 or 1, got {lta_type!r}')
+
+        out_type   = self.type if lta_type is None else lta_type
+        out_matrix = (
+            self.matrix if out_type == self.type
+            else convert_transform_type(
+                self.matrix, _affine_from_info(self.src), _affine_from_info(self.dst),
+                from_type=self.type, to_type=out_type,
+            )
         )
 
-    src = _header_info(src_img)
-    dst = _header_info(dst_img)
+        filename  = str(filename)
+        type_name = 'LINEAR_RAS_TO_RAS' if out_type == 1 else 'LINEAR_VOX_TO_VOX'
 
-    # validate required keys (only matters for the dict path)
-    for role, info in (("src", src), ("dst", dst)):
-        for field in ("dims", "delta", "Mdc", "Pxyz_c"):
-            if field not in info:
-                raise ValueError(
-                    f"write_lta: {role} header dict is missing required field '{field}'"
-                )
+        def _fmt(vals: list) -> str:
+            return ' '.join(f'{float(v):.15e}' for v in vals)
 
-    src_dims  = " ".join(str(int(x)) for x in src["dims"])
-    src_vsize = " ".join(f"{float(x):.15e}" for x in src["delta"])
-    src_mdc   = src["Mdc"]
-    src_c     = src["Pxyz_c"]
+        with open(filename, 'w') as f:
+            f.write(f'# transform file {filename}\n')
+            f.write(f'# created by {getpass.getuser()} on {datetime.now().ctime()}\n\n')
+            f.write(f'type      = {out_type} # {type_name}\n')
+            f.write('nxforms   = 1\n')
+            f.write('mean      = 0.0 0.0 0.0\n')
+            f.write('sigma     = 1.0\n')
+            f.write('1 4 4\n')
+            for row in out_matrix:
+                f.write(_fmt(row) + '\n')
+            f.write('\n')
+            for role, info in (('src', self.src), ('dst', self.dst)):
+                dims_str = ' '.join(str(int(x)) for x in info['volume'])
+                valid    = info.get('valid', 1)
+                f.write(f'{role} volume info\n')
+                f.write(f'valid = {valid}  # volume info valid\n')
+                f.write(f"filename = {info.get('filename', '')}\n")
+                if 'subject' in info:
+                    f.write(f"subject {info['subject']}\n")
+                f.write(f'volume = {dims_str}\n')
+                f.write(f"voxelsize = {_fmt(info['voxelsize'])}\n")
+                f.write(f"xras   = {_fmt(info['xras'])}\n")
+                f.write(f"yras   = {_fmt(info['yras'])}\n")
+                f.write(f"zras   = {_fmt(info['zras'])}\n")
+                f.write(f"cras   = {_fmt(info['cras'])}\n")
 
-    dst_dims  = " ".join(str(int(x)) for x in dst["dims"])
-    dst_vsize = " ".join(f"{float(x):.15e}" for x in dst["delta"])
-    dst_mdc   = dst["Mdc"]
-    dst_c     = dst["Pxyz_c"]
+        logger.debug('Wrote LTA (%s): %s', type_name, filename)
 
-    type_name = "LINEAR_VOX_TO_VOX" if lta_type == 0 else "LINEAR_RAS_TO_RAS"
+    def __repr__(self) -> str:
+        type_str = 'R2R' if self.type == 1 else 'V2V'
+        src_fn   = self.src.get('filename', '?')
+        dst_fn   = self.dst.get('filename', '?')
+        return f'LTA({type_str}, {src_fn!r} → {dst_fn!r})'
 
-    with open(filename, "w") as f:
-        f.write(f"# transform file {filename}\n")
-        f.write(f"# created by {getpass.getuser()} on {datetime.now().ctime()}\n\n")
-        f.write(f"type      = {lta_type} # {type_name}\n")
-        f.write("nxforms   = 1\n")
-        f.write("mean      = 0.0 0.0 0.0\n")
-        f.write("sigma     = 1.0\n")
-        f.write("1 4 4\n")
-        # Normalise T to a plain (4, 4) float64 ndarray regardless of whether
-        # the caller passed a np.ndarray, torch.Tensor, or other array-like.
-        if hasattr(T, 'detach'):          # torch.Tensor
-            T_arr = T.detach().cpu().numpy()
-        else:
-            T_arr = np.asarray(T)
-        T_arr = T_arr.reshape(4, 4).astype(float)
-        for row in T_arr:
-            f.write(" ".join(f"{v:.15e}" for v in row) + "\n")
-        f.write("\n")
-        f.write("src volume info\n")
-        f.write("valid = 1  # volume info valid\n")
-        f.write(f"filename = {src_fname}\n")
-        f.write(f"volume = {src_dims}\n")
-        f.write(f"voxelsize = {src_vsize}\n")
-        f.write("xras   = " + " ".join(f"{x:.15e}" for x in src_mdc[:, 0]) + "\n")
-        f.write("yras   = " + " ".join(f"{x:.15e}" for x in src_mdc[:, 1]) + "\n")
-        f.write("zras   = " + " ".join(f"{x:.15e}" for x in src_mdc[:, 2]) + "\n")
-        f.write("cras   = " + " ".join(f"{x:.15e}" for x in src_c) + "\n")
-        f.write("dst volume info\n")
-        f.write("valid = 1  # volume info valid\n")
-        f.write(f"filename = {dst_fname}\n")
-        f.write(f"volume = {dst_dims}\n")
-        f.write(f"voxelsize = {dst_vsize}\n")
-        f.write("xras   = " + " ".join(f"{x:.15e}" for x in dst_mdc[:, 0]) + "\n")
-        f.write("yras   = " + " ".join(f"{x:.15e}" for x in dst_mdc[:, 1]) + "\n")
-        f.write("zras   = " + " ".join(f"{x:.15e}" for x in dst_mdc[:, 2]) + "\n")
-        f.write("cras   = " + " ".join(f"{x:.15e}" for x in dst_c) + "\n")
+    # ── matrix extraction ───────────────────────────────────────────────────
 
-    logger.debug("Wrote LTA (%s): %s", type_name, filename)
-
-def read_lta(filename: str, lta_type: int | None = None) -> dict:
-    """Read a FreeSurfer LTA file and return its contents.
-
-    Parameters
-    ----------
-    filename : str
-        Path to the ``.lta`` file.
-    lta_type : {0, 1, None}, optional
-        If ``None`` (default) the matrix is returned exactly as stored.
-        If set to ``LINEAR_VOX_TO_VOX`` (0) or ``LINEAR_RAS_TO_RAS`` (1)
-        and the file contains a different type, the matrix is automatically
-        converted using :func:`convert_lta_matrix` and ``"type"`` in the
-        returned dict is updated to reflect the requested type.
-        Conversion requires that the ``src`` / ``dst`` volume info blocks
-        contain valid ``xras`` / ``yras`` / ``zras`` / ``cras`` /
-        ``voxelsize`` fields so that the affine matrices can be
-        reconstructed.
-
-    Returns
-    -------
-    dict with keys:
-
-    ``"matrix"`` : np.ndarray, shape (4, 4)
-        The transformation matrix (converted if *lta_type* was specified).
-    ``"type"`` : int
-        Transform type of the returned matrix
-        (0 = LINEAR_VOX_TO_VOX, 1 = LINEAR_RAS_TO_RAS).
-    ``"src"`` : dict
-        Source volume header fields (``filename``, ``volume``, ``voxelsize``,
-        ``xras``, ``yras``, ``zras``, ``cras``).
-    ``"dst"`` : dict
-        Destination volume header fields (same keys as ``src``).
-
-    Raises
-    ------
-    ValueError
-        If the transformation matrix block cannot be found, or if a
-        conversion is requested but the volume-info affine data are missing.
-    """
-    with open(filename) as f:
-        lines = f.readlines()
-
-    result: dict = {"src": {}, "dst": {}}
-
-    # ── transform type ─────────────────────────────────────────────
-    for line in lines:
-        if line.startswith("type"):
-            result["type"] = int(line.split("=")[1].split("#")[0].strip())
-            break
-
-    # ── 4×4 matrix ─────────────────────────────────────────────────
-    mat = []
-    for i, line in enumerate(lines):
-        if "1 4 4" in line:
-            for row in lines[i + 1: i + 5]:
-                mat.append([float(v) for v in row.strip().split()])
-            break
-    if len(mat) != 4:
-        raise ValueError(f"Could not parse 4×4 matrix from {filename}")
-    result["matrix"] = np.array(mat)
-
-    # ── volume info blocks ──────────────────────────────────────────
-    def _parse_vol_block(start_idx: int) -> dict:
-        info: dict = {}
-        for line in lines[start_idx:]:
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if line.startswith("filename"):
-                info["filename"] = line.split("=", 1)[1].strip()
-            elif line.startswith("volume"):
-                info["volume"] = [int(v) for v in line.split("=", 1)[1].split()]
-            elif line.startswith("voxelsize"):
-                info["voxelsize"] = [float(v) for v in line.split("=", 1)[1].split()]
-            elif line.startswith("xras"):
-                info["xras"] = [float(v) for v in line.split("=", 1)[1].split()]
-            elif line.startswith("yras"):
-                info["yras"] = [float(v) for v in line.split("=", 1)[1].split()]
-            elif line.startswith("zras"):
-                info["zras"] = [float(v) for v in line.split("=", 1)[1].split()]
-            elif line.startswith("cras"):
-                info["cras"] = [float(v) for v in line.split("=", 1)[1].split()]
-            elif line.startswith("dst volume info"):
-                break
-        return info
-
-    for i, line in enumerate(lines):
-        if line.strip().startswith("src volume info"):
-            result["src"] = _parse_vol_block(i + 1)
-        elif line.strip().startswith("dst volume info"):
-            result["dst"] = _parse_vol_block(i + 1)
-
-    # ── optional type conversion ────────────────────────────────────
-    if lta_type is not None and lta_type != result["type"]:
-        def _affine_from_info(info: dict, role: str) -> np.ndarray:
-            required = ("xras", "yras", "zras", "cras", "voxelsize", "volume")
-            missing = [k for k in required if k not in info]
-            if missing:
-                raise ValueError(
-                    f"Cannot convert LTA type: {role} volume info is missing "
-                    f"fields: {missing}"
-                )
-            vs = info["voxelsize"]
-            A = np.eye(4)
-            A[:3, 0] = np.array(info["xras"]) * vs[0]
-            A[:3, 1] = np.array(info["yras"]) * vs[1]
-            A[:3, 2] = np.array(info["zras"]) * vs[2]
-            # cras is the RAS coordinate of the centre voxel (dims/2), not voxel 0.
-            # Affine convention: ras = A[:3,:3] @ vox + A[:3,3]
-            # => at vox = dims/2: cras = A[:3,:3] @ (dims/2) + A[:3,3]
-            # => A[:3,3] = cras - A[:3,:3] @ (dims/2)
-            dims = np.array(info["volume"], dtype=float)
-            A[:3, 3] = np.array(info["cras"]) - A[:3, :3] @ (dims / 2.0)
-            return A
-
-        src_affine = _affine_from_info(result["src"], "src")
-        dst_affine = _affine_from_info(result["dst"], "dst")
-        result["matrix"] = convert_transform_type(
-            result["matrix"], src_affine, dst_affine,
-            from_type=result["type"], to_type=lta_type
+    def r2r(self) -> np.ndarray:
+        """Return the 4×4 RAS-to-RAS matrix."""
+        if self.type == 1:
+            return self.matrix.copy()
+        return convert_transform_type(
+            self.matrix, _affine_from_info(self.src), _affine_from_info(self.dst),
+            from_type=0, to_type=1,
         )
-        result["type"] = lta_type
 
-    return result
+    def v2v(self) -> np.ndarray:
+        """Return the 4×4 voxel-to-voxel matrix."""
+        if self.type == 0:
+            return self.matrix.copy()
+        return convert_transform_type(
+            self.matrix, _affine_from_info(self.src), _affine_from_info(self.dst),
+            from_type=1, to_type=0,
+        )
+
+    # ── operations ──────────────────────────────────────────────────────────
+
+    def invert(self) -> LTA:
+        """Return an inverted copy with src/dst swapped, stored as R2R."""
+        return LTA(np.linalg.inv(self.r2r()), 1, self.dst, self.src)
+
+    def concat(self, other: LTA) -> LTA:
+        """Concatenate two transforms: ``self`` (A→B) followed by ``other`` (B→C).
+
+        Returns a new LTA that maps directly from A to C, stored as R2R.
+        The src geometry is taken from ``self`` and the dst geometry from
+        ``other``; the caller is responsible for ensuring that the intermediate
+        spaces (``self.dst`` / ``other.src``) are compatible.
+
+        Equivalent to FreeSurfer's ``mri_concatenate_lta``.
+
+        Parameters
+        ----------
+        other : LTA
+            The second transform to apply (maps B → C).
+
+        Returns
+        -------
+        LTA
+            New LTA whose matrix is ``other.r2r() @ self.r2r()``,
+            with ``src`` from ``self`` and ``dst`` from ``other``.
+        """
+        return LTA(other.r2r() @ self.r2r(), 1, self.src, other.dst)
+
+    # ── single-transform analysis ────────────────────────────────────────────
+
+    def decompose(self) -> dict:
+        """Polar decomposition of the R2R matrix.
+
+        See :func:`decompose_transform` for the return dict keys.
+        """
+        return decompose_transform(self.r2r())
+
+    @property
+    def det(self) -> float:
+        """Determinant of the R2R matrix."""
+        return float(np.linalg.det(self.r2r()))
+
+    # ── distance methods ────────────────────────────────────────────────────
+
+    def rigid_dist(self, other: LTA | None = None) -> float:
+        """Rigid-transform distance to *other* (or identity).
+
+        Operates on the RAS-to-RAS representation (converts automatically if
+        stored as vox-to-vox).  Delegates to :func:`rigid_dist`.
+        """
+        return rigid_dist(self.r2r(), other.r2r() if other is not None else None)
+
+    def affine_dist(self, other: LTA | None = None, radius: float = 100.) -> float:
+        """Affine RMS distance to *other* (Jenkinson 1999).
+
+        Operates on the RAS-to-RAS representation (converts automatically if
+        stored as vox-to-vox).  Delegates to :func:`affine_dist`.
+        """
+        return affine_dist(self.r2r(), other.r2r() if other is not None else None,
+                           radius=radius)
+
+    def corner_dist(self, other: LTA | None = None) -> float:
+        """Mean displacement at the 8 volume corners in RAS mm.
+
+        Operates on the RAS-to-RAS representation (converts automatically if
+        stored as vox-to-vox).  **Image-specific**: depends on source volume
+        geometry; see :func:`corner_dist` for limitations.
+
+        Parameters
+        ----------
+        other : LTA, optional
+            Second transform; ``None`` compares against identity.
+
+        Delegates to :func:`corner_dist`.
+        """
+        src_shape = tuple(self.src['volume'])
+        M2 = other.r2r() if other is not None else None
+        return corner_dist(self.r2r(), src_shape, M2=M2,
+                           src_affine=_affine_from_info(self.src))
+
+    def sphere_dist(self, other: LTA | None = None, radius: float = 100.) -> float:
+        """Max displacement on a sphere of given radius in RAS mm.
+
+        Operates on the RAS-to-RAS representation (converts automatically if
+        stored as vox-to-vox).  **Image-independent**: result depends only on
+        the transform, not source/dst geometry.  Delegates to :func:`sphere_dist`.
+        """
+        return sphere_dist(self.r2r(), other.r2r() if other is not None else None,
+                           radius=radius)
 
