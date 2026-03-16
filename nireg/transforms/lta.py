@@ -132,13 +132,16 @@ def rigid_dist(
 ) -> float:
     """Rigid-transform distance between *M1* and *M2* (or *M1* vs identity).
 
+    Both matrices must be **RAS-to-RAS**; the translation component is then
+    in mm and the result has consistent physical units.
+
     .. math::
 
         D = \\sqrt{\\|T_d\\|^2 + \\|\\log R_d\\|_F^2}
 
     where :math:`d = M_1^{-1} M_2` when *M2* is given, else :math:`d = M_1`.
-    :math:`T_d` is the translation part and :math:`\\|\\log R_d\\|_F` is the
-    Frobenius norm of the rotation-matrix logarithm (``sqrt(2)`` × rotation
+    :math:`T_d` is the translation part (mm) and :math:`\\|\\log R_d\\|_F` is
+    the Frobenius norm of the rotation-matrix logarithm (``sqrt(2)`` × rotation
     angle in radians).
 
     Corresponds to **dist type 1** in FreeSurfer's ``lta_diff``.
@@ -146,16 +149,15 @@ def rigid_dist(
     Parameters
     ----------
     M1 : array-like, shape (4, 4)
-        First (or only) rigid transform.
+        First (or only) RAS-to-RAS rigid transform.
     M2 : array-like, shape (4, 4), optional
-        Second rigid transform.  When ``None``, the distance to the
+        Second RAS-to-RAS rigid transform.  When ``None``, the distance to the
         identity is returned.
 
     Returns
     -------
     float
-        Rigid-transform distance in mixed units (mm for translation,
-        radians for rotation, added in quadrature).
+        Rigid-transform distance (mm and radians added in quadrature).
     """
     M1a = np.asarray(M1, dtype=float)
     d   = M1a if M2 is None else (np.linalg.inv(M1a) @ np.asarray(M2, dtype=float))
@@ -171,13 +173,16 @@ def affine_dist(
 ) -> float:
     """RMS affine-transform distance (Jenkinson 1999).
 
+    Both matrices must be **RAS-to-RAS**; the translation component is then
+    in mm and *radius* has a consistent mm interpretation.
+
     .. math::
 
         D = \\sqrt{\\frac{r^2}{5} \\operatorname{Tr}(A^\\top A) + \\|T_d\\|^2}
 
     where :math:`d = M_1 - M_2` (or :math:`M_1 - I` when *M2* is ``None``),
     *A* is the upper-left 3×3 linear part of *d*, and :math:`T_d` is the
-    translation column.  *r* is the assumed brain radius in mm.
+    translation column (mm).  *r* is the assumed brain radius in mm.
 
     Reference: Jenkinson (1999), *A method for motion correction of
     fMRI time-series*, FMRIB Technical Report TR99MJ1.
@@ -187,8 +192,10 @@ def affine_dist(
     Parameters
     ----------
     M1 : array-like, shape (4, 4)
+        First (or only) RAS-to-RAS transform.
     M2 : array-like, shape (4, 4), optional
-        When ``None``, the distance to identity is returned.
+        Second RAS-to-RAS transform.  When ``None``, the distance to
+        identity is returned.
     radius : float
         Radius of the brain sphere in mm (default 100).
 
@@ -210,36 +217,39 @@ def corner_dist(
         M2: npt.ArrayLike | None = None,
         src_affine: npt.ArrayLike | None = None,
 ) -> float:
-    """Mean displacement at the 8 corners of a volume.
+    """Mean displacement at the 8 corners of the source volume (mm).
 
-    Each of the 8 corners of the source volume is mapped through *M* (and
-    *M2* when given), and the mean Euclidean distance between the two mapped
-    positions is returned.  When *M2* is ``None``, the distance from each
-    mapped corner to its original position is used (i.e. displacement from
-    identity).
+    Places the 8 corners of the source volume in RAS space using *src_affine*,
+    maps them through the RAS-to-RAS transform(s), and returns the mean
+    Euclidean displacement.
+
+    **Image-specific metric**: the result depends on the source image shape
+    and affine, not just the transform.  The corners are at the edges of the
+    source FOV — for a large or padded FOV they may be far from brain tissue,
+    making the result less representative than :func:`sphere_dist`.  When
+    comparing two transforms (*M* and *M2*), both must register the same
+    source image (so *src_affine* and *src_shape* are unambiguous).
 
     Corresponds to **dist type 3** in FreeSurfer's ``lta_diff``.
 
     Parameters
     ----------
     M : array-like, shape (4, 4)
-        First (or only) transform matrix.
+        First (or only) RAS-to-RAS transform.
     src_shape : tuple of int (i_size, j_size, k_size)
-        Voxel dimensions of the source volume, used to place the corners.
+        Voxel dimensions of the source volume.
     M2 : array-like, shape (4, 4), optional
-        Second transform.  When ``None``, displacement from identity is
-        measured.
+        Second RAS-to-RAS transform.  When ``None``, displacement from
+        identity is measured.
     src_affine : array-like, shape (4, 4), optional
-        Voxel-to-RAS affine of the source image.  When given, corner voxel
-        coordinates are first converted to RAS (mm) space before applying
-        *M* / *M2*; the returned distance is in mm.  When ``None``, corners
-        remain in voxel units and *M* is expected to be a vox-to-vox matrix.
+        Voxel-to-RAS affine of the source image.  When given, corners are
+        converted to RAS (mm) before applying the transforms; result is in
+        mm.  When ``None``, corners remain in voxel units.
 
     Returns
     -------
     float
-        Mean displacement across the 8 corners (mm when *src_affine* is
-        provided, voxels otherwise).
+        Mean corner displacement in mm (or voxels if *src_affine* is ``None``).
     """
     Si, Sj, Sk = src_shape
     # Build homogeneous voxel coordinates for all 8 corners
@@ -262,11 +272,12 @@ def sphere_dist(
         M2: npt.ArrayLike | None = None,
         radius: float = 100.0,
 ) -> float:
-    """Maximum displacement on a sphere of given radius.
+    """Maximum displacement on a sphere of given radius (mm).
 
-    Samples roughly 1 600 points uniformly on a sphere of *radius* mm
-    centred at the coordinate origin and returns the maximum displacement
-    caused by the transform difference.
+    Samples ~1 600 points on a sphere of *radius* mm centred at the RAS
+    origin and returns the peak displacement caused by the transform
+    difference.  Both matrices must be **RAS-to-RAS** so that the sphere
+    is in a meaningful physical space and displacements are in mm.
 
     .. math::
 
@@ -274,14 +285,19 @@ def sphere_dist(
 
         \\text{displacement}(p) = \\|M_d \\, p - p\\|
 
+    Unlike :func:`corner_dist` this metric is image-independent: the sphere
+    is a canonical approximation of the head and the result is a pure property
+    of the transform.
+
     Corresponds to **dist type 4** in FreeSurfer's ``lta_diff``.
 
     Parameters
     ----------
     M1 : array-like, shape (4, 4)
+        First (or only) RAS-to-RAS transform.
     M2 : array-like, shape (4, 4), optional
-        When ``None``, the maximum displacement of *M1* from identity is
-        returned.
+        Second RAS-to-RAS transform.  When ``None``, displacement from
+        identity is returned.
     radius : float
         Sphere radius in mm (default 100, roughly the head radius).
 
@@ -322,7 +338,9 @@ def decompose_transform(M: npt.ArrayLike) -> dict:
         A = R \\cdot S \\cdot \\operatorname{diag}(\\text{scales})
 
     where *R* is a proper rotation matrix, *S* is a shear matrix (ones on
-    diagonal), and *diag(scales)* captures anisotropic scaling.
+    diagonal), and *diag(scales)* captures anisotropic scaling.  The
+    translation vector is in mm because the input is expected to be
+    RAS-to-RAS.
 
     Corresponds to **dist type 7** in FreeSurfer's ``lta_diff`` (decompose).
 
@@ -338,7 +356,7 @@ def decompose_transform(M: npt.ArrayLike) -> dict:
         ``rotation`` : ndarray (3, 3)
             Rotation matrix (det = +1).
         ``rot_vec`` : ndarray (3,)
-            Rotation vector (axis × angle, in radians).
+            Rotation vector (axis × angle, radians).
         ``rot_angle_deg`` : float
             Rotation angle in degrees.
         ``shear`` : ndarray (3, 3)
@@ -346,7 +364,7 @@ def decompose_transform(M: npt.ArrayLike) -> dict:
         ``scales`` : ndarray (3,)
             Per-axis scale factors.
         ``translation`` : ndarray (3,)
-            Translation vector (mm).
+            Translation vector in mm.
         ``abs_trans`` : float
             Euclidean norm of the translation vector (mm).
         ``determinant`` : float
@@ -624,16 +642,6 @@ class LTA:
             from_type=1, to_type=0,
         )
 
-    def iso_vox(self) -> np.ndarray:
-        """Return the iso-vox scaled matrix (FreeSurfer ``getIsoVOX``).
-
-        ``diag(dst_vs) @ V2V @ inv(diag(src_vs))``
-        """
-        v2v    = self.v2v()
-        src_vs = np.diag([*self.src['voxelsize'], 1.0])
-        dst_vs = np.diag([*self.dst['voxelsize'], 1.0])
-        return dst_vs @ v2v @ np.linalg.inv(src_vs)
-
     # ── operations ──────────────────────────────────────────────────────────
 
     def invert(self) -> LTA:
@@ -659,48 +667,45 @@ class LTA:
     def rigid_dist(self, other: LTA | None = None) -> float:
         """Rigid-transform distance to *other* (or identity).
 
-        Delegates to :func:`rigid_dist`.
+        Operates on the RAS-to-RAS representation (converts automatically if
+        stored as vox-to-vox).  Delegates to :func:`rigid_dist`.
         """
         return rigid_dist(self.r2r(), other.r2r() if other is not None else None)
 
     def affine_dist(self, other: LTA | None = None, radius: float = 100.) -> float:
         """Affine RMS distance to *other* (Jenkinson 1999).
 
-        Delegates to :func:`affine_dist`.
+        Operates on the RAS-to-RAS representation (converts automatically if
+        stored as vox-to-vox).  Delegates to :func:`affine_dist`.
         """
         return affine_dist(self.r2r(), other.r2r() if other is not None else None,
                            radius=radius)
 
-    def corner_dist(self, other: LTA | None = None, vox: bool = False) -> float:
-        """Mean displacement at the 8 volume corners.
+    def corner_dist(self, other: LTA | None = None) -> float:
+        """Mean displacement at the 8 volume corners in RAS mm.
+
+        Operates on the RAS-to-RAS representation (converts automatically if
+        stored as vox-to-vox).  **Image-specific**: depends on source volume
+        geometry; see :func:`corner_dist` for limitations.
 
         Parameters
         ----------
         other : LTA, optional
             Second transform; ``None`` compares against identity.
-        vox : bool
-            If ``True``, work in iso-vox space (voxel-grid-aligned, mm units)
-            instead of scanner RAS.  Corners are scaled by src voxel size;
-            result is in mm.  Correct for images with different resolutions or
-            orientations.  If ``False`` (default), use R2R with the full
-            src affine; result is in RAS mm.
 
         Delegates to :func:`corner_dist`.
         """
         src_shape = tuple(self.src['volume'])
-        if vox:
-            vs         = self.src['voxelsize']
-            src_affine = np.diag([vs[0], vs[1], vs[2], 1.0])
-            M2         = other.iso_vox() if other is not None else None
-            return corner_dist(self.iso_vox(), src_shape, M2=M2, src_affine=src_affine)
         M2 = other.r2r() if other is not None else None
         return corner_dist(self.r2r(), src_shape, M2=M2,
                            src_affine=_affine_from_info(self.src))
 
     def sphere_dist(self, other: LTA | None = None, radius: float = 100.) -> float:
-        """Max displacement on a sphere of given radius.
+        """Max displacement on a sphere of given radius in RAS mm.
 
-        Delegates to :func:`sphere_dist`.
+        Operates on the RAS-to-RAS representation (converts automatically if
+        stored as vox-to-vox).  **Image-independent**: result depends only on
+        the transform, not source/dst geometry.  Delegates to :func:`sphere_dist`.
         """
         return sphere_dist(self.r2r(), other.r2r() if other is not None else None,
                            radius=radius)

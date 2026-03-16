@@ -19,6 +19,9 @@ def _build_parser() -> argparse.ArgumentParser:
             'Compute distance metrics between two LTA transforms, or between\n'
             'one transform and identity.\n'
             '\n'
+            'All metrics operate on the RAS-to-RAS representation of the stored\n'
+            'transforms (vox-to-vox LTAs are converted automatically).\n'
+            '\n'
             'Analogous to FreeSurfer\'s lta_diff utility.\n'
             '\n'
             'Distance types:\n'
@@ -26,8 +29,8 @@ def _build_parser() -> argparse.ArgumentParser:
             '      D = inv(M1) @ M2  (or M1 vs identity)\n'
             '  2   Affine RMS distance (Jenkinson 1999)  [default]\n'
             '      sqrt(r²/5 · Tr(AᵀA) + ||T_d||²),  D = M1 − M2\n'
-            '  3   8-corner mean displacement (mm or vox with --vox)\n'
-            '  4   Max displacement on sphere of radius r\n'
+            '  3   8-corner mean displacement (mm, image-specific)\n'
+            '  4   Max displacement on sphere of radius r (mm)\n'
             '      D = inv(M1) @ M2\n'
             '  5   Determinant of M1 (· M2 when given)\n'
             '  7   Polar decomposition: rotation, shear, scale, translation\n'
@@ -51,13 +54,6 @@ def _build_parser() -> argparse.ArgumentParser:
                    help='Invert the first transform before comparison.')
     p.add_argument('--invert2', action='store_true',
                    help='Invert the second transform before comparison.')
-    p.add_argument('--vox', action='store_true',
-                   help=(
-                       'Work in iso-vox space (voxel-grid-aligned, mm units) '
-                       'instead of scanner RAS.  Applies to all dist types.  '
-                       'Strips image orientation so results are independent of '
-                       'scanner table angle / image obliquity.'
-                   ))
 
     return p
 
@@ -81,22 +77,22 @@ def _check_vol_info(
             )
 
 
-def _needs_vol_info(lta: LTA, ns: argparse.Namespace) -> bool:
+def _needs_vol_info(lta: LTA, dist: int) -> bool:
     """Return True when the chosen metric path will access volume-info fields.
 
     False only for R2R-stored LTAs on a plain r2r() call (fast path, no
-    affine needed).  Everything else — V2V conversion, iso-vox, dist 3
-    corner placement — requires both src and dst volume info.
+    affine needed).  V2V conversion and dist-3 corner placement both require
+    both src and dst volume info.
     """
-    return ns.dist == 3 or ns.vox or lta.type == 0
+    return dist == 3 or lta.type == 0
 
 
 # ── dist implementations ─────────────────────────────────────────────────────
 
 def _run_dist(ns: argparse.Namespace, lta1: LTA, lta2: LTA | None) -> None:
 
-    M1 = lta1.iso_vox() if ns.vox else lta1.r2r()
-    M2 = (lta2.iso_vox() if ns.vox else lta2.r2r()) if lta2 is not None else None
+    M1 = lta1.r2r()
+    M2 = lta2.r2r() if lta2 is not None else None
 
     if ns.dist == 1:
         print(f'{rigid_dist(M1, M2) / ns.normdiv}')
@@ -105,7 +101,7 @@ def _run_dist(ns: argparse.Namespace, lta1: LTA, lta2: LTA | None) -> None:
         print(f'{affine_dist(M1, M2, radius=ns.radius) / ns.normdiv}')
 
     elif ns.dist == 3:
-        print(f'{lta1.corner_dist(lta2, vox=ns.vox) / ns.normdiv}')
+        print(f'{lta1.corner_dist(lta2) / ns.normdiv}')
 
     elif ns.dist == 4:
         print(f'{sphere_dist(M1, M2, radius=ns.radius) / ns.normdiv}')
@@ -158,10 +154,10 @@ def main(args=None) -> None:
 
     # ── volume-info validation ────────────────────────────────────────────────
     # Check upfront so missing-field errors are actionable rather than cryptic.
-    # Covers: V2V→R2R conversion, iso-vox (--vox), and corner placement (dist 3).
+    # Needed for V2V→R2R conversion and corner placement (dist 3).
     ltas = [(lta1, 'LTA1')] + ([(lta2, 'LTA2')] if lta2 is not None else [])
     for lta, label in ltas:
-        if _needs_vol_info(lta, ns):
+        if _needs_vol_info(lta, ns.dist):
             _check_vol_info(parser, lta, label)
 
     if ns.invert1:
@@ -174,4 +170,3 @@ def main(args=None) -> None:
     except Exception as e:
         print(f'ERROR: {e}', file=sys.stderr)
         sys.exit(1)
-

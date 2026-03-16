@@ -50,10 +50,24 @@ def _translation(tx: float, ty: float = 0.0, tz: float = 0.0) -> np.ndarray:
 
 
 def _write_lta(path: Path, M: np.ndarray, lta_type: int = 1) -> str:
-    """Write a minimal LTA file via the LTA class; return its path as a string."""
+    """Write a minimal LTA file with full geometry; return its path as a string."""
     s = str(path)
     LTA.from_matrix(M, "src.mgz", _GEOM, "dst.mgz", _GEOM, lta_type=lta_type).write(s)
     return s
+
+
+def _write_bare_lta(path: Path, M: np.ndarray, lta_type: int = 1) -> str:
+    """Write a minimal LTA file with NO volume-info blocks; return its path as a string."""
+    rows = '\n'.join(' '.join(f'{v:.15e}' for v in row) for row in M)
+    path.write_text(
+        f'type      = {lta_type}\n'
+        f'nxforms   = 1\n'
+        f'mean      = 0.0 0.0 0.0\n'
+        f'sigma     = 1.0\n'
+        f'1 4 4\n'
+        f'{rows}\n'
+    )
+    return str(path)
 
 
 # ---------------------------------------------------------------------------
@@ -144,16 +158,21 @@ class TestDecomposeTransform:
 # ---------------------------------------------------------------------------
 
 class TestLTAClass:
+    def test_r2r_v2v_no_volume_info(self):
+        """r2r()/v2v() must not touch volume-info when no conversion is needed."""
+        M = _rotation_z(5.0) @ _translation(2.0, 1.0)
+        assert LTA(M, lta_type=1, src={}, dst={}).r2r() == pytest.approx(M, rel=1e-10)
+        assert LTA(M, lta_type=0, src={}, dst={}).v2v() == pytest.approx(M, rel=1e-10)
+
     def test_read_write_roundtrip(self, tmp_path):
         M   = _rotation_z(5.0) @ _translation(2.0, 1.0)
         lta = LTA.from_matrix(M, "src.mgz", _GEOM, "dst.mgz", _GEOM)
         lta.write(tmp_path / "out.lta")
         lta2 = LTA.read(tmp_path / "out.lta")
-        assert lta2.matrix == pytest.approx(M,  rel=1e-10)
+        assert lta2.matrix == pytest.approx(M, rel=1e-10)
         assert lta2.type   == 1
 
     def test_r2r_and_v2v(self, tmp_path):
-        # R2R stored: r2r() is identity; v2v() must convert correctly
         p = _write_lta(tmp_path / "id.lta", _IDENTITY, lta_type=1)
         assert LTA.read(p).r2r() == pytest.approx(_IDENTITY, abs=1e-10)
         p = _write_lta(tmp_path / "id_v.lta", _IDENTITY, lta_type=0)
@@ -237,23 +256,39 @@ class TestLtaDiffCLI:
         d1 = float(capsys.readouterr().out.strip())
         main([rigid_lta, "--dist", "2", "--invert1"])
         d2 = float(capsys.readouterr().out.strip())
-        # invert of a non-identity rigid should yield the same magnitude
         assert d1 == pytest.approx(d2, rel=1e-4)
 
     def test_invert2_requires_second_lta(self, identity_lta):
         with pytest.raises(SystemExit):
             main([identity_lta, "--invert2"])
 
-    def test_vox_nonunit_voxelsize_identity(self, tmp_path, capsys):
-        """Regression: identity V2V with non-1 mm voxels must give distance 0."""
-        geom_2mm = {"dims": [128, 128, 128], "delta": [2.0, 2.0, 2.0],
-                    "Mdc": np.eye(3), "Pxyz_c": np.zeros(3)}
-        lta_path = str(tmp_path / "id_2mm.lta")
-        LTA.from_matrix(_IDENTITY, "src.mgz", geom_2mm, "dst.mgz", geom_2mm,
-                        lta_type=0).write(lta_path)
-        main([lta_path, "--dist", "2", "--vox"])
-        assert float(capsys.readouterr().out.strip()) == pytest.approx(0.0, abs=1e-10)
-
     def test_missing_lta_file_exits(self, tmp_path):
         with pytest.raises(SystemExit):
             main([str(tmp_path / "does_not_exist.lta")])
+
+    # ── volume-info validation ─────────────────────────────────────────────
+
+    def test_dist3_missing_vol_info_exits(self, tmp_path):
+        """dist 3 on an LTA without volume info must exit with a clear error."""
+        bare = _write_bare_lta(tmp_path / "bare.lta", _IDENTITY)
+        with pytest.raises(SystemExit):
+            main([bare, "--dist", "3"])
+
+    def test_dist3_missing_dst_vol_info_exits(self, tmp_path):
+        """dist 3 must validate the dst block, not just src."""
+        M    = _rotation_z(5.0) @ _translation(2.0, 1.0)
+        rows = '\n'.join(' '.join(f'{v:.15e}' for v in row) for row in M)
+        (tmp_path / "no_dst.lta").write_text(
+            f'type      = 1\nnxforms   = 1\nmean      = 0.0 0.0 0.0\nsigma     = 1.0\n1 4 4\n{rows}\n'
+            'src volume info\nvalid = 1\nfilename = src.mgz\n'
+            'volume = 256 256 256\nvoxelsize = 1.0 1.0 1.0\n'
+            'xras = 1.0 0.0 0.0\nyras = 0.0 1.0 0.0\nzras = 0.0 0.0 1.0\ncras = 0.0 0.0 0.0\n'
+        )
+        with pytest.raises(SystemExit):
+            main([str(tmp_path / "no_dst.lta"), "--dist", "3"])
+
+    def test_dist3_missing_lta2_vol_info_exits(self, tmp_path, identity_lta):
+        """dist 3 must validate lta2, not just lta1."""
+        bare = _write_bare_lta(tmp_path / "bare.lta", _IDENTITY)
+        with pytest.raises(SystemExit):
+            main([identity_lta, bare, "--dist", "3"])
