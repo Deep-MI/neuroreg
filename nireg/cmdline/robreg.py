@@ -83,6 +83,7 @@ def main(args=None) -> None:
     # ── write LTA ───────────────────────────────────────────────────────────
     # lta_type=0 (LINEAR_VOX_TO_VOX) matches the vox-to-vox matrix returned
     # by register_pyramid(..., return_v2v=True).
+    # LTA.from_matrix() constructs the LTA object; .write() serialises it to disk.
     LTA.from_matrix(v2v.numpy(), ns.mov, mov_img, ns.ref, ref_img, lta_type=0).write(ns.out)
     logger.info("Wrote LTA: %s", ns.out)
     print(f"Output: {ns.out}")
