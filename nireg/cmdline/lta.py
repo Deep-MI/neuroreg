@@ -21,7 +21,6 @@ import numpy as np
 
 from nireg.transforms import LTA, decompose_transform
 
-
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 def _positive_float(value: str) -> float:
@@ -29,7 +28,7 @@ def _positive_float(value: str) -> float:
     try:
         f = float(value)
     except ValueError:
-        raise argparse.ArgumentTypeError(f'{value!r} is not a valid float')
+        raise argparse.ArgumentTypeError(f'{value!r} is not a valid float') from None
     if f <= 0.0:
         raise argparse.ArgumentTypeError(
             f'--normdiv must be a positive, non-zero value (got {f})'
