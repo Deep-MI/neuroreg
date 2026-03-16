@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from nireg.cmdline.lta_diff import main
+from nireg.cmdline.lta import main
 from nireg.transforms import (
     LTA,
     affine_dist,
@@ -183,6 +183,31 @@ class TestLTAClass:
         lta = LTA.from_matrix(M, "src.mgz", _GEOM, "dst.mgz", _GEOM)
         assert lta.invert().r2r() @ lta.r2r() == pytest.approx(np.eye(4), abs=1e-10)
 
+    def test_concat_matrix_and_geometry(self):
+        # lta_AB maps A→B, lta_BC maps B→C; result must map A→C.
+        geom_A = {**_GEOM, "volume": [256, 256, 256]}
+        geom_B = {**_GEOM, "volume": [128, 128, 128]}
+        geom_C = {**_GEOM, "volume": [64,  64,  64 ]}
+        M_AB = _translation(1.0, 2.0, 3.0)
+        M_BC = _rotation_z(5.0)
+        lta_AB = LTA(M_AB, 1, geom_A, geom_B)
+        lta_BC = LTA(M_BC, 1, geom_B, geom_C)
+        lta_AC = lta_AB.concat(lta_BC)
+        # matrix: M_BC @ M_AB
+        assert lta_AC.r2r() == pytest.approx(M_BC @ M_AB, abs=1e-10)
+        # geometry: src from lta_AB, dst from lta_BC
+        assert lta_AC.src["volume"] == geom_A["volume"]
+        assert lta_AC.dst["volume"] == geom_C["volume"]
+        assert lta_AC.type == 1
+
+    def test_concat_invert_roundtrip(self):
+        M_AB = _translation(1.0, 2.0, 3.0)
+        M_BC = _rotation_z(5.0)
+        lta_AB = LTA.from_matrix(M_AB, "a.mgz", _GEOM, "b.mgz", _GEOM)
+        lta_BC = LTA.from_matrix(M_BC, "b.mgz", _GEOM, "c.mgz", _GEOM)
+        lta_AC = lta_AB.concat(lta_BC)
+        assert lta_AC.invert().r2r() @ lta_AC.r2r() == pytest.approx(np.eye(4), abs=1e-10)
+
     def test_write_type_conversion(self, tmp_path):
         """write(lta_type=0) must produce a V2V file whose r2r() matches the original."""
         M   = _rotation_z(5.0) @ _translation(2.0, 1.0)
@@ -219,76 +244,162 @@ def rigid_lta(tmp_path: Path) -> str:
 class TestLtaDiffCLI:
 
     def test_dist2_is_default(self, identity_lta, capsys):
-        main([identity_lta])
+        main(['diff', identity_lta])
         assert float(capsys.readouterr().out.strip()) == pytest.approx(0.0, abs=1e-10)
 
     def test_dist1(self, rigid_lta, capsys):
-        main([rigid_lta, "--dist", "1"])
+        main(['diff', rigid_lta, '--dist', '1'])
         assert float(capsys.readouterr().out.strip()) > 0.0
 
     def test_dist3_pure_translation(self, tmp_path, capsys):
-        lta = _write_lta(tmp_path / "trans.lta", _translation(3.0, 4.0))
-        main([lta, "--dist", "3"])
+        lta = _write_lta(tmp_path / 'trans.lta', _translation(3.0, 4.0))
+        main(['diff', lta, '--dist', '3'])
         assert float(capsys.readouterr().out.strip()) == pytest.approx(5.0, rel=1e-5)
 
     def test_dist4(self, identity_lta, capsys):
-        main([identity_lta, "--dist", "4"])
+        main(['diff', identity_lta, '--dist', '4'])
         assert float(capsys.readouterr().out.strip()) == pytest.approx(0.0, abs=1e-10)
 
     def test_dist5_det_is_one(self, rigid_lta, capsys):
-        main([rigid_lta, "--dist", "5"])
+        main(['diff', rigid_lta, '--dist', '5'])
         assert float(capsys.readouterr().out.strip()) == pytest.approx(1.0, rel=1e-4)
 
     def test_dist7_output_fields(self, identity_lta, capsys):
-        main([identity_lta, "--dist", "7"])
+        main(['diff', identity_lta, '--dist', '7'])
         out = capsys.readouterr().out
-        for field in ("Rot", "Trans", "Determinant", "Scales", "RotAngle"):
+        for field in ('Rot', 'Trans', 'Determinant', 'Scales', 'RotAngle'):
             assert field in out
 
     def test_normdiv_halves_result(self, rigid_lta, capsys):
-        main([rigid_lta, "--dist", "2"])
+        main(['diff', rigid_lta, '--dist', '2'])
         d_full = float(capsys.readouterr().out.strip())
-        main([rigid_lta, "--dist", "2", "--normdiv", "2"])
+        main(['diff', rigid_lta, '--dist', '2', '--normdiv', '2'])
         assert float(capsys.readouterr().out.strip()) == pytest.approx(d_full / 2.0, rel=1e-6)
 
-    def test_invert1_changes_result(self, rigid_lta, capsys):
-        main([rigid_lta, "--dist", "2"])
+    def test_invert1_preserves_dist2_for_rigid_transform(self, rigid_lta, capsys):
+        # For dist 2, affine_dist(M, I) == affine_dist(M⁻¹, I) when M is rigid:
+        # ‖R − I‖_F == ‖Rᵀ − I‖_F  and  ‖Rᵀ t‖ == ‖t‖,
+        # so --invert1 leaves the result unchanged for this case.
+        main(['diff', rigid_lta, '--dist', '2'])
         d1 = float(capsys.readouterr().out.strip())
-        main([rigid_lta, "--dist", "2", "--invert1"])
+        main(['diff', rigid_lta, '--dist', '2', '--invert1'])
         d2 = float(capsys.readouterr().out.strip())
         assert d1 == pytest.approx(d2, rel=1e-4)
 
     def test_invert2_requires_second_lta(self, identity_lta):
         with pytest.raises(SystemExit):
-            main([identity_lta, "--invert2"])
+            main(['diff', identity_lta, '--invert2'])
 
     def test_missing_lta_file_exits(self, tmp_path):
         with pytest.raises(SystemExit):
-            main([str(tmp_path / "does_not_exist.lta")])
+            main(['diff', str(tmp_path / 'does_not_exist.lta')])
 
     # ── volume-info validation ─────────────────────────────────────────────
 
     def test_dist3_missing_vol_info_exits(self, tmp_path):
-        """dist 3 on an LTA without volume info must exit with a clear error."""
-        bare = _write_bare_lta(tmp_path / "bare.lta", _IDENTITY)
+        bare = _write_bare_lta(tmp_path / 'bare.lta', _IDENTITY)
         with pytest.raises(SystemExit):
-            main([bare, "--dist", "3"])
+            main(['diff', bare, '--dist', '3'])
 
     def test_dist3_missing_dst_vol_info_exits(self, tmp_path):
-        """dist 3 must validate the dst block, not just src."""
         M    = _rotation_z(5.0) @ _translation(2.0, 1.0)
         rows = '\n'.join(' '.join(f'{v:.15e}' for v in row) for row in M)
-        (tmp_path / "no_dst.lta").write_text(
+        (tmp_path / 'no_dst.lta').write_text(
             f'type      = 1\nnxforms   = 1\nmean      = 0.0 0.0 0.0\nsigma     = 1.0\n1 4 4\n{rows}\n'
             'src volume info\nvalid = 1\nfilename = src.mgz\n'
             'volume = 256 256 256\nvoxelsize = 1.0 1.0 1.0\n'
             'xras = 1.0 0.0 0.0\nyras = 0.0 1.0 0.0\nzras = 0.0 0.0 1.0\ncras = 0.0 0.0 0.0\n'
         )
         with pytest.raises(SystemExit):
-            main([str(tmp_path / "no_dst.lta"), "--dist", "3"])
+            main(['diff', str(tmp_path / 'no_dst.lta'), '--dist', '3'])
 
     def test_dist3_missing_lta2_vol_info_exits(self, tmp_path, identity_lta):
-        """dist 3 must validate lta2, not just lta1."""
-        bare = _write_bare_lta(tmp_path / "bare.lta", _IDENTITY)
+        bare = _write_bare_lta(tmp_path / 'bare.lta', _IDENTITY)
         with pytest.raises(SystemExit):
-            main([identity_lta, bare, "--dist", "3"])
+            main(['diff', identity_lta, bare, '--dist', '3'])
+
+
+# ---------------------------------------------------------------------------
+# lta invert CLI
+# ---------------------------------------------------------------------------
+
+class TestLtaInvertCLI:
+
+    def test_invert_roundtrip(self, tmp_path):
+        """Inverting twice must recover the original matrix."""
+        src  = _write_lta(tmp_path / 'rigid.lta', _rotation_z(5.0) @ _translation(2.0, 1.0))
+        inv  = str(tmp_path / 'rigid_inv.lta')
+        inv2 = str(tmp_path / 'rigid_inv2.lta')
+        main(['invert', src, inv])
+        main(['invert', inv, inv2])
+        assert LTA.read(inv2).r2r() == pytest.approx(LTA.read(src).r2r(), abs=1e-10)
+
+    def test_invert_matrix_is_correct(self, tmp_path):
+        """The inverted LTA's r2r must be the matrix inverse of the original."""
+        M   = _rotation_z(15.0) @ _translation(3.0, -1.0, 2.0)
+        src = _write_lta(tmp_path / 'orig.lta', M)
+        inv = str(tmp_path / 'inv.lta')
+        main(['invert', src, inv])
+        assert LTA.read(inv).r2r() @ M == pytest.approx(np.eye(4), abs=1e-10)
+
+    def test_invert_swaps_src_dst(self, tmp_path):
+        """src/dst filenames must be swapped in the inverted LTA."""
+        src = _write_lta(tmp_path / 'orig.lta', _IDENTITY)
+        inv = str(tmp_path / 'inv.lta')
+        main(['invert', src, inv])
+        orig     = LTA.read(src)
+        inverted = LTA.read(inv)
+        assert inverted.src['filename'] == orig.dst['filename']
+        assert inverted.dst['filename'] == orig.src['filename']
+
+    def test_invert_missing_input_exits(self, tmp_path):
+        with pytest.raises(SystemExit):
+            main(['invert', str(tmp_path / 'missing.lta'), str(tmp_path / 'out.lta')])
+
+
+# ---------------------------------------------------------------------------
+# lta concat CLI
+# ---------------------------------------------------------------------------
+
+class TestLtaConcatCLI:
+
+    def test_concat_matrix(self, tmp_path):
+        """Concatenated matrix must equal M_BC @ M_AB."""
+        M_AB   = _translation(1.0, 2.0, 3.0)
+        M_BC   = _rotation_z(5.0)
+        lta_ab = _write_lta(tmp_path / 'ab.lta', M_AB)
+        lta_bc = _write_lta(tmp_path / 'bc.lta', M_BC)
+        out    = str(tmp_path / 'ac.lta')
+        main(['concat', lta_ab, lta_bc, out])
+        assert LTA.read(out).r2r() == pytest.approx(M_BC @ M_AB, abs=1e-10)
+
+    def test_concat_geometry(self, tmp_path):
+        """Output src must come from LTA1 and dst from LTA2."""
+        lta_ab = _write_lta(tmp_path / 'ab.lta', _IDENTITY)
+        lta_bc = _write_lta(tmp_path / 'bc.lta', _IDENTITY)
+        out    = str(tmp_path / 'ac.lta')
+        main(['concat', lta_ab, lta_bc, out])
+        result = LTA.read(out)
+        assert result.src['filename'] == LTA.read(lta_ab).src['filename']
+        assert result.dst['filename'] == LTA.read(lta_bc).dst['filename']
+
+    def test_concat_then_invert_is_identity(self, tmp_path):
+        """Concatenated transform composed with its inverse must be identity."""
+        M_AB   = _translation(1.0, 2.0, 3.0)
+        M_BC   = _rotation_z(10.0)
+        lta_ab = _write_lta(tmp_path / 'ab.lta', M_AB)
+        lta_bc = _write_lta(tmp_path / 'bc.lta', M_BC)
+        out    = str(tmp_path / 'ac.lta')
+        main(['concat', lta_ab, lta_bc, out])
+        lta_AC = LTA.read(out)
+        assert lta_AC.invert().r2r() @ lta_AC.r2r() == pytest.approx(np.eye(4), abs=1e-10)
+
+    def test_concat_missing_lta1_exits(self, tmp_path):
+        lta_bc = _write_lta(tmp_path / 'bc.lta', _IDENTITY)
+        with pytest.raises(SystemExit):
+            main(['concat', str(tmp_path / 'missing.lta'), lta_bc, str(tmp_path / 'out.lta')])
+
+    def test_concat_missing_lta2_exits(self, tmp_path):
+        lta_ab = _write_lta(tmp_path / 'ab.lta', _IDENTITY)
+        with pytest.raises(SystemExit):
+            main(['concat', lta_ab, str(tmp_path / 'missing.lta'), str(tmp_path / 'out.lta')])

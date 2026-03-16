@@ -439,6 +439,11 @@ class LTA:
         dst : dict
             Destination volume info (same keys).
         """
+        if lta_type not in (0, 1):
+            raise ValueError(
+                f'lta_type must be 0 (LINEAR_VOX_TO_VOX) or 1 (LINEAR_RAS_TO_RAS), '
+                f'got {lta_type!r}'
+            )
         self.matrix = np.asarray(matrix, dtype=float).reshape(4, 4)
         self.type   = lta_type
         self.src    = src
@@ -461,6 +466,13 @@ class LTA:
         LTA
         """
         filename = str(filename)
+
+        if lta_type is not None and lta_type not in (0, 1):
+            raise ValueError(
+                f'lta_type must be 0 (LINEAR_VOX_TO_VOX) or 1 (LINEAR_RAS_TO_RAS), '
+                f'got {lta_type!r}'
+            )
+
         with open(filename) as f:
             lines = f.readlines()
 
@@ -479,6 +491,12 @@ class LTA:
             logger.warning(
                 '%s: nxforms = %d; only the first transform will be read.',
                 filename, nxforms,
+            )
+
+        if stored_type not in (0, 1):
+            raise ValueError(
+                f'{filename}: unsupported transform type {stored_type!r}; '
+                f'expected 0 (LINEAR_VOX_TO_VOX) or 1 (LINEAR_RAS_TO_RAS)'
             )
 
         mat: list[list[float]] = []
@@ -680,6 +698,29 @@ class LTA:
     def invert(self) -> LTA:
         """Return an inverted copy with src/dst swapped, stored as R2R."""
         return LTA(np.linalg.inv(self.r2r()), 1, self.dst, self.src)
+
+    def concat(self, other: LTA) -> LTA:
+        """Concatenate two transforms: ``self`` (A→B) followed by ``other`` (B→C).
+
+        Returns a new LTA that maps directly from A to C, stored as R2R.
+        The src geometry is taken from ``self`` and the dst geometry from
+        ``other``; the caller is responsible for ensuring that the intermediate
+        spaces (``self.dst`` / ``other.src``) are compatible.
+
+        Equivalent to FreeSurfer's ``mri_concatenate_lta``.
+
+        Parameters
+        ----------
+        other : LTA
+            The second transform to apply (maps B → C).
+
+        Returns
+        -------
+        LTA
+            New LTA whose matrix is ``other.r2r() @ self.r2r()``,
+            with ``src`` from ``self`` and ``dst`` from ``other``.
+        """
+        return LTA(other.r2r() @ self.r2r(), 1, self.src, other.dst)
 
     # ── single-transform analysis ────────────────────────────────────────────
 

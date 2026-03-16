@@ -60,7 +60,7 @@ def main(args=None) -> None:
     logging.basicConfig(level=level, format="%(levelname)s %(name)s: %(message)s")
     logger = logging.getLogger("nireg.cli.robreg")
 
-    # ── load images (needed for lta_write geometry metadata) ────────────────
+    # ── load images (needed for LTA.write geometry metadata) ────────────────
     logger.info("Loading moving image:    %s", ns.mov)
     logger.info("Loading reference image: %s", ns.ref)
     try:

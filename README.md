@@ -153,15 +153,29 @@ Run `bbreg -h` for a full argument summary with defaults.
 
 ---
 
-### `lta-diff` — LTA transform comparison
+### `lta` — LTA transform utilities
 
-Computes distance metrics between two LTA transforms, or between a single
-transform and identity.  Replicates the functionality of FreeSurfer's
-`lta_diff` utility.
+Unified command for manipulating FreeSurfer LTA transform files with three
+subcommands: `diff`, `invert`, and `concat`.
 
 ```
-lta-diff LTA1 [LTA2] [--dist {1,2,3,4,5,7}] [--radius MM] [--normdiv FLOAT]
-              [--invert1] [--invert2] [--vox]
+lta diff    LTA1 [LTA2] [options]    # Compare transforms
+lta invert  INPUT OUTPUT              # Invert a transform
+lta concat  LTA1 LTA2 OUTPUT          # Concatenate two transforms
+```
+
+---
+
+#### `lta diff` — Compare transforms
+
+Computes distance metrics between two LTA transforms, or between a single
+transform and identity. Replicates the functionality of FreeSurfer's `lta_diff`.
+
+**Usage**
+
+```
+lta diff LTA1 [LTA2] [--dist {1,2,3,4,5,7}] [--radius MM] [--normdiv FLOAT]
+                     [--invert1] [--invert2]
 ```
 
 **Distance types**
@@ -170,7 +184,7 @@ lta-diff LTA1 [LTA2] [--dist {1,2,3,4,5,7}] [--radius MM] [--normdiv FLOAT]
 |----------|--------|
 | `1` | Rigid transform distance: √(‖log R_d‖² + ‖T_d‖²) |
 | `2` | Affine RMS distance (Jenkinson 1999) — **default** |
-| `3` | Mean displacement at the 8 corners of the source volume (mm or vox with `--vox`) |
+| `3` | Mean displacement at the 8 corners of the source volume (mm) |
 | `4` | Max displacement on a sphere of radius `r` |
 | `5` | Determinant of M1 (or M1·M2 when two transforms are given) |
 | `7` | Polar decomposition: rotation, shear, scales, translation, determinant |
@@ -181,33 +195,76 @@ lta-diff LTA1 [LTA2] [--dist {1,2,3,4,5,7}] [--radius MM] [--normdiv FLOAT]
 |----------|---------|-------------|
 | `--dist {1,2,3,4,5,7}` | `2` | Distance type (see table above). |
 | `--radius MM` | `100` | Sphere / RMS radius in mm (used by dist 2 and 4). |
-| `--normdiv FLOAT` | `1` | Divide the final distance by this value. |
+| `--normdiv FLOAT` | `1` | Divide the final distance by this value (must be > 0). |
 | `--invert1` | off | Invert LTA1 before comparison. |
 | `--invert2` | off | Invert LTA2 before comparison (requires a second LTA). |
-| `--vox` | off | Work in voxel coordinates scaled to mm (iso-vox, matching FreeSurfer `--vox`). For dist 3, distances are reported in voxels. |
 
 **Examples**
 
 ```bash
 # Affine RMS distance between two registrations (default metric)
-lta-diff myreg.lta ref.lta
+lta diff myreg.lta ref.lta
 
 # Rigid distance
-lta-diff myreg.lta ref.lta --dist 1
-
-# Corner displacement, voxel units
-lta-diff myreg.lta ref.lta --dist 3 --vox
+lta diff myreg.lta ref.lta --dist 1
 
 # Polar decomposition of a single transform
-lta-diff myreg.lta --dist 7
+lta diff myreg.lta --dist 7
+```
+
+---
+
+#### `lta invert` — Invert a transform
+
+Inverts an LTA transform and writes the result to a new file. The output is
+always stored as LINEAR_RAS_TO_RAS with src and dst geometry swapped.
+
+**Usage**
+
+```
+lta invert INPUT OUTPUT
+```
+
+**Examples**
+
+```bash
+# Invert a registration
+lta invert T1_to_MNI.lta MNI_to_T1.lta
+
+# Invert twice to verify round-trip
+lta invert fwd.lta inv.lta
+lta invert inv.lta fwd_again.lta
+```
+
+---
+
+#### `lta concat` — Concatenate transforms
+
+Concatenates two LTA transforms. If `LTA1` maps A→B and `LTA2` maps B→C, the
+output maps A→C. Equivalent to FreeSurfer's `mri_concatenate_lta`.
+
+**Usage**
+
+```
+lta concat LTA1 LTA2 OUTPUT
+```
+
+**Examples**
+
+```bash
+# Concatenate fMRI→T1 and T1→MNI to get fMRI→MNI
+lta concat fMRI_to_T1.lta T1_to_MNI.lta fMRI_to_MNI.lta
+
+# Chain multiple registrations
+lta concat moving_to_intermediate.lta intermediate_to_fixed.lta moving_to_fixed.lta
 ```
 
 **Notes**
 
 - All metrics are numerically matched to FreeSurfer's `lta_diff` (except for a
   known bug in the C++ single-transform corner metric, which is fixed here).
-- When only one LTA is supplied, the transform is compared against identity.
-- Run `lta-diff -h` for a full argument summary.
+- When only one LTA is supplied to `diff`, the transform is compared against identity.
+- Run `lta --help` or `lta <subcommand> --help` for detailed usage.
 
 ## Python API
 
