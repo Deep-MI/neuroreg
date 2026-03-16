@@ -465,10 +465,21 @@ class LTA:
             lines = f.readlines()
 
         stored_type: int = 1
+        nxforms: int = 1
         for line in lines:
-            if line.startswith('type'):
-                stored_type = int(line.split('=')[1].split('#')[0].strip())
-                break
+            stripped = line.strip()
+            if stripped.startswith('type') and '=' in stripped:
+                stored_type = int(stripped.split('=')[1].split('#')[0].strip())
+            elif stripped.startswith('nxforms') and '=' in stripped:
+                nxforms = int(stripped.split('=')[1].split('#')[0].strip())
+            elif stripped.startswith('1 4 4'):
+                break  # reached matrix; header fields are all above this
+
+        if nxforms != 1:
+            logger.warning(
+                '%s: nxforms = %d; only the first transform will be read.',
+                filename, nxforms,
+            )
 
         mat: list[list[float]] = []
         for i, line in enumerate(lines):
@@ -485,8 +496,20 @@ class LTA:
                 line = line.strip()
                 if not line or line.startswith('#'):
                     continue
-                if line.startswith('filename'):
+                if line.startswith('valid'):
+                    info['valid'] = int(line.split('=', 1)[1].split('#')[0].strip())
+                elif line.startswith('filename'):
                     info['filename'] = line.split('=', 1)[1].strip()
+                elif line.startswith('fname'):
+                    # Old-style alias; only fill in if 'filename' not yet seen
+                    info.setdefault('filename', line.split('=', 1)[1].strip())
+                elif line.startswith('subject'):
+                    # FreeSurfer writes "subject <name>" (no '=')
+                    parts = line.split(None, 1)
+                    if len(parts) == 2:
+                        info['subject'] = parts[1].strip()
+                    elif '=' in line:
+                        info['subject'] = line.split('=', 1)[1].strip()
                 elif line.startswith('volume'):
                     info['volume'] = [int(v) for v in line.split('=', 1)[1].split()]
                 elif line.startswith('voxelsize'):
@@ -510,6 +533,13 @@ class LTA:
                 src = _parse_vol_block(i + 1)
             elif line.strip().startswith('dst volume info'):
                 dst = _parse_vol_block(i + 1)
+
+        for role, info in (('src', src), ('dst', dst)):
+            if info.get('valid', 1) == 0:
+                logger.warning(
+                    '%s: %s volume info has valid = 0; geometry may be unreliable.',
+                    filename, role,
+                )
 
         lta = cls(np.array(mat), stored_type, src, dst)
 
@@ -604,9 +634,12 @@ class LTA:
             f.write('\n')
             for role, info in (('src', self.src), ('dst', self.dst)):
                 dims_str = ' '.join(str(int(x)) for x in info['volume'])
+                valid    = info.get('valid', 1)
                 f.write(f'{role} volume info\n')
-                f.write('valid = 1  # volume info valid\n')
+                f.write(f'valid = {valid}  # volume info valid\n')
                 f.write(f"filename = {info.get('filename', '')}\n")
+                if 'subject' in info:
+                    f.write(f"subject {info['subject']}\n")
                 f.write(f'volume = {dims_str}\n')
                 f.write(f"voxelsize = {_fmt(info['voxelsize'])}\n")
                 f.write(f"xras   = {_fmt(info['xras'])}\n")
