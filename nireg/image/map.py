@@ -72,3 +72,56 @@ def map(
         padding_mode=padding_mode,
         align_corners=False
     ).squeeze()
+
+
+def map_r2r(
+        image: torch.Tensor,
+        r2r: torch.Tensor,
+        source_affine: torch.Tensor,
+        target_affine: torch.Tensor,
+        target_shape: tuple[int, int, int] | None = None,
+        mode: str = 'bilinear',
+        padding_mode: str = 'zeros',
+) -> torch.Tensor:
+    """Map an image using a RAS-to-RAS transform without a v2v intermediate.
+
+    Wrapper around :func:`map` that calls
+    :func:`~nireg.transforms.matrices.convert_r2r_to_torch` to build the
+    PyTorch grid transform directly from the physical-space (RAS) chain::
+
+        trg_norm → trg_vox → trg_RAS → src_RAS → src_vox → src_norm
+
+    This avoids creating the intermediate vox-to-vox matrix
+    ``inv(target_affine) @ r2r @ source_affine``, whose off-diagonal elements
+    reflect genuine anisotropy but look like shear and can mislead callers.
+
+    Parameters
+    ----------
+    image : torch.Tensor
+        Source image tensor, shape ``(D, H, W)``.
+    r2r : torch.Tensor
+        4 × 4 RAS-to-RAS transform (source_RAS → target_RAS).
+    source_affine : torch.Tensor
+        4 × 4 voxel-to-RAS affine of the source image.
+    target_affine : torch.Tensor
+        4 × 4 voxel-to-RAS affine of the target image.
+    target_shape : tuple[int, int, int], optional
+        Output shape ``(D, H, W)``.  Defaults to the shape of *image*.
+    mode : {'bilinear', 'nearest'}, optional
+        Interpolation mode.  Default is ``'bilinear'``.
+    padding_mode : {'zeros', 'border', 'reflection'}, optional
+        Out-of-bounds padding.  Default is ``'zeros'``.
+
+    Returns
+    -------
+    torch.Tensor
+        Resampled image with shape *target_shape* (or source shape).
+    """
+    if target_shape is None:
+        target_shape = image.shape
+    torch_mat = trans.convert_r2r_to_torch(
+        r2r, image.shape, source_affine, target_shape, target_affine
+    )
+    return map(image, torch_mat, is_torch_mat=True,
+               target_shape=target_shape, mode=mode, padding_mode=padding_mode)
+

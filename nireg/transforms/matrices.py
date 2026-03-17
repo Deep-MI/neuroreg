@@ -283,7 +283,8 @@ def convert_v2v_to_torch(v2v: torch.Tensor, source_shape, target_shape=None) -> 
     Parameters
     ----------
     v2v : torch.Tensor, shape (4, 4)
-        Vox-to-vox transformation matrix (source → target voxels).
+        Vox-to-vox transformation matrix (source → target voxels),
+        in nibabel axis order (D, H, W).
     source_shape : tuple[int, int, int]
         Shape of the source image (D, H, W).
     target_shape : tuple[int, int, int], optional
@@ -299,36 +300,150 @@ def convert_v2v_to_torch(v2v: torch.Tensor, source_shape, target_shape=None) -> 
     ------
     ValueError
         If *v2v* is not shape (4, 4).
+
+    Notes
+    -----
+    PyTorch's ``affine_grid`` / ``grid_sample`` use **(W, H, D) = (x, y, z)**
+    axis order, while nibabel stores images as **(D, H, W)**.  For non-cubic
+    images (D ≠ W) the scale factors along each axis differ, so the nibabel
+    v2v must be **permuted** to (W, H, D) order **before** multiplying with
+    the per-axis normalisation matrices.  Applying the permutation *after*
+    the multiplication (as a row/column swap at the end) only works correctly
+    when D = W (cubic images) and silently produces wrong results otherwise.
     """
     if target_shape is None:
         target_shape = source_shape
-    # Validate the input transformation shape
     if v2v.shape != torch.Size([4, 4]):
         raise ValueError(f"Expected v2v of shape (4, 4), but got {v2v.shape}.")
-    inv_transform = torch.inverse(v2v)
-    ndim = 3
+
+    dtype  = v2v.dtype
     device = v2v.device
-    # Prepare scale factors for source and target grid spaces
-    scale_factor_source = torch.tensor(list(reversed(source_shape)), dtype=v2v.dtype, device=device) / 2.0
-    scale_factor_target = torch.tensor(list(reversed(target_shape)), dtype=v2v.dtype, device=device) / 2.0
-    # Rescale from relative coordinates (-1, 1) --> image coordinates and move center
-    scale_factor_target = torch.cat((scale_factor_target, scale_factor_target.new_tensor([1.0])))
-    source2relative = torch.diag(scale_factor_target)
-    source2relative[:-1, -1] += scale_factor_target[:-1] - 0.5
-    # Rescale to relative coordinates and move center to align with PyTorch's grid-space
-    scale_factor_source = torch.cat((scale_factor_source, scale_factor_source.new_tensor([1.0])))
-    relative2target = torch.diag(1.0 / scale_factor_source)
-    relative2target[:-1, -1] += -1 + 0.5 / scale_factor_source[:-1]
-    # Combine transformations to get the final affine transformation
-    relative2target = relative2target.to(inv_transform.device)
-    source2relative = source2relative.to(inv_transform.device)
-    torch_transform = torch.matmul(relative2target, inv_transform)
-    torch_transform = torch.matmul(torch_transform, source2relative)
-    # Rearrange axes back to original order and include homogeneous coordinates
-    ii = list(reversed(range(ndim))) + [ndim]
-    torch_transform = torch_transform[..., ii, :]
-    torch_transform = torch_transform[..., ii]
-    return torch_transform[:3,:4]
+
+    # Backward v2v in nibabel (D, H, W) order; float64 for numerical accuracy.
+    inv_v2v_dhw = torch.inverse(v2v.double())
+
+    # Reorder from nibabel (D, H, W) to PyTorch (W, H, D) = (x, y, z) order.
+    # Swap axis 0 (D) ↔ axis 2 (W); leave axis 1 (H) and the homogeneous row/col.
+    # This must be done BEFORE multiplying with the normalisation matrices (which
+    # are built in (W, H, D) order via reversed(shape)), otherwise the per-axis
+    # scale factors are applied to the wrong axes for non-cubic images.
+    ii = [2, 1, 0, 3]
+    inv_v2v_xyz = inv_v2v_dhw[ii][:, ii]
+
+    # Normalisation scale factors in (W, H, D) = (x, y, z) order.
+    # reversed((D, H, W)) = (W, H, D).
+    sf_src = torch.tensor(list(reversed(source_shape)), dtype=torch.float64, device=device) / 2.0
+    sf_trg = torch.tensor(list(reversed(target_shape)), dtype=torch.float64, device=device) / 2.0
+
+    # denorm_trg : target normalised [-1, 1] → target voxel index [0, N-1]
+    #   vox = (norm + 1) * (N/2) - 0.5    (align_corners=False)
+    sf_trg4 = torch.cat((sf_trg, sf_trg.new_tensor([1.0])))
+    denorm_trg = torch.diag(sf_trg4)
+    denorm_trg[:-1, -1] += sf_trg4[:-1] - 0.5
+
+    # norm_src : source voxel index [0, N-1] → source normalised [-1, 1]
+    #   norm = (vox + 0.5) / (N/2) - 1    (align_corners=False)
+    sf_src4 = torch.cat((sf_src, sf_src.new_tensor([1.0])))
+    norm_src = torch.diag(1.0 / sf_src4)
+    norm_src[:-1, -1] += -1.0 + 0.5 / sf_src4[:-1]
+
+    # Full backward chain, all in (W, H, D) = (x, y, z) order:
+    #   target_norm → target_vox → source_vox → source_norm
+    torch_transform = norm_src @ inv_v2v_xyz @ denorm_trg
+
+    # No axis reversal needed – everything is already in PyTorch (W, H, D) order.
+    return torch_transform[:3, :4].to(dtype)
+
+
+def convert_r2r_to_torch(
+    r2r: torch.Tensor,
+    source_shape,
+    source_affine: torch.Tensor,
+    target_shape=None,
+    target_affine: torch.Tensor | None = None,
+) -> torch.Tensor:
+    """Convert a RAS-to-RAS affine matrix to PyTorch grid-sample format.
+
+    Preferred over converting to vox-to-vox first then calling
+    :func:`convert_v2v_to_torch`, because the intermediate v2v matrix
+    ``inv(target_affine) @ r2r @ source_affine`` has non-unit singular values
+    whenever the affines have anisotropic voxels and *r2r* contains a rotation.
+    That apparent shear is a coordinate-representation artefact that cancels
+    in the final PyTorch transform — but holding the sheared v2v externally
+    invites misuse.
+
+    This function builds the backward-sampling chain directly in physical
+    (RAS) coordinates without forming the intermediate v2v:
+
+    .. code-block:: none
+
+        trg_norm  →  trg_vox  →  trg_RAS  →  src_RAS  →  src_vox  →  src_norm
+                  denorm_trg    trg_affine   inv(r2r)   inv(src_aff)   norm_src
+
+    which is identical to ``convert_v2v_to_torch`` when
+    ``v2v = inv(target_affine) @ r2r @ source_affine``, but avoids the
+    intermediate sheared matrix entirely.
+
+    Parameters
+    ----------
+    r2r : torch.Tensor, shape (4, 4)
+        RAS-to-RAS transformation matrix (source_RAS → target_RAS).
+    source_shape : tuple[int, int, int]
+        Shape of the source image (D, H, W).
+    source_affine : torch.Tensor, shape (4, 4)
+        Voxel-to-RAS affine of the source image.
+    target_shape : tuple[int, int, int], optional
+        Shape of the target image.  Defaults to *source_shape*.
+    target_affine : torch.Tensor, shape (4, 4), optional
+        Voxel-to-RAS affine of the target image.  Defaults to
+        *source_affine* (same-space resampling).
+
+    Returns
+    -------
+    torch.Tensor, shape (3, 4)
+        PyTorch-compatible affine matrix for
+        :func:`torch.nn.functional.affine_grid`.
+    """
+    if target_shape is None:
+        target_shape = source_shape
+    if target_affine is None:
+        target_affine = source_affine
+
+    device = r2r.device
+    dtype  = r2r.dtype
+
+    # Compute the backward sampling chain in double precision to avoid
+    # accumulated float32 rounding error, in nibabel (D, H, W) order.
+    #   trg_vox → trg_RAS → src_RAS → src_vox
+    r2r_d        = r2r.double()
+    src_affine_d = source_affine.double()
+    trg_affine_d = target_affine.double()
+    backward_phys_dhw = (
+        torch.inverse(src_affine_d) @ torch.inverse(r2r_d) @ trg_affine_d
+    )
+
+    # Permute from nibabel (D, H, W) to PyTorch (W, H, D) order before
+    # applying normalization (same fix as convert_v2v_to_torch).
+    ii = [2, 1, 0, 3]
+    backward_phys_xyz = backward_phys_dhw[ii][:, ii]
+
+    # Normalization scale factors in (W, H, D) order (via reversed(shape)).
+    sf_src = torch.tensor(list(reversed(source_shape)), dtype=torch.float64, device=device) / 2.0
+    sf_trg = torch.tensor(list(reversed(target_shape)), dtype=torch.float64, device=device) / 2.0
+
+    sf_trg4 = torch.cat((sf_trg, sf_trg.new_tensor([1.0])))
+    denorm_trg = torch.diag(sf_trg4)
+    denorm_trg[:-1, -1] += sf_trg4[:-1] - 0.5
+
+    sf_src4 = torch.cat((sf_src, sf_src.new_tensor([1.0])))
+    norm_src = torch.diag(1.0 / sf_src4)
+    norm_src[:-1, -1] += -1.0 + 0.5 / sf_src4[:-1]
+
+    # Full backward chain in (W, H, D) order.
+    torch_transform = norm_src @ backward_phys_xyz @ denorm_trg
+
+    # No axis reversal needed – already in PyTorch (W, H, D) order.
+    return torch_transform[:3, :4].to(dtype)
 
 
 def convert_torch_to_v2v(torch_transform: torch.Tensor, source_shape, target_shape=None) -> torch.Tensor:
@@ -357,10 +472,14 @@ def convert_torch_to_v2v(torch_transform: torch.Tensor, source_shape, target_sha
         target_shape = source_shape
     if torch_transform.size() != torch.Size([4, 4]) :
         raise ValueError(f"Torch affine shape {torch_transform.size()} should be (4,4)!")
-    ndim = 3
-    # Prepare scale factors for source and target
-    scale_factor_source = torch.as_tensor(list(reversed(source_shape))) / 2.0
-    scale_factor_target = torch.as_tensor(list(reversed(target_shape))) / 2.0
+
+    dtype  = torch_transform.dtype
+    device = torch_transform.device
+    ndim   = 3
+
+    # Prepare scale factors for source and target (match input dtype)
+    scale_factor_source = torch.as_tensor(list(reversed(source_shape)), dtype=dtype, device=device) / 2.0
+    scale_factor_target = torch.as_tensor(list(reversed(target_shape)), dtype=dtype, device=device) / 2.0
     # Create diagonal scaling and translation matrices
     scale_factor_source = torch.cat((scale_factor_source, scale_factor_source.new_tensor([1.0])), dim=0)
     scale_factor_target = torch.cat((scale_factor_target, scale_factor_target.new_tensor([1.0])), dim=0)
