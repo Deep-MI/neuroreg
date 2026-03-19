@@ -80,6 +80,53 @@ def compute_sqrtm(matrix: Tensor, num_iters: int = 100) -> tuple[Tensor, Tensor]
     return s_matrix, error
 
 
+def matrix_sqrt_schur(M: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    """Principal square root of a 4×4 matrix via Schur decomposition.
+
+    Uses :func:`scipy.linalg.sqrtm` which performs the Schur decomposition
+    over ℂ and is valid for **any** matrix whose eigenvalues do not lie on
+    the negative real axis — in particular for rigid and affine transforms
+    whose rotation eigenvalues lie on the unit circle.
+
+    The Newton-Schulz method used in :func:`compute_sqrtm` requires positive
+    definiteness and diverges for typical rotation matrices; **do not** use
+    that function for transforms.
+
+    Parameters
+    ----------
+    M : torch.Tensor, shape (4, 4)
+        Voxel-to-voxel (or any square) transform matrix.  May be float32 or
+        float64; internally promoted to float64 for numerical stability.
+
+    Returns
+    -------
+    mh : torch.Tensor, shape (4, 4)
+        Principal square root such that ``mh @ mh ≈ M``.
+    mhi : torch.Tensor, shape (4, 4)
+        ``mh @ inv(M)`` — the "other half" mapping the target back to the
+        midspace.  Using ``mh @ inv(M)`` instead of ``inv(mh)`` is more
+        numerically stable when ``mh @ mh`` is not exactly ``M`` (following
+        the FreeSurfer convention).
+
+    Notes
+    -----
+    This function is intentionally **outside the autograd graph** (it calls
+    ``.detach()`` before the numpy conversion).  Use it in the outer
+    registration loop where symmetry is managed, not inside a differentiable
+    model forward pass.
+    """
+    from scipy.linalg import sqrtm as scipy_sqrtm  # lazy import – not always needed
+
+    M_np = M.detach().double().cpu().numpy()
+    mh_np = scipy_sqrtm(M_np)
+    # scipy may return a complex array with tiny imaginary residuals — take real part
+    mh_np = mh_np.real
+    mh = torch.from_numpy(mh_np).to(dtype=M.dtype, device=M.device)
+    mi = torch.inverse(M.double().to(device=M.device))
+    mhi = (mh.double() @ mi).to(dtype=M.dtype)
+    return mh, mhi
+
+
 def get_translation(translation: torch.Tensor) -> torch.Tensor:
     """Generate a 4 × 4 translation matrix (homogeneous coordinates).
 

@@ -1,5 +1,7 @@
 """Utilities for mapping (resampling) 3-D images via affine transforms."""
 
+import nibabel as nib
+import numpy as np
 import torch
 import torch.nn as nn
 
@@ -124,4 +126,90 @@ def map_r2r(
     )
     return map(image, torch_mat, is_torch_mat=True,
                target_shape=target_shape, mode=mode, padding_mode=padding_mode)
+
+
+def resample_isotropic(
+        img: nib.Nifti1Image,
+        iso: float,
+        out_shape: tuple[int, int, int] | None = None,
+        mode: str = 'bilinear',
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Resample a NIfTI image to an isotropic grid.
+
+    Creates an isotropic resampled version of the input image where all voxels
+    have the same physical size (*iso* mm) in all three dimensions. The
+    isotropic affine preserves the original image origin while rescaling the
+    column vectors to have uniform length.
+
+    This function is commonly used as a preprocessing step before multi-scale
+    registration to ensure both images share a consistent voxel grid.
+
+    Parameters
+    ----------
+    img : nibabel.Nifti1Image
+        Input image to resample.
+    iso : float
+        Target isotropic voxel size in millimeters.
+    out_shape : tuple[int, int, int], optional
+        Output image shape ``(D, H, W)``.  If ``None``, the output shape is
+        computed automatically to cover the entire field of view of the
+        original image at the specified isotropic resolution.
+    mode : {'bilinear', 'nearest'}, optional
+        Interpolation mode.  Default is ``'bilinear'``.
+
+    Returns
+    -------
+    data : torch.Tensor
+        Resampled image data, shape *out_shape*.
+    iso_affine : torch.Tensor, dtype float32
+        Isotropic voxel-to-RAS affine (4 × 4).
+    Rvox : torch.Tensor, dtype float32
+        Voxel-to-voxel transform from the isotropic grid back to the original
+        grid (4 × 4), computed as ``inv(orig_affine) @ iso_affine``.
+
+    Notes
+    -----
+    The isotropic affine is constructed by normalizing each column of the
+    original 3 × 3 rotation/scale block to unit length, then scaling by *iso*.
+    The origin (fourth column) is preserved.
+
+    Examples
+    --------
+    >>> img = nib.load("example.mgz")
+    >>> data_iso, aff_iso, Rvox = resample_isotropic(img, iso=1.0)
+    >>> print(data_iso.shape, aff_iso.shape)
+    """
+    orig_affine = torch.from_numpy(img.affine).double()
+
+    # Build isotropic affine: same origin, isotropic voxels
+    iso_affine = orig_affine.clone()
+    for i in range(3):
+        col_norm = orig_affine[:3, i].norm()
+        if col_norm > 0:
+            iso_affine[:3, i] = orig_affine[:3, i] / col_norm * iso
+
+    # Compute output shape if not provided
+    if out_shape is None:
+        zooms = np.linalg.norm(img.affine[:3, :3], axis=0)  # column norms = voxel sizes
+        shape = np.array(img.shape[:3])
+        out_shape = tuple(max(1, int(np.ceil(s * z / iso))) for s, z in zip(shape, zooms))
+
+    # Resample using identity RAS-to-RAS transform
+    identity_r2r = torch.eye(4, dtype=torch.float64)
+    orig_data = torch.from_numpy(img.get_fdata()).float()
+
+    resampled = map_r2r(
+        orig_data,
+        identity_r2r.float(),
+        source_affine=orig_affine.float(),
+        target_affine=iso_affine.float(),
+        target_shape=out_shape,
+        mode=mode,
+    )
+
+    # Rvox: isotropic vox → original vox
+    Rvox = torch.inverse(orig_affine) @ iso_affine
+
+    return resampled, iso_affine.float(), Rvox.float()
+
 

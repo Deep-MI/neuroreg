@@ -8,40 +8,33 @@ def get_ixform_centroids(simg: Tensor, timg: Tensor) -> Tensor:
     """
     Compute an initial voxel-to-voxel transformation by aligning image centroids.
 
+    Computes the intensity-weighted center of mass (moment) for each image
+    and returns a translation that aligns them. Useful when images share
+    the same voxel grid but anatomy is displaced (e.g., patient motion,
+    synthetic displacement).
+
     Note
     ----
-    The header affines of the input images must agree for centroid alignment to be valid.
+    Can fail when images are too different (tumor growth, missing structures).
+    Users can disable with centroid_init=False in that case.
 
     Parameters
     ----------
     simg : Tensor
-        A 3D tensor representing the source image with shape (D, H, W),
-        where D is the depth, H is the height, and W is the width.
+        Source image (D, H, W).
     timg : Tensor
-        A 3D tensor representing the target image with shape (D, H, W).
+        Target image (D, H, W).
 
     Returns
     -------
     Tensor
-        A 4x4 tensor representing the initial voxel-to-voxel transformation matrix.
-        This defines a translation that aligns the centroids of the source and target images.
-
-    Example
-    -------
-    >>> simg = torch.rand(64, 64, 64)  # Source image
-    >>> timg = torch.rand(64, 64, 64)  # Target image
-    >>> transform = get_ixform_centroids(simg, timg)
-    >>> print(transform)
-    tensor([[1., 0., 0., 1.5234],
-            [0., 1., 0., -0.2342],
-            [0., 0., 1., 0.1945],
-            [0., 0., 0., 1.]])
+        4x4 voxel-to-voxel transformation matrix (translation only).
     """
-    # Compute centroids for the source and target images
+    # Compute intensity-weighted centroids
     cs = compute_centroid(simg)
     ct = compute_centroid(timg)
     # Create the voxel-to-voxel transformation matrix
-    v2v = torch.eye(4)
+    v2v = torch.eye(4, dtype=simg.dtype)
     v2v[0:3, 3] = ct - cs  # Translate to align centroids
     return v2v
 

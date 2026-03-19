@@ -93,7 +93,7 @@ def build_gaussian_pyramid(
     """
     if limits is None:
         limits = get_pyramid_limits(image.shape)
-    last_affine = torch.tensor(affine)
+    last_affine = affine.clone().detach() if isinstance(affine, torch.Tensor) else torch.as_tensor(affine)
     downM = 2 * torch.eye(4, dtype=last_affine.dtype)
     downM[3, 3] = 1
     downM[0:3, 3:4] = 0.5 * torch.ones((3, 1), dtype=last_affine.dtype)

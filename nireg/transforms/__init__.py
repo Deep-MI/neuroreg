@@ -22,6 +22,7 @@ from .matrices import (
     get_rotation_rodrigues,
     get_scaling,
     get_translation,
+    matrix_sqrt_schur,
 )
 
 __all__ = [
@@ -48,4 +49,5 @@ __all__ = [
     "get_rotation_rodrigues",
     "get_scaling",
     "get_translation",
+    "matrix_sqrt_schur",
 ]
