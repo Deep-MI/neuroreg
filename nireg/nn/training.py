@@ -7,8 +7,6 @@ import torch
 import torch.nn as nn
 from torch.functional import F
 
-from .stopper import EarlyStopper
-
 logger = logging.getLogger(__name__)
 
 
@@ -22,7 +20,7 @@ def training_loop(
     loss_beta: float | None = None,
     normalize: bool = True,
     optimizer_name: str = "adam",
-    verbose: bool = False
+    verbose: bool = False,
 ) -> list[float]:
     """Optimise a registration model for a fixed number of iterations.
 
@@ -88,12 +86,12 @@ def training_loop(
         if loss_beta is not None:
             loss_beta = loss_beta / scale.item()
 
-    is_lbfgs = optimizer_name.lower() == 'lbfgs'
-    
+    is_lbfgs = optimizer_name.lower() == "lbfgs"
+
     for i in range(n):
         logger.debug("Iteration %d", i)
         start = time.perf_counter()
-        
+
         # For L-BFGS, we need a closure that can be called multiple times
         # For Adam, we only need to call it once
         def closure():
@@ -111,13 +109,10 @@ def training_loop(
             elif loss_name == "l1":
                 loss = F.l1_loss(preds, t)
             else:
-                raise ValueError(
-                    f"Unknown loss_name '{loss_name}'. "
-                    "Choose from: 'mse', 'huber', 'smooth_l1', 'l1'."
-                )
+                raise ValueError(f"Unknown loss_name '{loss_name}'. Choose from: 'mse', 'huber', 'smooth_l1', 'l1'.")
             loss.backward()
             return loss
-        
+
         if is_lbfgs:
             # L-BFGS calls closure multiple times, returns final loss
             loss = optimizer.step(closure)
@@ -128,7 +123,6 @@ def training_loop(
             optimizer.step()
             losses.append(float(loss.sqrt()))
 
-
         if verbose:
             logger.debug("Loss (iter %d): %s", i, losses[-1])
             for name, param in model.named_parameters():
@@ -136,7 +130,6 @@ def training_loop(
                     logger.debug("Gradient of %s: %s", name, param.grad)
                 else:
                     logger.debug("No gradient for %s", name)
-
 
         v2v = model.get_v2v_from_weights(src_image.shape)
         diff = torch.norm(last_v2v - v2v)
@@ -149,6 +142,4 @@ def training_loop(
 
         logger.debug("iter %d  transform diff: %.6f", i, diff.item())
 
-
     return losses
-

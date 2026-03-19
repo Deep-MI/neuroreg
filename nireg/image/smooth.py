@@ -39,10 +39,10 @@ def get_gaussian_kernel(kernel_size: int = 5, sigma: float = 1.08, dim: int = 3)
     if dim not in [1, 2, 3]:
         raise ValueError(f"Invalid dimension {dim}. Expected 1, 2, or 3.")
     x_cord = torch.arange(kernel_size, dtype=torch.float32)
-    mean = (kernel_size - 1) / 2.
-    variance = sigma ** 2
+    mean = (kernel_size - 1) / 2.0
+    variance = sigma**2
     # 1D Gaussian
-    gaussian_kernel_x = (1. / (2. * torch.pi * variance)) * torch.exp(-((x_cord - mean) ** 2) / (2 * variance))
+    gaussian_kernel_x = (1.0 / (2.0 * torch.pi * variance)) * torch.exp(-((x_cord - mean) ** 2) / (2 * variance))
     gaussian_kernel_x = gaussian_kernel_x / torch.sum(gaussian_kernel_x)
     # Extend kernel to requested dimensions
     gaussian_kernel = gaussian_kernel_x
@@ -89,9 +89,7 @@ def smooth(image: Tensor, kernel_size: int = 5, sigma: float = 1.08) -> Tensor:
     g = get_gaussian_kernel(kernel_size, sigma, dim=1).to(image.device)
     # Ensure the image tensor has at least 3 valid dimensions
     if image.dim() < 3:
-        raise ValueError(
-            f"smooth: image must have at least 3 dimensions, got {image.dim()}."
-        )
+        raise ValueError(f"smooth: image must have at least 3 dimensions, got {image.dim()}.")
     # Add batch and channel dimensions if necessary
     if image.dim() < 4:
         image = image.unsqueeze(0)  # Add batch dimension

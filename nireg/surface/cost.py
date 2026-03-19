@@ -14,7 +14,7 @@ def bbr_contrast_cost(
     center: float = 0.0,
     contrast_sign: int = 1,
     mask: torch.Tensor | None = None,
-    eps: float = 1e-6
+    eps: float = 1e-6,
 ) -> torch.Tensor:
     """
     Compute BBR cost based on tissue contrast.
@@ -71,7 +71,7 @@ def gradient_magnitude_cost(
     volume_gradient: torch.Tensor,
     normals: torch.Tensor,
     mask: torch.Tensor | None = None,
-    use_normal_component: bool = True
+    use_normal_component: bool = True,
 ) -> torch.Tensor:
     """Compute cost based on image gradient magnitude."""
     if use_normal_component:
@@ -123,10 +123,6 @@ def detect_contrast(
     mean_intensity = (vgm + vwm) / 2.0 + eps
     percent_contrast = (vgm - vwm) / mean_intensity
     median_contrast = torch.median(percent_contrast).item()
-    detected = 't2' if median_contrast >= 0 else 't1'
-    logger.info(
-        "Auto-detected contrast: %s  (median percent contrast = %.4f)",
-        detected, median_contrast
-    )
+    detected = "t2" if median_contrast >= 0 else "t1"
+    logger.info("Auto-detected contrast: %s  (median percent contrast = %.4f)", detected, median_contrast)
     return detected
-

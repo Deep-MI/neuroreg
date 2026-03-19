@@ -25,30 +25,28 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     # ── required ────────────────────────────────────────────────────────────
-    p.add_argument("--mov", required=True, metavar="FILE",
-                   help="Moving image to register (e.g. fMRI or T2, NIfTI or MGZ).")
-    p.add_argument("--out", required=True, metavar="LTA",
-                   help="Output LTA file for the recovered transformation.")
+    p.add_argument(
+        "--mov", required=True, metavar="FILE", help="Moving image to register (e.g. fMRI or T2, NIfTI or MGZ)."
+    )
+    p.add_argument("--out", required=True, metavar="LTA", help="Output LTA file for the recovered transformation.")
 
     # ── surface input: mode A ────────────────────────────────────────────────
     grp_a = p.add_argument_group("Mode A – FreeSurfer subject directory")
-    grp_a.add_argument("--subject_dir", metavar="DIR",
-                       help="Subject directory containing surf/lh.white, "
-                            "surf/rh.white, and mri/orig.mgz.")
+    grp_a.add_argument(
+        "--subject_dir",
+        metavar="DIR",
+        help="Subject directory containing surf/lh.white, surf/rh.white, and mri/orig.mgz.",
+    )
 
     # ── surface input: mode B ────────────────────────────────────────────────
     grp_b = p.add_argument_group("Mode B – explicit surface files")
-    grp_b.add_argument("--ref", metavar="FILE",
-                       help="Reference (T1) image against which surfaces were built "
-                            "(required for Mode B).")
-    grp_b.add_argument("--lh_surf", metavar="FILE",
-                       help="Left-hemisphere white surface (e.g. surf/lh.white).")
-    grp_b.add_argument("--rh_surf", metavar="FILE",
-                       help="Right-hemisphere white surface (e.g. surf/rh.white).")
-    grp_b.add_argument("--lh_thickness", metavar="FILE",
-                       help="Left-hemisphere cortical thickness file.")
-    grp_b.add_argument("--rh_thickness", metavar="FILE",
-                       help="Right-hemisphere cortical thickness file.")
+    grp_b.add_argument(
+        "--ref", metavar="FILE", help="Reference (T1) image against which surfaces were built (required for Mode B)."
+    )
+    grp_b.add_argument("--lh_surf", metavar="FILE", help="Left-hemisphere white surface (e.g. surf/lh.white).")
+    grp_b.add_argument("--rh_surf", metavar="FILE", help="Right-hemisphere white surface (e.g. surf/rh.white).")
+    grp_b.add_argument("--lh_thickness", metavar="FILE", help="Left-hemisphere cortical thickness file.")
+    grp_b.add_argument("--rh_thickness", metavar="FILE", help="Right-hemisphere cortical thickness file.")
 
     # ── surface input: mode C ────────────────────────────────────────────────
     grp_c = p.add_argument_group(
@@ -57,57 +55,67 @@ def _build_parser() -> argparse.ArgumentParser:
         "No pre-built surface files are needed and the segmentation header "
         "provides the target reference geometry.",
     )
-    grp_c.add_argument("--seg", metavar="FILE",
-                       help="Parcellation file (aparc+aseg.mgz, aseg.mgz, or NIfTI).")
-    grp_c.add_argument("--seg_smooth_sigma", type=float, default=0.5, metavar="SIGMA",
-                       help="Gaussian pre-blur sigma (voxels) before marching cubes. "
-                            "Default: 0.5.")
-    grp_c.add_argument("--seg_mc_level", type=float, default=0.45, metavar="LEVEL",
-                       help="Marching-cubes iso-level. Default: 0.45.")
-    grp_c.add_argument("--seg_smooth_iters", type=int, default=50, metavar="N",
-                       help="Taubin smoothing iterations after marching cubes. "
-                            "Default: 50.")
+    grp_c.add_argument("--seg", metavar="FILE", help="Parcellation file (aparc+aseg.mgz, aseg.mgz, or NIfTI).")
+    grp_c.add_argument(
+        "--seg_smooth_sigma",
+        type=float,
+        default=0.5,
+        metavar="SIGMA",
+        help="Gaussian pre-blur sigma (voxels) before marching cubes. Default: 0.5.",
+    )
+    grp_c.add_argument(
+        "--seg_mc_level", type=float, default=0.45, metavar="LEVEL", help="Marching-cubes iso-level. Default: 0.45."
+    )
+    grp_c.add_argument(
+        "--seg_smooth_iters",
+        type=int,
+        default=50,
+        metavar="N",
+        help="Taubin smoothing iterations after marching cubes. Default: 50.",
+    )
 
     # ── transform ───────────────────────────────────────────────────────────
-    p.add_argument("--dof", type=int, default=6, choices=[6, 9, 12],
-                   metavar="{6,9,12}",
-                   help="Degrees of freedom: 6=rigid, 9=rigid+scale, 12=affine.")
-    p.add_argument("--contrast", default=None, choices=["t1", "t2"],
-                   help="Tissue contrast: 't1' (WM>GM) or 't2' (GM>WM). "
-                        "Auto-detected from the image when not specified.")
+    p.add_argument(
+        "--dof",
+        type=int,
+        default=6,
+        choices=[6, 9, 12],
+        metavar="{6,9,12}",
+        help="Degrees of freedom: 6=rigid, 9=rigid+scale, 12=affine.",
+    )
+    p.add_argument(
+        "--contrast",
+        default=None,
+        choices=["t1", "t2"],
+        help="Tissue contrast: 't1' (WM>GM) or 't2' (GM>WM). Auto-detected from the image when not specified.",
+    )
 
     # ── cost function ────────────────────────────────────────────────────────
-    p.add_argument("--cost", default="contrast", choices=["contrast", "gradient", "both"],
-                   help="BBR cost term.")
-    p.add_argument("--wm_proj_abs", type=float, default=1.4, metavar="MM",
-                   help="Absolute WM projection depth (mm).")
-    p.add_argument("--gm_proj_frac", type=float, default=0.5, metavar="FRAC",
-                   help="GM projection fraction of cortical thickness.")
-    p.add_argument("--slope", type=float, default=0.5,
-                   help="Slope of the BBR sigmoid cost function.")
-    p.add_argument("--gradient_weight", type=float, default=0.0,
-                   help="Weight for gradient cost term when --cost=both.")
+    p.add_argument("--cost", default="contrast", choices=["contrast", "gradient", "both"], help="BBR cost term.")
+    p.add_argument("--wm_proj_abs", type=float, default=1.4, metavar="MM", help="Absolute WM projection depth (mm).")
+    p.add_argument(
+        "--gm_proj_frac", type=float, default=0.5, metavar="FRAC", help="GM projection fraction of cortical thickness."
+    )
+    p.add_argument("--slope", type=float, default=0.5, help="Slope of the BBR sigmoid cost function.")
+    p.add_argument("--gradient_weight", type=float, default=0.0, help="Weight for gradient cost term when --cost=both.")
 
     # ── optimisation ─────────────────────────────────────────────────────────
-    p.add_argument("--n_iters", type=int, default=500, metavar="N",
-                   help="Number of RMSprop optimisation iterations.")
-    p.add_argument("--lr", type=float, default=0.005,
-                   help="Optimiser learning rate.")
-    p.add_argument("--subsample", type=int, default=2, metavar="N",
-                   help="Use every N-th surface vertex (1 = all).")
+    p.add_argument("--n_iters", type=int, default=500, metavar="N", help="Number of RMSprop optimisation iterations.")
+    p.add_argument("--lr", type=float, default=0.005, help="Optimiser learning rate.")
+    p.add_argument("--subsample", type=int, default=2, metavar="N", help="Use every N-th surface vertex (1 = all).")
 
     # ── initialisation ───────────────────────────────────────────────────────
-    p.add_argument("--init_lta", metavar="FILE",
-                   help="Initialise registration from an existing LTA file "
-                        "(e.g. from a prior robreg run, or a previous bbreg pass).")
+    p.add_argument(
+        "--init_lta",
+        metavar="FILE",
+        help="Initialise registration from an existing LTA file "
+        "(e.g. from a prior robreg run, or a previous bbreg pass).",
+    )
 
     # ── misc ─────────────────────────────────────────────────────────────────
-    p.add_argument("--device", default="cpu", metavar="DEVICE",
-                   help="PyTorch device, e.g. 'cpu' or 'cuda'.")
-    p.add_argument("--verbose", action="store_true",
-                   help="Enable INFO-level logging.")
-    p.add_argument("--debug", action="store_true",
-                   help="Enable DEBUG-level logging.")
+    p.add_argument("--device", default="cpu", metavar="DEVICE", help="PyTorch device, e.g. 'cpu' or 'cuda'.")
+    p.add_argument("--verbose", action="store_true", help="Enable INFO-level logging.")
+    p.add_argument("--debug", action="store_true", help="Enable DEBUG-level logging.")
 
     return p
 
@@ -138,8 +146,7 @@ def _validate_args(ns: argparse.Namespace, parser: argparse.ArgumentParser) -> s
 
     if has_seg and ns.ref is not None:
         parser.error(
-            "--ref is not needed with --seg (Mode C): the segmentation header "
-            "provides the target reference geometry."
+            "--ref is not needed with --seg (Mode C): the segmentation header provides the target reference geometry."
         )
 
     if has_sdir:
@@ -208,6 +215,7 @@ def main(args=None) -> None:
         print(f"ERROR: {exc}", file=sys.stderr)
         if ns.debug:
             import traceback
+
             traceback.print_exc()
         sys.exit(1)
 

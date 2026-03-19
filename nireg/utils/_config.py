@@ -36,16 +36,14 @@ def sys_info(fid: IO | None = None, developer: bool = False):
     out("Logical cores:".ljust(ljust) + str(psutil.cpu_count(True)) + "\n")
     # Memory information
     out("RAM:".ljust(ljust))
-    out(f"{psutil.virtual_memory().total / float(2 ** 30):0.1f} GB\n")
+    out(f"{psutil.virtual_memory().total / float(2**30):0.1f} GB\n")
     out("SWAP:".ljust(ljust))
-    out(f"{psutil.swap_memory().total / float(2 ** 30):0.1f} GB\n")
+    out(f"{psutil.swap_memory().total / float(2**30):0.1f} GB\n")
 
     # dependencies
     out("\nDependencies info\n")
     out(f"{package}:".ljust(ljust) + version(package) + "\n")
-    dependencies = [
-        elt.split(";")[0].rstrip() for elt in requires(package) if "extra" not in elt
-    ]
+    dependencies = [elt.split(";")[0].rstrip() for elt in requires(package) if "extra" not in elt]
     _list_dependencies_info(out, ljust, dependencies)
 
     # extras

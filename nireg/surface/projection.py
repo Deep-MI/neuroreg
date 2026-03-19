@@ -12,11 +12,7 @@ import torch
 logger = logging.getLogger(__name__)
 
 
-def compute_vertex_normals(
-    vertices: torch.Tensor,
-    faces: torch.Tensor,
-    normalize: bool = True
-) -> torch.Tensor:
+def compute_vertex_normals(vertices: torch.Tensor, faces: torch.Tensor, normalize: bool = True) -> torch.Tensor:
     """
     Compute vertex normals from triangle mesh.
 
@@ -81,7 +77,7 @@ def project_vertices(
     normals: torch.Tensor,
     distance: float = 0.0,
     thickness: torch.Tensor | None = None,
-    fraction: float | None = None
+    fraction: float | None = None,
 ) -> torch.Tensor:
     """
     Project vertices along surface normals.
@@ -143,7 +139,7 @@ def create_wm_gm_surfaces(
     thickness: torch.Tensor | None = None,
     wm_proj_abs: float = 1.4,
     gm_proj_frac: float = 0.5,
-    gm_proj_abs: float | None = None
+    gm_proj_abs: float | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Create WM and GM surfaces from white surface for BBR.
@@ -189,20 +185,16 @@ def create_wm_gm_surfaces(
         gm_vertices = project_vertices(white_vertices, normals, distance=gm_proj_abs)
     elif thickness is not None:
         # Use fractional thickness (bbregister default: 50 % of local thickness)
-        gm_vertices = project_vertices(
-            white_vertices, normals,
-            thickness=thickness,
-            fraction=gm_proj_frac
-        )
+        gm_vertices = project_vertices(white_vertices, normals, thickness=thickness, fraction=gm_proj_frac)
     else:
         # No thickness available and no explicit gm_proj_abs supplied.
         # Fall back to the same absolute distance used for the WM projection
         # so both sample points are equidistant from the white surface.
         logger.info(
             "No cortical thickness provided; using gm_proj_abs=%.1f mm "
-            "(absolute GM projection fallback, matching wm_proj_abs).", wm_proj_abs
+            "(absolute GM projection fallback, matching wm_proj_abs).",
+            wm_proj_abs,
         )
         gm_vertices = project_vertices(white_vertices, normals, distance=wm_proj_abs)
 
     return wm_vertices, gm_vertices
-

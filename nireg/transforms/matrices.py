@@ -52,13 +52,13 @@ def compute_sqrtm(matrix: Tensor, num_iters: int = 100) -> tuple[Tensor, Tensor]
     # Validate input dimensions
     expected_num_dims = 2
     if matrix.dim() != expected_num_dims:
-        raise ValueError(f'Input dimension equals {matrix.dim()}, expected {expected_num_dims}')
+        raise ValueError(f"Input dimension equals {matrix.dim()}, expected {expected_num_dims}")
     if num_iters <= 0:
-        raise ValueError(f'Number of iterations equals {num_iters}, expected greater than 0')
+        raise ValueError(f"Number of iterations equals {num_iters}, expected greater than 0")
     # Get matrix dimension
     dim = matrix.size(0)
     # Compute initial normalization
-    norm_of_matrix = matrix.norm(p='fro')
+    norm_of_matrix = matrix.norm(p="fro")
     Y = matrix.div(norm_of_matrix)  # Initial normalization
     Id = torch.eye(dim, dim, requires_grad=False).to(matrix)  # Identity matrix
     Z = torch.eye(dim, dim, requires_grad=False).to(matrix)  # Initialize Z
@@ -75,7 +75,7 @@ def compute_sqrtm(matrix: Tensor, num_iters: int = 100) -> tuple[Tensor, Tensor]
         # Compute the error
         error = torch.norm(matrix - torch.mm(s_matrix, s_matrix)) / norm_of_matrix
         # Check for early stopping if error is close to zero
-        if torch.isclose(error, torch.tensor([0.]).to(error), atol=1e-5):
+        if torch.isclose(error, torch.tensor([0.0]).to(error), atol=1e-5):
             break
     return s_matrix, error
 
@@ -161,16 +161,14 @@ def get_rotation_rodrigues(rotvec: torch.Tensor) -> torch.Tensor:
     angle = torch.norm(rotvec)
     zero = torch.zeros(1, dtype=rotvec.dtype, device=rotvec.device).squeeze()
     cross_mat = torch.stack(
-            [zero, -rotvec[2], rotvec[1],
-             rotvec[2], zero, -rotvec[0],
-             -rotvec[1], rotvec[0], zero], dim=-1
-        ).view((3,3))
+        [zero, -rotvec[2], rotvec[1], rotvec[2], zero, -rotvec[0], -rotvec[1], rotvec[0], zero], dim=-1
+    ).view((3, 3))
     angle2 = angle * angle
     if angle2 == 0:
         angle2 = 1
-    rmat = ((torch.eye(3, dtype=rotvec.dtype, device=rotvec.device) +
-            torch.sinc(angle / torch.pi) * cross_mat) +
-            ((1 - torch.cos(angle)) / angle2) * (cross_mat @ cross_mat))
+    rmat = (torch.eye(3, dtype=rotvec.dtype, device=rotvec.device) + torch.sinc(angle / torch.pi) * cross_mat) + (
+        (1 - torch.cos(angle)) / angle2
+    ) * (cross_mat @ cross_mat)
     r4x4 = torch.eye(4, dtype=rotvec.dtype, device=rotvec.device)
     r4x4[:3, :3] = rmat
     return r4x4
@@ -222,9 +220,9 @@ def get_scaling(scales: torch.Tensor) -> torch.Tensor:
     return S
 
 
-def get_affine(translation: torch.Tensor,
-               rotvec: torch.Tensor | None = None,
-               scales: torch.Tensor | None = None) -> torch.Tensor:
+def get_affine(
+    translation: torch.Tensor, rotvec: torch.Tensor | None = None, scales: torch.Tensor | None = None
+) -> torch.Tensor:
     """Generate a 4 × 4 affine matrix from translation, rotation, and scale.
 
     Parameters
@@ -291,7 +289,7 @@ def convert_v2v_to_torch(v2v: torch.Tensor, source_shape, target_shape=None) -> 
     if v2v.shape != torch.Size([4, 4]):
         raise ValueError(f"Expected v2v of shape (4, 4), but got {v2v.shape}.")
 
-    dtype  = v2v.dtype
+    dtype = v2v.dtype
     device = v2v.device
 
     # Backward v2v in nibabel (D, H, W) order; float64 for numerical accuracy.
@@ -385,17 +383,15 @@ def convert_r2r_to_torch(
         target_affine = source_affine
 
     device = r2r.device
-    dtype  = r2r.dtype
+    dtype = r2r.dtype
 
     # Compute the backward sampling chain in double precision to avoid
     # accumulated float32 rounding error, in nibabel (D, H, W) order.
     #   trg_vox → trg_RAS → src_RAS → src_vox
-    r2r_d        = r2r.double()
+    r2r_d = r2r.double()
     src_affine_d = source_affine.double()
     trg_affine_d = target_affine.double()
-    backward_phys_dhw = (
-        torch.inverse(src_affine_d) @ torch.inverse(r2r_d) @ trg_affine_d
-    )
+    backward_phys_dhw = torch.inverse(src_affine_d) @ torch.inverse(r2r_d) @ trg_affine_d
 
     # Permute from nibabel (D, H, W) to PyTorch (W, H, D) order before
     # applying normalization (same fix as convert_v2v_to_torch).
@@ -445,12 +441,12 @@ def convert_torch_to_v2v(torch_transform: torch.Tensor, source_shape, target_sha
     """
     if target_shape is None:
         target_shape = source_shape
-    if torch_transform.size() != torch.Size([4, 4]) :
+    if torch_transform.size() != torch.Size([4, 4]):
         raise ValueError(f"Torch affine shape {torch_transform.size()} should be (4,4)!")
 
-    dtype  = torch_transform.dtype
+    dtype = torch_transform.dtype
     device = torch_transform.device
-    ndim   = 3
+    ndim = 3
 
     # Prepare scale factors for source and target (match input dtype)
     scale_factor_source = torch.as_tensor(list(reversed(source_shape)), dtype=dtype, device=device) / 2.0
@@ -532,12 +528,11 @@ def convert_transform_type(
     if from_type == to_type:
         return np.asarray(matrix, dtype=float).copy()
 
-    M  = np.asarray(matrix, dtype=float)
+    M = np.asarray(matrix, dtype=float)
     As = np.asarray(src_affine, dtype=float)
     Ad = np.asarray(dst_affine, dtype=float)
 
-    if from_type == LINEAR_VOX_TO_VOX:   # → RAS-to-RAS
+    if from_type == LINEAR_VOX_TO_VOX:  # → RAS-to-RAS
         return Ad @ M @ np.linalg.inv(As)
-    else:                                 # RAS-to-RAS → vox-to-vox
+    else:  # RAS-to-RAS → vox-to-vox
         return np.linalg.inv(Ad) @ M @ As
-

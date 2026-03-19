@@ -39,7 +39,6 @@ def get_ixform_centroids(simg: Tensor, timg: Tensor) -> Tensor:
     return v2v
 
 
-
 def get_vox2vox_from_header(saffine: Tensor, taffine: Tensor) -> Tensor:
     """
     Compute the initial transformation based on image affine matrices (from headers).
@@ -72,4 +71,3 @@ def get_vox2vox_from_header(saffine: Tensor, taffine: Tensor) -> Tensor:
             [0., 0., 0., 1.]])
     """
     return torch.inverse(taffine) @ saffine
-

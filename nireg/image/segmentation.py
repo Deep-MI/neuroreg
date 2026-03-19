@@ -46,14 +46,10 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 #: Subcortical labels that belong to the *left* hemisphere.
-ASEG_LEFT_CLASSES: tuple[int, ...] = (
-    2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 17, 18, 26, 28, 30, 31
-)
+ASEG_LEFT_CLASSES: tuple[int, ...] = (2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 17, 18, 26, 28, 30, 31)
 
 #: Subcortical labels that belong to the *right* hemisphere.
-ASEG_RIGHT_CLASSES: tuple[int, ...] = (
-    41, 42, 43, 44, 46, 47, 49, 50, 51, 52, 53, 54, 58, 60, 62, 63
-)
+ASEG_RIGHT_CLASSES: tuple[int, ...] = (41, 42, 43, 44, 46, 47, 49, 50, 51, 52, 53, 54, 58, 60, 62, 63)
 
 # Simplified segmentation label constants
 _LH_WM: int = 2
@@ -65,6 +61,7 @@ _RH_GM: int = 42
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _mask_in_array(
     arr: npt.NDArray[np.integer],
@@ -145,6 +142,7 @@ def _hemi_masks(
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def simplify_segmentation(
     seg_input: str | os.PathLike | nib.filebasedimages.FileBasedImage,
@@ -250,25 +248,43 @@ def simplify_segmentation(
 
     # ---- warn about any unexpected remaining labels ----
     dontcare = (
-        0, 5, 6, 7, 8, 14, 15, 16, 17, 18, 24, 44, 45, 46, 47, 53, 54,
-        85,   # optic chiasm → background
-        _LH_WM, _RH_WM, _LH_GM, _RH_GM,
+        0,
+        5,
+        6,
+        7,
+        8,
+        14,
+        15,
+        16,
+        17,
+        18,
+        24,
+        44,
+        45,
+        46,
+        47,
+        53,
+        54,
+        85,  # optic chiasm → background
+        _LH_WM,
+        _RH_WM,
+        _LH_GM,
+        _RH_GM,
     )
     unexpected_mask = _mask_not_in_array(seg_data, dontcare)
     if unexpected_mask.any():
         unique, counts = np.unique(seg_data[unexpected_mask], return_counts=True)
         logger.warning(
             "Unexpected labels after simplification: %s (counts: %s)",
-            unique.tolist(), counts.tolist(),
+            unique.tolist(),
+            counts.tolist(),
         )
 
     # ---- everything else → background ----
     seg_data[_mask_not_in_array(seg_data, (_LH_WM, _RH_WM, _LH_GM, _RH_GM))] = 0
 
     if output_path is not None:
-        out_img = nib.MGHImage(
-            seg_data.astype(np.float32), seg_img.affine, seg_img.header
-        )
+        out_img = nib.MGHImage(seg_data.astype(np.float32), seg_img.affine, seg_img.header)
         nib.save(out_img, str(output_path))
         logger.info("Simplified segmentation saved to %s", output_path)
 
@@ -347,10 +363,7 @@ def extract_wm_surface(
         ) from exc
 
     if not np.any(seg_data == wm_label):
-        raise ValueError(
-            f"WM label {wm_label} not found in segmentation. "
-            "Run simplify_segmentation() first."
-        )
+        raise ValueError(f"WM label {wm_label} not found in segmentation. Run simplify_segmentation() first.")
 
     # ---- binary mask + optional Gaussian pre-blur ----
     binary = (seg_data == wm_label).astype(np.float32)
@@ -366,7 +379,9 @@ def extract_wm_surface(
     )
     logger.debug(
         "Marching cubes (label %d): %d vertices, %d faces",
-        wm_label, len(verts_vox), len(faces),
+        wm_label,
+        len(verts_vox),
+        len(faces),
     )
 
     # ---- keep largest connected component ----
@@ -392,7 +407,9 @@ def extract_wm_surface(
         keep_verts = comp_labels == largest
         logger.debug(
             "Connected components: %d — keeping largest (%d/%d vertices)",
-            n_components, keep_verts.sum(), n_verts,
+            n_components,
+            keep_verts.sum(),
+            n_verts,
         )
         # remap vertex indices
         old_to_new = np.full(n_verts, -1, dtype=np.int32)
@@ -414,7 +431,9 @@ def extract_wm_surface(
     cortex_mask = _compute_cortex_mask_8neighbors(verts_vox, seg_data, gm_label)
     logger.info(
         "Cortex mask (label %d, 8-neighbor): %d / %d vertices (%.1f%%)",
-        wm_label, cortex_mask.sum(), len(verts_vox),
+        wm_label,
+        cortex_mask.sum(),
+        len(verts_vox),
         100.0 * cortex_mask.sum() / max(len(verts_vox), 1),
     )
 
@@ -426,7 +445,9 @@ def extract_wm_surface(
 
     logger.info(
         "Extracted WM surface (label %d): %d vertices, %d faces",
-        wm_label, len(verts_tkras), len(faces),
+        wm_label,
+        len(verts_tkras),
+        len(faces),
     )
     return verts_tkras, faces.astype(np.int32), cortex_mask
 
@@ -513,9 +534,9 @@ def surfaces_from_segmentation(
             smooth_iterations=smooth_iterations,
         )
         results[hemi] = {
-            "vertices":    torch.from_numpy(verts_np).to(device),
-            "faces":       torch.from_numpy(faces_np).to(device),
-            "thickness":   None,  # not available from segmentation
+            "vertices": torch.from_numpy(verts_np).to(device),
+            "faces": torch.from_numpy(faces_np).to(device),
+            "thickness": None,  # not available from segmentation
             "cortex_mask": torch.from_numpy(cortex_mask_np).to(device),
         }
 
@@ -525,6 +546,7 @@ def surfaces_from_segmentation(
 # ---------------------------------------------------------------------------
 # Internal helpers (not exported)
 # ---------------------------------------------------------------------------
+
 
 def _compute_cortex_mask_8neighbors(
     verts_vox: npt.NDArray[np.floating],
@@ -562,15 +584,15 @@ def _compute_cortex_mask_8neighbors(
     """
     shape = np.array(seg_data.shape[:3], dtype=np.int32)
 
-    lo = np.floor(verts_vox).astype(np.int32)          # (V, 3)
-    hi = np.clip(lo + 1, 0, shape - 1)                 # (V, 3)  ceil, clamped
-    lo = np.clip(lo,     0, shape - 1)                 # (V, 3)  floor, clamped
+    lo = np.floor(verts_vox).astype(np.int32)  # (V, 3)
+    hi = np.clip(lo + 1, 0, shape - 1)  # (V, 3)  ceil, clamped
+    lo = np.clip(lo, 0, shape - 1)  # (V, 3)  floor, clamped
 
     mask = np.zeros(len(verts_vox), dtype=bool)
     for xi in (lo[:, 0], hi[:, 0]):
         for yi in (lo[:, 1], hi[:, 1]):
             for zi in (lo[:, 2], hi[:, 2]):
-                mask |= (seg_data[xi, yi, zi] == gm_label)
+                mask |= seg_data[xi, yi, zi] == gm_label
 
     return mask
 
@@ -622,12 +644,15 @@ def compute_cortex_mask(
 
     ones = np.ones((len(vertices_tkras), 1), dtype=np.float64)
     verts_hom = np.hstack([vertices_tkras.astype(np.float64), ones])  # (V, 4)
-    verts_vox = (tkras2vox @ verts_hom.T).T[:, :3]                   # (V, 3)
+    verts_vox = (tkras2vox @ verts_hom.T).T[:, :3]  # (V, 3)
 
     mask = _compute_cortex_mask_8neighbors(verts_vox, seg_data, gm_label)
     logger.info(
         "compute_cortex_mask (%s): %d / %d vertices (%.1f%%) at WM-GM boundary",
-        hemi, mask.sum(), len(mask), 100.0 * mask.sum() / max(len(mask), 1),
+        hemi,
+        mask.sum(),
+        len(mask),
+        100.0 * mask.sum() / max(len(mask), 1),
     )
     return mask
 
@@ -669,10 +694,8 @@ def _taubin_smooth_numpy(
     n = len(verts)
 
     # Build symmetric adjacency as a sparse CSR matrix (degree + neighbour sum)
-    rows = np.concatenate([faces[:, 0], faces[:, 1], faces[:, 2],
-                           faces[:, 1], faces[:, 2], faces[:, 0]])
-    cols = np.concatenate([faces[:, 1], faces[:, 2], faces[:, 0],
-                           faces[:, 0], faces[:, 1], faces[:, 2]])
+    rows = np.concatenate([faces[:, 0], faces[:, 1], faces[:, 2], faces[:, 1], faces[:, 2], faces[:, 0]])
+    cols = np.concatenate([faces[:, 1], faces[:, 2], faces[:, 0], faces[:, 0], faces[:, 1], faces[:, 2]])
     adj = coo_matrix(
         (np.ones(len(rows), dtype=np.float32), (rows, cols)),
         shape=(n, n),
@@ -692,4 +715,3 @@ def _taubin_smooth_numpy(
         verts = verts + mu * lap
 
     return verts
-

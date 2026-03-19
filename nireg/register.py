@@ -26,17 +26,17 @@ logger = logging.getLogger(__name__)
 
 
 def register(
-        simg: Tensor,
-        timg: Tensor,
-        dof: int = 6,
-        v2v_init: Tensor | None = None,
-        centroid_init: bool = True,
-        n: int = 30,
-        loss_name: str = 'mse',
-        loss_beta: float | None = None,
-        optimizer: str = 'adam',
-        verbose: bool = False,
-        device: str = 'cpu'
+    simg: Tensor,
+    timg: Tensor,
+    dof: int = 6,
+    v2v_init: Tensor | None = None,
+    centroid_init: bool = True,
+    n: int = 30,
+    loss_name: str = "mse",
+    loss_beta: float | None = None,
+    optimizer: str = "adam",
+    verbose: bool = False,
+    device: str = "cpu",
 ) -> tuple[Tensor, list[float], "RegModel"]:
     """
     Register (align) two images using a transformation optimization model (RegModel).
@@ -98,18 +98,26 @@ def register(
         v2v_init = get_ixform_centroids(simg, timg)
         logger.debug("v2v_init from centroid alignment: %s", v2v_init)
     m = RegModel(dof=dof, v2v_init=v2v_init, source_shape=simg.shape, target_shape=timg.shape, device=device)
-    
+
     # Create optimizer based on parameter
-    if optimizer.lower() == 'lbfgs':
-        opt = torch.optim.LBFGS(m.parameters(), lr=1.0, max_iter=20, line_search_fn='strong_wolfe')
-    elif optimizer.lower() == 'adam':
+    if optimizer.lower() == "lbfgs":
+        opt = torch.optim.LBFGS(m.parameters(), lr=1.0, max_iter=20, line_search_fn="strong_wolfe")
+    elif optimizer.lower() == "adam":
         opt = torch.optim.Adam(m.parameters(), lr=0.001)
     else:
         raise ValueError(f"Unknown optimizer '{optimizer}'. Choose from: 'adam', 'lbfgs'.")
-    
-    losses = training_loop(m, opt, simg.to(device), timg.to(device),
-                           n=n, loss_name=loss_name, loss_beta=loss_beta, 
-                           optimizer_name=optimizer, verbose=verbose)
+
+    losses = training_loop(
+        m,
+        opt,
+        simg.to(device),
+        timg.to(device),
+        n=n,
+        loss_name=loss_name,
+        loss_beta=loss_beta,
+        optimizer_name=optimizer,
+        verbose=verbose,
+    )
     v2v = m.get_v2v_from_weights(simg.shape, timg.shape)
     return v2v, losses, m
 
@@ -123,11 +131,11 @@ def register_pyramid(
     centroid_init: bool = True,
     dof: int = 6,
     n: int = 30,
-    loss_name: str = 'mse',
+    loss_name: str = "mse",
     loss_beta: float | None = None,
-    optimizer: str = 'adam',
+    optimizer: str = "adam",
     isotropic: bool = False,
-    device: str = 'cpu'
+    device: str = "cpu",
 ) -> Tensor:
     """
     Perform multi-resolution image registration using an iterative coarse-to-fine alignment.
@@ -187,18 +195,19 @@ def register_pyramid(
         src = nib.load(src)
     if isinstance(trg, str):
         trg = nib.load(trg)
-    
+
     # Optional isotropic pre-processing (like FreeSurfer's setSourceAndTarget)
     if isotropic:
         from .image.map import resample_isotropic
+
         # Compute isotropic voxel size = max of finest resolutions
         src_zooms = np.linalg.norm(src.affine[:3, :3], axis=0)
         trg_zooms = np.linalg.norm(trg.affine[:3, :3], axis=0)
         isosize = float(max(src_zooms.min(), trg_zooms.min()))
         logger.info("Isotropic resampling: isosize=%.4f mm", isosize)
-        
-        sdata, src_iso_aff, Rsrc = resample_isotropic(src, isosize, mode='bilinear')
-        tdata, trg_iso_aff, Rtrg = resample_isotropic(trg, isosize, mode='bilinear')
+
+        sdata, src_iso_aff, Rsrc = resample_isotropic(src, isosize, mode="bilinear")
+        tdata, trg_iso_aff, Rtrg = resample_isotropic(trg, isosize, mode="bilinear")
         logger.info("  Src resampled: %s → %s", src.shape[:3], sdata.shape)
         logger.info("  Trg resampled: %s → %s", trg.shape[:3], tdata.shape)
         src_affine_for_pyramid = src_iso_aff
@@ -210,7 +219,7 @@ def register_pyramid(
         Rtrg = torch.eye(4, dtype=torch.float32)
         src_affine_for_pyramid = src.affine
         trg_affine_for_pyramid = trg.affine
-    
+
     # Compute shared pyramid limits from both image shapes so both pyramids
     # have the same number of levels and correspond to the same scale factors.
     shared_limits = get_pyramid_limits(sdata.shape, tdata.shape, minsize=16)
@@ -237,15 +246,32 @@ def register_pyramid(
     for si, sa, ti, ta in zip(reversed(simgs), reversed(saffines), reversed(timgs), reversed(taffines), strict=True):
         logger.info("Resolution level %d: %s", count, list(si.size()))
         if count == 0:
-            Mv2v, losses, m = register(si, ti, dof=dof, centroid_init=centroid_init,
-                                       n=n, loss_name=loss_name, loss_beta=loss_beta, 
-                                       optimizer=optimizer, device=device)
+            Mv2v, losses, m = register(
+                si,
+                ti,
+                dof=dof,
+                centroid_init=centroid_init,
+                n=n,
+                loss_name=loss_name,
+                loss_beta=loss_beta,
+                optimizer=optimizer,
+                device=device,
+            )
         else:
             Mv2v_init = torch.inverse(ta.double()) @ Mr2r @ sa.double()
             logger.debug("Mv2v_init:\n%s", Mv2v_init.numpy())
-            Mv2v, losses, m = register(si, ti, dof=dof, v2v_init=Mv2v_init, centroid_init=False,
-                                       n=n, loss_name=loss_name, loss_beta=loss_beta,
-                                       optimizer=optimizer, device=device)
+            Mv2v, losses, m = register(
+                si,
+                ti,
+                dof=dof,
+                v2v_init=Mv2v_init,
+                centroid_init=False,
+                n=n,
+                loss_name=loss_name,
+                loss_beta=loss_beta,
+                optimizer=optimizer,
+                device=device,
+            )
         Mv2v = Mv2v.double()
         logger.debug("Mv2v:\n%s", Mv2v.numpy())
         Mr2r = ta.double() @ Mv2v @ torch.inverse(sa.double())
@@ -260,7 +286,7 @@ def register_pyramid(
             tmgh.to_filename(tname)
             LTA.from_matrix(Mr2r.numpy(), sname, smgh, tname, tmgh).write(ltaname)
         count = count + 1
-    
+
     # When isotropic=True, Mr2r is on the isotropic grid → convert back to original
     if isotropic:
         src_aff_orig = torch.from_numpy(src.affine).double()
@@ -273,7 +299,7 @@ def register_pyramid(
     else:
         # Ensure Mr2r is double for consistency
         Mr2r = Mr2r.double()
-    
+
     if lta_name is not None:
         logger.info("Writing final LTA file: %s", lta_name)
         LTA.from_matrix(Mr2r.numpy(), src.get_filename(), src, trg.get_filename(), trg).write(lta_name)
@@ -286,7 +312,7 @@ def register_pyramid(
             )
         else:
             logger.info("Writing mapped image: %s", mapped_name)
-            mapped = m.map_image(sdata, mode='bilinear').detach()
+            mapped = m.map_image(sdata, mode="bilinear").detach()
             mapped_img = nib.MGHImage(mapped.squeeze().numpy(), src.affine, src.header)
             mapped_img.to_filename(mapped_name)
     logger.info("register_pyramid total time: %.2f s", time.perf_counter() - start)
@@ -303,10 +329,10 @@ def register_pyramid_sym(
     return_v2v: bool = False,
     dof: int = 6,
     n: int = 30,
-    loss_name: str = 'mse',
+    loss_name: str = "mse",
     loss_beta: float | None = None,
-    optimizer: str = 'adam',
-    device: str = 'cpu'
+    optimizer: str = "adam",
+    device: str = "cpu",
 ) -> torch.Tensor:
     """Symmetric (midspace) multi-resolution image registration.
 
@@ -366,6 +392,7 @@ def register_pyramid_sym(
     # Pre-processing: resample both images to a common isotropic grid
     # ------------------------------------------------------------------
     from .image.map import resample_isotropic
+
     # Use column norms of the 3×3 block — correct for any orientation,
     # including images whose affine has been modified by a rotation (e.g.
     # the synthetic displacement used in tests).
@@ -382,17 +409,16 @@ def register_pyramid_sym(
         """
         zooms = np.linalg.norm(img.affine[:3, :3], axis=0)  # column norms = voxel sizes
         shape = np.array(img.shape[:3])
-        out = tuple(max(1, int(np.ceil(s * z / iso))) for s, z in zip(shape, zooms))
+        out = tuple(max(1, int(np.ceil(s * z / iso))) for s, z in zip(shape, zooms, strict=False))
         return out
 
     s_dim = _find_out_shape(src, isosize)
     t_dim = _find_out_shape(trg, isosize)
-    mid_dim = tuple(max(s, t) for s, t in zip(s_dim, t_dim))
-    logger.info("Isotropic grid: src_dim=%s  trg_dim=%s  mid_dim=%s",
-                s_dim, t_dim, mid_dim)
+    mid_dim = tuple(max(s, t) for s, t in zip(s_dim, t_dim, strict=False))
+    logger.info("Isotropic grid: src_dim=%s  trg_dim=%s  mid_dim=%s", s_dim, t_dim, mid_dim)
 
-    src_iso, src_iso_aff, Rsrc = resample_isotropic(src, isosize, out_shape=mid_dim, mode='bilinear')
-    trg_iso, trg_iso_aff, Rtrg = resample_isotropic(trg, isosize, out_shape=mid_dim, mode='bilinear')
+    src_iso, src_iso_aff, Rsrc = resample_isotropic(src, isosize, out_shape=mid_dim, mode="bilinear")
+    trg_iso, trg_iso_aff, Rtrg = resample_isotropic(trg, isosize, out_shape=mid_dim, mode="bilinear")
 
     # ------------------------------------------------------------------
     # Build shared-limits pyramids on the isotropic resampled images
@@ -402,9 +428,7 @@ def register_pyramid_sym(
     timgs, taffines = build_gaussian_pyramid(trg_iso, trg_iso_aff, limits=shared_limits)
 
     if not simgs:
-        raise ValueError(
-            f"build_gaussian_pyramid returned no levels (isotropic shape {list(src_iso.shape)})."
-        )
+        raise ValueError(f"build_gaussian_pyramid returned no levels (isotropic shape {list(src_iso.shape)}).")
 
     # ------------------------------------------------------------------
     # Initialise cumulative transform on the coarsest level
@@ -420,7 +444,7 @@ def register_pyramid_sym(
     # ------------------------------------------------------------------
     from .image.map import map as _map_img  # local import once
 
-    for level_idx, (si, sa, ti, ta) in enumerate(
+    for level_idx, (si, _sa, ti, _ta) in enumerate(
         zip(reversed(simgs), reversed(saffines), reversed(timgs), reversed(taffines), strict=True)
     ):
         pyramid_level = n_levels - 1 - level_idx
@@ -430,14 +454,13 @@ def register_pyramid_sym(
         mh, mhi = matrix_sqrt_schur(M.float())
 
         # Map both images to midspace
-        src_mid = _map_img(si.float(), mh.float(),  is_torch_mat=False,
-                           target_shape=midspace_shape)
-        trg_mid = _map_img(ti.float(), mhi.float(), is_torch_mat=False,
-                           target_shape=midspace_shape)
+        src_mid = _map_img(si.float(), mh.float(), is_torch_mat=False, target_shape=midspace_shape)
+        trg_mid = _map_img(ti.float(), mhi.float(), is_torch_mat=False, target_shape=midspace_shape)
 
         # Full registration on the midspace pair (n gradient steps)
         delta_v2v, _, _ = register(
-            src_mid, trg_mid,
+            src_mid,
+            trg_mid,
             dof=dof,
             v2v_init=None,
             centroid_init=False,
@@ -478,9 +501,11 @@ def register_pyramid_sym(
     if mapped_name is not None:
         logger.info("Writing mapped image: %s", mapped_name)
         from .image.map import map_r2r as _map_r2r2
+
         sdata_full = torch.from_numpy(src.get_fdata()).float()
         mapped = _map_r2r2(
-            sdata_full, Mr2r.float(),
+            sdata_full,
+            Mr2r.float(),
             source_affine=src_affine_t.float(),
             target_affine=trg_affine_t.float(),
             target_shape=tuple(trg.shape[:3]),
@@ -506,11 +531,11 @@ def register_surface(
     seg: str | None = None,
     lta_name: str | None = None,
     dof: int = 6,
-    contrast: Literal['t1', 't2'] | None = None,
-    init_type: Literal['header', 'lta'] = 'header',
+    contrast: Literal["t1", "t2"] | None = None,
+    init_type: Literal["header", "lta"] = "header",
     init_lta: str | None = None,
     init_ras: np.ndarray | None = None,
-    cost_type: Literal['contrast', 'gradient', 'both'] = 'contrast',
+    cost_type: Literal["contrast", "gradient", "both"] = "contrast",
     wm_proj_abs: float = 1.4,
     gm_proj_frac: float = 0.5,
     gm_proj_abs: float | None = None,
@@ -521,7 +546,7 @@ def register_surface(
     subsample: int = 1,
     n_iters: int = 100,
     lr: float = 0.01,
-    device: str = 'cpu'
+    device: str = "cpu",
 ) -> tuple[torch.Tensor, BBRModel]:
     """
     Register moving image to target anatomy using cortical surface boundaries (BBR).
@@ -640,7 +665,7 @@ def register_surface(
         mov_path = mov
     else:
         mov_img = mov
-        mov_path = mov.get_filename() if hasattr(mov, 'get_filename') else None
+        mov_path = mov.get_filename() if hasattr(mov, "get_filename") else None
 
     mov_data = torch.from_numpy(mov_img.get_fdata()).float()
 
@@ -648,41 +673,41 @@ def register_surface(
     if subject_dir is not None:
         logger.info("Loading surfaces from subject directory: %s", subject_dir)
         lh_data = load_surface_from_subject(
-            subject_dir, hemi='lh', surf_name='white',
-            load_thickness=True, device=device
+            subject_dir, hemi="lh", surf_name="white", load_thickness=True, device=device
         )
         rh_data = load_surface_from_subject(
-            subject_dir, hemi='rh', surf_name='white',
-            load_thickness=True, device=device
+            subject_dir, hemi="rh", surf_name="white", load_thickness=True, device=device
         )
 
-        orig_path = Path(subject_dir) / 'mri' / 'orig.mgz'
+        orig_path = Path(subject_dir) / "mri" / "orig.mgz"
         if orig_path.exists():
             trg_header = nib.load(str(orig_path)).header
             trg_path = str(orig_path)
-            logger.info("Target reference: %s  shape=%s  voxel size=%s",
-                        orig_path, trg_header.get_data_shape()[:3],
-                        trg_header.get_zooms()[:3])
+            logger.info(
+                "Target reference: %s  shape=%s  voxel size=%s",
+                orig_path,
+                trg_header.get_data_shape()[:3],
+                trg_header.get_zooms()[:3],
+            )
         else:
-            logger.warning("orig.mgz not found at %s — using moving image as target reference",
-                           orig_path)
+            logger.warning("orig.mgz not found at %s — using moving image as target reference", orig_path)
             trg_header = mov_img.header
             trg_path = mov_path
 
     elif seg is not None:
         # ---- Mode C: extract surfaces from segmentation ----
         from .image.segmentation import surfaces_from_segmentation
+
         logger.info("Extracting WM surfaces from segmentation: %s", seg)
         seg_img = nib.load(seg)
-        lh_data, rh_data = surfaces_from_segmentation(
-            seg_img, hemispheres=("lh", "rh"), device=device
-        )
+        lh_data, rh_data = surfaces_from_segmentation(seg_img, hemispheres=("lh", "rh"), device=device)
         # The segmentation header serves as the target reference
         trg_header = seg_img.header
         trg_path = seg
         logger.info(
             "Target reference from segmentation header: shape=%s  voxel size=%s",
-            trg_header.get_data_shape()[:3], trg_header.get_zooms()[:3],
+            trg_header.get_data_shape()[:3],
+            trg_header.get_zooms()[:3],
         )
 
     else:
@@ -704,8 +729,10 @@ def register_surface(
         # Use explicit ref image when provided, otherwise fall back to moving image
         if ref is not None:
             trg_header = (nib.load(ref) if isinstance(ref, str) else ref).header
-            trg_path = ref if isinstance(ref, str) else (
-                trg_header.get_filename() if hasattr(trg_header, 'get_filename') else None
+            trg_path = (
+                ref
+                if isinstance(ref, str)
+                else (trg_header.get_filename() if hasattr(trg_header, "get_filename") else None)
             )
             logger.info("Target reference: %s", trg_path)
         else:
@@ -718,7 +745,7 @@ def register_surface(
 
     # Surfaces live in target tkRAS space.
     # trg_tkras2ras maps target tkRAS → scanner RAS.
-    trg_vox2tkras = get_vox2ras_tkr(trg_header)                              # vox → tkRAS
+    trg_vox2tkras = get_vox2ras_tkr(trg_header)  # vox → tkRAS
     trg_tkras2ras = trg_header.get_best_affine() @ np.linalg.inv(trg_vox2tkras)  # tkRAS → RAS
     trg_tkras2ras_t = torch.from_numpy(trg_tkras2ras).float()
 
@@ -729,16 +756,16 @@ def register_surface(
     logger.debug("Target tkRAS→RAS:\n%s", trg_tkras2ras)
     logger.debug("Moving affine:\n%s", mov_img.affine)
     if lh_data is not None:
-        logger.info("LH surface: %d vertices", lh_data['vertices'].shape[0])
+        logger.info("LH surface: %d vertices", lh_data["vertices"].shape[0])
     if rh_data is not None:
-        logger.info("RH surface: %d vertices", rh_data['vertices'].shape[0])
+        logger.info("RH surface: %d vertices", rh_data["vertices"].shape[0])
 
     # Handle initialization
     init_transform = None
     if init_ras is not None:
         init_transform = torch.from_numpy(init_ras).float()
         logger.info("Using provided RAS-to-RAS init:\n%s", init_ras)
-    elif init_type == 'lta':
+    elif init_type == "lta":
         if init_lta is None:
             raise ValueError("init_lta must be provided when init_type='lta'")
         logger.info("Loading init transform from LTA: %s", init_lta)
@@ -746,7 +773,7 @@ def register_surface(
         ras_mov_to_trg = LTA.read(init_lta).r2r()
         init_transform = torch.from_numpy(np.linalg.inv(ras_mov_to_trg)).float()
         logger.info("Loaded init transform (trg_RAS→mov_RAS) from %s", init_lta)
-    elif init_type == 'centroid':
+    elif init_type == "centroid":
         raise ValueError(
             "init_type='centroid' is not supported for surface-based registration: "
             "centroid alignment requires a pair of image volumes, but register_surface "
@@ -757,21 +784,22 @@ def register_surface(
     else:  # header
         init_transform = torch.eye(4, dtype=torch.float32)
 
-    logger.info("Initializing BBR model  dof=%d  contrast=%s  cost=%s  subsample=%d",
-                dof, contrast, cost_type, subsample)
+    logger.info(
+        "Initializing BBR model  dof=%d  contrast=%s  cost=%s  subsample=%d", dof, contrast, cost_type, subsample
+    )
 
     model = BBRModel(
         moving_volume=mov_data,
-        lh_white_vertices=lh_data['vertices'] if lh_data is not None else None,
-        lh_faces=lh_data['faces'] if lh_data is not None else None,
-        rh_white_vertices=rh_data['vertices'] if rh_data is not None else None,
-        rh_faces=rh_data['faces'] if rh_data is not None else None,
-        lh_thickness=lh_data.get('thickness') if lh_data is not None else None,
-        rh_thickness=rh_data.get('thickness') if rh_data is not None else None,
-        lh_cortex_mask=lh_data.get('cortex_mask') if lh_data is not None else None,
-        rh_cortex_mask=rh_data.get('cortex_mask') if rh_data is not None else None,
-        trg_tkras2ras=trg_tkras2ras_t,   # target tkRAS → scanner RAS
-        mov_affine=mov_affine_t,          # moving image vox-to-RAS affine
+        lh_white_vertices=lh_data["vertices"] if lh_data is not None else None,
+        lh_faces=lh_data["faces"] if lh_data is not None else None,
+        rh_white_vertices=rh_data["vertices"] if rh_data is not None else None,
+        rh_faces=rh_data["faces"] if rh_data is not None else None,
+        lh_thickness=lh_data.get("thickness") if lh_data is not None else None,
+        rh_thickness=rh_data.get("thickness") if rh_data is not None else None,
+        lh_cortex_mask=lh_data.get("cortex_mask") if lh_data is not None else None,
+        rh_cortex_mask=rh_data.get("cortex_mask") if rh_data is not None else None,
+        trg_tkras2ras=trg_tkras2ras_t,  # target tkRAS → scanner RAS
+        mov_affine=mov_affine_t,  # moving image vox-to-RAS affine
         dof=dof,
         init_transform=init_transform,
         contrast=contrast,
@@ -782,7 +810,7 @@ def register_surface(
         cost_type=cost_type,
         gradient_weight=gradient_weight,
         subsample=subsample,
-        device=device
+        device=device,
     ).to(device)
 
     logger.info("Optimizing: %d iterations  lr=%.4f", n_iters, lr)
@@ -826,4 +854,3 @@ def register_surface(
         ).write(lta_name)
 
     return final_transform.detach(), model
-

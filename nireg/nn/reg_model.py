@@ -18,12 +18,12 @@ class RegModel(nn.Module):
     """
 
     def __init__(
-            self,
-            dof: int = 6,
-            v2v_init: torch.Tensor | None = None,
-            source_shape: Any | None = None,
-            target_shape: Any | None = None,
-            device: str = 'cpu'
+        self,
+        dof: int = 6,
+        v2v_init: torch.Tensor | None = None,
+        source_shape: Any | None = None,
+        target_shape: Any | None = None,
+        device: str = "cpu",
     ) -> None:
         """
         Initialize the registration model with degrees of freedom and optional parameters.
@@ -81,7 +81,7 @@ class RegModel(nn.Module):
         else:
             self.ixform = None
 
-    def init_weights(self, dof: int = 6, device: str | torch.device = 'cpu') -> Tensor:
+    def init_weights(self, dof: int = 6, device: str | torch.device = "cpu") -> Tensor:
         """
         Initialize transformation weights based on degrees of freedom (DOF).
 
@@ -104,7 +104,7 @@ class RegModel(nn.Module):
             A tensor containing the initialized weights.
         """
         w = torch.zeros(dof, device=device)
-        #if 3 < dof < 12:
+        # if 3 < dof < 12:
         #    w[3:6] = 0.0001
         if 6 < dof < 12:
             w[6:9] = 1.0
@@ -148,13 +148,12 @@ class RegModel(nn.Module):
             dof = self.weights.size(0)
         self.weights.data = self.init_weights(dof=dof, device=self.weights.device)
 
-
     def set_ixform(
-            self,
-            v2v_init: torch.Tensor,
-            source_shape: tuple[int, int, int],
-            target_shape: tuple[int, int, int],
-            device: str | torch.device = 'cpu'
+        self,
+        v2v_init: torch.Tensor,
+        source_shape: tuple[int, int, int],
+        target_shape: tuple[int, int, int],
+        device: str | torch.device = "cpu",
     ) -> None:
         """
         Update the initial vox2vox transformation matrix.
@@ -177,11 +176,7 @@ class RegModel(nn.Module):
         -------
         None
         """
-        self.ixform = (
-            trans.convert_v2v_to_torch(v2v_init, source_shape, target_shape)
-            .type(torch.float32)
-            .to(device)
-        )
+        self.ixform = trans.convert_v2v_to_torch(v2v_init, source_shape, target_shape).type(torch.float32).to(device)
 
     def get_torch_transform_from_weights(self) -> torch.Tensor:
         """
@@ -238,35 +233,31 @@ class RegModel(nn.Module):
 
         """
         # trans = torch.cat((torch.eye(3,device=self.weights.device), self.weights[0:3].unsqueeze(dim=1)), dim=1)
-        #trans = torch.eye(4, device=self.weights.device, dtype=self.weights.dtype)
-        #trans[:3, 3] = self.weights
+        # trans = torch.eye(4, device=self.weights.device, dtype=self.weights.dtype)
+        # trans[:3, 3] = self.weights
         if self.weights.size(0) == 12:
             # Fully affine: optimize 12 matrix entries as 3x4
-            affine = self.weights.view((3,4))
+            affine = self.weights.view((3, 4))
         else:
             # For translation, use three weights as translation entries in 4th column
-            affine = torch.cat((torch.eye(3,device=self.weights.device),
-                                self.weights[0:3].unsqueeze(dim=1)), dim=1)
+            affine = torch.cat((torch.eye(3, device=self.weights.device), self.weights[0:3].unsqueeze(dim=1)), dim=1)
             if self.weights.size(0) > 3:
                 # For rigid get rotation from Euler angles
                 # and insert into 3x3 block
-                affine[:3,:3] = trans.get_rotation_euler(self.weights[3:6])[:3,:3]
+                affine[:3, :3] = trans.get_rotation_euler(self.weights[3:6])[:3, :3]
             if self.weights.size(0) > 6:
                 # For rigid and scaling multiply with scaling diagonal matrix
                 affine.mul_(self.weights[6:9].view(-1, 1))
         if self.ixform is not None:
             # affine and ixform are 3x4 so we have to multiply step wise:
             affine[:3, :3] = affine[:3, :3].type(self.ixform.dtype) @ self.ixform[:3, :3]
-            affine[:3, 3] = (
-                    affine[:3, :3].type(self.ixform.dtype) @ self.ixform[:3, 3]
-                    + affine[:3, 3].type(self.ixform.dtype)
+            affine[:3, 3] = affine[:3, :3].type(self.ixform.dtype) @ self.ixform[:3, 3] + affine[:3, 3].type(
+                self.ixform.dtype
             )
 
         return affine
 
-
-    def get_v2v_from_weights(self, sshape: tuple[int, int, int],
-                             tshape: tuple[int, int, int] | None = None) -> Tensor:
+    def get_v2v_from_weights(self, sshape: tuple[int, int, int], tshape: tuple[int, int, int] | None = None) -> Tensor:
         """
         Convert transformation weights into a voxel-to-voxel transformation matrix.
 
@@ -318,11 +309,7 @@ class RegModel(nn.Module):
         return v2v.detach().cpu()
 
     def get_r2r_from_weights(
-                self,
-                saffine: Tensor,
-                taffine: Tensor,
-                sshape: tuple[int, int, int],
-                tshape: tuple[int, int, int] | None = None
+        self, saffine: Tensor, taffine: Tensor, sshape: tuple[int, int, int], tshape: tuple[int, int, int] | None = None
     ) -> Tensor:
         """
         Compute the RAS-to-RAS (r2r) transformation matrix from transformation weights.
@@ -384,14 +371,11 @@ class RegModel(nn.Module):
         - The resulting matrix transforms points directly in RAS space.
 
         """
-        v2v = self.get_v2v_from_weights(sshape,tshape)
+        v2v = self.get_v2v_from_weights(sshape, tshape)
         return torch.tensor(taffine) @ v2v.double() @ torch.inverse(torch.tensor(saffine))
 
     def map_image(
-            self,
-            image: torch.Tensor,
-            torch_transform: torch.Tensor | None = None,
-            mode: str = 'bilinear'
+        self, image: torch.Tensor, torch_transform: torch.Tensor | None = None, mode: str = "bilinear"
     ) -> torch.Tensor:
         """
         Map an input image to another space using the inverse transformation matrix.
@@ -441,7 +425,6 @@ class RegModel(nn.Module):
             torch_transform = self.get_torch_transform_from_weights()
         return nireg.image.map(image, torch_transform, mode=mode)
 
-
     def forward(self, X: torch.Tensor) -> torch.Tensor:
         """
         Perform a forward pass, mapping the input image according to the transformation weights.
@@ -475,4 +458,3 @@ class RegModel(nn.Module):
 
         """
         return self.map_image(X)
-

@@ -9,12 +9,12 @@ import nireg.transforms.matrices as trans
 
 
 def map(
-        image: torch.Tensor,
-        transform: torch.Tensor,
-        is_torch_mat: bool = True,
-        target_shape: tuple[int, int, int] | None = None,
-        mode: str = 'bilinear',
-        padding_mode: str = 'zeros'
+    image: torch.Tensor,
+    transform: torch.Tensor,
+    is_torch_mat: bool = True,
+    target_shape: tuple[int, int, int] | None = None,
+    mode: str = "bilinear",
+    padding_mode: str = "zeros",
 ) -> torch.Tensor:
     """Map an input image to another space using the inverse transformation matrix.
 
@@ -50,40 +50,30 @@ def map(
         If *mode* is not ``'bilinear'`` or ``'nearest'``, or if *padding_mode*
         is not one of ``'zeros'``, ``'border'``, or ``'reflection'``.
     """
-    if mode not in ('bilinear', 'nearest'):
+    if mode not in ("bilinear", "nearest"):
         raise ValueError(f"mode must be 'bilinear' or 'nearest', got '{mode}'.")
-    if padding_mode not in ('zeros', 'border', 'reflection'):
-        raise ValueError(
-            f"padding_mode must be 'zeros', 'border', or 'reflection', got '{padding_mode}'."
-        )
+    if padding_mode not in ("zeros", "border", "reflection"):
+        raise ValueError(f"padding_mode must be 'zeros', 'border', or 'reflection', got '{padding_mode}'.")
     if not is_torch_mat:
         torch_transform = trans.convert_v2v_to_torch(transform, image.shape, target_shape)
     else:
         torch_transform = transform[:3, :]
     out_shape = target_shape if target_shape is not None else image.shape
     grid_size = (1, 1) + tuple(out_shape)
-    grid = nn.functional.affine_grid(
-        torch_transform.unsqueeze(0).float(),
-        grid_size,
-        align_corners=False
-    )
+    grid = nn.functional.affine_grid(torch_transform.unsqueeze(0).float(), grid_size, align_corners=False)
     return nn.functional.grid_sample(
-        image.unsqueeze(0).unsqueeze(0),
-        grid,
-        mode=mode,
-        padding_mode=padding_mode,
-        align_corners=False
+        image.unsqueeze(0).unsqueeze(0), grid, mode=mode, padding_mode=padding_mode, align_corners=False
     ).squeeze()
 
 
 def map_r2r(
-        image: torch.Tensor,
-        r2r: torch.Tensor,
-        source_affine: torch.Tensor,
-        target_affine: torch.Tensor,
-        target_shape: tuple[int, int, int] | None = None,
-        mode: str = 'bilinear',
-        padding_mode: str = 'zeros',
+    image: torch.Tensor,
+    r2r: torch.Tensor,
+    source_affine: torch.Tensor,
+    target_affine: torch.Tensor,
+    target_shape: tuple[int, int, int] | None = None,
+    mode: str = "bilinear",
+    padding_mode: str = "zeros",
 ) -> torch.Tensor:
     """Map an image using a RAS-to-RAS transform without a v2v intermediate.
 
@@ -121,18 +111,15 @@ def map_r2r(
     """
     if target_shape is None:
         target_shape = image.shape
-    torch_mat = trans.convert_r2r_to_torch(
-        r2r, image.shape, source_affine, target_shape, target_affine
-    )
-    return map(image, torch_mat, is_torch_mat=True,
-               target_shape=target_shape, mode=mode, padding_mode=padding_mode)
+    torch_mat = trans.convert_r2r_to_torch(r2r, image.shape, source_affine, target_shape, target_affine)
+    return map(image, torch_mat, is_torch_mat=True, target_shape=target_shape, mode=mode, padding_mode=padding_mode)
 
 
 def resample_isotropic(
-        img: nib.Nifti1Image,
-        iso: float,
-        out_shape: tuple[int, int, int] | None = None,
-        mode: str = 'bilinear',
+    img: nib.Nifti1Image,
+    iso: float,
+    out_shape: tuple[int, int, int] | None = None,
+    mode: str = "bilinear",
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Resample a NIfTI image to an isotropic grid.
 
@@ -192,7 +179,7 @@ def resample_isotropic(
     if out_shape is None:
         zooms = np.linalg.norm(img.affine[:3, :3], axis=0)  # column norms = voxel sizes
         shape = np.array(img.shape[:3])
-        out_shape = tuple(max(1, int(np.ceil(s * z / iso))) for s, z in zip(shape, zooms))
+        out_shape = tuple(max(1, int(np.ceil(s * z / iso))) for s, z in zip(shape, zooms, strict=False))
 
     # Resample using identity RAS-to-RAS transform
     identity_r2r = torch.eye(4, dtype=torch.float64)
@@ -211,5 +198,3 @@ def resample_isotropic(
     Rvox = torch.inverse(orig_affine) @ iso_affine
 
     return resampled, iso_affine.float(), Rvox.float()
-
-

@@ -16,7 +16,9 @@ def _trilinear_manual(
     vi: torch.Tensor,
     vj: torch.Tensor,
     vk: torch.Tensor,
-    Si: int, Sj: int, Sk: int,
+    Si: int,
+    Sj: int,
+    Sk: int,
     dtype: torch.dtype,
     padding_mode: str,
 ) -> torch.Tensor:
@@ -60,21 +62,19 @@ def _trilinear_manual(
     k0 = k0.clamp(0, Sk - 1)
     k1 = k1.clamp(0, Sk - 1)
 
-    if padding_mode == 'zeros':
-        oob = ((vi < 0) | (vi > Si - 1) |
-               (vj < 0) | (vj > Sj - 1) |
-               (vk < 0) | (vk > Sk - 1))
+    if padding_mode == "zeros":
+        oob = (vi < 0) | (vi > Si - 1) | (vj < 0) | (vj > Sj - 1) | (vk < 0) | (vk > Sk - 1)
 
     v = volume[0, 0]
     c00 = torch.lerp(v[i0, j0, k0], v[i1, j0, k0], fi)
     c01 = torch.lerp(v[i0, j0, k1], v[i1, j0, k1], fi)
     c10 = torch.lerp(v[i0, j1, k0], v[i1, j1, k0], fi)
     c11 = torch.lerp(v[i0, j1, k1], v[i1, j1, k1], fi)
-    c0  = torch.lerp(c00, c10, fj)
-    c1  = torch.lerp(c01, c11, fj)
+    c0 = torch.lerp(c00, c10, fj)
+    c1 = torch.lerp(c01, c11, fj)
     values = torch.lerp(c0, c1, fk)
 
-    if padding_mode == 'zeros':
+    if padding_mode == "zeros":
         values = values.masked_fill(oob, 0.0)
 
     return values
@@ -85,8 +85,8 @@ def sample_volume_at_vertices(
     vertices_tkras: torch.Tensor,
     vox2ras_tkr: torch.Tensor,
     reg_matrix: torch.Tensor | None = None,
-    interpolation: Literal['nearest', 'trilinear'] = 'trilinear',
-    padding_mode: str = 'zeros',
+    interpolation: Literal["nearest", "trilinear"] = "trilinear",
+    padding_mode: str = "zeros",
 ) -> torch.Tensor:
     """Sample volume intensities at surface vertex locations.
 
@@ -117,16 +117,12 @@ def sample_volume_at_vertices(
     values : torch.Tensor, shape (N,)
         Sampled intensity values at each vertex.
     """
-    _VALID_INTERPOLATION = ('nearest', 'trilinear')
-    _VALID_PADDING = ('zeros', 'border')
+    _VALID_INTERPOLATION = ("nearest", "trilinear")
+    _VALID_PADDING = ("zeros", "border")
     if interpolation not in _VALID_INTERPOLATION:
-        raise ValueError(
-            f"interpolation must be one of {_VALID_INTERPOLATION}, got '{interpolation}'."
-        )
+        raise ValueError(f"interpolation must be one of {_VALID_INTERPOLATION}, got '{interpolation}'.")
     if padding_mode not in _VALID_PADDING:
-        raise ValueError(
-            f"padding_mode must be one of {_VALID_PADDING}, got '{padding_mode}'."
-        )
+        raise ValueError(f"padding_mode must be one of {_VALID_PADDING}, got '{padding_mode}'.")
 
     device = volume.device
     dtype = volume.dtype
@@ -142,10 +138,7 @@ def sample_volume_at_vertices(
 
     # Convert vertices to homogeneous coordinates (N, 4)
     n_vertices = vertices_tkras.shape[0]
-    vertices_hom = torch.cat([
-        vertices_tkras,
-        torch.ones((n_vertices, 1), device=device, dtype=dtype)
-    ], dim=1)  # (N, 4)
+    vertices_hom = torch.cat([vertices_tkras, torch.ones((n_vertices, 1), device=device, dtype=dtype)], dim=1)  # (N, 4)
 
     # Apply registration transform if provided
     if reg_matrix is not None:
@@ -161,20 +154,18 @@ def sample_volume_at_vertices(
     vj = vertices_vox[:, 1]
     vk = vertices_vox[:, 2]
 
-    if interpolation == 'nearest':
+    if interpolation == "nearest":
         # Compute OOB mask *before* clamping so that padding_mode='zeros'
         # returns 0 for out-of-bounds vertices.  Without this the clamp
         # would silently act as padding_mode='border' regardless of what
         # the caller requested.
-        if padding_mode == 'zeros':
-            oob = ((vi < 0) | (vi > Si - 1) |
-                   (vj < 0) | (vj > Sj - 1) |
-                   (vk < 0) | (vk > Sk - 1))
+        if padding_mode == "zeros":
+            oob = (vi < 0) | (vi > Si - 1) | (vj < 0) | (vj > Sj - 1) | (vk < 0) | (vk > Sk - 1)
         ii = vi.round().long().clamp(0, Si - 1)
         jj = vj.round().long().clamp(0, Sj - 1)
         kk = vk.round().long().clamp(0, Sk - 1)
         values = volume[0, 0][ii, jj, kk]
-        if padding_mode == 'zeros':
+        if padding_mode == "zeros":
             values = values.masked_fill(oob, 0.0)
         return values
 
@@ -183,7 +174,7 @@ def sample_volume_at_vertices(
     # manual trilinear interpolation there.  On CPU and CUDA we keep
     # F.grid_sample because its internal fused kernel gives a different
     # (and empirically better-converging) float32 rounding path.
-    if volume.device.type == 'mps':
+    if volume.device.type == "mps":
         return _trilinear_manual(volume, vi, vj, vk, Si, Sj, Sk, dtype, padding_mode)
 
     # ── F.grid_sample path (CPU / CUDA) ────────────────────────────────────
@@ -194,18 +185,11 @@ def sample_volume_at_vertices(
     grid[:, 2] = 2.0 * vi / (Si - 1) - 1.0  # z → i (first spatial dim)
     grid = grid.unsqueeze(0).unsqueeze(2).unsqueeze(3)  # (1, N, 1, 1, 3)
 
-    sampled = F.grid_sample(
-        volume, grid, mode='bilinear',
-        padding_mode=padding_mode,
-        align_corners=True
-    )
+    sampled = F.grid_sample(volume, grid, mode="bilinear", padding_mode=padding_mode, align_corners=True)
     return sampled.squeeze()
 
 
-def compute_volume_gradient(
-    volume: torch.Tensor,
-    voxel_size: tuple[float, float, float] | None = None
-) -> torch.Tensor:
+def compute_volume_gradient(volume: torch.Tensor, voxel_size: tuple[float, float, float] | None = None) -> torch.Tensor:
     """
     Compute 3D gradient of volume.
 
@@ -272,7 +256,7 @@ def sample_gradient_at_vertices(
     vox2ras_tkr: torch.Tensor,
     reg_matrix: torch.Tensor | None = None,
     voxel_size: tuple[float, float, float] | None = None,
-    interpolation: str = 'trilinear',
+    interpolation: str = "trilinear",
     precomputed_grad: torch.Tensor | None = None,
 ) -> torch.Tensor:
     """
@@ -307,20 +291,13 @@ def sample_gradient_at_vertices(
     """
     # Use caller-supplied gradient volume when available; otherwise compute.
     if precomputed_grad is not None:
-        grad_volume = precomputed_grad          # (3, H, W, D)
+        grad_volume = precomputed_grad  # (3, H, W, D)
     else:
         grad_volume = compute_volume_gradient(volume, voxel_size)  # (3, H, W, D)
 
     # Sample each gradient component
-    grad_x = sample_volume_at_vertices(
-        grad_volume[0], vertices_tkras, vox2ras_tkr, reg_matrix, interpolation
-    )
-    grad_y = sample_volume_at_vertices(
-        grad_volume[1], vertices_tkras, vox2ras_tkr, reg_matrix, interpolation
-    )
-    grad_z = sample_volume_at_vertices(
-        grad_volume[2], vertices_tkras, vox2ras_tkr, reg_matrix, interpolation
-    )
+    grad_x = sample_volume_at_vertices(grad_volume[0], vertices_tkras, vox2ras_tkr, reg_matrix, interpolation)
+    grad_y = sample_volume_at_vertices(grad_volume[1], vertices_tkras, vox2ras_tkr, reg_matrix, interpolation)
+    grad_z = sample_volume_at_vertices(grad_volume[2], vertices_tkras, vox2ras_tkr, reg_matrix, interpolation)
 
     return torch.stack([grad_x, grad_y, grad_z], dim=1)
-

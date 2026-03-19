@@ -1,4 +1,3 @@
-
 import torch
 from torch import Tensor
 
@@ -6,10 +5,7 @@ from .smooth import smooth
 
 
 def get_pyramid_limits(
-        shape1: torch.Size,
-        shape2: torch.Size | None = None,
-        minsize: int = 32,
-        maxsize: int | None = None
+    shape1: torch.Size, shape2: torch.Size | None = None, minsize: int = 32, maxsize: int | None = None
 ) -> tuple[Tensor, Tensor]:
     """
     Compute the minimum and maximum levels for a pyramid representation of shapes.
@@ -55,10 +51,9 @@ def get_pyramid_limits(
     minsteps = torch.ceil(torch.log2(smax / maxsize)).int()
     return (minsteps, maxsteps)
 
+
 def build_gaussian_pyramid(
-        image: Tensor,
-        affine: Tensor,
-        limits: tuple[Tensor, Tensor] | None = None
+    image: Tensor, affine: Tensor, limits: tuple[Tensor, Tensor] | None = None
 ) -> tuple[list[Tensor], list[Tensor]]:
     """
     Build a Gaussian pyramid for a 3D image, including its downsampled versions.

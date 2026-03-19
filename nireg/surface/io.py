@@ -11,18 +11,11 @@ from nibabel.freesurfer import read_geometry, read_morph_data
 
 logger = logging.getLogger(__name__)
 
-_AnyVolRef: TypeAlias = (
-        nib.Nifti1Image
-        | nib.MGHImage
-        | nib.nifti1.Nifti1Header
-        | nib.freesurfer.mghformat.MGHHeader
-)
+_AnyVolRef: TypeAlias = nib.Nifti1Image | nib.MGHImage | nib.nifti1.Nifti1Header | nib.freesurfer.mghformat.MGHHeader
+
 
 def load_surface(
-    surf_path: str,
-    thickness_path: str | None = None,
-    cortex_label_path: str | None = None,
-    device: str = 'cpu'
+    surf_path: str, thickness_path: str | None = None, cortex_label_path: str | None = None, device: str = "cpu"
 ) -> dict[str, torch.Tensor]:
     """Load a FreeSurfer surface file and optional associated data.
 
@@ -61,9 +54,9 @@ def load_surface(
     vertices, faces = read_geometry(surf_path, read_metadata=False)
 
     # Handle byte order - FreeSurfer files may have non-native byte order
-    if vertices.dtype.byteorder not in ('=', '|', '<' if np.little_endian else '>'):
+    if vertices.dtype.byteorder not in ("=", "|", "<" if np.little_endian else ">"):
         vertices = vertices.byteswap().view(vertices.dtype.newbyteorder())
-    if faces.dtype.byteorder not in ('=', '|', '<' if np.little_endian else '>'):
+    if faces.dtype.byteorder not in ("=", "|", "<" if np.little_endian else ">"):
         faces = faces.byteswap().view(faces.dtype.newbyteorder())
 
     # Convert to torch tensors
@@ -71,16 +64,16 @@ def load_surface(
     faces_tensor = torch.from_numpy(faces).long().to(device)
 
     result = {
-        'vertices': vertices_tensor,
-        'faces': faces_tensor,
+        "vertices": vertices_tensor,
+        "faces": faces_tensor,
     }
 
     # Load thickness if provided
     if thickness_path is not None:
         thickness = read_morph_data(thickness_path)
-        if thickness.dtype.byteorder not in ('=', '|', '<' if np.little_endian else '>'):
+        if thickness.dtype.byteorder not in ("=", "|", "<" if np.little_endian else ">"):
             thickness = thickness.byteswap().view(thickness.dtype.newbyteorder())
-        result['thickness'] = torch.from_numpy(thickness).float().to(device)
+        result["thickness"] = torch.from_numpy(thickness).float().to(device)
 
     # Load cortex label if provided
     if cortex_label_path is not None:
@@ -88,11 +81,8 @@ def load_surface(
         n_verts = vertices_tensor.shape[0]
         cortex_mask = torch.zeros(n_verts, dtype=torch.bool, device=device)
         cortex_mask[cortex_indices] = True
-        result['cortex_mask'] = cortex_mask
-        logger.debug(
-            "Cortex label %s: %d / %d vertices in cortex",
-            cortex_label_path, int(cortex_mask.sum()), n_verts
-        )
+        result["cortex_mask"] = cortex_mask
+        logger.debug("Cortex label %s: %d / %d vertices in cortex", cortex_label_path, int(cortex_mask.sum()), n_verts)
 
     return result
 
@@ -104,7 +94,7 @@ def load_surface_pair(
     rh_thickness_path: str | None = None,
     lh_cortex_label_path: str | None = None,
     rh_cortex_label_path: str | None = None,
-    device: str = 'cpu'
+    device: str = "cpu",
 ) -> tuple[dict[str, torch.Tensor], dict[str, torch.Tensor]]:
     """Load left and right hemisphere surfaces.
 
@@ -138,11 +128,7 @@ def load_surface_pair(
 
 
 def load_surface_from_subject(
-    subject_dir: str,
-    hemi: str = 'lh',
-    surf_name: str = 'white',
-    load_thickness: bool = True,
-    device: str = 'cpu'
+    subject_dir: str, hemi: str = "lh", surf_name: str = "white", load_thickness: bool = True, device: str = "cpu"
 ) -> dict[str, torch.Tensor]:
     """Load surface from FreeSurfer subject directory structure.
 
@@ -166,16 +152,16 @@ def load_surface_from_subject(
         cortex_mask (loaded from ``label/?h.cortex.label`` when present).
     """
     subject_path = Path(subject_dir)
-    surf_path = subject_path / 'surf' / f'{hemi}.{surf_name}'
+    surf_path = subject_path / "surf" / f"{hemi}.{surf_name}"
 
     thickness_path = None
     if load_thickness:
-        thickness_file = subject_path / 'surf' / f'{hemi}.thickness'
+        thickness_file = subject_path / "surf" / f"{hemi}.thickness"
         if thickness_file.exists():
             thickness_path = str(thickness_file)
 
     cortex_label_path = None
-    cortex_label_file = subject_path / 'label' / f'{hemi}.cortex.label'
+    cortex_label_file = subject_path / "label" / f"{hemi}.cortex.label"
     if cortex_label_file.exists():
         cortex_label_path = str(cortex_label_file)
         logger.info("Loading cortex label from %s", cortex_label_path)
@@ -221,26 +207,25 @@ def get_vox2ras_tkr(ref_volume: _AnyVolRef) -> np.ndarray:
     negated to match RAS orientation.
     """
     # Accept either an image or a bare header
-    if hasattr(ref_volume, 'header'):
+    if hasattr(ref_volume, "header"):
         header = ref_volume.header
     else:
         header = ref_volume
 
     # MGH/MGZ: use the stored field directly
-    if hasattr(header, 'get_vox2ras_tkr'):
+    if hasattr(header, "get_vox2ras_tkr"):
         return header.get_vox2ras_tkr()
 
     # NIfTI (and any other format): compute from voxel size and shape
-    shape   = header.get_data_shape()[:3]
+    shape = header.get_data_shape()[:3]
     voxsize = header.get_zooms()[:3]
 
     M = np.eye(4)
-    M[0, 0] = -voxsize[0]   # x flipped to match RAS convention
-    M[1, 1] =  voxsize[1]
-    M[2, 2] =  voxsize[2]
-    M[0, 3] =  voxsize[0] * shape[0] / 2.0   # centre origin
+    M[0, 0] = -voxsize[0]  # x flipped to match RAS convention
+    M[1, 1] = voxsize[1]
+    M[2, 2] = voxsize[2]
+    M[0, 3] = voxsize[0] * shape[0] / 2.0  # centre origin
     M[1, 3] = -voxsize[1] * shape[1] / 2.0
     M[2, 3] = -voxsize[2] * shape[2] / 2.0
 
     return M
-

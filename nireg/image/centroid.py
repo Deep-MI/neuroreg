@@ -1,4 +1,3 @@
-
 import torch
 from torch import Tensor
 
@@ -44,5 +43,3 @@ def compute_centroid(image: Tensor) -> Tensor:
     centroid_z = weighted_z.sum() / total_intensity
     # Return the centroid as a tensor (z, y, x)
     return torch.tensor([centroid_z.item(), centroid_y.item(), centroid_x.item()])
-
-

@@ -1,5 +1,3 @@
-
-
 class EarlyStopper:
     """
     A utility class for implementing an early stopping mechanism for training models.
@@ -43,7 +41,7 @@ class EarlyStopper:
         self.patience = patience
         self.min_delta = min_delta
         self.counter = 0
-        self.min_validation_loss = float('inf')
+        self.min_validation_loss = float("inf")
 
     def early_stop_old(self, validation_loss: float) -> bool:
         """
@@ -98,4 +96,3 @@ class EarlyStopper:
         if validation_loss < self.min_validation_loss:
             self.min_validation_loss = validation_loss
         return False
-

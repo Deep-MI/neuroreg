@@ -17,31 +17,33 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     # ── required ────────────────────────────────────────────────────────────
-    p.add_argument("--mov", required=True, metavar="FILE",
-                   help="Moving (source) image (NIfTI or MGZ).")
-    p.add_argument("--ref", required=True, metavar="FILE",
-                   help="Reference (target/fixed) image (NIfTI or MGZ).")
-    p.add_argument("--out", required=True, metavar="LTA",
-                   help="Output LTA file for the recovered transformation.")
+    p.add_argument("--mov", required=True, metavar="FILE", help="Moving (source) image (NIfTI or MGZ).")
+    p.add_argument("--ref", required=True, metavar="FILE", help="Reference (target/fixed) image (NIfTI or MGZ).")
+    p.add_argument("--out", required=True, metavar="LTA", help="Output LTA file for the recovered transformation.")
 
     # ── transform ───────────────────────────────────────────────────────────
-    p.add_argument("--dof", type=int, default=6, choices=[3, 6, 9, 12],
-                   metavar="{3,6,9,12}",
-                   help="Degrees of freedom: 3=translation, 6=rigid, "
-                        "9=rigid+scale, 12=affine.")
+    p.add_argument(
+        "--dof",
+        type=int,
+        default=6,
+        choices=[3, 6, 9, 12],
+        metavar="{3,6,9,12}",
+        help="Degrees of freedom: 3=translation, 6=rigid, 9=rigid+scale, 12=affine.",
+    )
 
     # ── optimisation ────────────────────────────────────────────────────────
-    p.add_argument("--n_iters", type=int, default=None, metavar="N",
-                   help="Maximum number of optimisation iterations per pyramid level "
-                        "(default: auto from register_pyramid).")
-    p.add_argument("--device", default="cpu", metavar="DEVICE",
-                   help="PyTorch device, e.g. 'cpu' or 'cuda'.")
+    p.add_argument(
+        "--n_iters",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Maximum number of optimisation iterations per pyramid level (default: auto from register_pyramid).",
+    )
+    p.add_argument("--device", default="cpu", metavar="DEVICE", help="PyTorch device, e.g. 'cpu' or 'cuda'.")
 
     # ── misc ────────────────────────────────────────────────────────────────
-    p.add_argument("--verbose", action="store_true",
-                   help="Enable INFO-level logging.")
-    p.add_argument("--debug", action="store_true",
-                   help="Enable DEBUG-level logging.")
+    p.add_argument("--verbose", action="store_true", help="Enable INFO-level logging.")
+    p.add_argument("--debug", action="store_true", help="Enable DEBUG-level logging.")
 
     return p
 

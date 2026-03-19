@@ -26,6 +26,7 @@ _AnyHeader: TypeAlias = (
 
 # ── private helpers ────────────────────────────────────────────────────────
 
+
 def _header_info(src: _AnyHeader) -> dict:
     """Extract LTA volume-info fields from various input types.
 
@@ -52,7 +53,7 @@ def _header_info(src: _AnyHeader) -> dict:
     if isinstance(src, (str, Path)):
         src = nib.load(src).header
 
-    if hasattr(src, 'affine'):
+    if hasattr(src, "affine"):
         affine = src.affine
         header = src.header
     else:
@@ -63,10 +64,10 @@ def _header_info(src: _AnyHeader) -> dict:
     zooms = np.array(header.get_zooms()[:3], dtype=float)
 
     return {
-        'dims':   shape,
-        'delta':  zooms.tolist(),
-        'Mdc':    affine[:3, :3] / zooms,
-        'Pxyz_c': affine[:3, :3] @ (np.array(shape) / 2.0) + affine[:3, 3],
+        "dims": shape,
+        "delta": zooms.tolist(),
+        "Mdc": affine[:3, :3] / zooms,
+        "Pxyz_c": affine[:3, :3] @ (np.array(shape) / 2.0) + affine[:3, 3],
     }
 
 
@@ -81,9 +82,9 @@ def _affine_from_info(info: dict) -> np.ndarray:
     missing = [k for k in required if k not in info]
     if missing:
         raise ValueError(f"LTA volume info is missing required fields: {missing}")
-    vs   = info["voxelsize"]
+    vs = info["voxelsize"]
     dims = np.array(info["volume"], dtype=float)
-    A    = np.eye(4)
+    A = np.eye(4)
     A[:3, 0] = np.array(info["xras"]) * vs[0]
     A[:3, 1] = np.array(info["yras"]) * vs[1]
     A[:3, 2] = np.array(info["zras"]) * vs[2]
@@ -91,7 +92,7 @@ def _affine_from_info(info: dict) -> np.ndarray:
     return A
 
 
-def _header_to_vol_info(hdr: dict, fname: str = '') -> dict:
+def _header_to_vol_info(hdr: dict, fname: str = "") -> dict:
     """Convert a :func:`_header_info` dict to LTA volume-info format.
 
     Maps the ``Mdc`` / ``Pxyz_c`` / ``dims`` / ``delta`` keys produced by
@@ -99,20 +100,21 @@ def _header_to_vol_info(hdr: dict, fname: str = '') -> dict:
     ``voxelsize`` / ``volume`` keys expected by :func:`_affine_from_info` and
     stored in ``.lta`` files.
     """
-    Mdc    = np.asarray(hdr['Mdc'])
-    Pxyz_c = np.asarray(hdr['Pxyz_c'])
+    Mdc = np.asarray(hdr["Mdc"])
+    Pxyz_c = np.asarray(hdr["Pxyz_c"])
     return {
-        'filename': fname,
-        'volume':   list(hdr['dims']),
-        'voxelsize': list(hdr['delta']),
-        'xras': Mdc[:, 0].tolist(),
-        'yras': Mdc[:, 1].tolist(),
-        'zras': Mdc[:, 2].tolist(),
-        'cras': Pxyz_c.tolist(),
+        "filename": fname,
+        "volume": list(hdr["dims"]),
+        "voxelsize": list(hdr["delta"]),
+        "xras": Mdc[:, 0].tolist(),
+        "yras": Mdc[:, 1].tolist(),
+        "zras": Mdc[:, 2].tolist(),
+        "cras": Pxyz_c.tolist(),
     }
 
 
 # ── standalone distance functions ──────────────────────────────────────────
+
 
 def _rot_log_norm(R: np.ndarray) -> float:
     """Frobenius norm of the matrix logarithm of a 3×3 rotation matrix.
@@ -127,8 +129,8 @@ def _rot_log_norm(R: np.ndarray) -> float:
 
 
 def rigid_dist(
-        M1: npt.ArrayLike,
-        M2: npt.ArrayLike | None = None,
+    M1: npt.ArrayLike,
+    M2: npt.ArrayLike | None = None,
 ) -> float:
     """Rigid-transform distance between *M1* and *M2* (or *M1* vs identity).
 
@@ -160,16 +162,16 @@ def rigid_dist(
         Rigid-transform distance (mm and radians added in quadrature).
     """
     M1a = np.asarray(M1, dtype=float)
-    d   = M1a if M2 is None else (np.linalg.inv(M1a) @ np.asarray(M2, dtype=float))
+    d = M1a if M2 is None else (np.linalg.inv(M1a) @ np.asarray(M2, dtype=float))
     tdq = float(np.dot(d[:3, 3], d[:3, 3]))
-    rd  = _rot_log_norm(d[:3, :3])
+    rd = _rot_log_norm(d[:3, :3])
     return float(np.sqrt(rd * rd + tdq))
 
 
 def affine_dist(
-        M1: npt.ArrayLike,
-        M2: npt.ArrayLike | None = None,
-        radius: float = 100.0,
+    M1: npt.ArrayLike,
+    M2: npt.ArrayLike | None = None,
+    radius: float = 100.0,
 ) -> float:
     """RMS affine-transform distance (Jenkinson 1999).
 
@@ -205,17 +207,17 @@ def affine_dist(
         RMS displacement in mm.
     """
     M1a = np.asarray(M1, dtype=float)
-    d   = M1a - (np.eye(4) if M2 is None else np.asarray(M2, dtype=float))
+    d = M1a - (np.eye(4) if M2 is None else np.asarray(M2, dtype=float))
     tdq = float(np.dot(d[:3, 3], d[:3, 3]))
-    tr  = float(np.trace(d[:3, :3].T @ d[:3, :3]))
-    return float(np.sqrt((radius ** 2 / 5.0) * tr + tdq))
+    tr = float(np.trace(d[:3, :3].T @ d[:3, :3]))
+    return float(np.sqrt((radius**2 / 5.0) * tr + tdq))
 
 
 def corner_dist(
-        M: npt.ArrayLike,
-        src_shape: tuple[int, int, int],
-        M2: npt.ArrayLike | None = None,
-        src_affine: npt.ArrayLike | None = None,
+    M: npt.ArrayLike,
+    src_shape: tuple[int, int, int],
+    M2: npt.ArrayLike | None = None,
+    src_affine: npt.ArrayLike | None = None,
 ) -> float:
     """Mean displacement at the 8 corners of the source volume (mm).
 
@@ -254,23 +256,19 @@ def corner_dist(
     Si, Sj, Sk = src_shape
     # Build homogeneous voxel coordinates for all 8 corners
     corners_vox = np.array(
-        [[i * (Si - 1), j * (Sj - 1), k * (Sk - 1), 1.0]
-         for i in (0, 1) for j in (0, 1) for k in (0, 1)],
+        [[i * (Si - 1), j * (Sj - 1), k * (Sk - 1), 1.0] for i in (0, 1) for j in (0, 1) for k in (0, 1)],
         dtype=float,
     )
-    corners = (
-        (np.asarray(src_affine, dtype=float) @ corners_vox.T).T
-        if src_affine is not None else corners_vox
-    )
+    corners = (np.asarray(src_affine, dtype=float) @ corners_vox.T).T if src_affine is not None else corners_vox
     p1 = (np.asarray(M, dtype=float) @ corners.T).T
     p2 = corners if M2 is None else (np.asarray(M2, dtype=float) @ corners.T).T
     return float(np.mean(np.linalg.norm(p1[:, :3] - p2[:, :3], axis=1)))
 
 
 def sphere_dist(
-        M1: npt.ArrayLike,
-        M2: npt.ArrayLike | None = None,
-        radius: float = 100.0,
+    M1: npt.ArrayLike,
+    M2: npt.ArrayLike | None = None,
+    radius: float = 100.0,
 ) -> float:
     """Maximum displacement on a sphere of given radius (mm).
 
@@ -307,24 +305,22 @@ def sphere_dist(
         Maximum displacement in mm.
     """
     M1a = np.asarray(M1, dtype=float)
-    Md  = M1a if M2 is None else (np.linalg.inv(M1a) @ np.asarray(M2, dtype=float))
+    Md = M1a if M2 is None else (np.linalg.inv(M1a) @ np.asarray(M2, dtype=float))
 
     pts: list[list[float]] = [[0.0, 0.0, radius], [0.0, 0.0, -radius]]
     n = 10
     for i in range(-n + 1, n):
         angle1 = (i * np.pi * 0.5) / n
         r1 = np.cos(angle1)
-        h  = np.sin(angle1)
+        h = np.sin(angle1)
         n_long = int(4.0 * n * r1)
         for j in range(n_long):
             angle2 = (2.0 * np.pi * j) / n_long
-            pts.append([radius * r1 * np.cos(angle2),
-                        radius * r1 * np.sin(angle2),
-                        radius * h])
+            pts.append([radius * r1 * np.cos(angle2), radius * r1 * np.sin(angle2), radius * h])
 
     pts_arr = np.array(pts, dtype=float)
-    hom     = np.hstack([pts_arr, np.ones((len(pts_arr), 1))])
-    mapped  = (Md @ hom.T).T
+    hom = np.hstack([pts_arr, np.ones((len(pts_arr), 1))])
+    mapped = (Md @ hom.T).T
     return float(np.max(np.linalg.norm(mapped[:, :3] - pts_arr, axis=1)))
 
 
@@ -378,7 +374,7 @@ def decompose_transform(M: npt.ArrayLike) -> dict:
     t = M_arr[:3, 3].copy()
 
     # Polar decomposition: A = R @ P  (R orthogonal, P positive semi-definite)
-    R, P = polar(A, side='right')
+    R, P = polar(A, side="right")
 
     # Ensure proper rotation (det = +1)
     if np.linalg.det(R) < 0:
@@ -389,23 +385,24 @@ def decompose_transform(M: npt.ArrayLike) -> dict:
     scales = np.diag(P).copy()
     S = P / np.where(scales != 0, scales, 1.0)[np.newaxis, :]
 
-    rot_obj       = Rotation.from_matrix(R)
-    rot_vec       = rot_obj.as_rotvec()
+    rot_obj = Rotation.from_matrix(R)
+    rot_vec = rot_obj.as_rotvec()
     rot_angle_deg = float(np.degrees(np.linalg.norm(rot_vec)))
 
     return {
-        'rotation':      R,
-        'rot_vec':       rot_vec,
-        'rot_angle_deg': rot_angle_deg,
-        'shear':         S,
-        'scales':        scales,
-        'translation':   t,
-        'abs_trans':     float(np.linalg.norm(t)),
-        'determinant':   float(np.linalg.det(M_arr)),
+        "rotation": R,
+        "rot_vec": rot_vec,
+        "rot_angle_deg": rot_angle_deg,
+        "shear": S,
+        "scales": scales,
+        "translation": t,
+        "abs_trans": float(np.linalg.norm(t)),
+        "determinant": float(np.linalg.det(M_arr)),
     }
 
 
 # ── LTA class ──────────────────────────────────────────────────────────────
+
 
 class LTA:
     """FreeSurfer Linear Transform Array.
@@ -440,14 +437,11 @@ class LTA:
             Destination volume info (same keys).
         """
         if lta_type not in (0, 1):
-            raise ValueError(
-                f'lta_type must be 0 (LINEAR_VOX_TO_VOX) or 1 (LINEAR_RAS_TO_RAS), '
-                f'got {lta_type!r}'
-            )
+            raise ValueError(f"lta_type must be 0 (LINEAR_VOX_TO_VOX) or 1 (LINEAR_RAS_TO_RAS), got {lta_type!r}")
         self.matrix = np.asarray(matrix, dtype=float).reshape(4, 4)
-        self.type   = lta_type
-        self.src    = src
-        self.dst    = dst
+        self.type = lta_type
+        self.src = src
+        self.dst = dst
 
     # ── construction ────────────────────────────────────────────────────────
 
@@ -468,10 +462,7 @@ class LTA:
         filename = str(filename)
 
         if lta_type is not None and lta_type not in (0, 1):
-            raise ValueError(
-                f'lta_type must be 0 (LINEAR_VOX_TO_VOX) or 1 (LINEAR_RAS_TO_RAS), '
-                f'got {lta_type!r}'
-            )
+            raise ValueError(f"lta_type must be 0 (LINEAR_VOX_TO_VOX) or 1 (LINEAR_RAS_TO_RAS), got {lta_type!r}")
 
         with open(filename) as f:
             lines = f.readlines()
@@ -480,83 +471,85 @@ class LTA:
         nxforms: int = 1
         for line in lines:
             stripped = line.strip()
-            if stripped.startswith('type') and '=' in stripped:
-                stored_type = int(stripped.split('=')[1].split('#')[0].strip())
-            elif stripped.startswith('nxforms') and '=' in stripped:
-                nxforms = int(stripped.split('=')[1].split('#')[0].strip())
-            elif stripped.startswith('1 4 4'):
+            if stripped.startswith("type") and "=" in stripped:
+                stored_type = int(stripped.split("=")[1].split("#")[0].strip())
+            elif stripped.startswith("nxforms") and "=" in stripped:
+                nxforms = int(stripped.split("=")[1].split("#")[0].strip())
+            elif stripped.startswith("1 4 4"):
                 break  # reached matrix; header fields are all above this
 
         if nxforms != 1:
             logger.warning(
-                '%s: nxforms = %d; only the first transform will be read.',
-                filename, nxforms,
+                "%s: nxforms = %d; only the first transform will be read.",
+                filename,
+                nxforms,
             )
 
         if stored_type not in (0, 1):
             raise ValueError(
-                f'{filename}: unsupported transform type {stored_type!r}; '
-                f'expected 0 (LINEAR_VOX_TO_VOX) or 1 (LINEAR_RAS_TO_RAS)'
+                f"{filename}: unsupported transform type {stored_type!r}; "
+                f"expected 0 (LINEAR_VOX_TO_VOX) or 1 (LINEAR_RAS_TO_RAS)"
             )
 
         mat: list[list[float]] = []
         for i, line in enumerate(lines):
-            if '1 4 4' in line:
-                for row in lines[i + 1: i + 5]:
+            if "1 4 4" in line:
+                for row in lines[i + 1 : i + 5]:
                     mat.append([float(v) for v in row.strip().split()])
                 break
         if len(mat) != 4:
-            raise ValueError(f'Could not parse 4×4 matrix from {filename}')
+            raise ValueError(f"Could not parse 4×4 matrix from {filename}")
 
         def _parse_vol_block(start: int) -> dict:
             info: dict = {}
             for line in lines[start:]:
                 line = line.strip()
-                if not line or line.startswith('#'):
+                if not line or line.startswith("#"):
                     continue
-                if line.startswith('valid'):
-                    info['valid'] = int(line.split('=', 1)[1].split('#')[0].strip())
-                elif line.startswith('filename'):
-                    info['filename'] = line.split('=', 1)[1].strip()
-                elif line.startswith('fname'):
+                if line.startswith("valid"):
+                    info["valid"] = int(line.split("=", 1)[1].split("#")[0].strip())
+                elif line.startswith("filename"):
+                    info["filename"] = line.split("=", 1)[1].strip()
+                elif line.startswith("fname"):
                     # Old-style alias; only fill in if 'filename' not yet seen
-                    info.setdefault('filename', line.split('=', 1)[1].strip())
-                elif line.startswith('subject'):
+                    info.setdefault("filename", line.split("=", 1)[1].strip())
+                elif line.startswith("subject"):
                     # FreeSurfer writes "subject <name>" (no '=')
                     parts = line.split(None, 1)
                     if len(parts) == 2:
-                        info['subject'] = parts[1].strip()
-                    elif '=' in line:
-                        info['subject'] = line.split('=', 1)[1].strip()
-                elif line.startswith('volume'):
-                    info['volume'] = [int(v) for v in line.split('=', 1)[1].split()]
-                elif line.startswith('voxelsize'):
-                    info['voxelsize'] = [float(v) for v in line.split('=', 1)[1].split()]
-                elif line.startswith('xras'):
-                    info['xras'] = [float(v) for v in line.split('=', 1)[1].split()]
-                elif line.startswith('yras'):
-                    info['yras'] = [float(v) for v in line.split('=', 1)[1].split()]
-                elif line.startswith('zras'):
-                    info['zras'] = [float(v) for v in line.split('=', 1)[1].split()]
-                elif line.startswith('cras'):
-                    info['cras'] = [float(v) for v in line.split('=', 1)[1].split()]
-                elif line.startswith('dst volume info'):
+                        info["subject"] = parts[1].strip()
+                    elif "=" in line:
+                        info["subject"] = line.split("=", 1)[1].strip()
+                elif line.startswith("volume"):
+                    info["volume"] = [int(v) for v in line.split("=", 1)[1].split()]
+                elif line.startswith("voxelsize"):
+                    info["voxelsize"] = [float(v) for v in line.split("=", 1)[1].split()]
+                elif line.startswith("xras"):
+                    info["xras"] = [float(v) for v in line.split("=", 1)[1].split()]
+                elif line.startswith("yras"):
+                    info["yras"] = [float(v) for v in line.split("=", 1)[1].split()]
+                elif line.startswith("zras"):
+                    info["zras"] = [float(v) for v in line.split("=", 1)[1].split()]
+                elif line.startswith("cras"):
+                    info["cras"] = [float(v) for v in line.split("=", 1)[1].split()]
+                elif line.startswith("dst volume info"):
                     break
             return info
 
         src: dict = {}
         dst: dict = {}
         for i, line in enumerate(lines):
-            if line.strip().startswith('src volume info'):
+            if line.strip().startswith("src volume info"):
                 src = _parse_vol_block(i + 1)
-            elif line.strip().startswith('dst volume info'):
+            elif line.strip().startswith("dst volume info"):
                 dst = _parse_vol_block(i + 1)
 
-        for role, info in (('src', src), ('dst', dst)):
-            if info.get('valid', 1) == 0:
+        for role, info in (("src", src), ("dst", dst)):
+            if info.get("valid", 1) == 0:
                 logger.warning(
-                    '%s: %s volume info has valid = 0; geometry may be unreliable.',
-                    filename, role,
+                    "%s: %s volume info has valid = 0; geometry may be unreliable.",
+                    filename,
+                    role,
                 )
 
         lta = cls(np.array(mat), stored_type, src, dst)
@@ -564,10 +557,15 @@ class LTA:
         if lta_type is not None and lta_type != stored_type:
             lta = cls(
                 convert_transform_type(
-                    lta.matrix, _affine_from_info(src), _affine_from_info(dst),
-                    from_type=stored_type, to_type=lta_type,
+                    lta.matrix,
+                    _affine_from_info(src),
+                    _affine_from_info(dst),
+                    from_type=stored_type,
+                    to_type=lta_type,
                 ),
-                lta_type, src, dst,
+                lta_type,
+                src,
+                dst,
             )
 
         return lta
@@ -599,9 +597,9 @@ class LTA:
         lta_type : {0, 1}
             0 = LINEAR_VOX_TO_VOX, 1 = LINEAR_RAS_TO_RAS (default).
         """
-        if hasattr(matrix, 'detach'):
+        if hasattr(matrix, "detach"):
             matrix = matrix.detach().cpu().numpy()
-        M   = np.asarray(matrix, dtype=float).reshape(4, 4)
+        M = np.asarray(matrix, dtype=float).reshape(4, 4)
         src = _header_to_vol_info(_header_info(src_img), src_fname)
         dst = _header_to_vol_info(_header_info(dst_img), dst_fname)
         return cls(M, lta_type, src, dst)
@@ -622,56 +620,60 @@ class LTA:
         from datetime import datetime
 
         if lta_type is not None and lta_type not in (0, 1):
-            raise ValueError(f'lta_type must be 0 or 1, got {lta_type!r}')
+            raise ValueError(f"lta_type must be 0 or 1, got {lta_type!r}")
 
-        out_type   = self.type if lta_type is None else lta_type
+        out_type = self.type if lta_type is None else lta_type
         out_matrix = (
-            self.matrix if out_type == self.type
+            self.matrix
+            if out_type == self.type
             else convert_transform_type(
-                self.matrix, _affine_from_info(self.src), _affine_from_info(self.dst),
-                from_type=self.type, to_type=out_type,
+                self.matrix,
+                _affine_from_info(self.src),
+                _affine_from_info(self.dst),
+                from_type=self.type,
+                to_type=out_type,
             )
         )
 
-        filename  = str(filename)
-        type_name = 'LINEAR_RAS_TO_RAS' if out_type == 1 else 'LINEAR_VOX_TO_VOX'
+        filename = str(filename)
+        type_name = "LINEAR_RAS_TO_RAS" if out_type == 1 else "LINEAR_VOX_TO_VOX"
 
         def _fmt(vals: list) -> str:
-            return ' '.join(f'{float(v):.15e}' for v in vals)
+            return " ".join(f"{float(v):.15e}" for v in vals)
 
-        with open(filename, 'w') as f:
-            f.write(f'# transform file {filename}\n')
-            f.write(f'# created by {getpass.getuser()} on {datetime.now().ctime()}\n\n')
-            f.write(f'type      = {out_type} # {type_name}\n')
-            f.write('nxforms   = 1\n')
-            f.write('mean      = 0.0 0.0 0.0\n')
-            f.write('sigma     = 1.0\n')
-            f.write('1 4 4\n')
+        with open(filename, "w") as f:
+            f.write(f"# transform file {filename}\n")
+            f.write(f"# created by {getpass.getuser()} on {datetime.now().ctime()}\n\n")
+            f.write(f"type      = {out_type} # {type_name}\n")
+            f.write("nxforms   = 1\n")
+            f.write("mean      = 0.0 0.0 0.0\n")
+            f.write("sigma     = 1.0\n")
+            f.write("1 4 4\n")
             for row in out_matrix:
-                f.write(_fmt(row) + '\n')
-            f.write('\n')
-            for role, info in (('src', self.src), ('dst', self.dst)):
-                dims_str = ' '.join(str(int(x)) for x in info['volume'])
-                valid    = info.get('valid', 1)
-                f.write(f'{role} volume info\n')
-                f.write(f'valid = {valid}  # volume info valid\n')
+                f.write(_fmt(row) + "\n")
+            f.write("\n")
+            for role, info in (("src", self.src), ("dst", self.dst)):
+                dims_str = " ".join(str(int(x)) for x in info["volume"])
+                valid = info.get("valid", 1)
+                f.write(f"{role} volume info\n")
+                f.write(f"valid = {valid}  # volume info valid\n")
                 f.write(f"filename = {info.get('filename', '')}\n")
-                if 'subject' in info:
+                if "subject" in info:
                     f.write(f"subject {info['subject']}\n")
-                f.write(f'volume = {dims_str}\n')
+                f.write(f"volume = {dims_str}\n")
                 f.write(f"voxelsize = {_fmt(info['voxelsize'])}\n")
                 f.write(f"xras   = {_fmt(info['xras'])}\n")
                 f.write(f"yras   = {_fmt(info['yras'])}\n")
                 f.write(f"zras   = {_fmt(info['zras'])}\n")
                 f.write(f"cras   = {_fmt(info['cras'])}\n")
 
-        logger.debug('Wrote LTA (%s): %s', type_name, filename)
+        logger.debug("Wrote LTA (%s): %s", type_name, filename)
 
     def __repr__(self) -> str:
-        type_str = 'R2R' if self.type == 1 else 'V2V'
-        src_fn   = self.src.get('filename', '?')
-        dst_fn   = self.dst.get('filename', '?')
-        return f'LTA({type_str}, {src_fn!r} → {dst_fn!r})'
+        type_str = "R2R" if self.type == 1 else "V2V"
+        src_fn = self.src.get("filename", "?")
+        dst_fn = self.dst.get("filename", "?")
+        return f"LTA({type_str}, {src_fn!r} → {dst_fn!r})"
 
     # ── matrix extraction ───────────────────────────────────────────────────
 
@@ -680,8 +682,11 @@ class LTA:
         if self.type == 1:
             return self.matrix.copy()
         return convert_transform_type(
-            self.matrix, _affine_from_info(self.src), _affine_from_info(self.dst),
-            from_type=0, to_type=1,
+            self.matrix,
+            _affine_from_info(self.src),
+            _affine_from_info(self.dst),
+            from_type=0,
+            to_type=1,
         )
 
     def v2v(self) -> np.ndarray:
@@ -689,8 +694,11 @@ class LTA:
         if self.type == 0:
             return self.matrix.copy()
         return convert_transform_type(
-            self.matrix, _affine_from_info(self.src), _affine_from_info(self.dst),
-            from_type=1, to_type=0,
+            self.matrix,
+            _affine_from_info(self.src),
+            _affine_from_info(self.dst),
+            from_type=1,
+            to_type=0,
         )
 
     # ── operations ──────────────────────────────────────────────────────────
@@ -746,14 +754,13 @@ class LTA:
         """
         return rigid_dist(self.r2r(), other.r2r() if other is not None else None)
 
-    def affine_dist(self, other: LTA | None = None, radius: float = 100.) -> float:
+    def affine_dist(self, other: LTA | None = None, radius: float = 100.0) -> float:
         """Affine RMS distance to *other* (Jenkinson 1999).
 
         Operates on the RAS-to-RAS representation (converts automatically if
         stored as vox-to-vox).  Delegates to :func:`affine_dist`.
         """
-        return affine_dist(self.r2r(), other.r2r() if other is not None else None,
-                           radius=radius)
+        return affine_dist(self.r2r(), other.r2r() if other is not None else None, radius=radius)
 
     def corner_dist(self, other: LTA | None = None) -> float:
         """Mean displacement at the 8 volume corners in RAS mm.
@@ -769,18 +776,15 @@ class LTA:
 
         Delegates to :func:`corner_dist`.
         """
-        src_shape = tuple(self.src['volume'])
+        src_shape = tuple(self.src["volume"])
         M2 = other.r2r() if other is not None else None
-        return corner_dist(self.r2r(), src_shape, M2=M2,
-                           src_affine=_affine_from_info(self.src))
+        return corner_dist(self.r2r(), src_shape, M2=M2, src_affine=_affine_from_info(self.src))
 
-    def sphere_dist(self, other: LTA | None = None, radius: float = 100.) -> float:
+    def sphere_dist(self, other: LTA | None = None, radius: float = 100.0) -> float:
         """Max displacement on a sphere of given radius in RAS mm.
 
         Operates on the RAS-to-RAS representation (converts automatically if
         stored as vox-to-vox).  **Image-independent**: result depends only on
         the transform, not source/dst geometry.  Delegates to :func:`sphere_dist`.
         """
-        return sphere_dist(self.r2r(), other.r2r() if other is not None else None,
-                           radius=radius)
-
+        return sphere_dist(self.r2r(), other.r2r() if other is not None else None, radius=radius)

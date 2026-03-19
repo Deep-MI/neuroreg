@@ -115,27 +115,22 @@ class BBRModel(nn.Module):
         mov_affine: torch.Tensor | None = None,
         dof: int = 6,
         init_transform: torch.Tensor | None = None,
-        contrast: Literal['t1', 't2'] | None = None,
+        contrast: Literal["t1", "t2"] | None = None,
         wm_proj_abs: float = 1.4,
         gm_proj_frac: float = 0.5,
         gm_proj_abs: float | None = None,
         slope: float = 0.5,
-        cost_type: Literal['contrast', 'gradient', 'both'] = 'contrast',
+        cost_type: Literal["contrast", "gradient", "both"] = "contrast",
         gradient_weight: float = 0.0,
         subsample: int = 1,
-        device: str = 'cpu'
+        device: str = "cpu",
     ):
         super().__init__()
 
         if trg_tkras2ras is None:
-            raise ValueError(
-                "trg_tkras2ras is required. "
-                "Compute it as: trg_affine @ inv(get_vox2ras_tkr(trg_img))"
-            )
+            raise ValueError("trg_tkras2ras is required. Compute it as: trg_affine @ inv(get_vox2ras_tkr(trg_img))")
         if mov_affine is None:
-            raise ValueError(
-                "mov_affine is required (moving image nibabel affine, i.e. img.affine)."
-            )
+            raise ValueError("mov_affine is required (moving image nibabel affine, i.e. img.affine).")
 
         self.device = device
         self.dof = dof
@@ -160,17 +155,11 @@ class BBRModel(nn.Module):
 
         # ---------- optimisable parameters --------------------------------
         if dof == 6:
-            self.transform_params = nn.Parameter(
-                torch.zeros(6, dtype=torch.float32, device=device)
-            )
+            self.transform_params = nn.Parameter(torch.zeros(6, dtype=torch.float32, device=device))
         elif dof == 9:
-            self.transform_params = nn.Parameter(
-                torch.zeros(9, dtype=torch.float32, device=device)
-            )
+            self.transform_params = nn.Parameter(torch.zeros(9, dtype=torch.float32, device=device))
         elif dof == 12:
-            self.transform_params = nn.Parameter(
-                torch.zeros(12, dtype=torch.float32, device=device)
-            )
+            self.transform_params = nn.Parameter(torch.zeros(12, dtype=torch.float32, device=device))
         else:
             raise ValueError(f"Unsupported DOF: {dof}. Must be 6, 9, or 12.")
 
@@ -182,20 +171,22 @@ class BBRModel(nn.Module):
         self.use_rh = rh_white_vertices is not None and rh_faces is not None
 
         if not self.use_lh and not self.use_rh:
-            raise ValueError(
-                "At least one hemisphere (lh or rh) must be provided."
-            )
+            raise ValueError("At least one hemisphere (lh or rh) must be provided.")
 
         if self.use_lh:
             # Move all surface tensors to the target device before any computation.
             lh_white_vertices = lh_white_vertices.to(device=device, dtype=torch.float32)
-            lh_faces          = lh_faces.to(device=device)
+            lh_faces = lh_faces.to(device=device)
             if lh_thickness is not None:
                 lh_thickness = lh_thickness.to(device=device, dtype=torch.float32)
             lh_normals = compute_vertex_normals(lh_white_vertices, lh_faces)
             lh_wm, lh_gm = create_wm_gm_surfaces(
-                lh_white_vertices, lh_faces, lh_normals, lh_thickness,
-                wm_proj_abs=wm_proj_abs, gm_proj_frac=gm_proj_frac,
+                lh_white_vertices,
+                lh_faces,
+                lh_normals,
+                lh_thickness,
+                wm_proj_abs=wm_proj_abs,
+                gm_proj_frac=gm_proj_frac,
                 gm_proj_abs=gm_proj_abs,
             )
             # Apply cortex label mask first (mimics lh.cortex.label in bbregister)
@@ -204,32 +195,36 @@ class BBRModel(nn.Module):
                 lh_wm = lh_wm[mask]
                 lh_gm = lh_gm[mask]
                 lh_normals = lh_normals[mask]
-                logger.debug(
-                    "LH cortex mask: %d / %d vertices retained",
-                    int(mask.sum()), lh_white_vertices.shape[0]
-                )
+                logger.debug("LH cortex mask: %d / %d vertices retained", int(mask.sum()), lh_white_vertices.shape[0])
             if subsample > 1:
                 idx = torch.arange(0, lh_wm.shape[0], subsample, device=device)
                 self.lh_wm_vertices = lh_wm[idx]
                 self.lh_gm_vertices = lh_gm[idx]
-                self.lh_normals     = lh_normals[idx]
+                self.lh_normals = lh_normals[idx]
             else:
                 self.lh_wm_vertices = lh_wm
                 self.lh_gm_vertices = lh_gm
-                self.lh_normals     = lh_normals
-            logger.debug("LH white surface: %d vertices (subsampled: %d)",
-                         lh_white_vertices.shape[0], self.lh_wm_vertices.shape[0])
+                self.lh_normals = lh_normals
+            logger.debug(
+                "LH white surface: %d vertices (subsampled: %d)",
+                lh_white_vertices.shape[0],
+                self.lh_wm_vertices.shape[0],
+            )
 
         if self.use_rh:
             # Move all surface tensors to the target device before any computation.
             rh_white_vertices = rh_white_vertices.to(device=device, dtype=torch.float32)
-            rh_faces          = rh_faces.to(device=device)
+            rh_faces = rh_faces.to(device=device)
             if rh_thickness is not None:
                 rh_thickness = rh_thickness.to(device=device, dtype=torch.float32)
             rh_normals = compute_vertex_normals(rh_white_vertices, rh_faces)
             rh_wm, rh_gm = create_wm_gm_surfaces(
-                rh_white_vertices, rh_faces, rh_normals, rh_thickness,
-                wm_proj_abs=wm_proj_abs, gm_proj_frac=gm_proj_frac,
+                rh_white_vertices,
+                rh_faces,
+                rh_normals,
+                rh_thickness,
+                wm_proj_abs=wm_proj_abs,
+                gm_proj_frac=gm_proj_frac,
                 gm_proj_abs=gm_proj_abs,
             )
             # Apply cortex label mask first (mimics rh.cortex.label in bbregister)
@@ -238,21 +233,21 @@ class BBRModel(nn.Module):
                 rh_wm = rh_wm[mask]
                 rh_gm = rh_gm[mask]
                 rh_normals = rh_normals[mask]
-                logger.debug(
-                    "RH cortex mask: %d / %d vertices retained",
-                    int(mask.sum()), rh_white_vertices.shape[0]
-                )
+                logger.debug("RH cortex mask: %d / %d vertices retained", int(mask.sum()), rh_white_vertices.shape[0])
             if subsample > 1:
                 idx = torch.arange(0, rh_wm.shape[0], subsample, device=device)
                 self.rh_wm_vertices = rh_wm[idx]
                 self.rh_gm_vertices = rh_gm[idx]
-                self.rh_normals     = rh_normals[idx]
+                self.rh_normals = rh_normals[idx]
             else:
                 self.rh_wm_vertices = rh_wm
                 self.rh_gm_vertices = rh_gm
-                self.rh_normals     = rh_normals
-            logger.debug("RH white surface: %d vertices (subsampled: %d)",
-                         rh_white_vertices.shape[0], self.rh_wm_vertices.shape[0])
+                self.rh_normals = rh_normals
+            logger.debug(
+                "RH white surface: %d vertices (subsampled: %d)",
+                rh_white_vertices.shape[0],
+                self.rh_wm_vertices.shape[0],
+            )
 
         # ── contrast auto-detection ----------------------------------------
         # If contrast is not specified, sample both hemispheres with the
@@ -261,41 +256,43 @@ class BBRModel(nn.Module):
             combined = self.mov_ras2vox @ self._params_to_matrix() @ self.trg_tkras2ras
             wm_samples, gm_samples = [], []
             if self.use_lh:
-                wm_samples.append(sample_volume_at_vertices(
-                    self.moving_volume, self.lh_wm_vertices, self._identity,
-                    combined, interpolation='trilinear'
-                ))
-                gm_samples.append(sample_volume_at_vertices(
-                    self.moving_volume, self.lh_gm_vertices, self._identity,
-                    combined, interpolation='trilinear'
-                ))
+                wm_samples.append(
+                    sample_volume_at_vertices(
+                        self.moving_volume, self.lh_wm_vertices, self._identity, combined, interpolation="trilinear"
+                    )
+                )
+                gm_samples.append(
+                    sample_volume_at_vertices(
+                        self.moving_volume, self.lh_gm_vertices, self._identity, combined, interpolation="trilinear"
+                    )
+                )
             if self.use_rh:
-                wm_samples.append(sample_volume_at_vertices(
-                    self.moving_volume, self.rh_wm_vertices, self._identity,
-                    combined, interpolation='trilinear'
-                ))
-                gm_samples.append(sample_volume_at_vertices(
-                    self.moving_volume, self.rh_gm_vertices, self._identity,
-                    combined, interpolation='trilinear'
-                ))
+                wm_samples.append(
+                    sample_volume_at_vertices(
+                        self.moving_volume, self.rh_wm_vertices, self._identity, combined, interpolation="trilinear"
+                    )
+                )
+                gm_samples.append(
+                    sample_volume_at_vertices(
+                        self.moving_volume, self.rh_gm_vertices, self._identity, combined, interpolation="trilinear"
+                    )
+                )
             vwm_all = torch.cat(wm_samples)
             vgm_all = torch.cat(gm_samples)
             contrast = detect_contrast(vwm_all, vgm_all)
 
         self.contrast = contrast
         # +1 for t2 (GM > WM), -1 for t1 (WM > GM)
-        self.contrast_sign = -1 if contrast == 't1' else 1
+        self.contrast_sign = -1 if contrast == "t1" else 1
 
         # ── precompute gradient volume ─────────────────────────────────────
         # moving_volume is constant throughout optimisation — only
         # transform_params change.  Pre-computing the gradient here avoids
         # three full conv3d passes every iteration when cost_type involves
         # the gradient term.
-        if self.cost_type in ('gradient', 'both'):
+        if self.cost_type in ("gradient", "both"):
             with torch.no_grad():
-                self._moving_grad_volume: torch.Tensor = compute_volume_gradient(
-                    self.moving_volume
-                ).detach()
+                self._moving_grad_volume: torch.Tensor = compute_volume_gradient(self.moving_volume).detach()
             logger.debug(
                 "Precomputed gradient volume: shape %s",
                 list(self._moving_grad_volume.shape),
@@ -364,32 +361,34 @@ class BBRModel(nn.Module):
         combined = self.mov_ras2vox @ ras2ras @ self.trg_tkras2ras
 
         vwm = sample_volume_at_vertices(
-            self.moving_volume, wm_vertices, self._identity,
-            combined, interpolation='trilinear'
+            self.moving_volume, wm_vertices, self._identity, combined, interpolation="trilinear"
         )
         vgm = sample_volume_at_vertices(
-            self.moving_volume, gm_vertices, self._identity,
-            combined, interpolation='trilinear'
+            self.moving_volume, gm_vertices, self._identity, combined, interpolation="trilinear"
         )
 
-        if self.cost_type == 'contrast':
-            return bbr_contrast_cost(vwm, vgm, slope=self.slope,
-                                     contrast_sign=self.contrast_sign)
+        if self.cost_type == "contrast":
+            return bbr_contrast_cost(vwm, vgm, slope=self.slope, contrast_sign=self.contrast_sign)
 
-        if self.cost_type == 'gradient':
+        if self.cost_type == "gradient":
             white_vertices = (wm_vertices + gm_vertices) / 2.0
             grad = sample_gradient_at_vertices(
-                self.moving_volume, white_vertices, self._identity, combined,
+                self.moving_volume,
+                white_vertices,
+                self._identity,
+                combined,
                 precomputed_grad=self._moving_grad_volume,
             )
             return gradient_magnitude_cost(grad, normals)
 
-        if self.cost_type == 'both':
-            cost_c = bbr_contrast_cost(vwm, vgm, slope=self.slope,
-                                       contrast_sign=self.contrast_sign)
+        if self.cost_type == "both":
+            cost_c = bbr_contrast_cost(vwm, vgm, slope=self.slope, contrast_sign=self.contrast_sign)
             white_vertices = (wm_vertices + gm_vertices) / 2.0
             grad = sample_gradient_at_vertices(
-                self.moving_volume, white_vertices, self._identity, combined,
+                self.moving_volume,
+                white_vertices,
+                self._identity,
+                combined,
                 precomputed_grad=self._moving_grad_volume,
             )
             cost_g = gradient_magnitude_cost(grad, normals)
@@ -468,25 +467,49 @@ class BBRModel(nn.Module):
             cos = torch.cos(angles)
             sin = torch.sin(angles)
             zero = torch.zeros_like(angles[0])
-            one  = torch.ones_like(angles[0])
+            one = torch.ones_like(angles[0])
 
-            R_x = torch.stack([
-                one,  zero,    zero,
-                zero, cos[0], -sin[0],
-                zero, sin[0],  cos[0],
-            ]).view(3, 3)
+            R_x = torch.stack(
+                [
+                    one,
+                    zero,
+                    zero,
+                    zero,
+                    cos[0],
+                    -sin[0],
+                    zero,
+                    sin[0],
+                    cos[0],
+                ]
+            ).view(3, 3)
 
-            R_y = torch.stack([
-                cos[1],  zero, sin[1],
-                zero,    one,  zero,
-                -sin[1], zero, cos[1],
-            ]).view(3, 3)
+            R_y = torch.stack(
+                [
+                    cos[1],
+                    zero,
+                    sin[1],
+                    zero,
+                    one,
+                    zero,
+                    -sin[1],
+                    zero,
+                    cos[1],
+                ]
+            ).view(3, 3)
 
-            R_z = torch.stack([
-                cos[2], -sin[2], zero,
-                sin[2],  cos[2], zero,
-                zero,    zero,   one,
-            ]).view(3, 3)
+            R_z = torch.stack(
+                [
+                    cos[2],
+                    -sin[2],
+                    zero,
+                    sin[2],
+                    cos[2],
+                    zero,
+                    zero,
+                    zero,
+                    one,
+                ]
+            ).view(3, 3)
 
             mat[:3, :3] = R_x @ R_y @ R_z
 
@@ -523,13 +546,13 @@ class BBRModel(nn.Module):
             self.transform_params[:3].copy_(matrix[:3, 3])
 
             if self.dof >= 6:
-                R  = matrix[:3, :3]
+                R = matrix[:3, :3]
                 sy = torch.sqrt(R[0, 0] ** 2 + R[1, 0] ** 2)
 
                 if sy > 1e-6:
-                    rx = torch.atan2( R[2, 1],  R[2, 2])
-                    ry = torch.atan2(-R[2, 0],  sy)
-                    rz = torch.atan2( R[1, 0],  R[0, 0])
+                    rx = torch.atan2(R[2, 1], R[2, 2])
+                    ry = torch.atan2(-R[2, 0], sy)
+                    rz = torch.atan2(R[1, 0], R[0, 0])
                 else:
                     logger.warning("Gimbal lock detected during Euler-angle decomposition.")
                     rx = torch.atan2(-R[1, 2], R[1, 1])
@@ -539,5 +562,5 @@ class BBRModel(nn.Module):
                 self.transform_params[3:6].copy_(torch.stack([rx, ry, rz]))
 
             if self.dof >= 9:
-                scale = torch.sqrt((R ** 2).sum(dim=0))
+                scale = torch.sqrt((R**2).sum(dim=0))
                 self.transform_params[6:9].copy_(torch.log(scale))
