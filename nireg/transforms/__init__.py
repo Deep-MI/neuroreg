@@ -23,6 +23,11 @@ from .matrices import (
     get_scaling,
     get_translation,
     matrix_sqrt_schur,
+    rotation_error,
+)
+from .weighted_rigid import (
+    sample_weighted_voxel_grid,
+    solve_weighted_rigid_gpu,
 )
 
 __all__ = [
@@ -50,4 +55,8 @@ __all__ = [
     "get_scaling",
     "get_translation",
     "matrix_sqrt_schur",
+    "rotation_error",
+    # weighted_rigid
+    "solve_weighted_rigid_gpu",
+    "sample_weighted_voxel_grid",
 ]

@@ -198,3 +198,71 @@ def resample_isotropic(
     Rvox = torch.inverse(orig_affine) @ iso_affine
 
     return resampled, iso_affine.float(), Rvox.float()
+
+
+def resample_isotropic_tensor(
+    img: torch.Tensor,
+    affine: np.ndarray,
+    iso: float,
+    out_shape: tuple[int, int, int] | None = None,
+    mode: str = "bilinear",
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Resample a torch tensor to an isotropic grid.
+
+    Like resample_isotropic but works with torch tensors instead of nibabel images.
+
+    Parameters
+    ----------
+    img : torch.Tensor
+        Input image tensor, shape (D, H, W).
+    affine : np.ndarray
+        4×4 voxel-to-RAS affine matrix.
+    iso : float
+        Target isotropic voxel size in millimeters.
+    out_shape : tuple[int, int, int], optional
+        Output image shape (D, H, W). If None, computed automatically.
+    mode : {'bilinear', 'nearest'}, optional
+        Interpolation mode. Default is 'bilinear'.
+
+    Returns
+    -------
+    data : torch.Tensor
+        Resampled image data.
+    iso_affine : torch.Tensor
+        Isotropic voxel-to-RAS affine (4×4).
+    Rvox : torch.Tensor
+        Voxel-to-voxel transform from isotropic grid to original grid (4×4).
+    """
+    orig_affine = torch.from_numpy(affine).double()
+
+    # Build isotropic affine: same origin, isotropic voxels
+    iso_affine = orig_affine.clone()
+    for i in range(3):
+        col_norm = orig_affine[:3, i].norm()
+        if col_norm > 0:
+            iso_affine[:3, i] = orig_affine[:3, i] / col_norm * iso
+
+    # Compute output shape if not provided
+    if out_shape is None:
+        zooms = np.linalg.norm(affine[:3, :3], axis=0)
+        shape = np.array(img.shape[:3])
+        out_shape = tuple(max(1, int(np.ceil(s * z / iso))) for s, z in zip(shape, zooms, strict=False))
+
+    # Resample using identity RAS-to-RAS transform
+    identity_r2r = torch.eye(4, dtype=torch.float64)
+
+    resampled = map_r2r(
+        img,
+        identity_r2r.float(),
+        source_affine=orig_affine.float(),
+        target_affine=iso_affine.float(),
+        target_shape=out_shape,
+        mode=mode,
+    )
+
+    # Rvox: isotropic vox → original vox
+    Rvox = torch.inverse(orig_affine) @ iso_affine
+
+    return resampled, iso_affine.float(), Rvox.float()
+
+

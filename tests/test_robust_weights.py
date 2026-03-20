@@ -138,18 +138,23 @@ class TestIntegration:
         assert w_tukey[inlier_mask].mean() > 0.7
 
     def test_gpu_workflow(self):
-        """Test full workflow on GPU."""
-        if not torch.cuda.is_available():
-            pytest.skip("CUDA not available")
+        """Test full workflow on GPU (CUDA or MPS)."""
+        # Check for GPU availability
+        if torch.cuda.is_available():
+            device = "cuda"
+        elif torch.backends.mps.is_available():
+            device = "mps"
+        else:
+            pytest.skip("No GPU available (CUDA or MPS)")
 
-        r = torch.randn(100, 100, 100, device="cuda")
+        r = torch.randn(100, 100, 100, device=device)
         r[::10, ::10, ::10] = 20.0
 
         sigma = compute_mad(r)
-        assert sigma.device.type == "cuda"
+        assert sigma.device.type == device
 
         w = tukey_weights(r / sigma, c=6.0)
-        assert w.device.type == "cuda"
+        assert w.device.type == device
         assert w.shape == r.shape
 
     def test_tukey_vs_huber_comparison(self):

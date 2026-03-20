@@ -74,6 +74,9 @@ class RegModel(nn.Module):
         """
         super().__init__()
         self.weights = nn.Parameter(self.init_weights(dof=dof, device=device))
+        # Store shapes for rotation-space correction (see get_torch_transform_from_weights)
+        self.source_shape: tuple[int, int, int] | None = source_shape
+        self.target_shape: tuple[int, int, int] | None = target_shape if target_shape is not None else source_shape
         if v2v_init is not None:
             if source_shape is None or target_shape is None:
                 raise ValueError("Source and target shapes must be provided if v2v_init is provided.")
@@ -242,18 +245,42 @@ class RegModel(nn.Module):
             # For translation, use three weights as translation entries in 4th column
             affine = torch.cat((torch.eye(3, device=self.weights.device), self.weights[0:3].unsqueeze(dim=1)), dim=1)
             if self.weights.size(0) > 3:
-                # For rigid get rotation from Euler angles
-                # and insert into 3x3 block
-                affine[:3, :3] = trans.get_rotation_euler(self.weights[3:6])[:3, :3]
+                # Build Euler rotation that is orthogonal in *voxel* space, not in PyTorch's
+                # normalized [-1, 1] space.
+                #
+                # PyTorch normalises axis i by shape[i]/2, so scale factors along (W, H, D)
+                # are S = [W/2, H/2, D/2].  For a non-cubic image these differ, so inserting
+                # R_euler directly into M_torch produces a shear when converted back to vox.
+                #
+                # The backward-sampling chain gives:
+                #   M_torch = norm_src @ inv(v2v_xyz) @ denorm_trg
+                # For the rotation part, choosing
+                #   M_torch_rot = diag(1/S_src) @ R_euler^T @ diag(S_trg)
+                # makes convert_torch_to_v2v recover v2v_rot = R_euler (orthogonal). ✓
+                R_euler = trans.get_rotation_euler(self.weights[3:6])[:3, :3]
+                if self.source_shape is not None and self.target_shape is not None:
+                    # Scale factors in PyTorch (W, H, D) = reversed(D, H, W) order
+                    ss = self.weights.new_tensor([
+                        self.source_shape[2], self.source_shape[1], self.source_shape[0]
+                    ]) / 2.0
+                    st = self.weights.new_tensor([
+                        self.target_shape[2], self.target_shape[1], self.target_shape[0]
+                    ]) / 2.0
+                    affine[:3, :3] = torch.diag(1.0 / ss) @ R_euler.mT @ torch.diag(st)
+                else:
+                    affine[:3, :3] = R_euler
             if self.weights.size(0) > 6:
                 # For rigid and scaling multiply with scaling diagonal matrix
                 affine.mul_(self.weights[6:9].view(-1, 1))
         if self.ixform is not None:
-            # affine and ixform are 3x4 so we have to multiply step wise:
-            affine[:3, :3] = affine[:3, :3].type(self.ixform.dtype) @ self.ixform[:3, :3]
-            affine[:3, 3] = affine[:3, :3].type(self.ixform.dtype) @ self.ixform[:3, 3] + affine[:3, 3].type(
-                self.ixform.dtype
-            )
+            # Compose affine (delta) with ixform (prior transform).
+            # Save R_delta BEFORE updating [:3,:3] so the translation uses the
+            # correct (un-composed) delta rotation:
+            #   t_result = R_delta @ t_ixform + t_delta    (not R_composed @ t_ixform)
+            R_delta = affine[:3, :3].clone().type(self.ixform.dtype)
+            affine[:3, :3] = R_delta @ self.ixform[:3, :3]
+            affine[:3, 3] = (R_delta @ self.ixform[:3, 3]
+                             + affine[:3, 3].type(self.ixform.dtype))
 
         return affine
 

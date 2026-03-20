@@ -6,6 +6,42 @@ import torch
 from torch import Tensor
 
 
+def _det_mps_compatible(R: torch.Tensor) -> torch.Tensor:
+    """Compute determinant in an MPS-compatible way.
+    
+    MPS doesn't support torch.linalg.det, so we compute it manually.
+    For 3x3 matrices, we use the standard formula.
+    For 4x4 matrices, we use the same formula on the top-left 3x3 block
+    since we only care about rotation determinants.
+    
+    Parameters
+    ----------
+    R : torch.Tensor
+        3x3 or 4x4 matrix
+    
+    Returns
+    -------
+    det : torch.Tensor
+        Scalar determinant value
+    """
+    if R.shape[0] == 4 and R.shape[1] == 4:
+        # For 4x4 matrices, extract the 3x3 rotation block
+        R = R[:3, :3]
+    
+    if R.shape != (3, 3):
+        # Fallback to torch.linalg.det for other cases
+        # (will work on CPU/CUDA, may fail on MPS for non-3x3)
+        return torch.linalg.det(R)
+    
+    # Compute determinant using cofactor expansion along first row
+    det = (
+        R[0, 0] * (R[1, 1] * R[2, 2] - R[1, 2] * R[2, 1])
+        - R[0, 1] * (R[1, 0] * R[2, 2] - R[1, 2] * R[2, 0])
+        + R[0, 2] * (R[1, 0] * R[2, 1] - R[1, 1] * R[2, 0])
+    )
+    return det
+
+
 def compute_sqrtm(matrix: Tensor, num_iters: int = 100) -> tuple[Tensor, Tensor]:
     r"""
     Compute the square root of a matrix using the Newton-Schulz iterative method.
@@ -218,6 +254,137 @@ def get_scaling(scales: torch.Tensor) -> torch.Tensor:
     """
     S = torch.diag(torch.cat((scales, scales.new_tensor([1.0]))))
     return S
+
+
+def rotation_error(R1: torch.Tensor, R2: torch.Tensor, check_valid: bool = True) -> float:
+    """Compute rotation error between two rotation matrices in degrees.
+
+    Uses the geodesic distance on SO(3): θ = arccos((trace(R1^T R2) - 1) / 2)
+
+    Parameters
+    ----------
+    R1, R2 : torch.Tensor
+        3×3 or 4×4 rotation matrices. If 4×4, only top-left 3×3 is used for
+        the geodesic distance calculation, but full 4×4 is validated if
+        check_valid=True (ensuring it's a pure rotation with no translation).
+    check_valid : bool, optional
+        If True (default), validates that inputs are proper rotation matrices.
+        For 4×4 matrices, also validates no translation component.
+        Set to False to skip validation for performance.
+
+    Returns
+    -------
+    error : float
+        Rotation error in degrees.
+
+    Raises
+    ------
+    ValueError
+        If check_valid=True and matrices are not proper rotations.
+        For 4×4 matrices, also raises if translation is present.
+
+    Examples
+    --------
+    >>> R1 = get_rotation_euler(torch.tensor([0.1, 0.2, 0.0]))[:3, :3]
+    >>> R2 = get_rotation_euler(torch.tensor([0.15, 0.25, 0.05]))[:3, :3]
+    >>> error = rotation_error(R1, R2)
+    >>> print(f"Rotation error: {error:.2f}°")
+
+    Notes
+    -----
+    A proper rotation matrix must satisfy:
+    - R^T @ R = I (orthogonal)
+    - det(R) = 1 (proper rotation, not reflection)
+
+    For 4×4 homogeneous matrices, additionally:
+    - Last row must be [0, 0, 0, 1]
+    - Last column must be [0, 0, 0, 1]^T (no translation component)
+    """
+    if check_valid:
+        # Validate with full matrices (handles both 3×3 and 4×4)
+        if not _is_rotation_matrix(R1):
+            raise ValueError(
+                f"R1 is not a valid rotation matrix. "
+                f"Orthogonality error: {torch.norm(R1.T @ R1 - torch.eye(R1.shape[0], device=R1.device)):.6f}, "
+                f"Determinant: {_det_mps_compatible(R1):.6f} (should be 1.0)"
+            )
+        if not _is_rotation_matrix(R2):
+            raise ValueError(
+                f"R2 is not a valid rotation matrix. "
+                f"Orthogonality error: {torch.norm(R2.T @ R2 - torch.eye(R2.shape[0], device=R2.device)):.6f}, "
+                f"Determinant: {_det_mps_compatible(R2):.6f} (should be 1.0)"
+            )
+
+    # Extract 3×3 rotation part for geodesic distance calculation
+    # (the formula uses trace of 3×3 rotation matrix)
+    if R1.shape[0] == 4:
+        R1 = R1[:3, :3]
+    if R2.shape[0] == 4:
+        R2 = R2[:3, :3]
+
+    # Compute R1^T @ R2
+    R_diff = R1.T @ R2
+
+    # Geodesic distance: θ = arccos((tr(R) - 1) / 2)
+    trace = torch.trace(R_diff)
+    # Clamp to handle numerical errors
+    cos_theta = (trace - 1.0) / 2.0
+    cos_theta = torch.clamp(cos_theta, -1.0, 1.0)
+
+    theta_rad = torch.arccos(cos_theta)
+    theta_deg = torch.rad2deg(theta_rad)
+
+    return theta_deg.item()
+
+
+def _is_rotation_matrix(R: torch.Tensor, atol: float = 1e-4) -> bool:
+    """Check if a 3×3 or 4×4 matrix is a proper rotation matrix.
+
+    Parameters
+    ----------
+    R : torch.Tensor
+        3×3 or 4×4 matrix to check. For 4×4 homogeneous coordinates,
+        last row must be [0, 0, 0, 1] and last column must be [0, 0, 0, 1]
+        (pure rotation, no translation).
+    atol : float
+        Absolute tolerance for checks.
+
+    Returns
+    -------
+    bool
+        True if R is a proper rotation matrix.
+    """
+    # Check shape
+    if R.shape == (3, 3):
+        # 3×3 rotation matrix
+        n = 3
+    elif R.shape == (4, 4):
+        # 4×4 homogeneous rotation matrix (no translation)
+        n = 4
+        # Check last row is [0, 0, 0, 1]
+        expected_last_row = torch.tensor([0.0, 0.0, 0.0, 1.0], device=R.device, dtype=R.dtype)
+        if not torch.allclose(R[3, :], expected_last_row, atol=atol):
+            return False
+        # Check last column is [0, 0, 0, 1]^T (no translation)
+        expected_last_col = torch.tensor([0.0, 0.0, 0.0, 1.0], device=R.device, dtype=R.dtype)
+        if not torch.allclose(R[:, 3], expected_last_col, atol=atol):
+            return False
+    else:
+        return False
+
+    # Check orthogonality: R^T @ R = I
+    # This works for both 3×3 and 4×4 matrices!
+    identity_matrix = torch.eye(n, device=R.device, dtype=R.dtype)
+    ortho_error = torch.norm(R.T @ R - identity_matrix)
+    if ortho_error > atol:
+        return False
+
+    # Check determinant = 1 (not -1, which would be a reflection)
+    det = _det_mps_compatible(R)
+    if abs(det - 1.0) > atol:
+        return False
+
+    return True
 
 
 def get_affine(
