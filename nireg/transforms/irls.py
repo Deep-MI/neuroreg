@@ -31,11 +31,9 @@ FreeSurfer source: mri_robust_register/Regression.cpp,
 from __future__ import annotations
 
 import logging
-from typing import Tuple, Literal
 
 import torch
 import torch.nn.functional as F
-
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +71,7 @@ def _conv1d_along(vol: torch.Tensor, kernel: torch.Tensor, dim: int) -> torch.Te
     return F.conv3d(vol.unsqueeze(0).unsqueeze(0), w, padding=p).squeeze(0).squeeze(0)
 
 
-def compute_partials(img: torch.Tensor) -> Tuple[torch.Tensor, ...]:
+def compute_partials(img: torch.Tensor) -> tuple[torch.Tensor, ...]:
     """Compute partial derivatives and blurred image using FreeSurfer's filters.
 
     Each output is the same shape as *img* [D, H, W].
@@ -114,7 +112,7 @@ def construct_Ab(
     src_warped: torch.Tensor,
     trg: torch.Tensor,
     eps: float = 1e-5,
-) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Build gradient matrix A and residual vector b.
 
     Mirrors FreeSurfer's ``RegistrationStep::constructAb``:
@@ -163,8 +161,12 @@ def construct_Ab(
     gz, gy, gx = torch.meshgrid(z_idx, y_idx, x_idx, indexing='ij')
 
     # Flatten everything
-    fxf = fx.flatten();  fyf = fy.flatten();  fzf = fz.flatten()
-    xf  = gx.flatten();  yf  = gy.flatten();  zf  = gz.flatten()
+    fxf = fx.flatten()
+    fyf = fy.flatten()
+    fzf = fz.flatten()
+    xf  = gx.flatten()
+    yf  = gy.flatten()
+    zf  = gz.flatten()
     bf  = b_vol.flatten()
     src_flat = src_warped.flatten()
     trg_flat = trg.flatten()
@@ -188,8 +190,12 @@ def construct_Ab(
     valid &= torch.isfinite(fxf) & torch.isfinite(fyf) & torch.isfinite(fzf)
     valid &= torch.isfinite(bf)
 
-    fxv = fxf[valid];  fyv = fyf[valid];  fzv = fzf[valid]
-    xv  = xf[valid];   yv  = yf[valid];   zv  = zf[valid]
+    fxv = fxf[valid]
+    fyv = fyf[valid]
+    fzv = fzf[valid]
+    xv  = xf[valid]
+    yv  = yf[valid]
+    zv  = zf[valid]
     bv  = bf[valid]
 
     # Rigid Jacobian: [tx, ty, tz, rx, ry, rz]
@@ -256,7 +262,7 @@ def irls_inner_loop(
     max_iterations: int = 20,
     eps: float = 2e-12,
     verbose: bool = False,
-) -> Tuple[torch.Tensor, torch.Tensor, float]:
+) -> tuple[torch.Tensor, torch.Tensor, float]:
     """IRLS inner loop: iteratively re-weighted least squares.
 
     Exactly mirrors ``Regression<T>::getRobustEstWAB``:
@@ -374,9 +380,12 @@ def rotation_vector_to_matrix(rv: torch.Tensor) -> torch.Tensor:
         return torch.eye(3, dtype=rv.dtype, device=rv.device)
     axis = rv / theta
     K = torch.zeros(3, 3, dtype=rv.dtype, device=rv.device)
-    K[0, 1] = -axis[2];  K[0, 2] =  axis[1]
-    K[1, 0] =  axis[2];  K[1, 2] = -axis[0]
-    K[2, 0] = -axis[1];  K[2, 1] =  axis[0]
+    K[0, 1] = -axis[2]
+    K[0, 2] =  axis[1]
+    K[1, 0] =  axis[2]
+    K[1, 2] = -axis[0]
+    K[2, 0] = -axis[1]
+    K[2, 1] =  axis[0]
     R = (torch.eye(3, dtype=rv.dtype, device=rv.device)
          + torch.sin(theta) * K
          + (1.0 - torch.cos(theta)) * (K @ K))
@@ -453,7 +462,7 @@ def register_step(
     sat: float = 4.685,
     max_irls: int = 20,
     verbose: bool = False,
-) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, float, float]:
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, float, float]:
     """Build A, b then run IRLS.  Returns (p, w_sqrt, valid_mask, sigma, err)."""
     A, b, valid = construct_Ab(src_warped, trg)
     p, w_sqrt, sigma, err = irls_inner_loop(A, b, sat=sat, max_iterations=max_irls,
@@ -477,7 +486,7 @@ def register_irls(
     adaptive_sat: bool = False,
     target_outlier_pct: float = 5.0,
     verbose: bool = False,
-) -> Tuple[torch.Tensor, dict]:
+) -> tuple[torch.Tensor, dict]:
     """IRLS rigid registration at a single resolution level.
 
     Mirrors ``RegRobust::iterativeRegistrationHelper``.
@@ -503,7 +512,7 @@ def register_irls(
     T    : [4, 4]  final vox-to-vox transform
     info : dict with keys 'iterations', 'converged', 'dists', 'weights', 'valid_mask', 'sigma_hist'
     """
-    from ..image.map import map as map_image   # lazy import to avoid circular
+    from ..image.map import map as map_image  # lazy import to avoid circular
 
     T = initial_transform.clone() if initial_transform is not None \
         else torch.eye(4, dtype=src.dtype)
@@ -705,7 +714,7 @@ def register_irls_pyramid(
     adaptive_sat: bool = False,
     target_outlier_pct: float = 5.0,
     verbose: bool = False,
-) -> Tuple[torch.Tensor, list]:
+) -> tuple[torch.Tensor, list]:
     """Pyramid IRLS registration (coarse-to-fine).
 
     Mirrors the multi-resolution loop in ``RegRobust::findSatMultiRes``:

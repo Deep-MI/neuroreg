@@ -1,19 +1,17 @@
 """Tests for IRLS rigid registration (nireg.transforms.irls)."""
 
-import math
 import pytest
 import torch
 
 from nireg.transforms.irls import (
+    _sqrt_tukey,
+    affine_trans_dist,
     construct_Ab,
     irls_inner_loop,
-    affine_trans_dist,
     params_to_rigid_matrix,
     register_irls,
     register_irls_pyramid,
-    _sqrt_tukey,
 )
-
 
 # ---------------------------------------------------------------------------
 # _sqrt_tukey
@@ -59,8 +57,10 @@ class TestAffineTransDist:
         assert affine_trans_dist(T1, T2) == pytest.approx(3.0, rel=1e-4)
 
     def test_symmetry(self):
-        T1 = torch.eye(4); T1[0, 3] = 5.0
-        T2 = torch.eye(4); T2[1, 3] = 3.0
+        T1 = torch.eye(4)
+        T1[0, 3] = 5.0
+        T2 = torch.eye(4)
+        T2[1, 3] = 3.0
         assert affine_trans_dist(T1, T2) == pytest.approx(affine_trans_dist(T2, T1), rel=1e-5)
 
 
