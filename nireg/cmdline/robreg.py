@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Command-line interface for robust image-to-image registration (robreg)."""
 
 import argparse
@@ -88,3 +89,5 @@ def main(args=None) -> None:
     logger.info("Wrote LTA: %s", ns.out)
     print(f"Output: {ns.out}")
 
+if __name__ == "__main__":
+    main()

@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Command-line interface for boundary-based registration (bbreg)."""
 
 import argparse
@@ -212,3 +213,5 @@ def main(args=None) -> None:
 
     print(f"Output: {ns.out}")
 
+if __name__ == "__main__":
+    main()

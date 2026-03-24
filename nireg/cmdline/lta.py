@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Unified LTA transform manipulation CLI.
 
 Subcommands
@@ -274,3 +275,5 @@ def main(args=None) -> None:
     elif ns.command == 'concat':
         _main_concat(ns)
 
+if __name__ == "__main__":
+    main()
