@@ -89,6 +89,7 @@ tracker = 'https://github.com/Deep-MI/nireg/issues'
 
 [project.scripts]
 robreg          = "nireg.cmdline.robreg:main"
+robreg_irls     = "nireg.cmdline.robreg_irls:main"
 bbreg           = "nireg.cmdline.bbreg:main"
 lta             = "nireg.cmdline.lta:main"
 nireg-sys_info  = "nireg.cmdline.sys_info:run"

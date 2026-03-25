@@ -50,7 +50,7 @@ def _header_info(src: _AnyHeader) -> dict:
     if isinstance(src, dict):
         return src
 
-    if isinstance(src, (str, Path)):
+    if isinstance(src, str | Path):
         src = nib.load(src).header
 
     if hasattr(src, "affine"):

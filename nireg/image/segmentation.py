@@ -196,7 +196,7 @@ def simplify_segmentation(
     The function is fully CPU-based (numpy + scipy) and does not require
     PyTorch.
     """
-    if isinstance(seg_input, (str, os.PathLike)):
+    if isinstance(seg_input, str | os.PathLike):
         logger.debug("Loading segmentation from %s", seg_input)
         seg_img = nib.load(seg_input)
     else:
@@ -507,7 +507,7 @@ def surfaces_from_segmentation(
     """
     import torch
 
-    if isinstance(seg_path, (str, os.PathLike)):
+    if isinstance(seg_path, str | os.PathLike):
         seg_img = nib.load(str(seg_path))
     else:
         seg_img = seg_path
@@ -630,7 +630,7 @@ def compute_cortex_mask(
         ``True`` for cortical vertices (WM-GM boundary present in the
         segmentation).
     """
-    if isinstance(seg_input, (str, os.PathLike)):
+    if isinstance(seg_input, str | os.PathLike):
         seg_img = nib.load(str(seg_input))
     else:
         seg_img = seg_input

@@ -713,6 +713,7 @@ def register_irls_pyramid(
     symmetric: bool = False,
     adaptive_sat: bool = False,
     target_outlier_pct: float = 5.0,
+    outliers_name: str | None = None,
     verbose: bool = False,
 ) -> tuple[torch.Tensor, list]:
     """Pyramid IRLS registration (coarse-to-fine).
@@ -742,6 +743,11 @@ def register_irls_pyramid(
                         only source is warped to target space (default False)
     adaptive_sat      : if True, increase sat when outliers exceed target (default True)
     target_outlier_pct: target outlier percentage (default 5.0%)
+    outliers_name     : str, optional
+                        If provided, save the outlier map (1 - Tukey weights) to this file.
+                        High values indicate poorly registered voxels (outliers), low values
+                        indicate well-registered voxels. Format auto-detected from extension
+                        (.nii, .nii.gz, or .mgz).
     verbose           : print progress
 
     Returns
@@ -861,6 +867,48 @@ def register_irls_pyramid(
         # T_orig_v2v = Rtrg @ T_iso_v2v @ inv(Rsrc)
         T = Rtrg.double() @ T.double() @ torch.inverse(Rsrc.double())
         T = T.float()
+
+    # Save outlier map if requested
+    if outliers_name is not None and all_info:
+        import nibabel as nib
+
+        final_info = all_info[-1]
+        if 'weights' in final_info and 'valid_mask' in final_info:
+            weights_sqrt = final_info['weights']  # sqrt(Tukey weights)
+            valid_mask = final_info['valid_mask']
+            reg_affine = final_info.get('iso_affine', None)
+
+            if reg_affine is not None:
+                # Square to get actual Tukey weights, then compute 1-w (outlier map)
+                weights = weights_sqrt ** 2
+
+                # Reconstruct shape is the shape from the last pyramid level
+                # (which corresponds to the registration space)
+                reg_shape = final_info['image_shape']
+
+                # Reconstruct 3D volume in registration space
+                weight_volume = torch.zeros(reg_shape, dtype=torch.float32)
+                weight_volume.view(-1)[valid_mask] = weights
+
+                # Create outlier map (1 - w): high values = outliers
+                outlier_volume = 1.0 - weight_volume
+
+                # Auto-detect format from extension
+                if outliers_name.endswith('.nii') or outliers_name.endswith('.nii.gz'):
+                    outlier_img = nib.Nifti1Image(outlier_volume.numpy(), reg_affine)
+                else:  # Default to MGZ for .mgz or unknown extensions
+                    outlier_img = nib.MGHImage(outlier_volume.numpy(), reg_affine)
+
+                outlier_img.to_filename(outliers_name)
+
+                if verbose:
+                    outlier_pct = (outlier_volume > 0.5).sum().item() / outlier_volume.numel() * 100
+                    logger.info("Saved outlier map: %s (%.1f%% high outliers)",
+                                outliers_name, outlier_pct)
+            else:
+                logger.warning("Cannot save outlier map: no affine available")
+        else:
+            logger.warning("Cannot save outlier map: no weights in final level")
 
     return T, all_info
 
