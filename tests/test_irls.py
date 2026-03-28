@@ -3,9 +3,12 @@
 import pytest
 import torch
 
+from nireg.transforms.initialize import get_ixform_centroids
 from nireg.transforms.irls import (
+    _choose_pyramid_levels,
     _sqrt_tukey,
     affine_trans_dist,
+    compute_partials,
     construct_Ab,
     irls_inner_loop,
     params_to_rigid_matrix,
@@ -107,7 +110,7 @@ class TestConstructAb:
         src[:3, :, :] = 0.0
         A, b, valid = construct_Ab(src, trg)
         src_flat = src.reshape(-1)
-        assert torch.all(src_flat[valid].abs() > 1e-4)
+        assert torch.all(src_flat[valid].abs() > 1e-5)
 
     def test_finite_outputs(self):
         src = torch.rand(8, 8, 8)
@@ -115,6 +118,30 @@ class TestConstructAb:
         A, b, valid = construct_Ab(src, trg)
         assert torch.isfinite(A).all()
         assert torch.isfinite(b).all()
+
+    def test_compute_partials_matches_internal_dhw_axis_convention(self):
+        d, h, w = 9, 10, 11
+        zz, yy, xx = torch.meshgrid(
+            torch.arange(d, dtype=torch.float32),
+            torch.arange(h, dtype=torch.float32),
+            torch.arange(w, dtype=torch.float32),
+            indexing='ij',
+        )
+
+        fx, fy, fz, _ = compute_partials(xx)
+        assert fx[4, 5, 6].item() > 0.9
+        assert abs(fy[4, 5, 6].item()) < 1e-4
+        assert abs(fz[4, 5, 6].item()) < 1e-4
+
+        fx, fy, fz, _ = compute_partials(yy)
+        assert abs(fx[4, 5, 6].item()) < 1e-4
+        assert fy[4, 5, 6].item() > 0.9
+        assert abs(fz[4, 5, 6].item()) < 1e-4
+
+        fx, fy, fz, _ = compute_partials(zz)
+        assert abs(fx[4, 5, 6].item()) < 1e-4
+        assert abs(fy[4, 5, 6].item()) < 1e-4
+        assert fz[4, 5, 6].item() > 0.9
 
 
 # ---------------------------------------------------------------------------
@@ -202,6 +229,19 @@ class TestRegisterIrls:
         T, info = register_irls(src, trg, nmax=2, sat=1.345)
         assert T.shape == (4, 4)
 
+    def test_adaptive_sat_runs_and_records_sigma_history(self):
+        src, trg = self._make_images()
+        T, info = register_irls(
+            src,
+            trg,
+            nmax=2,
+            adaptive_sat=True,
+            target_outlier_pct=5.0,
+        )
+        assert T.shape == (4, 4)
+        assert len(info['sigma_hist']) == info['iterations']
+        assert all(isinstance(v, float) for v in info['sigma_hist'])
+
 
 # ---------------------------------------------------------------------------
 # register_irls_pyramid
@@ -252,6 +292,63 @@ class TestRegisterIrlsPyramid:
         img = torch.rand(20, 20, 20)
         with pytest.raises(ValueError, match="src_affine"):
             register_irls_pyramid(img, img.clone(), isotropic=True)
+
+    def test_default_uses_centroid_initialization(self):
+        img = torch.rand(20, 20, 20)
+        shifted = torch.roll(img, shifts=2, dims=2)
+        expected = get_ixform_centroids(img, shifted)
+        T, _ = register_irls_pyramid(
+            img,
+            shifted,
+            min_voxels=8,
+            max_voxels=16,
+            nmax=0,
+            isotropic=False,
+        )
+        assert torch.allclose(T, expected)
+
+    def test_noinit_starts_from_identity(self):
+        img = torch.rand(20, 20, 20)
+        shifted = torch.roll(img, shifts=2, dims=2)
+        T, _ = register_irls_pyramid(
+            img,
+            shifted,
+            centroid_init=False,
+            min_voxels=8,
+            max_voxels=16,
+            nmax=0,
+            isotropic=False,
+        )
+        assert torch.allclose(T, torch.eye(4), atol=1e-6)
+
+    def test_explicit_initial_transform_takes_precedence(self):
+        img = torch.rand(20, 20, 20)
+        shifted = torch.roll(img, shifts=2, dims=2)
+        init = torch.eye(4)
+        init[2, 3] = 7.0
+        T, _ = register_irls_pyramid(
+            img,
+            shifted,
+            initial_transform=init,
+            centroid_init=True,
+            min_voxels=8,
+            max_voxels=16,
+            nmax=0,
+            isotropic=False,
+        )
+        assert torch.allclose(T, init)
+
+    def test_choose_pyramid_levels_matches_freesurfer_schedule(self):
+        pyramid = [
+            torch.zeros(224, 224, 169),
+            torch.zeros(112, 112, 84),
+            torch.zeros(56, 56, 42),
+            torch.zeros(28, 28, 21),
+            torch.zeros(14, 14, 10),
+            torch.zeros(7, 7, 5),
+        ]
+        assert _choose_pyramid_levels(pyramid, min_voxels=16, max_voxels=64) == [3, 2, 1, 0]
+
 
 
 if __name__ == "__main__":

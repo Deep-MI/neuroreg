@@ -54,6 +54,11 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Use symmetric (halfway-space) registration (matches FreeSurfer default).",
     )
+    p.add_argument(
+        "--noinit",
+        action="store_true",
+        help="Skip centroid-based initialization and start from identity (matches FreeSurfer --noinit).",
+    )
 
     # ── output options ──────────────────────────────────────────────────────
     p.add_argument(
@@ -123,6 +128,7 @@ def main(args=None) -> None:
         nmax=ns.nmax,
         sat=ns.sat,
         symmetric=ns.symmetric,
+        centroid_init=not ns.noinit,
         isotropic=True,
         outliers_name=ns.outliers,  # Pass outliers filename
         verbose=ns.verbose or ns.debug,

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import subprocess
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -242,6 +244,18 @@ def rigid_lta(tmp_path: Path) -> str:
 
 
 class TestLtaDiffCLI:
+
+    def test_module_entrypoint_runs(self, identity_lta, tmp_path):
+        output_path = tmp_path / "module_diff.txt"
+        proc = subprocess.run(
+            [sys.executable, "-m", "nireg.cmdline.lta", "diff", identity_lta],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        output_path.write_text(proc.stdout + proc.stderr)
+        assert proc.returncode == 0, output_path.read_text()
+        assert float(proc.stdout.strip()) == pytest.approx(0.0, abs=1e-10)
 
     def test_dist2_is_default(self, identity_lta, capsys):
         main(['diff', identity_lta])

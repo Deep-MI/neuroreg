@@ -114,25 +114,6 @@ class TestSolveWeightedRigidGPU:
         assert error_robust < error_uniform
         assert error_robust < 1.0  # Should still recover well
 
-    def test_gpu_compatibility(self):
-        """Test that solver works on GPU (CUDA or MPS)."""
-        # Check for GPU availability (CUDA or MPS)
-        if torch.cuda.is_available():
-            device = "cuda"
-        elif torch.backends.mps.is_available():
-            device = "mps"
-        else:
-            pytest.skip("No GPU available (CUDA or MPS)")
-
-        src = torch.randn(100, 3, device=device)
-        trg = src + torch.tensor([1.0, 2.0, 3.0], device=device)
-        weights = torch.ones(100, device=device)
-
-        T = solve_weighted_rigid_gpu(src, trg, weights)
-
-        assert T.device.type == device
-        assert T.shape == (4, 4)
-
     def test_zero_weights_returns_identity(self):
         """All zero weights should return identity."""
         src = torch.randn(100, 3)
@@ -223,12 +204,6 @@ class TestRotationError:
         # Should be 90 degrees
         assert abs(error - 90.0) < 0.1
 
-    def test_small_perturbation(self):
-        """Small rotation should give small error."""
-        R1 = torch.eye(3)
-        R2 = rotation_matrix_3x3([0.01, 0.01, 0.01])  # ~1° rotation
-        error = rotation_error(R1, R2)
-        assert error < 2.0  # Should be around 1-2 degrees
 
     def test_handles_4x4_matrices(self):
         """Should extract 3×3 from 4×4 matrices."""

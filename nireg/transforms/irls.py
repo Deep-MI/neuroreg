@@ -41,10 +41,18 @@ logger = logging.getLogger(__name__)
 # FreeSurfer's exact separable 5-tap filters (from MyMRI.cpp)
 # ---------------------------------------------------------------------------
 _PREFILTER = torch.tensor([0.03504, 0.24878, 0.43234, 0.24878, 0.03504])
-_DERFILTER  = torch.tensor([-0.10689, -0.28461, 0.0, 0.28461, 0.10689])
+_DERFILTER = torch.tensor([-0.10689, -0.28461, 0.0, 0.28461, 0.10689])
+# FreeSurfer's saved multires pyramid (Registration::buildGPLimits) uses a
+# different smoothing kernel than the registration-time prefilter above.
+_PYRAMID_FILTER = torch.tensor([0.0625, 0.25, 0.375, 0.25, 0.0625])
 
 
-def _conv1d_along(vol: torch.Tensor, kernel: torch.Tensor, dim: int) -> torch.Tensor:
+def _conv1d_along(
+    vol: torch.Tensor,
+    kernel: torch.Tensor,
+    dim: int,
+    padding_mode: str = 'replicate',
+) -> torch.Tensor:
     """Convolve a 3-D volume with a 1-D kernel along one spatial dimension.
 
     Parameters
@@ -57,18 +65,57 @@ def _conv1d_along(vol: torch.Tensor, kernel: torch.Tensor, dim: int) -> torch.Te
     pad = K // 2
     k = kernel.to(dtype=vol.dtype, device=vol.device)
 
+    # Match FreeSurfer MRIconvolve1d: if the convolved dimension has length 1,
+    # skip the convolution and return a copy.
+    if vol.shape[dim] == 1:
+        return vol.clone()
+
+    # Use explicit clamp/replicate padding to avoid artificial edges at the
+    # image boundary. This matches FreeSurfer's repeated-edge handling.
+    x = vol.unsqueeze(0).unsqueeze(0)
+
     # reshape kernel to [1, 1, k] and expand to the right conv3d weight shape
     if dim == 0:                         # along depth
         w = k.view(1, 1, K, 1, 1)
-        p = (pad, 0, 0)
+        pads = (0, 0, 0, 0, pad, pad)
     elif dim == 1:                       # along height
         w = k.view(1, 1, 1, K, 1)
-        p = (0, pad, 0)
+        pads = (0, 0, pad, pad, 0, 0)
     else:                                # along width
         w = k.view(1, 1, 1, 1, K)
-        p = (0, 0, pad)
+        pads = (pad, pad, 0, 0, 0, 0)
 
-    return F.conv3d(vol.unsqueeze(0).unsqueeze(0), w, padding=p).squeeze(0).squeeze(0)
+    if padding_mode == 'zeros':
+        padded = F.pad(x, pads, mode='constant', value=0.0)
+    else:
+        padded = F.pad(x, pads, mode=padding_mode)
+    return F.conv3d(padded, w).squeeze(0).squeeze(0)
+
+
+def _smooth3d(vol: torch.Tensor, kernel: torch.Tensor, padding_mode: str = 'replicate') -> torch.Tensor:
+    """Apply the same 1-D kernel separably along all three spatial axes."""
+    return _conv1d_along(
+        _conv1d_along(_conv1d_along(vol, kernel, 2, padding_mode), kernel, 1, padding_mode),
+        kernel,
+        0,
+        padding_mode,
+    )
+
+
+def _downsample2_trilinear(vol: torch.Tensor) -> torch.Tensor:
+    """Approximate FreeSurfer's MRIdownsample2BSpline with 2× trilinear resize."""
+    D, H, W = vol.shape
+    out_shape = (
+        max(1, D // 2) if D > 1 else 1,
+        max(1, H // 2) if H > 1 else 1,
+        max(1, W // 2) if W > 1 else 1,
+    )
+    return F.interpolate(
+        vol.unsqueeze(0).unsqueeze(0),
+        size=out_shape,
+        mode='trilinear',
+        align_corners=False,
+    ).squeeze(0).squeeze(0)
 
 
 def compute_partials(img: torch.Tensor) -> tuple[torch.Tensor, ...]:
@@ -180,7 +227,7 @@ def construct_Ab(
     # Check for outside/background values (typically 0)
     # FreeSurfer uses: fabs(val - outside_val) > eps
     # For typical images, outside_val = 0, so this checks |val| > eps
-    outside_eps = 1e-4
+    outside_eps = 1e-5
     valid = (src_flat.abs() > outside_eps) & (trg_flat.abs() > outside_eps)
     
     # Non-zero gradient
@@ -262,7 +309,7 @@ def irls_inner_loop(
     max_iterations: int = 20,
     eps: float = 2e-12,
     verbose: bool = False,
-) -> tuple[torch.Tensor, torch.Tensor, float]:
+) -> tuple[torch.Tensor, torch.Tensor, float, float]:
     """IRLS inner loop: iteratively re-weighted least squares.
 
     Exactly mirrors ``Regression<T>::getRobustEstWAB``:
@@ -524,8 +571,11 @@ def register_irls(
     src_n = src / scale
     trg_n = trg / scale
 
+    src_shape: tuple[int, int, int] = (int(src_n.shape[0]), int(src_n.shape[1]), int(src_n.shape[2]))
+    trg_shape: tuple[int, int, int] = (int(trg_n.shape[0]), int(trg_n.shape[1]), int(trg_n.shape[2]))
+
     info = dict(iterations=0, converged=False, dists=[], weights=None,
-                valid_mask=None, image_shape=tuple(trg.shape), sigma_hist=[])
+                valid_mask=None, image_shape=trg_shape, sigma_hist=[])
 
     # Track the T with the lowest inner-loop weighted cost across all outer
     # iterations.  At coarse levels the cost steadily falls; at the finest
@@ -541,6 +591,8 @@ def register_irls(
 
     for i in range(nmax):
         T_prev = T.clone()
+        mh = None
+        mhi = None
 
         # Warp images based on mode
         if symmetric:
@@ -551,7 +603,7 @@ def register_irls(
             src_warped = map_image(
                 src_n, mh,
                 is_torch_mat=False,
-                target_shape=tuple(src_n.shape),
+                target_shape=src_shape,
                 mode='bilinear',
                 padding_mode='zeros',
             ).float()
@@ -559,7 +611,7 @@ def register_irls(
             trg_warped = map_image(
                 trg_n, mhi,
                 is_torch_mat=False,
-                target_shape=tuple(src_n.shape),
+                target_shape=src_shape,
                 mode='bilinear',
                 padding_mode='zeros',
             ).float()
@@ -571,7 +623,7 @@ def register_irls(
             src_warped = map_image(
                 src_n, T,
                 is_torch_mat=False,
-                target_shape=tuple(trg_n.shape),
+                target_shape=trg_shape,
                 mode='bilinear',
                 padding_mode='zeros',
             ).float()
@@ -613,16 +665,18 @@ def register_irls(
                         zero_pct, target_outlier_pct, error, direction, old_sat, current_sat
                     )
             # Re-solve with new sat (A, b already built above)
-            p, w_sqrt, err_new = irls_inner_loop(
+            p, w_sqrt, sigma_val, err_new = irls_inner_loop(
                 A, b, sat=current_sat, max_iterations=max_irls, 
                 verbose=verbose
-            )[:3]  # Take only p, w_sqrt, sigma (skip err)
+            )
+            info['sigma_hist'][-1] = sigma_val
             err_val = err_new
             zero_pct = (w_sqrt == 0).float().mean().item() * 100
 
         # Compose transforms based on mode
         if symmetric:
             # Symmetric mode: M_new = inv(mhi) @ δ @ mh
+            assert mh is not None and mhi is not None
             delta = params_to_rigid_matrix(p.float())
             mh2 = torch.inverse(mhi.double())  # = mh (by construction)
             T = mh2.float() @ delta @ mh
@@ -672,25 +726,59 @@ def register_irls(
 def _build_pyramid(img: torch.Tensor) -> list[torch.Tensor]:
     """Build a Gaussian pyramid from finest (index 0) to coarsest.
 
-    Uses the same prefilter as FreeSurfer (getBlur) before each 2× downsample,
-    mirroring ``MyMRI::subSample``.
+    Mirrors FreeSurfer's saved multires pyramid built in
+    ``Registration::buildGPLimits``:
+
+    * level 0 is the original image (unsmoothed)
+    * each coarser level is produced by smoothing with the saved-pyramid
+      kernel ``[0.0625, 0.25, 0.375, 0.25, 0.0625]``
+    * smoothing is followed by a 2× spline-style downsample
+
+    FreeSurfer uses ``MRIdownsample2BSpline`` for the reduction step.  We
+    approximate that locally with 2× trilinear interpolation to the floor
+    half-size, which is substantially closer to the saved ``pyramid*-r*``
+    artifacts than the old prefilter+voxel-pick path.
 
     Returns
     -------
-    levels : list[Tensor]   levels[0] = full-res (smoothed once), levels[k] = 2^k ×
-             downsampled.  Each level has min dim ≥ 2.
+    levels : list[Tensor]   levels[0] = full-res original, levels[k] = 2^k ×
+             downsampled.
     """
-    levels = []
-    cur = _conv1d_along(_conv1d_along(_conv1d_along(
-        img.float(), _PREFILTER, 2), _PREFILTER, 1), _PREFILTER, 0)
-    levels.append(cur)
+    levels = [img.float().clone()]
+    cur = levels[0]
     while min(cur.shape) >= 8:
-        # smooth then 2× subsample
-        blurred = _conv1d_along(_conv1d_along(_conv1d_along(
-            cur, _PREFILTER, 2), _PREFILTER, 1), _PREFILTER, 0)
-        cur = blurred[::2, ::2, ::2]
+        blurred = _smooth3d(cur, _PYRAMID_FILTER, padding_mode='zeros')
+        next_level = _downsample2_trilinear(blurred)
+        if next_level.shape == cur.shape:
+            break
+        cur = next_level
         levels.append(cur)
     return levels   # levels[0] finest … levels[-1] coarsest
+
+
+def _choose_pyramid_levels(
+    pyramid: list[torch.Tensor],
+    min_voxels: int,
+    max_voxels: int | None = None,
+) -> list[int]:
+    """Choose pyramid levels in the same coarse-to-fine spirit as FreeSurfer.
+
+    FreeSurfer's multires builder stops creating new levels once the smallest
+    dimension would fall below ``min_voxels``. The registration loop then runs
+    every remaining level from coarsest to finest. To match that behavior with
+    our always-built pyramid, we select all levels whose smallest dimension is
+    at least ``min_voxels`` and traverse them coarse-to-fine.
+
+    ``max_voxels`` is accepted for API compatibility but is not used for the
+    FreeSurfer-style schedule.
+    """
+    del max_voxels
+
+    return [
+        lvl
+        for lvl in range(len(pyramid) - 1, -1, -1)
+        if min(pyramid[lvl].shape) >= min_voxels
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -703,6 +791,7 @@ def register_irls_pyramid(
     src_affine: torch.Tensor | None = None,
     trg_affine: torch.Tensor | None = None,
     initial_transform: torch.Tensor | None = None,
+    centroid_init: bool = True,
     min_voxels: int = 16,
     max_voxels: int = 64,
     nmax: int = 5,
@@ -728,7 +817,11 @@ def register_irls_pyramid(
     ----------
     src, trg          : [D, H, W]  full-resolution float32 images
     src_affine, trg_affine : 4×4 voxel-to-RAS affines (required if isotropic=True)
-    initial_transform : 4×4 initial vox-to-vox (default: identity)
+    initial_transform : 4×4 initial vox-to-vox. If provided, it takes
+                        precedence over centroid initialization.
+    centroid_init     : if True and ``initial_transform`` is not provided,
+                        use FreeSurfer-style centroid initialization;
+                        if False, start from identity (matches FS ``--noinit``).
     min_voxels        : minimum side length to use a level (default 16)
     max_voxels        : start at the level whose max-dim first reaches this
                         (default 64, matching FreeSurfer)
@@ -782,12 +875,24 @@ def register_irls_pyramid(
             logger.info("  Src resampled: %s → %s", src.shape, src_iso.shape)
             logger.info("  Trg resampled: %s → %s", trg.shape, trg_iso.shape)
         
-        # Convert initial_transform to isotropic space if provided
+        # Convert or create the initial transform in isotropic space.
         if initial_transform is not None:
             # T_iso_v2v = Rtrg @ T_orig_v2v @ inv(Rsrc)
             T_iso = Rtrg.double() @ initial_transform.double() @ torch.inverse(Rsrc.double())
+        elif centroid_init:
+            from .initialize import get_ixform_centroids
+
+            T_iso = get_ixform_centroids(src_iso.float(), trg_iso.float()).float()
+            if verbose:
+                t = T_iso[:3, 3].tolist()
+                logger.info(
+                    "Centroid initialization (isotropic space): [%.6f, %.6f, %.6f]",
+                    t[0], t[1], t[2],
+                )
         else:
-            T_iso = None
+            T_iso = torch.eye(4, dtype=torch.float32)
+            if verbose:
+                logger.info("Centroid initialization disabled; starting from identity in isotropic space")
         
         # Register in isotropic space
         pyramid_src = _build_pyramid(src_iso)
@@ -797,39 +902,35 @@ def register_irls_pyramid(
         # No resampling - work in original voxel space
         pyramid_src = _build_pyramid(src)
         pyramid_trg = _build_pyramid(trg)
-        T_iso = initial_transform
+        if initial_transform is not None:
+            T_iso = initial_transform.float()
+        elif centroid_init:
+            from .initialize import get_ixform_centroids
+
+            T_iso = get_ixform_centroids(src.float(), trg.float()).float()
+            if verbose:
+                t = T_iso[:3, 3].tolist()
+                logger.info(
+                    "Centroid initialization: [%.6f, %.6f, %.6f]",
+                    t[0], t[1], t[2],
+                )
+        else:
+            T_iso = torch.eye(4, dtype=torch.float32)
+            if verbose:
+                logger.info("Centroid initialization disabled; starting from identity")
         Rsrc = torch.eye(4, dtype=torch.float32)
         Rtrg = torch.eye(4, dtype=torch.float32)
         iso_affine = trg_affine.numpy() if trg_affine is not None else None
 
-    # Pick levels: Start from the finest level where max-dim ≤ max_voxels,
-    # then work down to level 0 (full resolution), respecting min_voxels.
-    # This matches FreeSurfer's coarse-to-fine strategy.
-    chosen: list[int] = []
-    start_level = None
-    
-    # Find the finest (smallest index) level with max-dim ≤ max_voxels
-    for lvl in range(len(pyramid_src)):
-        s = pyramid_src[lvl]
-        if max(s.shape) <= max_voxels:
-            start_level = lvl
-            break
-    
-    # If no level is <= max_voxels, start from the coarsest available
-    if start_level is None:
-        start_level = len(pyramid_src) - 1
-    
-    # Collect levels from start_level down to 0 (finest), respecting min_voxels
-    for lvl in range(start_level, -1, -1):
-        s = pyramid_src[lvl]
-        if max(s.shape) < min_voxels:
-            continue
-        chosen.append(lvl)
-    
-    # chosen is already coarse-to-fine
-    chosen_coarse_first = chosen
+    chosen_coarse_first = _choose_pyramid_levels(pyramid_src, min_voxels, max_voxels)
 
-    # Initialize T (handle case where T_iso is None)
+    if not chosen_coarse_first:
+        raise ValueError(
+            f"No pyramid level has smallest dimension >= min_voxels={min_voxels}. "
+            f"Available levels: {[tuple(level.shape) for level in pyramid_src]}"
+        )
+
+    # Initialize T in registration-space voxel coordinates.
     T = T_iso if T_iso is not None else torch.eye(4, dtype=torch.float32)
     all_info: list[dict] = []
 

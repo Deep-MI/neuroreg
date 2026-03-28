@@ -39,6 +39,11 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="N",
         help="Maximum number of optimisation iterations per pyramid level (default: auto from register_pyramid).",
     )
+    p.add_argument(
+        "--noinit",
+        action="store_true",
+        help="Skip centroid-based initialization and start from identity (matches FreeSurfer --noinit).",
+    )
     p.add_argument("--device", default="cpu", metavar="DEVICE", help="PyTorch device, e.g. 'cpu' or 'cuda'.")
 
     # ── misc ────────────────────────────────────────────────────────────────
@@ -76,7 +81,7 @@ def main(args=None) -> None:
     # ── register ────────────────────────────────────────────────────────────
     # Pass paths so register_pyramid handles loading internally.
     # return_v2v=True → vox-to-vox matrix, consistent with lta_type=0 below.
-    kwargs = dict(dof=ns.dof, device=ns.device, return_v2v=True)
+    kwargs = dict(dof=ns.dof, device=ns.device, return_v2v=True, centroid_init=not ns.noinit)
     if ns.n_iters is not None:
         kwargs["n"] = ns.n_iters
 

@@ -47,6 +47,7 @@ Run `robreg -h` for a full argument summary with defaults.
 |----------|---------|-------------|
 | `--dof {3,6,9,12}` | `6` | Degrees of freedom: 3=translation, 6=rigid, 9=rigid+scale, 12=affine. |
 | `--n_iters N` | auto | Maximum optimisation iterations per pyramid level. |
+| `--noinit` | off | Skip centroid-based initialization and start from identity (like FreeSurfer `--noinit`). |
 | `--device DEVICE` | `cpu` | PyTorch device, e.g. `cpu` or `cuda`. |
 | `--verbose` | off | Enable INFO-level logging. |
 | `--debug` | off | Enable DEBUG-level logging. |
