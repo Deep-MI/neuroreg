@@ -880,7 +880,7 @@ def register_irls_pyramid(
             # T_iso_v2v = Rtrg @ T_orig_v2v @ inv(Rsrc)
             T_iso = Rtrg.double() @ initial_transform.double() @ torch.inverse(Rsrc.double())
         elif centroid_init:
-            from .initialize import get_ixform_centroids
+            from .init import get_ixform_centroids
 
             T_iso = get_ixform_centroids(src_iso.float(), trg_iso.float()).float()
             if verbose:
@@ -905,7 +905,7 @@ def register_irls_pyramid(
         if initial_transform is not None:
             T_iso = initial_transform.float()
         elif centroid_init:
-            from .initialize import get_ixform_centroids
+            from .init import get_ixform_centroids
 
             T_iso = get_ixform_centroids(src.float(), trg.float()).float()
             if verbose:

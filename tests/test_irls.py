@@ -1,10 +1,10 @@
-"""Tests for IRLS rigid registration (nireg.transforms.irls)."""
+"""Tests for IRLS rigid registration (nireg.imreg.irls)."""
 
 import pytest
 import torch
 
-from nireg.transforms.initialize import get_ixform_centroids
-from nireg.transforms.irls import (
+from nireg.imreg.init import get_ixform_centroids
+from nireg.imreg.irls import (
     _choose_pyramid_levels,
     _sqrt_tukey,
     affine_trans_dist,

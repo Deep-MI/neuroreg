@@ -7,8 +7,10 @@ import numpy as np
 import pytest
 import torch
 
+from nireg import register_pyramid as register_pyramid_public, register_sym as register_sym_public
 from nireg.image import build_gaussian_pyramid, get_pyramid_limits
-from nireg.register import register_pyramid, register_pyramid_sym
+from nireg.imreg.robreg import register_pyramid as register_pyramid_robreg
+from nireg.imreg.robreg_gd import register_pyramid, register_pyramid_sym
 
 
 def _make_blob(shape: tuple[int, int, int] = (20, 20, 20), shift: tuple[float, float, float] = (0, 0, 0)) -> np.ndarray:
@@ -28,7 +30,8 @@ def _make_img(
     shift: tuple[float, float, float] = (0, 0, 0),
 ) -> nib.Nifti1Image:
     affine = cast(Any, np.eye(4, dtype=np.float32))
-    return nib.Nifti1Image(_make_blob(shape, shift), affine)
+    data = cast(Any, _make_blob(shape, shift))
+    return nib.Nifti1Image(data, affine)
 
 
 class TestPyramidHelpers:
@@ -70,6 +73,38 @@ class TestRegisterPyramidSynthetic:
         v2v = register_pyramid_sym(img, img, return_v2v=True, dof=6, n=1, device="cpu")
         assert v2v.shape == (4, 4)
         assert torch.isfinite(v2v).all()
+
+
+class TestPublicRobregWrapper:
+    def test_top_level_register_pyramid_uses_public_wrapper(self):
+        img = _make_img()
+        Mr2r = register_pyramid_public(img, img, return_v2v=False, centroid_init=False, dof=6, nmax=1)
+        assert Mr2r.shape == (4, 4)
+        assert torch.isfinite(Mr2r).all()
+
+    def test_top_level_register_sym_uses_public_wrapper(self):
+        img = _make_img()
+        Mr2r = register_sym_public(img, img, return_v2v=False, centroid_init=False, dof=6, nmax=1)
+        assert Mr2r.shape == (4, 4)
+        assert torch.isfinite(Mr2r).all()
+
+    def test_register_pyramid_accepts_nibabel_images(self):
+        img = _make_img()
+        Mr2r = register_pyramid_robreg(img, img, return_v2v=False, centroid_init=False, dof=6, nmax=1)
+        assert Mr2r.shape == (4, 4)
+        assert torch.isfinite(Mr2r).all()
+
+    def test_register_pyramid_accepts_file_paths(self, tmp_path):
+        src = _make_img()
+        trg = _make_img()
+        src_path = tmp_path / "src.nii.gz"
+        trg_path = tmp_path / "trg.nii.gz"
+        nib.save(src, src_path)
+        nib.save(trg, trg_path)
+
+        Mr2r = register_pyramid_robreg(str(src_path), str(trg_path), return_v2v=False, centroid_init=False, dof=6, nmax=1)
+        assert Mr2r.shape == (4, 4)
+        assert torch.isfinite(Mr2r).all()
 
 
 

@@ -5,12 +5,15 @@ Nireg is a tool for the robust registration of 3D neuroimaging data (e.g. MRI).
 It uses PyTorch's automatic differentiation for gradient-based optimisation and
 can run efficiently on a GPU.
 
-Two registration methods are available:
+The main user-facing tools are:
 
-- **`robreg`** – robust image-to-image registration via a Gaussian pyramid
-  (analogous to FreeSurfer's `mri_robust_register`)
+- **`robreg`** – IRLS-based robust image-to-image registration
+  (the current public robust-registration path; analogous to FreeSurfer's `mri_robust_register`)
+- **`robreg_gd`** – legacy gradient-descent image-to-image registration
+  (kept for comparison and experimentation during early development)
 - **`bbreg`** – boundary-based registration using cortical surface meshes
   (analogous to FreeSurfer's `bbregister` / `mri_segreg`)
+- **`lta`** – transform comparison / inversion / concatenation utilities
 
 This project is a work-in-progress in an early development stage.
 
@@ -25,7 +28,12 @@ pip install nireg
 ### `robreg` — image-to-image registration
 
 Registers a moving image to a reference image using a multi-resolution
-Gaussian pyramid with robust cost functions.
+IRLS-based robust registration path with Tukey weighting.
+
+This path is currently intended for **same-contrast or very similar-contrast**
+image pairs. General cross-sequence / cross-modal registration (for example
+plain T2→T1 image-to-image registration without surfaces) is **not** currently
+implemented in `robreg`.
 
 ```
 robreg --mov <moving.nii.gz> --ref <reference.nii.gz> --out <output.lta> [options]
@@ -45,9 +53,45 @@ Run `robreg -h` for a full argument summary with defaults.
 
 | Argument | Default | Description |
 |----------|---------|-------------|
+| `--dof {6}` | `6` | Degrees of freedom. The public `robreg` path is currently rigid-only. |
+| `--nmax N` | `5` | Maximum number of outer IRLS iterations per pyramid level. |
+| `--sat FLOAT` | `6.0` | Tukey biweight saturation threshold. |
+| `--symmetric` | off | Use symmetric halfway-space registration. |
+| `--noinit` | off | Skip centroid-based initialization and start from identity (like FreeSurfer `--noinit`). |
+| `--mapped FILE` | — | Save the warped moving image. |
+| `--outliers FILE` | — | Save an outlier map (`1 - Tukey weights`). |
+| `--verbose` | off | Enable INFO-level logging. |
+| `--debug` | off | Enable DEBUG-level logging. |
+
+**Example**
+
+```bash
+robreg --mov T1_repeat.nii.gz --ref T1_baseline.mgz --out T1_repeat_to_T1_baseline.lta --symmetric --verbose
+```
+
+---
+
+### `robreg_gd` — legacy image-to-image registration
+
+This is the older gradient-descent registration path. It is still available
+for comparison while the package architecture stabilizes, but it is no longer
+the default/public `robreg` implementation.
+
+Like the public `robreg` path, this legacy image-to-image method is currently
+meant for **same-contrast or similar-contrast** registration, not general
+cross-sequence T2→T1 image-only alignment.
+
+```
+robreg_gd --mov <moving.nii.gz> --ref <reference.nii.gz> --out <output.lta> [options]
+```
+
+**Options**
+
+| Argument | Default | Description |
+|----------|---------|-------------|
 | `--dof {3,6,9,12}` | `6` | Degrees of freedom: 3=translation, 6=rigid, 9=rigid+scale, 12=affine. |
 | `--n_iters N` | auto | Maximum optimisation iterations per pyramid level. |
-| `--noinit` | off | Skip centroid-based initialization and start from identity (like FreeSurfer `--noinit`). |
+| `--noinit` | off | Skip centroid-based initialization and start from identity. |
 | `--device DEVICE` | `cpu` | PyTorch device, e.g. `cpu` or `cuda`. |
 | `--verbose` | off | Enable INFO-level logging. |
 | `--debug` | off | Enable DEBUG-level logging. |
@@ -55,7 +99,7 @@ Run `robreg -h` for a full argument summary with defaults.
 **Example**
 
 ```bash
-robreg --mov T2.nii.gz --ref T1.mgz --out T2_to_T1.lta --dof 6 --verbose
+robreg_gd --mov T1_repeat.nii.gz --ref T1_baseline.mgz --out T1_repeat_to_T1_legacy.lta --dof 6 --verbose
 ```
 
 ---
@@ -270,11 +314,27 @@ lta concat moving_to_intermediate.lta intermediate_to_fixed.lta moving_to_fixed.
 ## Python API
 
 ```python
-from nireg import register_pyramid, register_surface
+import nibabel as nib
 
-# Image-to-image registration — pass file paths (or pre-loaded nibabel images).
-# Returns a single vox-to-vox Tensor when return_v2v=True, or RAS-to-RAS by default.
-transform = register_pyramid("T2.nii.gz", "T1.mgz", return_v2v=True, dof=6)
+from nireg import register_pyramid, register_sym, register_surface
+from nireg.imreg.robreg_gd import register_pyramid as register_pyramid_gd
+
+# Public robust image-to-image registration (IRLS-backed).
+# Accepts file paths or pre-loaded nibabel images.
+# Intended for same-/similar-contrast image pairs.
+# Returns vox-to-vox when return_v2v=True, or RAS-to-RAS by default.
+transform = register_pyramid("T1_repeat.nii.gz", "T1_baseline.mgz", return_v2v=True, dof=6)
+
+# The same public robreg path with pre-loaded nibabel images.
+mov_img = nib.load("T1_repeat.nii.gz")
+ref_img = nib.load("T1_baseline.mgz")
+transform_r2r = register_pyramid(mov_img, ref_img, dof=6)
+
+# Symmetric public robreg convenience wrapper.
+transform_sym = register_sym(mov_img, ref_img, dof=6)
+
+# Legacy gradient-descent path (optional / transitional).
+transform_gd = register_pyramid_gd("T1_repeat.nii.gz", "T1_baseline.mgz", return_v2v=True, dof=6)
 
 # Surface-based (BBR) registration — Mode A: subject directory
 transform, model = register_surface(
@@ -306,16 +366,21 @@ transform, model = register_surface(
 
 ## Degrees of freedom
 
-Both `robreg` and `bbreg` support the following `--dof` settings:
+Current DOF support is:
 
-| `--dof` | Transform | Parameters |
-|---------|-----------|------------|
-| `3` | Translation only | 3 |
-| `6` | Rigid (translation + rotation) | 6 |
-| `9` | Rigid + isotropic scaling | 9 |
-| `12` | Fully affine | 12 |
+| Command / API path | Supported DOF |
+|--------------------|---------------|
+| `robreg` / public `register_pyramid()` | `6` only |
+| `robreg_gd` / `nireg.imreg.robreg_gd.register_pyramid()` | `3`, `6`, `9`, `12` |
+| `bbreg` | `6`, `9`, `12` |
 
-*Note: `--dof 3` is only available for `robreg`.*
+The public `robreg` path is intentionally rigid-only for now because it tracks
+the current IRLS implementation.
+
+Also note that the current image-based `robreg` / `robreg_gd` costs are aimed
+at same-/similar-contrast registration. For cross-sequence alignment such as
+T2→T1, the currently supported option is `bbreg` when a segmentation or
+surfaces are available.
 
 ## API Documentation
 

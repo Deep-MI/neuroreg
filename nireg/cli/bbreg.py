@@ -158,7 +158,7 @@ def _validate_args(ns: argparse.Namespace, parser: argparse.ArgumentParser) -> s
 
 def main(args=None) -> None:
     """Entry point for the ``bbreg`` command."""
-    from nireg import register_surface
+    from nireg.bbreg.register import register_surface
 
     parser = _build_parser()
     ns = parser.parse_args(args)

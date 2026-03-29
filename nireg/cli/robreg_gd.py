@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
-"""Command-line interface for robust image-to-image registration (robreg)."""
+"""Command-line interface for legacy gradient-descent image registration (robreg_gd)."""
 
 import argparse
 import logging
 import sys
+from typing import Any, cast
 
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="robreg",
+        prog="robreg_gd",
         description=(
-            "Robust 3-D image-to-image registration using PyTorch optimisation.\n"
-            "Analogous to FreeSurfer's mri_robust_register."
+            "Legacy gradient-descent 3-D image-to-image registration using PyTorch optimisation.\n"
+            "This is the pre-IRLS robreg path."
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -54,10 +55,10 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main(args=None) -> None:
-    """Entry point for the ``robreg`` command."""
+    """Entry point for the ``robreg_gd`` command."""
     import nibabel as nib
 
-    from nireg import register_pyramid
+    from nireg.imreg.robreg_gd import register_pyramid
     from nireg.transforms import LTA
 
     parser = _build_parser()
@@ -66,7 +67,7 @@ def main(args=None) -> None:
     # ── logging ─────────────────────────────────────────────────────────────
     level = logging.DEBUG if ns.debug else (logging.INFO if ns.verbose else logging.WARNING)
     logging.basicConfig(level=level, format="%(levelname)s %(name)s: %(message)s")
-    logger = logging.getLogger("nireg.cli.robreg")
+    logger = logging.getLogger("nireg.cli.robreg_gd")
 
     # ── load images (needed for LTA.write geometry metadata) ────────────────
     logger.info("Loading moving image:    %s", ns.mov)
@@ -78,6 +79,9 @@ def main(args=None) -> None:
         print(f"ERROR loading image: {exc}", file=sys.stderr)
         sys.exit(1)
 
+    mov_img = cast(Any, mov_img)
+    ref_img = cast(Any, ref_img)
+
     # ── register ────────────────────────────────────────────────────────────
     # Pass paths so register_pyramid handles loading internally.
     # return_v2v=True → vox-to-vox matrix, consistent with lta_type=0 below.
@@ -86,13 +90,13 @@ def main(args=None) -> None:
         kwargs["n"] = ns.n_iters
 
     logger.info("Starting image-to-image registration (dof=%d) …", ns.dof)
-    v2v = register_pyramid(ns.mov, ns.ref, **kwargs)
+    v2v = register_pyramid(mov_img, ref_img, **kwargs)
 
     # ── write LTA ───────────────────────────────────────────────────────────
     # lta_type=0 (LINEAR_VOX_TO_VOX) matches the vox-to-vox matrix returned
     # by register_pyramid(..., return_v2v=True).
     # LTA.from_matrix() constructs the LTA object; .write() serialises it to disk.
-    LTA.from_matrix(v2v.numpy(), ns.mov, mov_img, ns.ref, ref_img, lta_type=0).write(ns.out)
+    LTA.from_matrix(v2v.numpy(), ns.mov, cast(Any, mov_img), ns.ref, cast(Any, ref_img), lta_type=0).write(ns.out)
     logger.info("Wrote LTA: %s", ns.out)
     print(f"Output: {ns.out}")
 

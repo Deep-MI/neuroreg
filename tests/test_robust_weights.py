@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from nireg.nn.robust import compute_mad, compute_scale_estimate, huber_weights, tukey_weights
+from nireg.imreg.robust import compute_mad, compute_scale_estimate, huber_weights, tukey_weights
 
 
 class TestTukeyWeights:

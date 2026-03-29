@@ -1,13 +1,14 @@
-"""Command-line interface for IRLS robust registration (robreg_irls)."""
+"""Command-line interface for IRLS-backed robust registration (robreg)."""
 
 import argparse
 import logging
 import sys
+from typing import Any, cast
 
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="robreg_irls",
+        prog="robreg",
         description=(
             "IRLS robust 3-D image-to-image registration.\n"
             "Uses Iteratively Reweighted Least Squares with Tukey biweights,\n"
@@ -29,9 +30,9 @@ def _build_parser() -> argparse.ArgumentParser:
         "--dof",
         type=int,
         default=6,
-        choices=[6, 12],
-        metavar="{6,12}",
-        help="Degrees of freedom: 6=rigid, 12=affine (IRLS currently supports 6 only).",
+        choices=[6],
+        metavar="{6}",
+        help="Degrees of freedom: 6=rigid. IRLS robreg currently supports rigid registration only.",
     )
 
     # ── IRLS parameters ─────────────────────────────────────────────────────
@@ -85,12 +86,11 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main(args=None) -> None:
-    """Entry point for the ``robreg_irls`` command."""
+    """Entry point for the ``robreg`` command."""
     import nibabel as nib
-    import torch
 
     from nireg.transforms import LTA
-    from nireg.transforms.irls import register_irls_pyramid
+    from nireg.imreg.robreg import register_pyramid
 
     parser = _build_parser()
     ns = parser.parse_args(args)
@@ -98,7 +98,7 @@ def main(args=None) -> None:
     # ── logging ─────────────────────────────────────────────────────────────
     level = logging.DEBUG if ns.debug else (logging.INFO if ns.verbose else logging.WARNING)
     logging.basicConfig(level=level, format="%(levelname)s %(name)s: %(message)s")
-    logger = logging.getLogger("nireg.cli.robreg_irls")
+    logger = logging.getLogger("nireg.cli.robreg")
 
     # ── load images ─────────────────────────────────────────────────────────
     logger.info("Loading moving image:    %s", ns.mov)
@@ -110,33 +110,24 @@ def main(args=None) -> None:
         print(f"ERROR loading image: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    # Convert to tensors
-    mov_data = torch.from_numpy(mov_img.get_fdata()).float()
-    ref_data = torch.from_numpy(ref_img.get_fdata()).float()
-    mov_affine = torch.from_numpy(mov_img.affine).float()
-    ref_affine = torch.from_numpy(ref_img.affine).float()
+    mov_img = cast(Any, mov_img)
+    ref_img = cast(Any, ref_img)
 
     # ── register ────────────────────────────────────────────────────────────
-    logger.info("Starting IRLS registration (dof=%d, symmetric=%s) …", 
-                ns.dof, ns.symmetric)
-    
-    T_v2v, all_info = register_irls_pyramid(
-        src=mov_data,
-        trg=ref_data,
-        src_affine=mov_affine,
-        trg_affine=ref_affine,
+    logger.info("Starting IRLS registration (dof=%d, symmetric=%s) …", ns.dof, ns.symmetric)
+    Mr2r = register_pyramid(
+        mov_img,
+        ref_img,
+        return_v2v=False,
+        centroid_init=not ns.noinit,
+        dof=ns.dof,
         nmax=ns.nmax,
         sat=ns.sat,
         symmetric=ns.symmetric,
-        centroid_init=not ns.noinit,
         isotropic=True,
-        outliers_name=ns.outliers,  # Pass outliers filename
+        outliers_name=ns.outliers,
         verbose=ns.verbose or ns.debug,
     )
-
-    # ── convert to r2r ──────────────────────────────────────────────────────
-    # Convert v2v to r2r for LTA
-    Mr2r = ref_affine.double() @ T_v2v.double() @ torch.inverse(mov_affine.double())
 
     # ── write LTA ───────────────────────────────────────────────────────────
     LTA.from_matrix(
@@ -150,14 +141,22 @@ def main(args=None) -> None:
 
     # ── write mapped image if requested ─────────────────────────────────────
     if ns.mapped:
+        import torch
+
         from nireg.image.map import map_r2r
-        
+
+        mov_data = torch.from_numpy(mov_img.get_fdata()).float()
+        mov_affine = torch.from_numpy(mov_img.affine).float()
+        ref_affine = torch.from_numpy(ref_img.affine).float()
+
+        target_shape = cast(tuple[int, int, int], tuple(int(v) for v in ref_img.shape[:3]))
+
         mapped_data = map_r2r(
             mov_data,
             Mr2r.float(),
             source_affine=mov_affine,
             target_affine=ref_affine,
-            target_shape=tuple(ref_img.shape[:3]),
+            target_shape=target_shape,
             mode='bilinear'
         ).detach().numpy()
         

@@ -2,7 +2,7 @@
 
 This module converts a FreeSurfer-style parcellation (``aseg``, ``aparc+aseg``,
 or equivalent) into white-matter surfaces suitable for use with
-:func:`nireg.register.register_surface` / the ``bbreg`` CLI.
+:func:`nireg.bbreg.register.register_surface` / the ``bbreg`` CLI.
 
 The workflow is entirely CPU-based (numpy + scipy + scikit-image) and does
 **not** require PyTorch or a GPU.
@@ -17,10 +17,10 @@ Typical pipeline
    faces as numpy arrays.
 3. :func:`surfaces_from_segmentation` — convenience wrapper that runs steps 1
    and 2 for both hemispheres and returns data dicts compatible with
-   :func:`nireg.register.register_surface`.
+   :func:`nireg.bbreg.register.register_surface`.
 
 When surfaces are derived from a segmentation no thickness file is available.
-The callers should pass ``thickness=None``; :class:`~nireg.surface.optimize.BBRModel`
+The callers should pass ``thickness=None``; :class:`~nireg.bbreg.optimize.BBRModel`
 will then fall back to projecting a fixed distance outside the white surface.
 """
 
@@ -28,13 +28,14 @@ from __future__ import annotations
 
 import logging
 import os
+from typing import Any
 from typing import TYPE_CHECKING
 
 import nibabel as nib
 import numpy as np
 from scipy.ndimage import uniform_filter
 
-from nireg.surface.io import get_vox2ras_tkr
+from nireg.bbreg.io import get_vox2ras_tkr
 
 if TYPE_CHECKING:
     import numpy.typing as npt
@@ -145,7 +146,7 @@ def _hemi_masks(
 
 
 def simplify_segmentation(
-    seg_input: str | os.PathLike | nib.filebasedimages.FileBasedImage,
+    seg_input: str | os.PathLike | Any,
     output_path: str | os.PathLike | None = None,
 ) -> np.ndarray:
     """Reduce a detailed parcellation to a 4-class WM/GM segmentation.
@@ -294,7 +295,7 @@ def simplify_segmentation(
 def extract_wm_surface(
     seg_data: np.ndarray,
     wm_label: int,
-    seg_header: nib.filebasedimages.FileBasedHeader,
+    seg_header: Any,
     smooth_sigma: float = 0.5,
     marching_cubes_level: float = 0.45,
     smooth_iterations: int = 50,
@@ -453,7 +454,7 @@ def extract_wm_surface(
 
 
 def surfaces_from_segmentation(
-    seg_path: str | os.PathLike | nib.filebasedimages.FileBasedImage,
+    seg_path: str | os.PathLike | Any,
     *,
     hemispheres: tuple[str, ...] = ("lh", "rh"),
     smooth_sigma: float = 0.5,
@@ -466,8 +467,8 @@ def surfaces_from_segmentation(
     Convenience wrapper that calls :func:`simplify_segmentation` followed by
     :func:`extract_wm_surface` for each requested hemisphere and returns
     data dicts in the same format that
-    :func:`nireg.surface.io.load_surface_from_subject` produces, so they can
-    be passed directly to :func:`nireg.register.register_surface`.
+    :func:`nireg.bbreg.io.load_surface_from_subject` produces, so they can
+    be passed directly to :func:`nireg.bbreg.register.register_surface`.
 
     Because no thickness file is available the ``'thickness'`` key is set to
     ``None``; ``BBRModel`` will then use a fixed outward projection distance
@@ -599,7 +600,7 @@ def _compute_cortex_mask_8neighbors(
 
 def compute_cortex_mask(
     vertices_tkras: npt.NDArray[np.floating],
-    seg_input: str | os.PathLike | nib.filebasedimages.FileBasedImage,
+    seg_input: str | os.PathLike | Any,
     hemi: str,
 ) -> npt.NDArray[np.bool_]:
     """Compute a cortex mask for an existing surface by sampling a segmentation.

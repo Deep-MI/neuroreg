@@ -1,11 +1,12 @@
 from pathlib import Path
+from typing import Any, cast
 
 import nibabel as nib
 import pytest
 import torch
 
-from nireg.cmdline.robreg import main as robreg_main
-from nireg.cmdline.robreg_irls import main as robreg_irls_main
+from nireg.cli.robreg import main as robreg_main
+from nireg.cli.robreg_gd import main as robreg_gd_main
 
 
 def _write_zero_image(path: Path) -> None:
@@ -13,7 +14,7 @@ def _write_zero_image(path: Path) -> None:
     nib.save(nib.Nifti1Image(data, affine=torch.eye(4).numpy()), path)
 
 
-class TestRobregIrlsCli:
+class TestRobregCli:
     def test_main_forwards_noinit(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         mov_path = tmp_path / "mov.nii.gz"
         ref_path = tmp_path / "ref.nii.gz"
@@ -24,21 +25,22 @@ class TestRobregIrlsCli:
 
         captured: dict[str, object] = {}
 
-        def fake_register_irls_pyramid(**kwargs):
+        def fake_register_pyramid(*args, **kwargs):
+            captured["args"] = args
             captured.update(kwargs)
-            return torch.eye(4), []
+            return torch.eye(4)
 
         class _DummyLTA:
             def write(self, path):
                 Path(path).write_text("dummy")
 
-        monkeypatch.setattr("nireg.transforms.irls.register_irls_pyramid", fake_register_irls_pyramid)
+        monkeypatch.setattr("nireg.imreg.robreg.register_pyramid", fake_register_pyramid)
         monkeypatch.setattr(
             "nireg.transforms.LTA.from_matrix",
             lambda *args, **kwargs: _DummyLTA(),
         )
 
-        robreg_irls_main([
+        robreg_main([
             "--mov", str(mov_path),
             "--ref", str(ref_path),
             "--out", str(out_path),
@@ -46,10 +48,30 @@ class TestRobregIrlsCli:
         ])
 
         assert captured["centroid_init"] is False
+        args = cast(tuple[Any, Any], captured["args"])
+        assert len(args) == 2
+        assert hasattr(args[0], "get_fdata") and hasattr(args[0], "affine")
+        assert hasattr(args[1], "get_fdata") and hasattr(args[1], "affine")
         assert out_path.exists()
 
+    def test_parser_rejects_non_rigid_dof(self, tmp_path: Path):
+        mov_path = tmp_path / "mov.nii.gz"
+        ref_path = tmp_path / "ref.nii.gz"
+        out_path = tmp_path / "out.lta"
 
-class TestRobregCli:
+        _write_zero_image(mov_path)
+        _write_zero_image(ref_path)
+
+        with pytest.raises(SystemExit):
+            robreg_main([
+                "--mov", str(mov_path),
+                "--ref", str(ref_path),
+                "--out", str(out_path),
+                "--dof", "12",
+            ])
+
+
+class TestRobregGdCli:
 
     def test_main_forwards_noinit(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         mov_path = tmp_path / "mov.nii.gz"
@@ -72,13 +94,13 @@ class TestRobregCli:
             def write(self, path):
                 Path(path).write_text("dummy")
 
-        monkeypatch.setattr("nireg.register_pyramid", fake_register_pyramid)
+        monkeypatch.setattr("nireg.imreg.robreg_gd.register_pyramid", fake_register_pyramid)
         monkeypatch.setattr(
             "nireg.transforms.LTA.from_matrix",
             lambda *args, **kwargs: _DummyLTA(),
         )
 
-        robreg_main([
+        robreg_gd_main([
             "--mov", str(mov_path),
             "--ref", str(ref_path),
             "--out", str(out_path),
@@ -86,6 +108,9 @@ class TestRobregCli:
         ])
 
         assert captured_args is not None
+        assert len(captured_args) == 2
+        assert hasattr(captured_args[0], "get_fdata") and hasattr(captured_args[0], "affine")
+        assert hasattr(captured_args[1], "get_fdata") and hasattr(captured_args[1], "affine")
         assert captured_kwargs["centroid_init"] is False
         assert out_path.exists()
 

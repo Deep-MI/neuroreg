@@ -1,6 +1,6 @@
-"""Transform utilities: matrices, LTA file I/O, initialisation."""
+"""Transform utilities: matrices, LTA file I/O, and transform metrics."""
 
-from .initialize import get_ixform_centroids, get_vox2vox_from_header
+from ..imreg.init import get_ixform_centroids, get_vox2vox_from_header
 from .lta import (
     LTA,
     affine_dist,

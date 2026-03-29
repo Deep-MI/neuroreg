@@ -88,11 +88,11 @@ source = 'https://github.com/Deep-MI/nireg'
 tracker = 'https://github.com/Deep-MI/nireg/issues'
 
 [project.scripts]
-robreg          = "nireg.cmdline.robreg:main"
-robreg_irls     = "nireg.cmdline.robreg_irls:main"
-bbreg           = "nireg.cmdline.bbreg:main"
-lta             = "nireg.cmdline.lta:main"
-nireg-sys_info  = "nireg.cmdline.sys_info:run"
+robreg          = "nireg.cli.robreg:main"
+robreg_gd       = "nireg.cli.robreg_gd:main"
+bbreg           = "nireg.cli.bbreg:main"
+lta             = "nireg.cli.lta:main"
+nireg-sys_info  = "nireg.cli.sys_info:run"
 
 [tool.setuptools]
 include-package-data = false
@@ -149,7 +149,7 @@ cover_pylib = false
 omit = [
     '**/__init__.py',
     '**/nireg/_version.py',
-    '**/nireg/cmdline/*',
+    '**/nireg/cli/*',
     '**/tests/**',
 ]
 
