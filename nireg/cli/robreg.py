@@ -51,9 +51,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Tukey biweight saturation threshold (higher = less robust).",
     )
     p.add_argument(
-        "--symmetric",
-        action="store_true",
-        help="Use symmetric (halfway-space) registration (matches FreeSurfer default).",
+        "--nosym",
+        dest="symmetric",
+        action="store_false",
+        default=argparse.SUPPRESS,
+        help="Disable symmetric halfway-space registration and run directed registration.",
     )
     p.add_argument(
         "--noinit",
@@ -89,11 +91,12 @@ def main(args=None) -> None:
     """Entry point for the ``robreg`` command."""
     import nibabel as nib
 
-    from nireg.transforms import LTA
     from nireg.imreg.robreg import register_pyramid
+    from nireg.transforms import LTA
 
     parser = _build_parser()
     ns = parser.parse_args(args)
+    ns.symmetric = getattr(ns, "symmetric", True)
 
     # ── logging ─────────────────────────────────────────────────────────────
     level = logging.DEBUG if ns.debug else (logging.INFO if ns.verbose else logging.WARNING)

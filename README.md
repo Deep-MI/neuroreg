@@ -56,7 +56,7 @@ Run `robreg -h` for a full argument summary with defaults.
 | `--dof {6}` | `6` | Degrees of freedom. The public `robreg` path is currently rigid-only. |
 | `--nmax N` | `5` | Maximum number of outer IRLS iterations per pyramid level. |
 | `--sat FLOAT` | `6.0` | Tukey biweight saturation threshold. |
-| `--symmetric` | off | Use symmetric halfway-space registration. |
+| `--nosym` | off | Disable symmetric halfway-space registration and run directed registration. Symmetric registration is the default. |
 | `--noinit` | off | Skip centroid-based initialization and start from identity (like FreeSurfer `--noinit`). |
 | `--mapped FILE` | — | Save the warped moving image. |
 | `--outliers FILE` | — | Save an outlier map (`1 - Tukey weights`). |
@@ -66,7 +66,7 @@ Run `robreg -h` for a full argument summary with defaults.
 **Example**
 
 ```bash
-robreg --mov T1_repeat.nii.gz --ref T1_baseline.mgz --out T1_repeat_to_T1_baseline.lta --symmetric --verbose
+robreg --mov T1_repeat.nii.gz --ref T1_baseline.mgz --out T1_repeat_to_T1_baseline.lta --verbose
 ```
 
 ---
@@ -316,12 +316,13 @@ lta concat moving_to_intermediate.lta intermediate_to_fixed.lta moving_to_fixed.
 ```python
 import nibabel as nib
 
-from nireg import register_pyramid, register_sym, register_surface
+from nireg import register_pyramid, register_surface
 from nireg.imreg.robreg_gd import register_pyramid as register_pyramid_gd
 
 # Public robust image-to-image registration (IRLS-backed).
 # Accepts file paths or pre-loaded nibabel images.
 # Intended for same-/similar-contrast image pairs.
+# Symmetric halfway-space registration is the default.
 # Returns vox-to-vox when return_v2v=True, or RAS-to-RAS by default.
 transform = register_pyramid("T1_repeat.nii.gz", "T1_baseline.mgz", return_v2v=True, dof=6)
 
@@ -330,8 +331,8 @@ mov_img = nib.load("T1_repeat.nii.gz")
 ref_img = nib.load("T1_baseline.mgz")
 transform_r2r = register_pyramid(mov_img, ref_img, dof=6)
 
-# Symmetric public robreg convenience wrapper.
-transform_sym = register_sym(mov_img, ref_img, dof=6)
+# Explicitly switch off symmetry if you want directed registration.
+transform_directed = register_pyramid(mov_img, ref_img, dof=6, symmetric=False)
 
 # Legacy gradient-descent path (optional / transitional).
 transform_gd = register_pyramid_gd("T1_repeat.nii.gz", "T1_baseline.mgz", return_v2v=True, dof=6)

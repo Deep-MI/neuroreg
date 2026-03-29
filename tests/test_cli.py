@@ -15,7 +15,7 @@ def _write_zero_image(path: Path) -> None:
 
 
 class TestRobregCli:
-    def test_main_forwards_noinit(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    def test_main_forwards_noinit_and_symmetric_default(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         mov_path = tmp_path / "mov.nii.gz"
         ref_path = tmp_path / "ref.nii.gz"
         out_path = tmp_path / "out.lta"
@@ -48,10 +48,46 @@ class TestRobregCli:
         ])
 
         assert captured["centroid_init"] is False
+        assert captured["symmetric"] is True
         args = cast(tuple[Any, Any], captured["args"])
         assert len(args) == 2
         assert hasattr(args[0], "get_fdata") and hasattr(args[0], "affine")
         assert hasattr(args[1], "get_fdata") and hasattr(args[1], "affine")
+        assert out_path.exists()
+
+    def test_main_forwards_nosym_flag(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        mov_path = tmp_path / "mov.nii.gz"
+        ref_path = tmp_path / "ref.nii.gz"
+        out_path = tmp_path / "out.lta"
+
+        _write_zero_image(mov_path)
+        _write_zero_image(ref_path)
+
+        captured: dict[str, object] = {}
+
+        def fake_register_pyramid(*args, **kwargs):
+            captured["args"] = args
+            captured.update(kwargs)
+            return torch.eye(4)
+
+        class _DummyLTA:
+            def write(self, path):
+                Path(path).write_text("dummy")
+
+        monkeypatch.setattr("nireg.imreg.robreg.register_pyramid", fake_register_pyramid)
+        monkeypatch.setattr(
+            "nireg.transforms.LTA.from_matrix",
+            lambda *args, **kwargs: _DummyLTA(),
+        )
+
+        robreg_main([
+            "--mov", str(mov_path),
+            "--ref", str(ref_path),
+            "--out", str(out_path),
+            "--nosym",
+        ])
+
+        assert captured["symmetric"] is False
         assert out_path.exists()
 
     def test_parser_rejects_non_rigid_dof(self, tmp_path: Path):

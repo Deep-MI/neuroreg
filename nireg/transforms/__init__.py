@@ -1,18 +1,9 @@
 """Transform utilities: matrices, LTA file I/O, and transform metrics."""
 
-from ..imreg.init import get_ixform_centroids, get_vox2vox_from_header
-from .lta import (
-    LTA,
-    affine_dist,
-    corner_dist,
-    decompose_transform,
-    rigid_dist,
-    sphere_dist,
-)
+from .lta import LTA
 from .matrices import (
     LINEAR_RAS_TO_RAS,
     LINEAR_VOX_TO_VOX,
-    compute_sqrtm,
     convert_r2r_to_torch,
     convert_torch_to_v2v,
     convert_transform_type,
@@ -23,7 +14,15 @@ from .matrices import (
     get_scaling,
     get_translation,
     matrix_sqrt_schur,
+    params_to_rigid_matrix,
     rotation_error,
+)
+from .metrics import (
+    affine_dist,
+    corner_dist,
+    decompose_transform,
+    rigid_dist,
+    sphere_dist,
 )
 from .weighted_rigid import (
     sample_weighted_voxel_grid,
@@ -31,9 +30,6 @@ from .weighted_rigid import (
 )
 
 __all__ = [
-    # initialize
-    "get_ixform_centroids",
-    "get_vox2vox_from_header",
     # lta
     "LTA",
     "affine_dist",
@@ -44,7 +40,6 @@ __all__ = [
     # matrices
     "LINEAR_RAS_TO_RAS",
     "LINEAR_VOX_TO_VOX",
-    "compute_sqrtm",
     "convert_r2r_to_torch",
     "convert_torch_to_v2v",
     "convert_transform_type",
@@ -55,6 +50,7 @@ __all__ = [
     "get_scaling",
     "get_translation",
     "matrix_sqrt_schur",
+    "params_to_rigid_matrix",
     "rotation_error",
     # weighted_rigid
     "solve_weighted_rigid_gpu",

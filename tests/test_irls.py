@@ -7,14 +7,13 @@ from nireg.imreg.init import get_ixform_centroids
 from nireg.imreg.irls import (
     _choose_pyramid_levels,
     _sqrt_tukey,
-    affine_trans_dist,
     compute_partials,
     construct_Ab,
     irls_inner_loop,
-    params_to_rigid_matrix,
     register_irls,
-    register_irls_pyramid,
 )
+from nireg.imreg.robreg import register_irls_pyramid
+from nireg.transforms import affine_dist, params_to_rigid_matrix
 
 # ---------------------------------------------------------------------------
 # _sqrt_tukey
@@ -45,26 +44,26 @@ class TestSqrtTukey:
 
 
 # ---------------------------------------------------------------------------
-# affine_trans_dist
+# affine_dist
 # ---------------------------------------------------------------------------
 
-class TestAffineTransDist:
+class TestAffineDist:
     def test_identity_to_self_is_zero(self):
         T = torch.eye(4)
-        assert affine_trans_dist(T, T) == pytest.approx(0.0, abs=1e-6)
+        assert affine_dist(T, T) == pytest.approx(0.0, abs=1e-6)
 
     def test_pure_translation(self):
         T1 = torch.eye(4)
         T2 = torch.eye(4)
         T2[0, 3] = 3.0  # 3 mm translation
-        assert affine_trans_dist(T1, T2) == pytest.approx(3.0, rel=1e-4)
+        assert affine_dist(T1, T2) == pytest.approx(3.0, rel=1e-4)
 
     def test_symmetry(self):
         T1 = torch.eye(4)
         T1[0, 3] = 5.0
         T2 = torch.eye(4)
         T2[1, 3] = 3.0
-        assert affine_trans_dist(T1, T2) == pytest.approx(affine_trans_dist(T2, T1), rel=1e-5)
+        assert affine_dist(T1, T2) == pytest.approx(affine_dist(T2, T1), rel=1e-5)
 
 
 # ---------------------------------------------------------------------------
@@ -203,7 +202,7 @@ class TestRegisterIrls:
     def test_identical_images_near_identity(self):
         src, trg = self._make_images()
         T, _ = register_irls(src, trg, nmax=3)
-        assert affine_trans_dist(T, torch.eye(4)) < 1.0
+        assert affine_dist(T, torch.eye(4)) < 1.0
 
     def test_symmetric_mode_runs(self):
         src, trg = self._make_images()

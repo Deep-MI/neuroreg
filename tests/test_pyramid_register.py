@@ -7,10 +7,10 @@ import numpy as np
 import pytest
 import torch
 
-from nireg import register_pyramid as register_pyramid_public, register_sym as register_sym_public
+from nireg import register_pyramid as register_pyramid_public
 from nireg.image import build_gaussian_pyramid, get_pyramid_limits
 from nireg.imreg.robreg import register_pyramid as register_pyramid_robreg
-from nireg.imreg.robreg_gd import register_pyramid, register_pyramid_sym
+from nireg.imreg.robreg_gd import register_level, register_pyramid, register_pyramid_sym
 
 
 def _make_blob(shape: tuple[int, int, int] = (20, 20, 20), shift: tuple[float, float, float] = (0, 0, 0)) -> np.ndarray:
@@ -54,6 +54,13 @@ class TestPyramidHelpers:
 
 
 class TestRegisterPyramidSynthetic:
+    def test_register_level_returns_v2v_on_identical_images(self):
+        img = torch.from_numpy(_make_blob())
+        v2v, losses, _model = register_level(img, img, dof=3, centroid_init=False, n=1, device="cpu")
+        assert v2v.shape == (4, 4)
+        assert torch.isfinite(v2v).all()
+        assert isinstance(losses, list)
+
     def test_register_pyramid_returns_v2v_on_identical_images(self):
         img = _make_img()
         v2v = register_pyramid(img, img, return_v2v=True, centroid_init=False, dof=3, n=1, device="cpu")
@@ -76,15 +83,41 @@ class TestRegisterPyramidSynthetic:
 
 
 class TestPublicRobregWrapper:
+    def test_top_level_register_pyramid_defaults_to_symmetric(self, monkeypatch: pytest.MonkeyPatch):
+        captured: dict[str, object] = {}
+
+        def fake_register_irls_pyramid(**kwargs):
+            captured.update(kwargs)
+            return torch.eye(4), []
+
+        monkeypatch.setattr("nireg.imreg.robreg.register_irls_pyramid", fake_register_irls_pyramid)
+
+        img = _make_img()
+        Mr2r = register_pyramid_public(img, img, return_v2v=False, centroid_init=False, dof=6, nmax=1)
+
+        assert captured["symmetric"] is True
+        assert Mr2r.shape == (4, 4)
+        assert torch.isfinite(Mr2r).all()
+
     def test_top_level_register_pyramid_uses_public_wrapper(self):
         img = _make_img()
         Mr2r = register_pyramid_public(img, img, return_v2v=False, centroid_init=False, dof=6, nmax=1)
         assert Mr2r.shape == (4, 4)
         assert torch.isfinite(Mr2r).all()
 
-    def test_top_level_register_sym_uses_public_wrapper(self):
+    def test_top_level_register_pyramid_can_disable_symmetric_mode(self, monkeypatch: pytest.MonkeyPatch):
+        captured: dict[str, object] = {}
+
+        def fake_register_irls_pyramid(**kwargs):
+            captured.update(kwargs)
+            return torch.eye(4), []
+
+        monkeypatch.setattr("nireg.imreg.robreg.register_irls_pyramid", fake_register_irls_pyramid)
+
         img = _make_img()
-        Mr2r = register_sym_public(img, img, return_v2v=False, centroid_init=False, dof=6, nmax=1)
+        Mr2r = register_pyramid_public(img, img, return_v2v=False, centroid_init=False, dof=6, nmax=1, symmetric=False)
+
+        assert captured["symmetric"] is False
         assert Mr2r.shape == (4, 4)
         assert torch.isfinite(Mr2r).all()
 
@@ -102,7 +135,14 @@ class TestPublicRobregWrapper:
         nib.save(src, src_path)
         nib.save(trg, trg_path)
 
-        Mr2r = register_pyramid_robreg(str(src_path), str(trg_path), return_v2v=False, centroid_init=False, dof=6, nmax=1)
+        Mr2r = register_pyramid_robreg(
+            str(src_path),
+            str(trg_path),
+            return_v2v=False,
+            centroid_init=False,
+            dof=6,
+            nmax=1,
+        )
         assert Mr2r.shape == (4, 4)
         assert torch.isfinite(Mr2r).all()
 

@@ -3,7 +3,6 @@
 import numpy as np
 import numpy.typing as npt
 import torch
-from torch import Tensor
 
 
 def _det_mps_compatible(R: torch.Tensor) -> torch.Tensor:
@@ -42,80 +41,6 @@ def _det_mps_compatible(R: torch.Tensor) -> torch.Tensor:
     return det
 
 
-def compute_sqrtm(matrix: Tensor, num_iters: int = 100) -> tuple[Tensor, Tensor]:
-    r"""
-    Compute the square root of a matrix using the Newton-Schulz iterative method.
-
-    This method iteratively approximates the square root of a positive definite matrix.
-    It is based on the source: https://github.com/msubhransu/matrix-sqrt.
-
-    Parameters
-    ----------
-    matrix : Tensor
-        A 2D square tensor (NxN) for which the square root is to be calculated.
-    num_iters : int, optional
-        The number of iterations to perform for the Newton-Schulz method.
-        Defaults to 100. Must be greater than 0.
-
-    Returns
-    -------
-    tuple[Tensor, Tensor]
-        - The square root of the matrix (`s_matrix`) as a 2D tensor.
-        - The approximation error (`error`) as a 1D tensor with a single value.
-
-    Raises
-    ------
-    ValueError
-        If the input tensor `matrix` is not 2D or square.
-        If `num_iters` is less than or equal to 0.
-
-    Example
-    -------
-    >>> matrix = torch.tensor([[4.0, 1.0], [1.0, 3.0]])
-    >>> sqrt_matrix, error = compute_sqrtm(matrix, num_iters=50)
-    >>> print(sqrt_matrix)  # Approximated square root of the matrix
-    tensor([[1.9799, 0.3033],
-            [0.3033, 1.6593]])
-    >>> print(error)  # Approximation error
-    tensor([0.0000])
-
-    Notes
-    -----
-    - This function is designed for positive definite matrices and may not work for
-      non-positive definite matrices.
-    - The algorithm stops early if the approximation error is below a threshold of 1e-5.
-    """
-    # Validate input dimensions
-    expected_num_dims = 2
-    if matrix.dim() != expected_num_dims:
-        raise ValueError(f"Input dimension equals {matrix.dim()}, expected {expected_num_dims}")
-    if num_iters <= 0:
-        raise ValueError(f"Number of iterations equals {num_iters}, expected greater than 0")
-    # Get matrix dimension
-    dim = matrix.size(0)
-    # Compute initial normalization
-    norm_of_matrix = matrix.norm(p="fro")
-    Y = matrix.div(norm_of_matrix)  # Initial normalization
-    Id = torch.eye(dim, dim, requires_grad=False).to(matrix)  # Identity matrix
-    Z = torch.eye(dim, dim, requires_grad=False).to(matrix)  # Initialize Z
-    # Initialize placeholders
-    s_matrix = torch.empty_like(matrix)
-    error = torch.empty(1).to(matrix)
-    # Iterate using Newton-Schulz method
-    for _ in range(num_iters):
-        T = 0.5 * (3.0 * Id - Z.mm(Y))  # Compute transformation matrix
-        Y = Y.mm(T)  # Update Y
-        Z = T.mm(Z)  # Update Z
-        # Approximate the square root of the matrix
-        s_matrix = Y * torch.sqrt(norm_of_matrix)
-        # Compute the error
-        error = torch.norm(matrix - torch.mm(s_matrix, s_matrix)) / norm_of_matrix
-        # Check for early stopping if error is close to zero
-        if torch.isclose(error, torch.tensor([0.0]).to(error), atol=1e-5):
-            break
-    return s_matrix, error
-
-
 def matrix_sqrt_schur(M: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
     """Principal square root of a 4×4 matrix via Schur decomposition.
 
@@ -124,9 +49,8 @@ def matrix_sqrt_schur(M: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
     the negative real axis — in particular for rigid and affine transforms
     whose rotation eigenvalues lie on the unit circle.
 
-    The Newton-Schulz method used in :func:`compute_sqrtm` requires positive
-    definiteness and diverges for typical rotation matrices; **do not** use
-    that function for transforms.
+    Iterative square-root methods designed for positive-definite matrices can
+    diverge for typical rotation matrices; **do not** use them for transforms.
 
     Parameters
     ----------
@@ -156,7 +80,7 @@ def matrix_sqrt_schur(M: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
     M_np = M.detach().double().cpu().numpy()
     mh_np = scipy_sqrtm(M_np)
     # scipy may return a complex array with tiny imaginary residuals — take real part
-    mh_np = mh_np.real
+    mh_np = np.real(mh_np)
     mh = torch.from_numpy(mh_np).to(dtype=M.dtype, device=M.device)
     mi = torch.inverse(M.double().to(device=M.device))
     mhi = (mh.double() @ mi).to(dtype=M.dtype)
@@ -182,29 +106,40 @@ def get_translation(translation: torch.Tensor) -> torch.Tensor:
 
 
 def get_rotation_rodrigues(rotvec: torch.Tensor) -> torch.Tensor:
-    """Generate a 4 × 4 rotation matrix from a Rodrigues vector.
+    """Generate a 4 × 4 homogeneous rotation matrix from a Rodrigues vector.
 
     Parameters
     ----------
     rotvec : torch.Tensor, shape (3,)
-        Rotation vector whose magnitude is the rotation angle (radians).
+        Rotation vector whose direction is the rotation axis and whose
+        magnitude is the rotation angle in radians.
 
     Returns
     -------
     torch.Tensor, shape (4, 4)
-        Rotation matrix.
+        Homogeneous rotation matrix. The computation uses standard
+        differentiable torch operations and remains compatible with autograd on
+        CPU and GPU devices.
     """
-    angle = torch.norm(rotvec)
-    zero = torch.zeros(1, dtype=rotvec.dtype, device=rotvec.device).squeeze()
-    cross_mat = torch.stack(
-        [zero, -rotvec[2], rotvec[1], rotvec[2], zero, -rotvec[0], -rotvec[1], rotvec[0], zero], dim=-1
-    ).view((3, 3))
-    angle2 = angle * angle
-    if angle2 == 0:
-        angle2 = 1
-    rmat = (torch.eye(3, dtype=rotvec.dtype, device=rotvec.device) + torch.sinc(angle / torch.pi) * cross_mat) + (
-        (1 - torch.cos(angle)) / angle2
-    ) * (cross_mat @ cross_mat)
+    theta = torch.norm(rotvec)
+    if theta < 1e-10:
+        rmat = torch.eye(3, dtype=rotvec.dtype, device=rotvec.device)
+    else:
+        axis = rotvec / theta
+        cross_mat = torch.zeros(3, 3, dtype=rotvec.dtype, device=rotvec.device)
+        cross_mat[0, 1] = -axis[2]
+        cross_mat[0, 2] = axis[1]
+        cross_mat[1, 0] = axis[2]
+        cross_mat[1, 2] = -axis[0]
+        cross_mat[2, 0] = -axis[1]
+        cross_mat[2, 1] = axis[0]
+        rmat = (
+            torch.eye(3, dtype=rotvec.dtype, device=rotvec.device)
+            + torch.sin(theta) * cross_mat
+            + (1.0 - torch.cos(theta)) * (cross_mat @ cross_mat)
+        )
+
+
     r4x4 = torch.eye(4, dtype=rotvec.dtype, device=rotvec.device)
     r4x4[:3, :3] = rmat
     return r4x4
@@ -237,6 +172,44 @@ def get_rotation_euler(angles: torch.Tensor) -> torch.Tensor:
     r4x4 = torch.eye(4, dtype=angles.dtype, device=angles.device)
     r4x4[:3, :3] = rmat
     return r4x4
+
+
+def params_to_rigid_matrix(params: torch.Tensor) -> torch.Tensor:
+    """Convert 6-DOF rigid parameters to a 4 × 4 matrix in DHW axis order.
+
+    This helper is shared by the IRLS robreg implementation. The parameter
+    vector follows the Jacobian convention used in the FreeSurfer-style linear
+    system:
+
+    * ``params[0]`` ↔ translation along W (image dim 2 / physical x)
+    * ``params[1]`` ↔ translation along H (image dim 1 / physical y)
+    * ``params[2]`` ↔ translation along D (image dim 0 / physical z)
+    * ``params[3:6]`` ↔ Rodrigues rotation vector around W/H/D axes
+
+    The rotation is first constructed in physical XYZ order and then permuted to
+    nibabel's internal DHW indexing convention by swapping axes ``0 ↔ 2``.
+
+    Parameters
+    ----------
+    params : torch.Tensor, shape (6,)
+        Rigid parameter vector ``[tx_W, ty_H, tz_D, rx_W, ry_H, rz_D]``.
+
+    Returns
+    -------
+    torch.Tensor, shape (4, 4)
+        Homogeneous voxel-to-voxel update matrix in DHW axis order.
+    """
+    T = torch.eye(4, dtype=params.dtype, device=params.device)
+
+    R_xyz = get_rotation_rodrigues(params[3:6])[:3, :3]
+    ii = [2, 1, 0]
+    T[:3, :3] = R_xyz[ii][:, ii]
+
+    T[0, 3] = params[2]
+    T[1, 3] = params[1]
+    T[2, 3] = params[0]
+
+    return T
 
 
 def get_scaling(scales: torch.Tensor) -> torch.Tensor:

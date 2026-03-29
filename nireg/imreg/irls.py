@@ -35,6 +35,9 @@ import logging
 import torch
 import torch.nn.functional as F
 
+from ..transforms.matrices import matrix_sqrt_schur, params_to_rigid_matrix
+from ..transforms.metrics import affine_dist
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -407,99 +410,6 @@ def irls_inner_loop(
 
 
 # ---------------------------------------------------------------------------
-# Parameter vector → 4 × 4 matrix  (Rodrigues rotation vector, like
-#   Transform3dRigid::getMatrix via Quaternion::importRotVec)
-# ---------------------------------------------------------------------------
-
-def rotation_vector_to_matrix(rv: torch.Tensor) -> torch.Tensor:
-    """Convert a rotation vector to a 3 3 rotation matrix (Rodrigues).
-
-    Parameters
-    ----------
-    rv : [3]  rotation vector (axis × angle)
-
-    Returns
-    -------
-    R : [3, 3]
-    """
-    theta = torch.norm(rv)
-    if theta < 1e-10:
-        return torch.eye(3, dtype=rv.dtype, device=rv.device)
-    axis = rv / theta
-    K = torch.zeros(3, 3, dtype=rv.dtype, device=rv.device)
-    K[0, 1] = -axis[2]
-    K[0, 2] =  axis[1]
-    K[1, 0] =  axis[2]
-    K[1, 2] = -axis[0]
-    K[2, 0] = -axis[1]
-    K[2, 1] =  axis[0]
-    R = (torch.eye(3, dtype=rv.dtype, device=rv.device)
-         + torch.sin(theta) * K
-         + (1.0 - torch.cos(theta)) * (K @ K))
-    return R
-
-
-def params_to_rigid_matrix(p: torch.Tensor) -> torch.Tensor:
-    """Convert 6-DOF rigid parameter vector to 4×4 homogeneous matrix
-    in **DHW (nibabel) axis order** as expected by :func:`map_image`.
-
-    The IRLS linear system associates:
-
-    * ``p[0]`` ↔ W  (physical x, image dim 2)  –  ``fx``-column
-    * ``p[1]`` ↔ H  (physical y, image dim 1)  –  ``fy``-column
-    * ``p[2]`` ↔ D  (physical z, image dim 0)  –  ``fz``-column
-    * ``p[3]`` ↔ rotation around W axis
-    * ``p[4]`` ↔ rotation around H axis
-    * ``p[5]`` ↔ rotation around D axis
-
-    The rotation matrix is built in physical XYZ order first (using
-    Rodrigues) and then permuted to DHW by swapping axes 0 ↔ 2.
-
-    Parameters
-    ----------
-    p : [6]  [tx_W, ty_H, tz_D, rx_W, ry_H, rz_D]
-
-    Returns
-    -------
-    T : [4, 4]  transform matrix in DHW nibabel axis order
-    """
-    T = torch.eye(4, dtype=p.dtype, device=p.device)
-
-    # Rotation: build in physical XYZ, then permute rows/cols to DHW
-    # XYZ → DHW: swap index 0 (x=W→D) and index 2 (z=D→W), keep 1 (y=H)
-    R_xyz = rotation_vector_to_matrix(p[3:6])
-    ii = [2, 1, 0]
-    T[:3, :3] = R_xyz[ii][:, ii]
-
-    # Translation: p[0]=tx lives in W (dim 2), p[2]=tz lives in D (dim 0)
-    T[0, 3] = p[2]   # D row  ← tz (fz parameter)
-    T[1, 3] = p[1]   # H row  ← ty (fy parameter)
-    T[2, 3] = p[0]   # W row  ← tx (fx parameter)
-
-    return T
-
-
-# ---------------------------------------------------------------------------
-# Convergence metric  (MyMatrix::AffineTransDistSq with r=100)
-# ---------------------------------------------------------------------------
-
-def affine_trans_dist(T_new: torch.Tensor, T_old: torch.Tensor,
-                      r: float = 100.0) -> float:
-    """Affine transformation distance used for convergence.
-
-    ``D² = (1/5) r² · trace(ΔR^T ΔR) + ‖Δt‖²``
-    ``D  = √D²``
-
-    Matches ``MyMatrix::AffineTransDistSq(a, b, r=100)`` followed by sqrt.
-    """
-    dT = T_new.double() - T_old.double()
-    tdq = (dT[:3, 3] ** 2).sum()
-    dR  = dT[:3, :3]
-    tr  = torch.trace(dR.T @ dR)
-    return float(torch.sqrt(tr * r * r / 5.0 + tdq))
-
-
-# ---------------------------------------------------------------------------
 # One full registration step (build Ab + IRLS)
 # ---------------------------------------------------------------------------
 
@@ -597,7 +507,6 @@ def register_irls(
         # Warp images based on mode
         if symmetric:
             # Symmetric mode: compute midspace transforms and warp both images
-            from ..transforms import matrix_sqrt_schur
             mh, mhi = matrix_sqrt_schur(T)
             
             src_warped = map_image(
@@ -685,8 +594,8 @@ def register_irls(
             T_delta = params_to_rigid_matrix(p.float())
             T = T_delta @ T_prev
 
-        # Convergence metric (AffineTransDist)
-        dist = affine_trans_dist(T, T_prev, r=100.0)
+        # Convergence metric (Jenkinson affine RMS distance on successive updates)
+        dist = affine_dist(T, T_prev, radius=100.0)
         info['dists'].append(dist)
         info['iterations'] = i + 1
 
@@ -779,237 +688,4 @@ def _choose_pyramid_levels(
         for lvl in range(len(pyramid) - 1, -1, -1)
         if min(pyramid[lvl].shape) >= min_voxels
     ]
-
-
-# ---------------------------------------------------------------------------
-# Multi-resolution (pyramid) IRLS registration
-# ---------------------------------------------------------------------------
-
-def register_irls_pyramid(
-    src: torch.Tensor,
-    trg: torch.Tensor,
-    src_affine: torch.Tensor | None = None,
-    trg_affine: torch.Tensor | None = None,
-    initial_transform: torch.Tensor | None = None,
-    centroid_init: bool = True,
-    min_voxels: int = 16,
-    max_voxels: int = 64,
-    nmax: int = 5,
-    sat: float = 6.0,
-    epsit: float = 0.01,
-    max_irls: int = 20,
-    isotropic: bool = True,
-    symmetric: bool = False,
-    adaptive_sat: bool = False,
-    target_outlier_pct: float = 5.0,
-    outliers_name: str | None = None,
-    verbose: bool = False,
-) -> tuple[torch.Tensor, list]:
-    """Pyramid IRLS registration (coarse-to-fine).
-
-    Mirrors the multi-resolution loop in ``RegRobust::findSatMultiRes``:
-
-    * Build Gaussian pyramid for both images (coarsest ~ max_voxels)
-    * Register coarse → fine, propagating the transform at each level
-    * Translation is scaled by 2 at each finer step; rotation is unchanged
-
-    Parameters
-    ----------
-    src, trg          : [D, H, W]  full-resolution float32 images
-    src_affine, trg_affine : 4×4 voxel-to-RAS affines (required if isotropic=True)
-    initial_transform : 4×4 initial vox-to-vox. If provided, it takes
-                        precedence over centroid initialization.
-    centroid_init     : if True and ``initial_transform`` is not provided,
-                        use FreeSurfer-style centroid initialization;
-                        if False, start from identity (matches FS ``--noinit``).
-    min_voxels        : minimum side length to use a level (default 16)
-    max_voxels        : start at the level whose max-dim first reaches this
-                        (default 64, matching FreeSurfer)
-    nmax              : max outer IRLS iterations per level (default 5)
-    sat               : Tukey threshold (default 4.685)
-    epsit             : AffineTransDist convergence threshold (default 0.01)
-    max_irls          : max IRLS inner iterations (default 20)
-    isotropic         : if True, resample to isotropic voxels before registration
-                        (default True, matching FreeSurfer)
-    symmetric         : if True, use symmetric (midspace) mode where both images
-                        are warped half-way; if False, use directed mode where
-                        only source is warped to target space (default False)
-    adaptive_sat      : if True, increase sat when outliers exceed target (default True)
-    target_outlier_pct: target outlier percentage (default 5.0%)
-    outliers_name     : str, optional
-                        If provided, save the outlier map (1 - Tukey weights) to this file.
-                        High values indicate poorly registered voxels (outliers), low values
-                        indicate well-registered voxels. Format auto-detected from extension
-                        (.nii, .nii.gz, or .mgz).
-    verbose           : print progress
-
-    Returns
-    -------
-    T        : [4, 4]  final vox-to-vox transform in original voxel space
-    all_info : list of info dicts (one per level, finest last)
-    """
-    # Isotropic resampling: resample both images to cubic voxels using the
-    # finest voxel size, matching FreeSurfer's internal preprocessing.
-    if isotropic:
-        if src_affine is None or trg_affine is None:
-            raise ValueError("src_affine and trg_affine required when isotropic=True")
-        
-        # Compute isotropic voxel size = max of finest resolutions (like register_pyramid)
-        import numpy as np
-        src_zooms = np.linalg.norm(src_affine.numpy()[:3, :3], axis=0)
-        trg_zooms = np.linalg.norm(trg_affine.numpy()[:3, :3], axis=0)
-        isosize = float(max(src_zooms.min(), trg_zooms.min()))
-        
-        if verbose:
-            logger.info("Isotropic resampling: isosize=%.4f mm", isosize)
-        
-        # Resample using the same function as register_pyramid
-        from ..image.map import resample_isotropic_tensor
-        
-        src_iso, src_iso_aff, Rsrc = resample_isotropic_tensor(
-            src, src_affine.numpy(), isosize, mode='bilinear')
-        trg_iso, trg_iso_aff, Rtrg = resample_isotropic_tensor(
-            trg, trg_affine.numpy(), isosize, mode='bilinear')
-        
-        if verbose:
-            logger.info("  Src resampled: %s → %s", src.shape, src_iso.shape)
-            logger.info("  Trg resampled: %s → %s", trg.shape, trg_iso.shape)
-        
-        # Convert or create the initial transform in isotropic space.
-        if initial_transform is not None:
-            # T_iso_v2v = Rtrg @ T_orig_v2v @ inv(Rsrc)
-            T_iso = Rtrg.double() @ initial_transform.double() @ torch.inverse(Rsrc.double())
-        elif centroid_init:
-            from .init import get_ixform_centroids
-
-            T_iso = get_ixform_centroids(src_iso.float(), trg_iso.float()).float()
-            if verbose:
-                t = T_iso[:3, 3].tolist()
-                logger.info(
-                    "Centroid initialization (isotropic space): [%.6f, %.6f, %.6f]",
-                    t[0], t[1], t[2],
-                )
-        else:
-            T_iso = torch.eye(4, dtype=torch.float32)
-            if verbose:
-                logger.info("Centroid initialization disabled; starting from identity in isotropic space")
-        
-        # Register in isotropic space
-        pyramid_src = _build_pyramid(src_iso)
-        pyramid_trg = _build_pyramid(trg_iso)
-        iso_affine = trg_iso_aff   # saved for weight NIfTI headers
-    else:
-        # No resampling - work in original voxel space
-        pyramid_src = _build_pyramid(src)
-        pyramid_trg = _build_pyramid(trg)
-        if initial_transform is not None:
-            T_iso = initial_transform.float()
-        elif centroid_init:
-            from .init import get_ixform_centroids
-
-            T_iso = get_ixform_centroids(src.float(), trg.float()).float()
-            if verbose:
-                t = T_iso[:3, 3].tolist()
-                logger.info(
-                    "Centroid initialization: [%.6f, %.6f, %.6f]",
-                    t[0], t[1], t[2],
-                )
-        else:
-            T_iso = torch.eye(4, dtype=torch.float32)
-            if verbose:
-                logger.info("Centroid initialization disabled; starting from identity")
-        Rsrc = torch.eye(4, dtype=torch.float32)
-        Rtrg = torch.eye(4, dtype=torch.float32)
-        iso_affine = trg_affine.numpy() if trg_affine is not None else None
-
-    chosen_coarse_first = _choose_pyramid_levels(pyramid_src, min_voxels, max_voxels)
-
-    if not chosen_coarse_first:
-        raise ValueError(
-            f"No pyramid level has smallest dimension >= min_voxels={min_voxels}. "
-            f"Available levels: {[tuple(level.shape) for level in pyramid_src]}"
-        )
-
-    # Initialize T in registration-space voxel coordinates.
-    T = T_iso if T_iso is not None else torch.eye(4, dtype=torch.float32)
-    all_info: list[dict] = []
-
-    for lvl in chosen_coarse_first:
-        s = pyramid_src[lvl].float()
-        t = pyramid_trg[lvl].float()
-        scale = float(2 ** lvl)          # voxel size ratio vs full-res
-
-        # Scale translation to this level's voxel space
-        T_lvl = T.clone()
-        T_lvl[:3, 3] = T[:3, 3] / scale
-
-        if verbose:
-            logger.info("Pyramid level %d  shape=%s  (scale ×1/%d)",
-                        lvl, list(s.shape), int(scale))
-
-        T_lvl, info = register_irls(
-            s, t,
-            initial_transform=T_lvl,
-            nmax=nmax, sat=sat, epsit=epsit, max_irls=max_irls,
-            symmetric=symmetric,
-            adaptive_sat=adaptive_sat, target_outlier_pct=target_outlier_pct,
-            verbose=verbose,
-        )
-
-        # Scale translation back to full-resolution voxels
-        T_lvl[:3, 3] = T_lvl[:3, 3] * scale
-        T = T_lvl
-        info['iso_affine'] = iso_affine   # affine for weight NIfTI (isotropic space)
-        all_info.append(info)
-
-    # Convert back from isotropic voxel space to original voxel space
-    if isotropic:
-        # Transform chain: src_orig -> src_iso -> trg_iso -> trg_orig
-        # T_orig_v2v = Rtrg @ T_iso_v2v @ inv(Rsrc)
-        T = Rtrg.double() @ T.double() @ torch.inverse(Rsrc.double())
-        T = T.float()
-
-    # Save outlier map if requested
-    if outliers_name is not None and all_info:
-        import nibabel as nib
-
-        final_info = all_info[-1]
-        if 'weights' in final_info and 'valid_mask' in final_info:
-            weights_sqrt = final_info['weights']  # sqrt(Tukey weights)
-            valid_mask = final_info['valid_mask']
-            reg_affine = final_info.get('iso_affine', None)
-
-            if reg_affine is not None:
-                # Square to get actual Tukey weights, then compute 1-w (outlier map)
-                weights = weights_sqrt ** 2
-
-                # Reconstruct shape is the shape from the last pyramid level
-                # (which corresponds to the registration space)
-                reg_shape = final_info['image_shape']
-
-                # Reconstruct 3D volume in registration space
-                weight_volume = torch.zeros(reg_shape, dtype=torch.float32)
-                weight_volume.view(-1)[valid_mask] = weights
-
-                # Create outlier map (1 - w): high values = outliers
-                outlier_volume = 1.0 - weight_volume
-
-                # Auto-detect format from extension
-                if outliers_name.endswith('.nii') or outliers_name.endswith('.nii.gz'):
-                    outlier_img = nib.Nifti1Image(outlier_volume.numpy(), reg_affine)
-                else:  # Default to MGZ for .mgz or unknown extensions
-                    outlier_img = nib.MGHImage(outlier_volume.numpy(), reg_affine)
-
-                outlier_img.to_filename(outliers_name)
-
-                if verbose:
-                    outlier_pct = (outlier_volume > 0.5).sum().item() / outlier_volume.numel() * 100
-                    logger.info("Saved outlier map: %s (%.1f%% high outliers)",
-                                outliers_name, outlier_pct)
-            else:
-                logger.warning("Cannot save outlier map: no affine available")
-        else:
-            logger.warning("Cannot save outlier map: no weights in final level")
-
-    return T, all_info
 

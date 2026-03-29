@@ -8,7 +8,8 @@ from torch import Tensor
 
 from ..image import build_gaussian_pyramid
 from ..image.pyramid import get_pyramid_limits
-from ..transforms import LTA, matrix_sqrt_schur
+from ..transforms import LTA
+from ..transforms.matrices import matrix_sqrt_schur
 from .init import get_ixform_centroids
 from .optimize import training_loop
 from .reg_model import RegModel
@@ -16,7 +17,7 @@ from .reg_model import RegModel
 logger = logging.getLogger(__name__)
 
 
-def register(
+def register_level(
     simg: Tensor,
     timg: Tensor,
     dof: int = 6,
@@ -29,9 +30,48 @@ def register(
     verbose: bool = False,
     device: str = "cpu",
 ) -> tuple[Tensor, list[float], "RegModel"]:
-    """Legacy gradient-descent image registration on a single image scale."""
+    """Run legacy gradient-descent registration on a single pyramid level.
+
+    Parameters
+    ----------
+    simg, timg : Tensor
+        Source and target images for one pyramid level.
+    dof : int, default=6
+        Transformation degrees of freedom passed to :class:`RegModel`.
+    v2v_init : Tensor, optional
+        Optional initial voxel-to-voxel transform for this level.
+    centroid_init : bool, default=True
+        If ``True`` and ``v2v_init`` is not provided, initialize from centroid
+        alignment.
+    n : int, default=30
+        Number of optimizer iterations.
+    loss_name : str, default="mse"
+        Loss function name forwarded to :func:`training_loop`.
+    loss_beta : float, optional
+        Optional loss hyperparameter for robust losses that require one.
+    optimizer : {"adam", "lbfgs"}, default="adam"
+        Optimizer used to fit the registration model.
+    verbose : bool, default=False
+        If ``True``, emit progress information during optimization.
+    device : str, default="cpu"
+        Torch device on which to run the optimization.
+
+    Returns
+    -------
+    v2v : Tensor
+        Estimated voxel-to-voxel transform for this level.
+    losses : list of float
+        Loss history returned by :func:`training_loop`.
+    model : RegModel
+        Fitted legacy registration model for this level.
+
+    Raises
+    ------
+    ValueError
+        If ``optimizer`` is not one of the supported optimizer names.
+    """
     if v2v_init is not None and centroid_init:
-        logger.warning("register: cannot pass v2v_init and centroid_init=True, will use v2v_init")
+        logger.warning("register_level: cannot pass v2v_init and centroid_init=True, will use v2v_init")
         centroid_init = False
     if centroid_init:
         v2v_init = get_ixform_centroids(simg, timg)
@@ -77,7 +117,50 @@ def register_pyramid(
     isotropic: bool = False,
     device: str = "cpu",
 ) -> Tensor:
-    """Legacy gradient-descent multi-resolution image registration."""
+    """Run the legacy gradient-descent multiresolution registration path.
+
+    Parameters
+    ----------
+    src, trg : str or nib.Nifti1Image
+        Moving/source and fixed/target images, either as file paths or loaded
+        nibabel images.
+    lta_name : str, optional
+        If provided, write the final transform to this LTA file.
+    mapped_name : str, optional
+        If provided, write the final mapped moving image to this file.
+    return_v2v : bool, default=False
+        If ``True``, return the final voxel-to-voxel transform. Otherwise
+        return the final RAS-to-RAS transform.
+    centroid_init : bool, default=True
+        Whether to use centroid alignment for initialization on the coarsest
+        level.
+    dof : int, default=6
+        Transformation degrees of freedom used by the legacy model.
+    n : int, default=30
+        Number of optimizer iterations per pyramid level.
+    loss_name : str, default="mse"
+        Loss function name forwarded to :func:`training_loop`.
+    loss_beta : float, optional
+        Optional loss hyperparameter for robust losses that require one.
+    optimizer : {"adam", "lbfgs"}, default="adam"
+        Optimizer used at each pyramid level.
+    isotropic : bool, default=False
+        If ``True``, resample both images to a common isotropic grid before
+        building the pyramid.
+    device : str, default="cpu"
+        Torch device on which to run the legacy optimization.
+
+    Returns
+    -------
+    Tensor
+        Final transform matrix. This is voxel-to-voxel when
+        ``return_v2v=True`` and RAS-to-RAS otherwise.
+
+    Raises
+    ------
+    ValueError
+        If pyramid construction yields no usable levels for either image.
+    """
     start = time.perf_counter()
     if isinstance(src, str):
         src = nib.load(src)
@@ -134,7 +217,7 @@ def register_pyramid(
     for si, sa, ti, ta in zip(reversed(simgs), reversed(saffines), reversed(timgs), reversed(taffines), strict=True):
         logger.info("Resolution level %d: %s", count, list(si.size()))
         if count == 0:
-            Mv2v, losses, m = register(
+            Mv2v, losses, m = register_level(
                 si,
                 ti,
                 dof=dof,
@@ -148,7 +231,7 @@ def register_pyramid(
         else:
             Mv2v_init = torch.inverse(ta.double()) @ Mr2r @ sa.double()
             logger.debug("Mv2v_init:\n%s", Mv2v_init.numpy())
-            Mv2v, losses, m = register(
+            Mv2v, losses, m = register_level(
                 si,
                 ti,
                 dof=dof,
@@ -190,7 +273,8 @@ def register_pyramid(
     if mapped_name is not None:
         if m is None:
             logger.warning(
-                "Skipping mapped image output ('%s'): no registration model was produced (pyramid loop did not execute).",
+                "Skipping mapped image output ('%s'): no registration model was produced "
+                "(pyramid loop did not execute).",
                 mapped_name,
             )
         else:
@@ -217,7 +301,45 @@ def register_pyramid_sym(
     optimizer: str = "adam",
     device: str = "cpu",
 ) -> torch.Tensor:
-    """Legacy symmetric (midspace) gradient-descent image registration."""
+    """Run legacy symmetric gradient-descent registration in halfway space.
+
+    Parameters
+    ----------
+    src, trg : str or nib.Nifti1Image
+        Moving/source and fixed/target images, either as file paths or loaded
+        nibabel images.
+    lta_name : str, optional
+        If provided, write the final transform to this LTA file.
+    mapped_name : str, optional
+        If provided, write the final mapped moving image to this file.
+    return_v2v : bool, default=False
+        If ``True``, return the final voxel-to-voxel transform. Otherwise
+        return the final RAS-to-RAS transform.
+    dof : int, default=6
+        Transformation degrees of freedom used by the legacy model.
+    n : int, default=30
+        Number of optimizer iterations per pyramid level.
+    loss_name : str, default="mse"
+        Loss function name forwarded to :func:`training_loop`.
+    loss_beta : float, optional
+        Optional loss hyperparameter for robust losses that require one.
+    optimizer : {"adam", "lbfgs"}, default="adam"
+        Optimizer used at each symmetric pyramid level.
+    device : str, default="cpu"
+        Torch device on which to run the legacy optimization.
+
+    Returns
+    -------
+    Tensor
+        Final transform matrix. This is voxel-to-voxel when
+        ``return_v2v=True`` and RAS-to-RAS otherwise.
+
+    Raises
+    ------
+    ValueError
+        If pyramid construction yields no usable levels after isotropic
+        resampling.
+    """
     start = time.perf_counter()
     if isinstance(src, str):
         src = nib.load(src)
@@ -268,7 +390,7 @@ def register_pyramid_sym(
         src_mid = _map_img(si.float(), mh.float(), is_torch_mat=False, target_shape=midspace_shape)
         trg_mid = _map_img(ti.float(), mhi.float(), is_torch_mat=False, target_shape=midspace_shape)
 
-        delta_v2v, _, _ = register(
+        delta_v2v, _, _ = register_level(
             src_mid,
             trg_mid,
             dof=dof,
@@ -319,6 +441,6 @@ def register_pyramid_sym(
     return Mr2r.float()
 
 
-__all__ = ["register", "register_pyramid", "register_pyramid_sym", "RegModel"]
+__all__ = ["register_level", "register_pyramid", "register_pyramid_sym", "RegModel"]
 
 
