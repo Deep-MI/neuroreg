@@ -100,5 +100,12 @@ def main(args=None) -> None:
     logger.info("Wrote LTA: %s", ns.out)
     print(f"Output: {ns.out}")
 
+<<<<<<< HEAD
 if __name__ == "__main__":
     main()
+=======
+
+if __name__ == "__main__":
+    main()
+
+>>>>>>> 05f7c62 (auto call main)
