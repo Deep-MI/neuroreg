@@ -7,7 +7,7 @@ import torch
 from torch import Tensor
 
 from ..image import build_gaussian_pyramid
-from ..image.pyramid import get_pyramid_limits
+from ..image.pyramid import _PYRAMID_FILTER, _smooth3d, get_pyramid_limits
 from ..transforms import LTA
 from ..transforms.matrices import matrix_sqrt_schur
 from .init import get_ixform_centroids
@@ -15,6 +15,20 @@ from .optimize import training_loop
 from .reg_model import RegModel
 
 logger = logging.getLogger(__name__)
+
+
+def _shape3(shape: torch.Size | tuple[int, ...]) -> tuple[int, int, int]:
+    """Return the leading three spatial dimensions as an explicit 3-tuple."""
+    return int(shape[0]), int(shape[1]), int(shape[2])
+
+
+def _smooth_finest_pyramid_level(levels: list[torch.Tensor]) -> list[torch.Tensor]:
+    """Return pyramid levels with only the finest level smoothed for legacy GD registration."""
+    if not levels:
+        return levels
+    smoothed = list(levels)
+    smoothed[0] = _smooth3d(smoothed[0], _PYRAMID_FILTER, padding_mode="replicate")
+    return smoothed
 
 
 def register_level(
@@ -76,8 +90,8 @@ def register_level(
     if centroid_init:
         v2v_init = get_ixform_centroids(simg, timg)
         logger.debug("v2v_init from centroid alignment: %s", v2v_init)
-    source_shape = tuple(int(v) for v in simg.shape)
-    target_shape = tuple(int(v) for v in timg.shape)
+    source_shape = _shape3(simg.shape)
+    target_shape = _shape3(timg.shape)
     m = RegModel(dof=dof, v2v_init=v2v_init, source_shape=source_shape, target_shape=target_shape, device=device)
 
     if optimizer.lower() == "lbfgs":
@@ -195,6 +209,8 @@ def register_pyramid(
     shared_limits = get_pyramid_limits(sdata.shape, tdata.shape, minsize=16)
     simgs, saffines = build_gaussian_pyramid(sdata, src_affine_for_pyramid, limits=shared_limits)
     timgs, taffines = build_gaussian_pyramid(tdata, trg_affine_for_pyramid, limits=shared_limits)
+    simgs = _smooth_finest_pyramid_level(simgs)
+    timgs = _smooth_finest_pyramid_level(timgs)
 
     if not simgs:
         raise ValueError(
@@ -356,11 +372,19 @@ def register_pyramid_sym(
     def _find_out_shape(img: nib.Nifti1Image, iso: float) -> tuple[int, int, int]:
         zooms = np.linalg.norm(img.affine[:3, :3], axis=0)
         shape = np.array(img.shape[:3])
-        return tuple(int(max(1, int(np.ceil(s * z / iso)))) for s, z in zip(shape, zooms, strict=False))
+        return (
+            int(max(1, int(np.ceil(shape[0] * zooms[0] / iso)))),
+            int(max(1, int(np.ceil(shape[1] * zooms[1] / iso)))),
+            int(max(1, int(np.ceil(shape[2] * zooms[2] / iso)))),
+        )
 
     s_dim = _find_out_shape(src, isosize)
     t_dim = _find_out_shape(trg, isosize)
-    mid_dim = tuple(int(max(s, t)) for s, t in zip(s_dim, t_dim, strict=False))
+    mid_dim = (
+        int(max(s_dim[0], t_dim[0])),
+        int(max(s_dim[1], t_dim[1])),
+        int(max(s_dim[2], t_dim[2])),
+    )
     logger.info("Isotropic grid: src_dim=%s  trg_dim=%s  mid_dim=%s", s_dim, t_dim, mid_dim)
 
     src_iso, src_iso_aff, Rsrc = resample_isotropic(src, isosize, out_shape=mid_dim, mode="bilinear")
@@ -369,6 +393,8 @@ def register_pyramid_sym(
     shared_limits = get_pyramid_limits(src_iso.shape, trg_iso.shape, minsize=16)
     simgs, saffines = build_gaussian_pyramid(src_iso, src_iso_aff, limits=shared_limits)
     timgs, taffines = build_gaussian_pyramid(trg_iso, trg_iso_aff, limits=shared_limits)
+    simgs = _smooth_finest_pyramid_level(simgs)
+    timgs = _smooth_finest_pyramid_level(timgs)
 
     if not simgs:
         raise ValueError(f"build_gaussian_pyramid returned no levels (isotropic shape {list(src_iso.shape)}).")
@@ -384,7 +410,7 @@ def register_pyramid_sym(
         pyramid_level = n_levels - 1 - level_idx
         logger.info("Sym level %d (pyramid %d): shape=%s", level_idx, pyramid_level, list(si.shape))
 
-        midspace_shape = tuple(int(v) for v in si.shape)
+        midspace_shape = _shape3(si.shape)
         mh, mhi = matrix_sqrt_schur(M.float())
 
         src_mid = _map_img(si.float(), mh.float(), is_torch_mat=False, target_shape=midspace_shape)
@@ -429,7 +455,7 @@ def register_pyramid_sym(
             Mr2r.float(),
             source_affine=src_affine_t.float(),
             target_affine=trg_affine_t.float(),
-            target_shape=tuple(int(v) for v in trg.shape[:3]),
+            target_shape=_shape3(trg.shape),
         ).detach()
         mapped_img = nib.MGHImage(mapped.squeeze().numpy(), trg.affine, trg.header)
         mapped_img.to_filename(mapped_name)

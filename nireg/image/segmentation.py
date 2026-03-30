@@ -28,8 +28,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import nibabel as nib
 import numpy as np

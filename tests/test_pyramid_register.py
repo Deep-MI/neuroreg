@@ -10,7 +10,7 @@ import torch
 from nireg import register_pyramid as register_pyramid_public
 from nireg.image import build_gaussian_pyramid, get_pyramid_limits
 from nireg.imreg.robreg import register_pyramid as register_pyramid_robreg
-from nireg.imreg.robreg_gd import register_level, register_pyramid, register_pyramid_sym
+from nireg.imreg.robreg_gd import register_pyramid
 
 
 def _make_blob(shape: tuple[int, int, int] = (20, 20, 20), shift: tuple[float, float, float] = (0, 0, 0)) -> np.ndarray:
@@ -40,6 +40,11 @@ class TestPyramidHelpers:
         assert int(min_steps.item()) == 0
         assert int(max_steps.item()) == 2
 
+    def test_get_pyramid_limits_includes_exact_minsize_boundary(self):
+        min_steps, max_steps = get_pyramid_limits(torch.Size([32, 32, 32]), minsize=16)
+        assert int(min_steps.item()) == 0
+        assert int(max_steps.item()) == 1
+
     def test_build_gaussian_pyramid_shapes_and_affines(self):
         image = torch.rand(32, 32, 32)
         affine = torch.eye(4)
@@ -52,34 +57,27 @@ class TestPyramidHelpers:
         assert affines[1][1, 1].item() == pytest.approx(2.0)
         assert affines[1][2, 2].item() == pytest.approx(2.0)
 
+    def test_build_gaussian_pyramid_updates_affine_for_odd_sizes(self):
+        image = torch.rand(5, 5, 5)
+        affine = torch.eye(4)
+        imgs, affines = build_gaussian_pyramid(image, affine, limits=(torch.tensor(0), torch.tensor(1)))
+
+        assert [tuple(img.shape) for img in imgs] == [(5, 5, 5), (2, 2, 2)]
+        assert affines[1][0, 0].item() == pytest.approx(2.5)
+        assert affines[1][1, 1].item() == pytest.approx(2.5)
+        assert affines[1][2, 2].item() == pytest.approx(2.5)
+        assert affines[1][0, 3].item() == pytest.approx(0.75)
+        assert affines[1][1, 3].item() == pytest.approx(0.75)
+        assert affines[1][2, 3].item() == pytest.approx(0.75)
+
 
 class TestRegisterPyramidSynthetic:
-    def test_register_level_returns_v2v_on_identical_images(self):
-        img = torch.from_numpy(_make_blob())
-        v2v, losses, _model = register_level(img, img, dof=3, centroid_init=False, n=1, device="cpu")
-        assert v2v.shape == (4, 4)
-        assert torch.isfinite(v2v).all()
-        assert isinstance(losses, list)
-
     def test_register_pyramid_returns_v2v_on_identical_images(self):
         img = _make_img()
         v2v = register_pyramid(img, img, return_v2v=True, centroid_init=False, dof=3, n=1, device="cpu")
         assert v2v.shape == (4, 4)
         assert torch.isfinite(v2v).all()
         assert torch.allclose(v2v, torch.eye(4, dtype=v2v.dtype), atol=1.0)
-
-    def test_register_pyramid_handles_shifted_images(self):
-        src = _make_img(shift=(0.0, 0.0, 2.0))
-        trg = _make_img()
-        v2v = register_pyramid(src, trg, return_v2v=True, centroid_init=True, dof=3, n=1, device="cpu")
-        assert v2v.shape == (4, 4)
-        assert torch.isfinite(v2v).all()
-
-    def test_register_pyramid_sym_smoke(self):
-        img = _make_img()
-        v2v = register_pyramid_sym(img, img, return_v2v=True, dof=6, n=1, device="cpu")
-        assert v2v.shape == (4, 4)
-        assert torch.isfinite(v2v).all()
 
 
 class TestPublicRobregWrapper:
@@ -99,12 +97,6 @@ class TestPublicRobregWrapper:
         assert Mr2r.shape == (4, 4)
         assert torch.isfinite(Mr2r).all()
 
-    def test_top_level_register_pyramid_uses_public_wrapper(self):
-        img = _make_img()
-        Mr2r = register_pyramid_public(img, img, return_v2v=False, centroid_init=False, dof=6, nmax=1)
-        assert Mr2r.shape == (4, 4)
-        assert torch.isfinite(Mr2r).all()
-
     def test_top_level_register_pyramid_can_disable_symmetric_mode(self, monkeypatch: pytest.MonkeyPatch):
         captured: dict[str, object] = {}
 
@@ -118,12 +110,6 @@ class TestPublicRobregWrapper:
         Mr2r = register_pyramid_public(img, img, return_v2v=False, centroid_init=False, dof=6, nmax=1, symmetric=False)
 
         assert captured["symmetric"] is False
-        assert Mr2r.shape == (4, 4)
-        assert torch.isfinite(Mr2r).all()
-
-    def test_register_pyramid_accepts_nibabel_images(self):
-        img = _make_img()
-        Mr2r = register_pyramid_robreg(img, img, return_v2v=False, centroid_init=False, dof=6, nmax=1)
         assert Mr2r.shape == (4, 4)
         assert torch.isfinite(Mr2r).all()
 

@@ -56,8 +56,20 @@ def register_surface(
 
     if subject_dir is not None:
         logger.info("Loading surfaces from subject directory: %s", subject_dir)
-        lh_data = load_surface_from_subject(subject_dir, hemi="lh", surf_name="white", load_thickness=True, device=device)
-        rh_data = load_surface_from_subject(subject_dir, hemi="rh", surf_name="white", load_thickness=True, device=device)
+        lh_data = load_surface_from_subject(
+            subject_dir,
+            hemi="lh",
+            surf_name="white",
+            load_thickness=True,
+            device=device,
+        )
+        rh_data = load_surface_from_subject(
+            subject_dir,
+            hemi="rh",
+            surf_name="white",
+            load_thickness=True,
+            device=device,
+        )
 
         orig_path = Path(subject_dir) / "mri" / "orig.mgz"
         if orig_path.exists():
@@ -109,7 +121,11 @@ def register_surface(
         if ref is not None:
             trg_img = nib.load(ref) if isinstance(ref, str) else ref
             trg_header = trg_img.header
-            trg_path = ref if isinstance(ref, str) else (trg_header.get_filename() if hasattr(trg_header, "get_filename") else None)
+            trg_path = (
+                ref
+                if isinstance(ref, str)
+                else (trg_header.get_filename() if hasattr(trg_header, "get_filename") else None)
+            )
             logger.info("Target reference: %s", trg_path)
         else:
             logger.warning(

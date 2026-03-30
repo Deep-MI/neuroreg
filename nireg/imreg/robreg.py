@@ -11,9 +11,10 @@ import numpy as np
 import torch
 from torch import Tensor
 
+from ..image import build_gaussian_pyramid, get_pyramid_limits
 from ..image.map import resample_isotropic_tensor
 from .init import get_ixform_centroids
-from .irls import _build_pyramid, _choose_pyramid_levels, register_irls
+from .irls import _choose_pyramid_levels, register_irls
 
 ImageLike = str | Path | Any | Tensor
 
@@ -229,12 +230,20 @@ def register_irls_pyramid(
             if verbose:
                 logger.info("Centroid initialization disabled; starting from identity in isotropic space")
 
-        pyramid_src = _build_pyramid(src_iso)
-        pyramid_trg = _build_pyramid(trg_iso)
+        shared_limits = get_pyramid_limits(src_iso.shape, trg_iso.shape, minsize=min_voxels)
+        pyramid_src, _ = build_gaussian_pyramid(src_iso, src_iso_aff, limits=shared_limits)
+        pyramid_trg, _ = build_gaussian_pyramid(trg_iso, trg_iso_aff, limits=shared_limits)
         iso_affine = trg_iso_aff
     else:
-        pyramid_src = _build_pyramid(src)
-        pyramid_trg = _build_pyramid(trg)
+        src_affine_for_pyramid = (
+            src_affine if src_affine is not None else torch.eye(4, dtype=src.dtype, device=src.device)
+        )
+        trg_affine_for_pyramid = (
+            trg_affine if trg_affine is not None else torch.eye(4, dtype=trg.dtype, device=trg.device)
+        )
+        shared_limits = get_pyramid_limits(src.shape, trg.shape, minsize=min_voxels)
+        pyramid_src, _ = build_gaussian_pyramid(src, src_affine_for_pyramid, limits=shared_limits)
+        pyramid_trg, _ = build_gaussian_pyramid(trg, trg_affine_for_pyramid, limits=shared_limits)
         if initial_transform is not None:
             T_iso = initial_transform.float()
         elif centroid_init:

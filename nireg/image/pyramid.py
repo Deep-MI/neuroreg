@@ -1,12 +1,87 @@
 import torch
-from torch import Tensor
 
-from .smooth import smooth
+_PYRAMID_FILTER = torch.tensor([0.0625, 0.25, 0.375, 0.25, 0.0625])
+
+
+def _conv1d_along(
+    vol: torch.Tensor,
+    kernel: torch.Tensor,
+    dim: int,
+    padding_mode: str = "replicate",
+) -> torch.Tensor:
+    """Convolve a 3-D volume with a 1-D kernel along one spatial dimension."""
+    K = kernel.shape[0]
+    pad = K // 2
+    k = kernel.to(dtype=vol.dtype, device=vol.device)
+
+    if vol.shape[dim] == 1:
+        return vol.clone()
+
+    x = vol.unsqueeze(0).unsqueeze(0)
+    if dim == 0:
+        w = k.view(1, 1, K, 1, 1)
+        pads = (0, 0, 0, 0, pad, pad)
+    elif dim == 1:
+        w = k.view(1, 1, 1, K, 1)
+        pads = (0, 0, pad, pad, 0, 0)
+    else:
+        w = k.view(1, 1, 1, 1, K)
+        pads = (pad, pad, 0, 0, 0, 0)
+
+    padded = torch.nn.functional.pad(x, pads, mode=padding_mode)
+    return torch.nn.functional.conv3d(padded, w).squeeze(0).squeeze(0)
+
+
+def _smooth3d(vol: torch.Tensor, kernel: torch.Tensor, padding_mode: str = "replicate") -> torch.Tensor:
+    """Apply a separable 1-D kernel along all three spatial axes."""
+    return _conv1d_along(
+        _conv1d_along(_conv1d_along(vol, kernel, 2, padding_mode), kernel, 1, padding_mode),
+        kernel,
+        0,
+        padding_mode,
+    )
+
+
+def _downsample2_trilinear(vol: torch.Tensor) -> torch.Tensor:
+    """Downsample a volume by approximately 2× using trilinear interpolation."""
+    D, H, W = vol.shape
+    out_shape = (
+        max(1, D // 2) if D > 1 else 1,
+        max(1, H // 2) if H > 1 else 1,
+        max(1, W // 2) if W > 1 else 1,
+    )
+    return torch.nn.functional.interpolate(
+        vol.unsqueeze(0).unsqueeze(0),
+        size=out_shape,
+        mode="trilinear",
+        align_corners=False,
+    ).squeeze(0).squeeze(0)
+
+
+def _downsample_affine(
+    affine: torch.Tensor,
+    in_shape: torch.Size,
+    out_shape: tuple[int, int, int],
+) -> torch.Tensor:
+    """Update a voxel-to-RAS affine after trilinear resizing to ``out_shape``."""
+    out_affine = affine.clone()
+    downM = torch.eye(4, dtype=affine.dtype, device=affine.device)
+    for axis, (n_in, n_out) in enumerate(zip(in_shape[:3], out_shape, strict=True)):
+        if n_in <= 1:
+            scale = 1.0
+            offset = 0.0
+        else:
+            scale = float(n_in) / float(n_out)
+            offset = 0.5 * scale - 0.5
+        downM[axis, axis] = scale
+        downM[axis, 3] = offset
+    out_affine = out_affine @ downM
+    return out_affine
 
 
 def get_pyramid_limits(
     shape1: torch.Size, shape2: torch.Size | None = None, minsize: int = 32, maxsize: int | None = None
-) -> tuple[Tensor, Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Compute the minimum and maximum levels for a pyramid representation of shapes.
 
@@ -25,57 +100,76 @@ def get_pyramid_limits(
 
     Returns
     -------
-    tuple[Tensor, Tensor]
+    tuple[torch.Tensor, torch.Tensor]
         A tuple containing:
-          - `minsteps` (Tensor): The minimum number of steps the pyramid can take before
+          - `minsteps` (torch.Tensor): The minimum number of steps the pyramid can take before
             exceeding the `maxsize` (if given).
-          - `maxsteps` (Tensor): The maximum number of steps the pyramid can take before
+          - `maxsteps` (torch.Tensor): The maximum number of steps the pyramid can take before
             hitting the `minsize`.
 
     Example
     -------
-    >>> shape = torch.tensor((256, 256, 256))
+    >>> shape = torch.Size([256, 256, 256])
     >>> limits = get_pyramid_limits(shape, shape2=shape, minsize=16, maxsize=200)
     >>> print(limits)
     (tensor(1), tensor(4))
     """
-    if shape2 is None:
-        smallest = torch.as_tensor(shape1)
-    else:
-        smallest = torch.minimum(torch.as_tensor(shape1), torch.as_tensor(shape2))
-    smin = torch.min(smallest)
-    maxsteps = torch.floor(torch.log2(smin / minsize)).int()
+    dims1 = tuple(int(v) for v in shape1[:3])
+    dims2 = dims1 if shape2 is None else tuple(int(v) for v in shape2[:3])
+
+    smallest = min(dims1[0], dims2[0], dims1[1], dims2[1])
+    if dims1[2] != 1 or dims2[2] != 1:
+        smallest = min(smallest, dims1[2], dims2[2])
+    if smallest < minsize:
+        raise ValueError(f"Input image is smaller than minsize={minsize}: smallest dimension is {smallest}")
+
+    temp = smallest // 2
+    maxsteps = 0
+    while temp >= minsize:
+        maxsteps += 1
+        temp //= 2
+
     if maxsize is None:
-        return (torch.tensor(0.0), maxsteps)
-    smax = torch.max(smallest)
-    minsteps = torch.ceil(torch.log2(smax / maxsize)).int()
-    return (minsteps, maxsteps)
+        return torch.tensor(0), torch.tensor(maxsteps)
+
+    common_dims = (min(dims1[0], dims2[0]), min(dims1[1], dims2[1]), min(dims1[2], dims2[2]))
+    temp = max(common_dims)
+    minsteps = 0
+    while minsteps < maxsteps:
+        if temp < maxsize:
+            break
+        temp //= 2
+        minsteps += 1
+
+    return torch.tensor(minsteps), torch.tensor(maxsteps)
 
 
 def build_gaussian_pyramid(
-    image: Tensor, affine: Tensor, limits: tuple[Tensor, Tensor] | None = None
-) -> tuple[list[Tensor], list[Tensor]]:
+    image: torch.Tensor,
+    affine: torch.Tensor,
+    limits: tuple[torch.Tensor, torch.Tensor] | None = None,
+) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
     """
     Build a Gaussian pyramid for a 3D image, including its downsampled versions.
 
     Parameters
     ----------
-    image : Tensor
+    image : torch.Tensor
         A 3D or higher-dimensional tensor representing the input image to build the pyramid from.
-    affine : Tensor
+    affine : torch.Tensor
         The affine (vox2ras) transformation matrix (4x4) corresponding to the input image.
         It is updated for each downsampled image in the pyramid.
-    limits : tuple[Tensor, Tensor], optional
+    limits : tuple[torch.Tensor, torch.Tensor], optional
         A tuple containing the minimum and maximum level indices for the pyramid.
         If not provided, they are computed using the `get_pyramid_limits` function based on the image size.
 
     Returns
     -------
-    tuple[list[Tensor], list[Tensor]]
+    tuple[list[torch.Tensor], list[torch.Tensor]]
         A tuple containing:
-          - `imgs` (list[Tensor]): A list of downsampled and smoothed image tensors, starting
+          - `imgs` (list[torch.Tensor]): A list of downsampled and smoothed image tensors, starting
             from the input image (if applicable).
-          - `affines` (list[Tensor]): A list of affine matrices corresponding to each
+          - `affines` (list[torch.Tensor]): A list of affine matrices corresponding to each
             downsampled image.
 
     Example
@@ -88,23 +182,23 @@ def build_gaussian_pyramid(
     """
     if limits is None:
         limits = get_pyramid_limits(image.shape)
-    last_affine = affine.clone().detach() if isinstance(affine, torch.Tensor) else torch.as_tensor(affine)
-    downM = 2 * torch.eye(4, dtype=last_affine.dtype)
-    downM[3, 3] = 1
-    downM[0:3, 3:4] = 0.5 * torch.ones((3, 1), dtype=last_affine.dtype)
-    imgs = []
-    affines = []
-    # Check if original image (smoothed) needs to be stored
-    if limits[0] == 0:
-        smoothed = smooth(image)
-        imgs.append(smoothed.squeeze())
-        affines.append(last_affine)
-    smoothed = image
-    for i in range(limits[1]):
-        smoothed = smooth(smoothed)
-        smoothed = torch.nn.functional.avg_pool3d(smoothed, 2)
-        last_affine = last_affine @ downM
-        if i >= limits[0]:
-            imgs.append(smoothed.squeeze())
-            affines.append(last_affine)
-    return imgs, affines
+
+    min_steps = int(limits[0].item())
+    max_steps = int(limits[1].item())
+    current = image.float().clone()
+    current_affine = affine.clone().detach() if isinstance(affine, torch.Tensor) else torch.as_tensor(affine)
+
+    imgs: list[torch.Tensor] = [current]
+    affines: list[torch.Tensor] = [current_affine]
+
+    for _ in range(max_steps):
+        blurred = _smooth3d(current, _PYRAMID_FILTER, padding_mode="replicate")
+        next_level = _downsample2_trilinear(blurred)
+        next_shape = (int(next_level.shape[0]), int(next_level.shape[1]), int(next_level.shape[2]))
+        next_affine = _downsample_affine(current_affine, current.shape, next_shape)
+        current = next_level
+        current_affine = next_affine
+        imgs.append(current)
+        affines.append(current_affine)
+
+    return imgs[min_steps:max_steps + 1], affines[min_steps:max_steps + 1]

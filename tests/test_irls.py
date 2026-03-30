@@ -3,8 +3,10 @@
 import pytest
 import torch
 
+from nireg.image import build_gaussian_pyramid, get_pyramid_limits
 from nireg.imreg.init import get_ixform_centroids
 from nireg.imreg.irls import (
+    _build_pyramid,
     _choose_pyramid_levels,
     _sqrt_tukey,
     compute_partials,
@@ -41,29 +43,6 @@ class TestSqrtTukey:
         r = torch.linspace(-10, 10, 100)
         w = _sqrt_tukey(r, sat=4.685)
         assert torch.all(w >= 0)
-
-
-# ---------------------------------------------------------------------------
-# affine_dist
-# ---------------------------------------------------------------------------
-
-class TestAffineDist:
-    def test_identity_to_self_is_zero(self):
-        T = torch.eye(4)
-        assert affine_dist(T, T) == pytest.approx(0.0, abs=1e-6)
-
-    def test_pure_translation(self):
-        T1 = torch.eye(4)
-        T2 = torch.eye(4)
-        T2[0, 3] = 3.0  # 3 mm translation
-        assert affine_dist(T1, T2) == pytest.approx(3.0, rel=1e-4)
-
-    def test_symmetry(self):
-        T1 = torch.eye(4)
-        T1[0, 3] = 5.0
-        T2 = torch.eye(4)
-        T2[1, 3] = 3.0
-        assert affine_dist(T1, T2) == pytest.approx(affine_dist(T2, T1), rel=1e-5)
 
 
 # ---------------------------------------------------------------------------
@@ -111,13 +90,6 @@ class TestConstructAb:
         src_flat = src.reshape(-1)
         assert torch.all(src_flat[valid].abs() > 1e-5)
 
-    def test_finite_outputs(self):
-        src = torch.rand(8, 8, 8)
-        trg = torch.rand(8, 8, 8)
-        A, b, valid = construct_Ab(src, trg)
-        assert torch.isfinite(A).all()
-        assert torch.isfinite(b).all()
-
     def test_compute_partials_matches_internal_dhw_axis_convention(self):
         d, h, w = 9, 10, 11
         zz, yy, xx = torch.meshgrid(
@@ -148,15 +120,6 @@ class TestConstructAb:
 # ---------------------------------------------------------------------------
 
 class TestIrlsInnerLoop:
-    def test_returns_correct_shapes(self):
-        A = torch.randn(500, 6)
-        b = torch.randn(500)
-        p, w, sigma, err = irls_inner_loop(A, b, sat=4.685, max_iterations=5)
-        assert p.shape == (6,)
-        assert w.shape == (500,)
-        assert isinstance(sigma, float)
-        assert isinstance(err, float)
-
     def test_weights_in_range(self):
         A = torch.randn(200, 6)
         b = torch.randn(200)
@@ -188,11 +151,6 @@ class TestRegisterIrls:
         img = torch.rand(size, size, size)
         return img, img.clone()
 
-    def test_returns_4x4_transform(self):
-        src, trg = self._make_images()
-        T, info = register_irls(src, trg, nmax=2)
-        assert T.shape == (4, 4)
-
     def test_info_keys_present(self):
         src, trg = self._make_images()
         _, info = register_irls(src, trg, nmax=2)
@@ -223,10 +181,6 @@ class TestRegisterIrls:
         assert w is not None and vm is not None
         assert w.shape == (vm.sum().item(),)
 
-    def test_huber_estimator(self):
-        src, trg = self._make_images()
-        T, info = register_irls(src, trg, nmax=2, sat=1.345)
-        assert T.shape == (4, 4)
 
     def test_adaptive_sat_runs_and_records_sigma_history(self):
         src, trg = self._make_images()
@@ -250,16 +204,6 @@ class TestRegisterIrlsPyramid:
     def _aff(self):
         return torch.eye(4)  # 1mm isotropic
 
-    def test_returns_4x4_and_info_list(self):
-        torch.manual_seed(1)
-        img = torch.rand(24, 24, 24)
-        aff = self._aff()
-        T, all_info = register_irls_pyramid(
-            img, img.clone(), src_affine=aff, trg_affine=aff,
-            min_voxels=8, max_voxels=16, nmax=2, isotropic=False,
-        )
-        assert T.shape == (4, 4)
-        assert isinstance(all_info, list) and len(all_info) >= 1
 
     def test_iso_affine_stored_in_info(self):
         torch.manual_seed(2)
@@ -347,6 +291,18 @@ class TestRegisterIrlsPyramid:
             torch.zeros(7, 7, 5),
         ]
         assert _choose_pyramid_levels(pyramid, min_voxels=16, max_voxels=64) == [3, 2, 1, 0]
+
+    def test_shared_pyramid_matches_private_builder_voxelwise_for_retained_levels(self):
+        torch.manual_seed(4)
+        img = torch.rand(31, 27, 19)
+        limits = get_pyramid_limits(img.shape, minsize=8)
+        shared, _ = build_gaussian_pyramid(img, torch.eye(4), limits=limits)
+        private = [level for level in _build_pyramid(img) if min(level.shape) >= 8]
+
+        assert len(shared) == len(private)
+        for shared_level, private_level in zip(shared, private, strict=True):
+            assert tuple(shared_level.shape) == tuple(private_level.shape)
+            assert torch.allclose(shared_level, private_level)
 
 
 

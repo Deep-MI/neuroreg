@@ -656,7 +656,7 @@ def _build_pyramid(img: torch.Tensor) -> list[torch.Tensor]:
     levels = [img.float().clone()]
     cur = levels[0]
     while min(cur.shape) >= 8:
-        blurred = _smooth3d(cur, _PYRAMID_FILTER, padding_mode='zeros')
+        blurred = _smooth3d(cur, _PYRAMID_FILTER, padding_mode='replicate')
         next_level = _downsample2_trilinear(blurred)
         if next_level.shape == cur.shape:
             break
