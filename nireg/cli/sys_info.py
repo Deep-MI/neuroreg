@@ -1,6 +1,6 @@
 import argparse
 
-from .. import sys_info
+from .._sys_info import sys_info
 
 
 def main() -> None:

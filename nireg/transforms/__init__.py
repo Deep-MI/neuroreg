@@ -24,10 +24,6 @@ from .metrics import (
     rigid_dist,
     sphere_dist,
 )
-from .weighted_rigid import (
-    sample_weighted_voxel_grid,
-    solve_weighted_rigid_gpu,
-)
 
 __all__ = [
     # lta
@@ -52,7 +48,4 @@ __all__ = [
     "matrix_sqrt_schur",
     "params_to_rigid_matrix",
     "rotation_error",
-    # weighted_rigid
-    "solve_weighted_rigid_gpu",
-    "sample_weighted_voxel_grid",
 ]
