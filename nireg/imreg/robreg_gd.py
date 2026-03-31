@@ -128,6 +128,8 @@ def register_pyramid(
     loss_name: str = "mse",
     loss_beta: float | None = None,
     optimizer: str = "adam",
+    min_voxels: int = 16,
+    max_voxels: int | None = None,
     isotropic: bool = False,
     device: str = "cpu",
 ) -> Tensor:
@@ -158,6 +160,11 @@ def register_pyramid(
         Optional loss hyperparameter for robust losses that require one.
     optimizer : {"adam", "lbfgs"}, default="adam"
         Optimizer used at each pyramid level.
+    min_voxels : int, default=16
+        Minimum size constraint passed to the shared pyramid builder.
+    max_voxels : int, optional
+        Maximum allowed size of the finest pyramid level to process. When
+        ``None`` (default), include the original/full-resolution level.
     isotropic : bool, default=False
         If ``True``, resample both images to a common isotropic grid before
         building the pyramid.
@@ -206,7 +213,7 @@ def register_pyramid(
         src_affine_for_pyramid = src.affine
         trg_affine_for_pyramid = trg.affine
 
-    shared_limits = get_pyramid_limits(sdata.shape, tdata.shape, minsize=16)
+    shared_limits = get_pyramid_limits(sdata.shape, tdata.shape, minsize=min_voxels, maxsize=max_voxels)
     simgs, saffines = build_gaussian_pyramid(sdata, src_affine_for_pyramid, limits=shared_limits)
     timgs, taffines = build_gaussian_pyramid(tdata, trg_affine_for_pyramid, limits=shared_limits)
     simgs = _smooth_finest_pyramid_level(simgs)
@@ -315,6 +322,8 @@ def register_pyramid_sym(
     loss_name: str = "mse",
     loss_beta: float | None = None,
     optimizer: str = "adam",
+    min_voxels: int = 16,
+    max_voxels: int | None = None,
     device: str = "cpu",
 ) -> torch.Tensor:
     """Run legacy symmetric gradient-descent registration in halfway space.
@@ -341,6 +350,11 @@ def register_pyramid_sym(
         Optional loss hyperparameter for robust losses that require one.
     optimizer : {"adam", "lbfgs"}, default="adam"
         Optimizer used at each symmetric pyramid level.
+    min_voxels : int, default=16
+        Minimum size constraint passed to the shared pyramid builder.
+    max_voxels : int, optional
+        Maximum allowed size of the finest pyramid level to process. When
+        ``None`` (default), include the original/full-resolution level.
     device : str, default="cpu"
         Torch device on which to run the legacy optimization.
 
@@ -390,7 +404,7 @@ def register_pyramid_sym(
     src_iso, src_iso_aff, Rsrc = resample_isotropic(src, isosize, out_shape=mid_dim, mode="bilinear")
     trg_iso, trg_iso_aff, Rtrg = resample_isotropic(trg, isosize, out_shape=mid_dim, mode="bilinear")
 
-    shared_limits = get_pyramid_limits(src_iso.shape, trg_iso.shape, minsize=16)
+    shared_limits = get_pyramid_limits(src_iso.shape, trg_iso.shape, minsize=min_voxels, maxsize=max_voxels)
     simgs, saffines = build_gaussian_pyramid(src_iso, src_iso_aff, limits=shared_limits)
     timgs, taffines = build_gaussian_pyramid(trg_iso, trg_iso_aff, limits=shared_limits)
     simgs = _smooth_finest_pyramid_level(simgs)

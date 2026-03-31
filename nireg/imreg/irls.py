@@ -45,9 +45,6 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 _PREFILTER = torch.tensor([0.03504, 0.24878, 0.43234, 0.24878, 0.03504])
 _DERFILTER = torch.tensor([-0.10689, -0.28461, 0.0, 0.28461, 0.10689])
-# FreeSurfer's saved multires pyramid (Registration::buildGPLimits) uses a
-# different smoothing kernel than the registration-time prefilter above.
-_PYRAMID_FILTER = torch.tensor([0.0625, 0.25, 0.375, 0.25, 0.0625])
 
 
 def _conv1d_along(
@@ -93,32 +90,6 @@ def _conv1d_along(
     else:
         padded = F.pad(x, pads, mode=padding_mode)
     return F.conv3d(padded, w).squeeze(0).squeeze(0)
-
-
-def _smooth3d(vol: torch.Tensor, kernel: torch.Tensor, padding_mode: str = 'replicate') -> torch.Tensor:
-    """Apply the same 1-D kernel separably along all three spatial axes."""
-    return _conv1d_along(
-        _conv1d_along(_conv1d_along(vol, kernel, 2, padding_mode), kernel, 1, padding_mode),
-        kernel,
-        0,
-        padding_mode,
-    )
-
-
-def _downsample2_trilinear(vol: torch.Tensor) -> torch.Tensor:
-    """Approximate FreeSurfer's MRIdownsample2BSpline with 2× trilinear resize."""
-    D, H, W = vol.shape
-    out_shape = (
-        max(1, D // 2) if D > 1 else 1,
-        max(1, H // 2) if H > 1 else 1,
-        max(1, W // 2) if W > 1 else 1,
-    )
-    return F.interpolate(
-        vol.unsqueeze(0).unsqueeze(0),
-        size=out_shape,
-        mode='trilinear',
-        align_corners=False,
-    ).squeeze(0).squeeze(0)
 
 
 def compute_partials(img: torch.Tensor) -> tuple[torch.Tensor, ...]:
@@ -356,6 +327,7 @@ def irls_inner_loop(
         r_median = torch.median(r)
         sigma = torch.median((r - r_median).abs()) / 0.6745
         if sigma < eps:
+            err_cur = float((r * r).mean().item()) if N > 0 else 0.0
             if verbose:
                 logger.debug("    IRLS: sigma too small (identical images?), stopping")
             break
@@ -627,64 +599,3 @@ def register_irls(
     info['valid_mask'] = best_valid
     return T, info
 
-
-# ---------------------------------------------------------------------------
-# Simple Gaussian pyramid builder (self-contained, no affine needed)
-# ---------------------------------------------------------------------------
-
-def _build_pyramid(img: torch.Tensor) -> list[torch.Tensor]:
-    """Build a Gaussian pyramid from finest (index 0) to coarsest.
-
-    Mirrors FreeSurfer's saved multires pyramid built in
-    ``Registration::buildGPLimits``:
-
-    * level 0 is the original image (unsmoothed)
-    * each coarser level is produced by smoothing with the saved-pyramid
-      kernel ``[0.0625, 0.25, 0.375, 0.25, 0.0625]``
-    * smoothing is followed by a 2× spline-style downsample
-
-    FreeSurfer uses ``MRIdownsample2BSpline`` for the reduction step.  We
-    approximate that locally with 2× trilinear interpolation to the floor
-    half-size, which is substantially closer to the saved ``pyramid*-r*``
-    artifacts than the old prefilter+voxel-pick path.
-
-    Returns
-    -------
-    levels : list[Tensor]   levels[0] = full-res original, levels[k] = 2^k ×
-             downsampled.
-    """
-    levels = [img.float().clone()]
-    cur = levels[0]
-    while min(cur.shape) >= 8:
-        blurred = _smooth3d(cur, _PYRAMID_FILTER, padding_mode='replicate')
-        next_level = _downsample2_trilinear(blurred)
-        if next_level.shape == cur.shape:
-            break
-        cur = next_level
-        levels.append(cur)
-    return levels   # levels[0] finest … levels[-1] coarsest
-
-
-def _choose_pyramid_levels(
-    pyramid: list[torch.Tensor],
-    min_voxels: int,
-    max_voxels: int | None = None,
-) -> list[int]:
-    """Choose pyramid levels in the same coarse-to-fine spirit as FreeSurfer.
-
-    FreeSurfer's multires builder stops creating new levels once the smallest
-    dimension would fall below ``min_voxels``. The registration loop then runs
-    every remaining level from coarsest to finest. To match that behavior with
-    our always-built pyramid, we select all levels whose smallest dimension is
-    at least ``min_voxels`` and traverse them coarse-to-fine.
-
-    ``max_voxels`` is accepted for API compatibility but is not used for the
-    FreeSurfer-style schedule.
-    """
-    del max_voxels
-
-    return [
-        lvl
-        for lvl in range(len(pyramid) - 1, -1, -1)
-        if min(pyramid[lvl].shape) >= min_voxels
-    ]

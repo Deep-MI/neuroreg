@@ -14,7 +14,7 @@ from torch import Tensor
 from ..image import build_gaussian_pyramid, get_pyramid_limits
 from ..image.map import resample_isotropic_tensor
 from .init import get_ixform_centroids
-from .irls import _choose_pyramid_levels, register_irls
+from .irls import register_irls
 
 ImageLike = str | Path | Any | Tensor
 
@@ -121,7 +121,7 @@ def register_irls_pyramid(
     initial_transform: Tensor | None = None,
     centroid_init: bool = True,
     min_voxels: int = 16,
-    max_voxels: int = 64,
+    max_voxels: int | None = None,
     nmax: int = 5,
     sat: float = 6.0,
     epsit: float = 0.01,
@@ -153,9 +153,11 @@ def register_irls_pyramid(
     centroid_init : bool, default=True
         Whether to initialize with centroid alignment when no explicit initial
         transform is supplied.
-    min_voxels, max_voxels : int, default=16, 64
-        Pyramid scheduling parameters. ``max_voxels`` is kept for API
-        compatibility with the previous implementation.
+    min_voxels : int, default=16
+        Minimum size constraint passed to the shared pyramid builder.
+    max_voxels : int, optional
+        Maximum allowed size of the finest pyramid level to process. When
+        ``None`` (default), include the original/full-resolution level.
     nmax : int, default=5
         Maximum number of outer IRLS iterations per pyramid level.
     sat : float, default=6.0
@@ -229,7 +231,7 @@ def register_irls_pyramid(
             if verbose:
                 logger.info("Centroid initialization disabled; starting from identity in isotropic space")
 
-        shared_limits = get_pyramid_limits(src_iso.shape, trg_iso.shape, minsize=min_voxels)
+        shared_limits = get_pyramid_limits(src_iso.shape, trg_iso.shape, minsize=min_voxels, maxsize=max_voxels)
         pyramid_src, _ = build_gaussian_pyramid(src_iso, src_iso_aff, limits=shared_limits)
         pyramid_trg, _ = build_gaussian_pyramid(trg_iso, trg_iso_aff, limits=shared_limits)
         iso_affine = trg_iso_aff
@@ -240,7 +242,7 @@ def register_irls_pyramid(
         trg_affine_for_pyramid = (
             trg_affine if trg_affine is not None else torch.eye(4, dtype=trg.dtype, device=trg.device)
         )
-        shared_limits = get_pyramid_limits(src.shape, trg.shape, minsize=min_voxels)
+        shared_limits = get_pyramid_limits(src.shape, trg.shape, minsize=min_voxels, maxsize=max_voxels)
         pyramid_src, _ = build_gaussian_pyramid(src, src_affine_for_pyramid, limits=shared_limits)
         pyramid_trg, _ = build_gaussian_pyramid(trg, trg_affine_for_pyramid, limits=shared_limits)
         if initial_transform is not None:
@@ -258,17 +260,17 @@ def register_irls_pyramid(
         Rtrg = torch.eye(4, dtype=torch.float32)
         iso_affine = trg_affine.detach().cpu().numpy() if trg_affine is not None else None
 
-    chosen_coarse_first = _choose_pyramid_levels(pyramid_src, min_voxels, max_voxels)
-    if not chosen_coarse_first:
+    if not pyramid_src or not pyramid_trg:
         raise ValueError(
-            f"No pyramid level has smallest dimension >= min_voxels={min_voxels}. "
-            f"Available levels: {[tuple(level.shape) for level in pyramid_src]}"
+            "Pyramid construction returned no levels. "
+            f"Source levels: {[tuple(level.shape) for level in pyramid_src]}; "
+            f"Target levels: {[tuple(level.shape) for level in pyramid_trg]}"
         )
 
     T = T_iso if T_iso is not None else torch.eye(4, dtype=torch.float32)
     all_info: list[dict[str, Any]] = []
 
-    for lvl in chosen_coarse_first:
+    for lvl in range(len(pyramid_src) - 1, -1, -1):
         s = pyramid_src[lvl].float()
         t = pyramid_trg[lvl].float()
         scale = float(2 ** lvl)

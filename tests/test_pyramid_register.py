@@ -45,6 +45,11 @@ class TestPyramidHelpers:
         assert int(min_steps.item()) == 0
         assert int(max_steps.item()) == 1
 
+    def test_get_pyramid_limits_keeps_exact_maxsize_boundary(self):
+        min_steps, max_steps = get_pyramid_limits(torch.Size([128, 128, 128]), minsize=16, maxsize=64)
+        assert int(min_steps.item()) == 1
+        assert int(max_steps.item()) == 3
+
     def test_build_gaussian_pyramid_shapes_and_affines(self):
         image = torch.rand(32, 32, 32)
         affine = torch.eye(4)
@@ -78,6 +83,23 @@ class TestRegisterPyramidSynthetic:
         assert v2v.shape == (4, 4)
         assert torch.isfinite(v2v).all()
         assert torch.allclose(v2v, torch.eye(4, dtype=v2v.dtype), atol=1.0)
+
+    def test_register_pyramid_respects_max_voxels_schedule(self, monkeypatch: pytest.MonkeyPatch):
+        seen_shapes: list[tuple[int, int, int]] = []
+
+        def fake_register_level(simg, timg, **kwargs):
+            seen_shapes.append(tuple(int(v) for v in simg.shape))
+            return torch.eye(4), [], None
+
+        monkeypatch.setattr("nireg.imreg.robreg_gd.register_level", fake_register_level)
+
+        img = _make_img(shape=(128, 128, 128))
+        register_pyramid(img, img, return_v2v=True, centroid_init=False, n=1, min_voxels=16, max_voxels=64)
+        assert seen_shapes == [(16, 16, 16), (32, 32, 32), (64, 64, 64)]
+
+        seen_shapes.clear()
+        register_pyramid(img, img, return_v2v=True, centroid_init=False, n=1, min_voxels=16, max_voxels=None)
+        assert seen_shapes == [(16, 16, 16), (32, 32, 32), (64, 64, 64), (128, 128, 128)]
 
 
 class TestPublicRobregWrapper:

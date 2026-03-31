@@ -1,6 +1,7 @@
 import torch
 
 _PYRAMID_FILTER = torch.tensor([0.0625, 0.25, 0.375, 0.25, 0.0625])
+"""FreeSurfer's saved-multiresolution smoothing kernel (Registration::buildGPLimits)."""
 
 
 def _conv1d_along(
@@ -43,7 +44,13 @@ def _smooth3d(vol: torch.Tensor, kernel: torch.Tensor, padding_mode: str = "repl
 
 
 def _downsample2_trilinear(vol: torch.Tensor) -> torch.Tensor:
-    """Downsample a volume by approximately 2× using trilinear interpolation."""
+    """Downsample a volume by approximately 2x using trilinear interpolation.
+
+    Notes
+    -----
+    FreeSurfer's multiresolution pyramid uses ``MRIdownsample2BSpline``;
+    we instead downsample the already smoothed image via trilinear interpolation.
+    """
     D, H, W = vol.shape
     out_shape = (
         max(1, D // 2) if D > 1 else 1,
@@ -95,8 +102,9 @@ def get_pyramid_limits(
     minsize : int, optional
         The minimum allowed size for the smallest dimension in the pyramid. Default is 32.
     maxsize : int, optional
-        The maximum allowed size for the largest dimension in the pyramid. If not provided,
-        this is not used in the calculations. Default is None.
+        The maximum allowed size for the largest dimension in the finest pyramid
+        level to retain. If not provided, the original/full-resolution level is
+        kept. Default is None.
 
     Returns
     -------
@@ -136,7 +144,7 @@ def get_pyramid_limits(
     temp = max(common_dims)
     minsteps = 0
     while minsteps < maxsteps:
-        if temp < maxsize:
+        if temp <= maxsize:
             break
         temp //= 2
         minsteps += 1
@@ -151,6 +159,11 @@ def build_gaussian_pyramid(
 ) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
     """
     Build a Gaussian pyramid for a 3D image, including its downsampled versions.
+
+    The smoothing step uses the same 5-tap kernel FreeSurfer uses for its
+    multiresolution pyramid. FreeSurfer then downsamples with
+    ``MRIdownsample2BSpline``; we instead apply trilinear downsampling to
+    the smoothed image.
 
     Parameters
     ----------

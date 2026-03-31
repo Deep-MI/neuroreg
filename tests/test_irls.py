@@ -6,8 +6,6 @@ import torch
 from nireg.image import build_gaussian_pyramid, get_pyramid_limits
 from nireg.imreg.init import get_ixform_centroids
 from nireg.imreg.irls import (
-    _build_pyramid,
-    _choose_pyramid_levels,
     _sqrt_tukey,
     compute_partials,
     construct_Ab,
@@ -281,28 +279,37 @@ class TestRegisterIrlsPyramid:
         )
         assert torch.allclose(T, init)
 
-    def test_choose_pyramid_levels_matches_freesurfer_schedule(self):
-        pyramid = [
-            torch.zeros(224, 224, 169),
-            torch.zeros(112, 112, 84),
-            torch.zeros(56, 56, 42),
-            torch.zeros(28, 28, 21),
-            torch.zeros(14, 14, 10),
-            torch.zeros(7, 7, 5),
-        ]
-        assert _choose_pyramid_levels(pyramid, min_voxels=16, max_voxels=64) == [3, 2, 1, 0]
-
-    def test_shared_pyramid_matches_private_builder_voxelwise_for_retained_levels(self):
+    def test_shared_pyramid_respects_min_voxels(self):
         torch.manual_seed(4)
         img = torch.rand(31, 27, 19)
         limits = get_pyramid_limits(img.shape, minsize=8)
-        shared, _ = build_gaussian_pyramid(img, torch.eye(4), limits=limits)
-        private = [level for level in _build_pyramid(img) if min(level.shape) >= 8]
+        pyramid, _ = build_gaussian_pyramid(img, torch.eye(4), limits=limits)
 
-        assert len(shared) == len(private)
-        for shared_level, private_level in zip(shared, private, strict=True):
-            assert tuple(shared_level.shape) == tuple(private_level.shape)
-            assert torch.allclose(shared_level, private_level)
+        assert pyramid
+        assert min(pyramid[-1].shape) >= 8
+
+    def test_max_voxels_skips_overly_fine_levels(self):
+        img = torch.zeros(224, 224, 169)
+        limits = get_pyramid_limits(img.shape, minsize=16, maxsize=64)
+        pyramid, _ = build_gaussian_pyramid(img, torch.eye(4), limits=limits)
+
+        assert tuple(pyramid[0].shape) == (56, 56, 42)
+        assert all(max(level.shape) <= 64 for level in pyramid)
+
+    def test_max_voxels_none_keeps_original_resolution(self):
+        img = torch.zeros(31, 27, 19)
+        T, all_info = register_irls_pyramid(
+            img,
+            img.clone(),
+            min_voxels=8,
+            max_voxels=None,
+            nmax=0,
+            isotropic=False,
+        )
+
+        assert tuple(T.shape) == (4, 4)
+        assert len(all_info) == 2
+        assert all_info[-1]["image_shape"] == tuple(img.shape)
 
 
 
