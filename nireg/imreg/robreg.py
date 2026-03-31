@@ -168,8 +168,7 @@ def register_irls_pyramid(
         If ``True``, resample both images to a shared isotropic grid before
         registration.
     symmetric : bool, default=True
-        If ``True``, perform symmetric halfway-space registration. This is the
-        default/public robreg behavior.
+        If ``True``, use symmetric (midspace) mode.
     adaptive_sat : bool, default=False
         Whether to adapt the Tukey saturation threshold based on the outlier
         fraction.

@@ -436,10 +436,10 @@ def register_irls(
     trg: torch.Tensor,
     initial_transform: torch.Tensor | None = None,
     nmax: int = 5,
-    sat: float = 6.0,
+    sat: float = 4.685,
     epsit: float = 0.01,
     max_irls: int = 20,
-    symmetric: bool = False,
+    symmetric: bool = True,
     adaptive_sat: bool = False,
     target_outlier_pct: float = 5.0,
     verbose: bool = False,
@@ -452,15 +452,15 @@ def register_irls(
     ----------
     src               : [D, H, W]  source image (float32)
     trg               : [D, H, W]  target image
-    initial_transform : 4×4 vox-to-vox matrix (default: identity)
+    initial_transform : 4x4 vox-to-vox matrix (default: identity)
     nmax              : maximum outer-loop iterations (default 5)
     sat               : Tukey saturation threshold (default 4.685)
     epsit             : convergence threshold for affine distance (default 0.01)
     max_irls          : maximum IRLS inner iterations per step (default 20)
     symmetric         : if True, use symmetric (midspace) mode where both images
                         are warped half-way; if False, use directed mode where
-                        only source is warped to target space (default False)
-    adaptive_sat      : if True, increase sat when outliers exceed target (default True)
+                        only source is warped to target space (default True)
+    adaptive_sat      : if True, increase sat when outliers exceed target (default False)
     target_outlier_pct: target outlier percentage (default 5.0%)
     verbose           : print per-iteration info
 
@@ -688,4 +688,3 @@ def _choose_pyramid_levels(
         for lvl in range(len(pyramid) - 1, -1, -1)
         if min(pyramid[lvl].shape) >= min_voxels
     ]
-
