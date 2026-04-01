@@ -40,6 +40,7 @@ def register_level(
     n: int = 30,
     loss_name: str = "mse",
     loss_beta: float | None = None,
+    loss_bins: int = 32,
     optimizer: str = "adam",
     verbose: bool = False,
     device: str = "cpu",
@@ -60,9 +61,23 @@ def register_level(
     n : int, default=30
         Number of optimizer iterations.
     loss_name : str, default="mse"
-        Loss function name forwarded to :func:`training_loop`.
+        Similarity metric forwarded to :func:`training_loop`.  Accepted values:
+
+        * ``"mse"``       — mean squared error (same-modality)
+        * ``"huber"``     — Huber loss; ``loss_beta`` sets the delta threshold
+        * ``"smooth_l1"`` — smooth L1; ``loss_beta`` sets the beta threshold
+        * ``"l1"``        — mean absolute error
+        * ``"ncc"``       — local normalised cross-correlation; ``loss_beta``
+          sets the window size in voxels (default 9)
+        * ``"mi"``        — mutual information (cross-modal); ``loss_beta``
+          sets the Parzen-window sigma (default 0.1)
+        * ``"nmi"``       — normalised mutual information (cross-modal);
+          same hyper-parameters as ``"mi"``
     loss_beta : float, optional
-        Optional loss hyperparameter for robust losses that require one.
+        Primary hyper-parameter for the chosen loss (see ``loss_name``).
+    loss_bins : int, default=32
+        Number of intensity histogram bins used by ``"mi"`` and ``"nmi"``.
+        Ignored for other loss functions.
     optimizer : {"adam", "lbfgs"}, default="adam"
         Optimizer used to fit the registration model.
     verbose : bool, default=False
@@ -109,6 +124,7 @@ def register_level(
         n=n,
         loss_name=loss_name,
         loss_beta=loss_beta,
+        loss_bins=loss_bins,
         optimizer_name=optimizer,
         verbose=verbose,
     )
@@ -127,6 +143,7 @@ def register_pyramid(
     n: int = 30,
     loss_name: str = "mse",
     loss_beta: float | None = None,
+    loss_bins: int = 32,
     optimizer: str = "adam",
     min_voxels: int = 16,
     max_voxels: int | None = None,
@@ -155,9 +172,13 @@ def register_pyramid(
     n : int, default=30
         Number of optimizer iterations per pyramid level.
     loss_name : str, default="mse"
-        Loss function name forwarded to :func:`training_loop`.
+        Similarity metric — see :func:`register_level` for accepted values and
+        the meaning of ``loss_beta`` for each choice.
     loss_beta : float, optional
-        Optional loss hyperparameter for robust losses that require one.
+        Primary hyper-parameter for the chosen loss (see ``loss_name``).
+    loss_bins : int, default=32
+        Number of intensity histogram bins used by ``"mi"`` and ``"nmi"``.
+        Ignored for other loss functions.
     optimizer : {"adam", "lbfgs"}, default="adam"
         Optimizer used at each pyramid level.
     min_voxels : int, default=16
@@ -248,6 +269,7 @@ def register_pyramid(
                 n=n,
                 loss_name=loss_name,
                 loss_beta=loss_beta,
+                loss_bins=loss_bins,
                 optimizer=optimizer,
                 device=device,
             )
@@ -263,6 +285,7 @@ def register_pyramid(
                 n=n,
                 loss_name=loss_name,
                 loss_beta=loss_beta,
+                loss_bins=loss_bins,
                 optimizer=optimizer,
                 device=device,
             )
@@ -321,6 +344,7 @@ def register_pyramid_sym(
     n: int = 30,
     loss_name: str = "mse",
     loss_beta: float | None = None,
+    loss_bins: int = 32,
     optimizer: str = "adam",
     min_voxels: int = 16,
     max_voxels: int | None = None,
@@ -345,9 +369,13 @@ def register_pyramid_sym(
     n : int, default=30
         Number of optimizer iterations per pyramid level.
     loss_name : str, default="mse"
-        Loss function name forwarded to :func:`training_loop`.
+        Similarity metric — see :func:`register_level` for accepted values and
+        the meaning of ``loss_beta`` for each choice.
     loss_beta : float, optional
-        Optional loss hyperparameter for robust losses that require one.
+        Primary hyper-parameter for the chosen loss (see ``loss_name``).
+    loss_bins : int, default=32
+        Number of intensity histogram bins used by ``"mi"`` and ``"nmi"``.
+        Ignored for other loss functions.
     optimizer : {"adam", "lbfgs"}, default="adam"
         Optimizer used at each symmetric pyramid level.
     min_voxels : int, default=16
@@ -439,6 +467,7 @@ def register_pyramid_sym(
             n=n,
             loss_name=loss_name,
             loss_beta=loss_beta,
+            loss_bins=loss_bins,
             optimizer=optimizer,
             device=device,
         )
