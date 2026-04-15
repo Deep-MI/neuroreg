@@ -151,15 +151,16 @@ def register_surface(
         logger.info("RH surface: %d vertices", rh_data["vertices"].shape[0])
 
     if init_ras is not None:
-        init_transform = torch.from_numpy(init_ras).float()
-        logger.info("Using provided RAS-to-RAS init:\n%s", init_ras)
+        ras_mov_to_trg = np.asarray(init_ras, dtype=np.float64)
+        init_transform = torch.from_numpy(np.linalg.inv(ras_mov_to_trg)).float()
+        logger.info("Using provided RAS-to-RAS init (mov_RAS→trg_RAS):\n%s", ras_mov_to_trg)
     elif init_type == "lta":
         if init_lta is None:
             raise ValueError("init_lta must be provided when init_type='lta'")
         logger.info("Loading init transform from LTA: %s", init_lta)
         ras_mov_to_trg = LTA.read(init_lta).r2r()
         init_transform = torch.from_numpy(np.linalg.inv(ras_mov_to_trg)).float()
-        logger.info("Loaded init transform (trg_RAS→mov_RAS) from %s", init_lta)
+        logger.info("Loaded init transform (mov_RAS→trg_RAS) from %s", init_lta)
     elif init_type == "centroid":
         raise ValueError(
             "init_type='centroid' is not supported for surface-based registration: "
@@ -253,15 +254,15 @@ def register_surface(
         model.transform_params.copy_(best_params)
 
     final_transform = best_transform
+    ras_transform_np = final_transform.detach().cpu().numpy()
+    ras_mov_to_trg = np.linalg.inv(ras_transform_np)
     elapsed = time.perf_counter() - start
     logger.info("Registration finished in %.2f s", elapsed)
     logger.info("Using best iterate: cost = %.6f at iter %d", best_cost, best_iteration)
-    logger.debug("Final transform (trg_RAS→mov_RAS):\n%s", final_transform)
+    logger.debug("Final transform (mov_RAS→trg_RAS):\n%s", ras_mov_to_trg)
 
     if lta_name is not None:
         logger.info("Writing LTA file: %s", lta_name)
-        ras_transform_np = final_transform.detach().cpu().numpy()
-        ras_mov_to_trg = np.linalg.inv(ras_transform_np)
         vox_transform = convert_transform_type(
             ras_mov_to_trg,
             mov_img.affine,
@@ -279,7 +280,7 @@ def register_surface(
             lta_type=0,
         ).write(lta_name)
 
-    return final_transform.detach(), model
+    return torch.from_numpy(ras_mov_to_trg).to(best_transform), model
 
 
 __all__ = ["register_surface"]

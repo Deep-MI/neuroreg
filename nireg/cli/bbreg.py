@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
 """Command-line interface for boundary-based registration (bbreg)."""
 
+from __future__ import annotations
+
 import argparse
 import logging
 import sys
+from pathlib import Path
+from typing import Any
+
+import nibabel as nib
+import numpy as np
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -24,13 +31,11 @@ def _build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
-    # ── required ────────────────────────────────────────────────────────────
     p.add_argument(
         "--mov", required=True, metavar="FILE", help="Moving image to register (e.g. fMRI or T2, NIfTI or MGZ)."
     )
     p.add_argument("--out", required=True, metavar="LTA", help="Output LTA file for the recovered transformation.")
 
-    # ── surface input: mode A ────────────────────────────────────────────────
     grp_a = p.add_argument_group("Mode A – FreeSurfer subject directory")
     grp_a.add_argument(
         "--subject_dir",
@@ -38,17 +43,20 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Subject directory containing surf/lh.white, surf/rh.white, and mri/orig.mgz.",
     )
 
-    # ── surface input: mode B ────────────────────────────────────────────────
     grp_b = p.add_argument_group("Mode B – explicit surface files")
     grp_b.add_argument(
-        "--ref", metavar="FILE", help="Reference (T1) image against which surfaces were built (required for Mode B)."
+        "--ref",
+        metavar="FILE",
+        help=(
+            "Reference anatomical intensity image. Required for Mode B (explicit surfaces). "
+            "Optional for Mode C (--seg) to drive coarse NMI prealignment."
+        ),
     )
     grp_b.add_argument("--lh_surf", metavar="FILE", help="Left-hemisphere white surface (e.g. surf/lh.white).")
     grp_b.add_argument("--rh_surf", metavar="FILE", help="Right-hemisphere white surface (e.g. surf/rh.white).")
     grp_b.add_argument("--lh_thickness", metavar="FILE", help="Left-hemisphere cortical thickness file.")
     grp_b.add_argument("--rh_thickness", metavar="FILE", help="Right-hemisphere cortical thickness file.")
 
-    # ── surface input: mode C ────────────────────────────────────────────────
     grp_c = p.add_argument_group(
         "Mode C – segmentation (aparc+aseg / aseg)",
         "White surfaces are extracted on-the-fly via marching cubes. "
@@ -74,7 +82,6 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Taubin smoothing iterations after marching cubes. Default: 50.",
     )
 
-    # ── transform ───────────────────────────────────────────────────────────
     p.add_argument(
         "--dof",
         type=int,
@@ -90,7 +97,6 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Tissue contrast: 't1' (WM>GM) or 't2' (GM>WM). Auto-detected from the image when not specified.",
     )
 
-    # ── cost function ────────────────────────────────────────────────────────
     p.add_argument("--cost", default="contrast", choices=["contrast", "gradient", "both"], help="BBR cost term.")
     p.add_argument("--wm_proj_abs", type=float, default=1.4, metavar="MM", help="Absolute WM projection depth (mm).")
     p.add_argument(
@@ -99,20 +105,37 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--slope", type=float, default=0.5, help="Slope of the BBR sigmoid cost function.")
     p.add_argument("--gradient_weight", type=float, default=0.0, help="Weight for gradient cost term when --cost=both.")
 
-    # ── optimisation ─────────────────────────────────────────────────────────
     p.add_argument("--n_iters", type=int, default=200, metavar="N", help="Number of RMSprop optimisation iterations.")
     p.add_argument("--lr", type=float, default=0.005, help="Optimiser learning rate.")
     p.add_argument("--subsample", type=int, default=2, metavar="N", help="Use every N-th surface vertex (1 = all).")
 
-    # ── initialisation ───────────────────────────────────────────────────────
     p.add_argument(
+        "--init-lta",
         "--init_lta",
+        dest="init_lta",
         metavar="FILE",
-        help="Initialise registration from an existing LTA file "
-        "(e.g. from a prior robreg run, or a previous bbreg pass).",
+        help=(
+            "Initialise registration from an existing LTA file "
+            "(e.g. from a prior robreg run, or a previous bbreg pass)."
+        ),
+    )
+    p.add_argument(
+        "--init-header",
+        action="store_true",
+        help=(
+            "Assume that the geometry information in the cross-modal and anatomical are sufficient to get a close "
+            "voxel-to-voxel registration. This usually is only the case if they were acquired in the same session."
+        ),
+    )
+    p.add_argument(
+        "--no-coreg-ref-mask",
+        action="store_true",
+        help=(
+            "Do not use aparc+aseg/aseg (or the provided segmentation) as a reference mask for the coarse "
+            "NMI prealignment stage."
+        ),
     )
 
-    # ── misc ─────────────────────────────────────────────────────────────────
     p.add_argument("--device", default="cpu", metavar="DEVICE", help="PyTorch device, e.g. 'cpu' or 'cuda'.")
     p.add_argument("--verbose", action="store_true", help="Enable INFO-level logging.")
     p.add_argument("--debug", action="store_true", help="Enable DEBUG-level logging.")
@@ -144,16 +167,88 @@ def _validate_args(ns: argparse.Namespace, parser: argparse.ArgumentParser) -> s
     if has_explicit and ns.ref is None:
         parser.error("--ref is required when using Mode B (explicit surface files).")
 
-    if has_seg and ns.ref is not None:
-        parser.error(
-            "--ref is not needed with --seg (Mode C): the segmentation header provides the target reference geometry."
-        )
+    if ns.init_header and ns.init_lta is not None:
+        parser.error("--init-header and --init-lta are mutually exclusive.")
 
     if has_sdir:
         return "subject_dir"
     if has_seg:
         return "seg"
     return "explicit"
+
+
+def _load_reference_image_for_mode(ns: argparse.Namespace, mode: str) -> Any | None:
+    if mode == "subject_dir":
+        orig_path = Path(ns.subject_dir) / "mri" / "orig.mgz"
+        return nib.load(str(orig_path))
+    if mode == "explicit":
+        return nib.load(ns.ref)
+    if mode == "seg" and ns.ref is not None:
+        return nib.load(ns.ref)
+    return None
+
+
+def _load_prealign_mask_image(ns: argparse.Namespace, mode: str) -> Any | None:
+    if mode == "subject_dir":
+        mri_dir = Path(ns.subject_dir) / "mri"
+        for name in ("aparc+aseg.mgz", "aseg.mgz"):
+            path = mri_dir / name
+            if path.exists():
+                return nib.load(str(path))
+        return None
+    if mode == "seg":
+        return nib.load(ns.seg)
+    return None
+
+
+def _mask_reference_image(
+    ref_img: Any,
+    mask_img: Any | None,
+) -> Any:
+    if mask_img is None:
+        return ref_img
+
+    ref_data = np.asarray(ref_img.get_fdata(), dtype=np.float32)
+    mask_data = np.asarray(mask_img.get_fdata()) > 0
+    if mask_data.shape != ref_data.shape:
+        raise ValueError(
+            f"Prealignment mask shape {mask_data.shape} does not match reference shape {ref_data.shape}."
+        )
+
+    masked = ref_data * mask_data.astype(np.float32)
+    return nib.Nifti1Image(masked, ref_img.affine)
+
+
+def _run_default_nmi_prealign(
+    mov_img: Any,
+    ref_img: Any,
+    mask_img: Any | None,
+    logger: logging.Logger,
+    device: str,
+) -> np.ndarray:
+    from nireg.imreg.robreg_gd import register_pyramid
+
+    prealign_ref = _mask_reference_image(ref_img, mask_img)
+    logger.info(
+        "Running default coarse NMI prealignment (header start, min_voxels=32, max_voxels=64, level_iters=[30, 10])%s",
+        " with aparc+aseg/aseg mask" if mask_img is not None else "",
+    )
+    Mr2r = register_pyramid(
+        mov_img,
+        prealign_ref,
+        return_v2v=False,
+        centroid_init=False,
+        dof=6,
+        level_iters=[30, 10],
+        loss_name="nmi",
+        min_voxels=32,
+        max_voxels=64,
+        isotropic=False,
+        device=device,
+    )
+    Mr2r_np = Mr2r.detach().cpu().numpy()
+    logger.info("Finished NMI prealignment (mov_RAS->trg_RAS):\n%s", Mr2r_np)
+    return Mr2r_np
 
 
 def main(args=None) -> None:
@@ -164,13 +259,11 @@ def main(args=None) -> None:
     ns = parser.parse_args(args)
     mode = _validate_args(ns, parser)
 
-    # ── logging ──────────────────────────────────────────────────────────────
     level = logging.DEBUG if ns.debug else (logging.INFO if ns.verbose else logging.WARNING)
     logging.basicConfig(level=level, format="%(levelname)s %(name)s: %(message)s")
     logger = logging.getLogger("nireg.cli.bbreg")
 
-    # ── build kwargs for register_surface ───────────────────────────────────
-    kwargs: dict = dict(
+    kwargs: dict[str, Any] = dict(
         mov=ns.mov,
         lta_name=ns.out,
         dof=ns.dof,
@@ -186,9 +279,24 @@ def main(args=None) -> None:
         device=ns.device,
     )
 
+    mov_img = nib.load(ns.mov)
+    ref_img = _load_reference_image_for_mode(ns, mode)
+    mask_img = None
+    if ref_img is not None and not ns.no_coreg_ref_mask:
+        mask_img = _load_prealign_mask_image(ns, mode)
+
     if ns.init_lta is not None:
+        logger.info("Using explicit LTA initialization: %s", ns.init_lta)
         kwargs["init_lta"] = ns.init_lta
         kwargs["init_type"] = "lta"
+    elif ns.init_header:
+        logger.info("Using header-only initialization (--init-header)")
+        kwargs["init_type"] = "header"
+    elif ref_img is not None:
+        kwargs["init_ras"] = _run_default_nmi_prealign(mov_img, ref_img, mask_img, logger, ns.device)
+    else:
+        logger.info("No anatomical intensity reference available for NMI prealignment; falling back to header init")
+        kwargs["init_type"] = "header"
 
     if mode == "subject_dir":
         logger.info("Mode A: subject directory %s", ns.subject_dir)
@@ -208,7 +316,6 @@ def main(args=None) -> None:
             kwargs["rh_thickness"] = ns.rh_thickness
         kwargs["ref"] = ns.ref
 
-    # ── run ──────────────────────────────────────────────────────────────────
     try:
         register_surface(**kwargs)
     except Exception as exc:
