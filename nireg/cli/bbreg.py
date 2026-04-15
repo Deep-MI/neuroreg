@@ -144,7 +144,12 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _validate_args(ns: argparse.Namespace, parser: argparse.ArgumentParser) -> str:
-    """Validate surface-input mode and return 'subject_dir', 'explicit', or 'seg'."""
+    """Validate mutually exclusive surface-input modes.
+
+    Returns one of ``"subject_dir"``, ``"explicit"``, or ``"seg"`` so later
+    CLI stages can dispatch loading and prealignment logic without repeating the
+    same checks.
+    """
     has_sdir = ns.subject_dir is not None
     has_explicit = ns.lh_surf is not None or ns.rh_surf is not None
     has_seg = ns.seg is not None
@@ -178,6 +183,13 @@ def _validate_args(ns: argparse.Namespace, parser: argparse.ArgumentParser) -> s
 
 
 def _load_reference_image_for_mode(ns: argparse.Namespace, mode: str) -> Any | None:
+    """Load the anatomical intensity image used for optional NMI prealignment.
+
+    The returned image is the fixed/target image for the coarse image-to-image
+    prealignment stage that seeds the surface-based BBR optimisation. Some modes
+    do not always have such an image available, in which case ``None`` is
+    returned and the CLI falls back to header initialization.
+    """
     if mode == "subject_dir":
         orig_path = Path(ns.subject_dir) / "mri" / "orig.mgz"
         return nib.load(str(orig_path))
@@ -189,6 +201,12 @@ def _load_reference_image_for_mode(ns: argparse.Namespace, mode: str) -> Any | N
 
 
 def _load_prealign_mask_image(ns: argparse.Namespace, mode: str) -> Any | None:
+    """Load the mask used to focus coarse NMI prealignment on relevant anatomy.
+
+    In ``subject_dir`` mode this prefers ``aparc+aseg.mgz`` and falls back to
+    ``aseg.mgz``. In ``seg`` mode the segmentation itself acts as the mask.
+    Explicit-surface mode does not define a default mask.
+    """
     if mode == "subject_dir":
         mri_dir = Path(ns.subject_dir) / "mri"
         for name in ("aparc+aseg.mgz", "aseg.mgz"):
@@ -205,6 +223,12 @@ def _mask_reference_image(
     ref_img: Any,
     mask_img: Any | None,
 ) -> Any:
+    """Apply a binary mask to the fixed/reference image for NMI prealignment.
+
+    Voxels outside the mask are set to zero so the coarse image registration is
+    driven more by intracranial anatomy and less by unrelated head/background
+    content.
+    """
     if mask_img is None:
         return ref_img
 
@@ -226,6 +250,14 @@ def _run_default_nmi_prealign(
     logger: logging.Logger,
     device: str,
 ) -> np.ndarray:
+    """Run the default coarse image-based prealignment for ``bbreg``.
+
+    This uses the legacy gradient-descent registration path with an NMI loss and
+    a short two-level pyramid. The returned transform is always a RAS-to-RAS
+    matrix in public ``moving/source -> target/reference`` direction so it can
+    be passed directly to :func:`nireg.bbreg.register.register_surface` as
+    ``init_ras``.
+    """
     from nireg.imreg.robreg_gd import register_pyramid
 
     prealign_ref = _mask_reference_image(ref_img, mask_img)
@@ -252,7 +284,13 @@ def _run_default_nmi_prealign(
 
 
 def main(args=None) -> None:
-    """Entry point for the ``bbreg`` command."""
+    """Entry point for the ``bbreg`` command-line interface.
+
+    The CLI normalizes the different input modes, optionally runs a coarse NMI
+    prealignment to obtain a ``moving -> target`` initialization, and then calls
+    :func:`nireg.bbreg.register.register_surface` with a consistent public
+    transform direction.
+    """
     from nireg.bbreg.register import register_surface
 
     parser = _build_parser()

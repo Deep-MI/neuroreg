@@ -10,6 +10,11 @@ from typing import Any, cast
 
 
 def _parse_int_csv(value: str) -> list[int]:
+    """Parse a coarse-to-fine pyramid iteration schedule from the CLI.
+
+    The resulting list is forwarded to ``register_pyramid(level_iters=...)``.
+    Users can pass ``0`` for any intermediate level they want to skip.
+    """
     items = [part.strip() for part in value.split(",") if part.strip()]
     if not items:
         raise argparse.ArgumentTypeError("Expected a comma-separated list of integers")
@@ -77,7 +82,14 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main(args=None) -> None:
-    """Entry point for the ``robreg_gd`` command."""
+    """Entry point for the ``robreg_gd`` command-line interface.
+
+    This wrapper exposes the legacy image-to-image gradient-descent path with a
+    small set of practical knobs: transform DOF, pyramid iteration schedule,
+    optional centroid initialization, and pyramid resolution limits. The written
+    output LTA is a voxel-to-voxel transform in public ``moving -> reference``
+    direction.
+    """
     import nibabel as nib
 
     from nireg.imreg.robreg_gd import register_pyramid

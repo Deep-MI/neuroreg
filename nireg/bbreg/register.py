@@ -43,7 +43,91 @@ def register_surface(
     early_stop_patience: int = 20,
     device: str = "cpu",
 ) -> tuple[torch.Tensor, BBRModel]:
-    """Register a moving image to cortical surface boundaries using BBR."""
+    """Register a moving image to cortical surface boundaries using BBR.
+
+    This is the main Python API for the boundary-based registration path. The
+    moving image is aligned to a target anatomical space defined either by a
+    FreeSurfer/FastSurfer subject directory, explicit white-matter surface
+    files plus a reference image, or a segmentation from which surfaces are
+    extracted on the fly.
+
+    Public transform direction is always ``moving/source -> target/reference``.
+    That convention applies to ``init_ras``, ``init_lta``, the returned tensor,
+    and any written LTA. Internally the BBR model optimizes the inverse
+    transform because that is the natural parameterization for sampling the
+    moving volume at target-surface locations, but that internal detail is
+    hidden at the API boundary.
+
+    Parameters
+    ----------
+    mov : str or nib.Nifti1Image
+        Moving/source image to align into the target/reference space.
+    lh_surf, rh_surf : str, optional
+        Explicit left/right white-matter surface files for surface-input mode.
+    lh_thickness, rh_thickness : str, optional
+        Optional cortical thickness files paired with ``lh_surf`` and
+        ``rh_surf``.
+    ref : str or nib.Nifti1Image, optional
+        Reference anatomical image used with explicit-surface mode.
+    subject_dir : str, optional
+        FreeSurfer/FastSurfer subject directory providing surfaces and
+        ``mri/orig.mgz``.
+    seg : str, optional
+        Segmentation volume used to extract white-matter surfaces on the fly.
+    lta_name : str, optional
+        Output path for a written LTA in public ``moving -> target`` direction.
+    dof : int, default=6
+        Transformation degrees of freedom.
+    contrast : {"t1", "t2"}, optional
+        Expected image contrast for the BBR intensity model. When ``None``, the
+        model auto-detects the polarity.
+    init_type : {"header", "lta"}, default="header"
+        Initialization source when ``init_ras`` is not supplied.
+    init_lta : str, optional
+        Existing LTA used for initialization. It must encode a
+        ``moving/source -> target/reference`` transform.
+    init_ras : ndarray, optional
+        Initial 4x4 RAS-to-RAS transform in public ``moving/source ->
+        target/reference`` direction.
+    cost_type : {"contrast", "gradient", "both"}, default="contrast"
+        Cost terms included in the BBR objective.
+    wm_proj_abs : float, default=1.4
+        White-matter sampling depth in millimetres.
+    gm_proj_frac : float, default=0.5
+        Gray-matter sampling depth as a fraction of cortical thickness.
+    gm_proj_abs : float, optional
+        Absolute gray-matter projection depth overriding ``gm_proj_frac``.
+    lh_cortex_label, rh_cortex_label : str, optional
+        Optional cortex label files restricting sampled vertices.
+    slope : float, default=0.5
+        Slope of the sigmoid used in the contrast cost.
+    gradient_weight : float, default=0.0
+        Relative weight of the gradient term when ``cost_type='both'``.
+    subsample : int, default=1
+        Use every ``subsample``-th surface vertex during optimization.
+    n_iters : int, default=200
+        Maximum number of RMSprop iterations.
+    lr : float, default=0.01
+        RMSprop learning rate.
+    early_stop_patience : int, default=20
+        Stop after this many non-improving iterations. Set ``0`` to disable
+        early stopping.
+    device : str, default="cpu"
+        Torch device on which to run the optimization.
+
+    Returns
+    -------
+    tuple[torch.Tensor, BBRModel]
+        The best-found RAS-to-RAS transform in public ``moving/source ->
+        target/reference`` direction together with the fitted ``BBRModel``.
+
+    Raises
+    ------
+    ValueError
+        If the requested input mode is incomplete or unsupported.
+    RuntimeError
+        If optimization fails to produce any valid iterate.
+    """
     start = time.perf_counter()
 
     if isinstance(mov, str):
