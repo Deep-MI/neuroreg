@@ -120,5 +120,10 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# PyCharm
+# PyCharm and Plugins
 **/.idea/
+.agentbridge/
+.agent-work/
+
+# scratch files
+scratch/
