@@ -108,7 +108,6 @@ class TestRobregCli:
 
 
 class TestRobregGdCli:
-
     def test_main_forwards_noinit(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         mov_path = tmp_path / "mov.nii.gz"
         ref_path = tmp_path / "ref.nii.gz"
@@ -150,3 +149,48 @@ class TestRobregGdCli:
         assert captured_kwargs["centroid_init"] is False
         assert out_path.exists()
 
+    def test_main_forwards_level_schedule_and_optimizer_settings(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ):
+        mov_path = tmp_path / "mov.nii.gz"
+        ref_path = tmp_path / "ref.nii.gz"
+        out_path = tmp_path / "out.lta"
+
+        _write_zero_image(mov_path)
+        _write_zero_image(ref_path)
+
+        captured_kwargs: dict[str, object] = {}
+
+        def fake_register_pyramid(*args, **kwargs):
+            captured_kwargs.update(kwargs)
+            return torch.eye(4)
+
+        class _DummyLTA:
+            def write(self, path):
+                Path(path).write_text("dummy")
+
+        monkeypatch.setattr("nireg.imreg.robreg_gd.register_pyramid", fake_register_pyramid)
+        monkeypatch.setattr(
+            "nireg.transforms.LTA.from_matrix",
+            lambda *args, **kwargs: _DummyLTA(),
+        )
+
+        robreg_gd_main([
+            "--mov", str(mov_path),
+            "--ref", str(ref_path),
+            "--out", str(out_path),
+            "--n_iters", "25",
+            "--level-iters", "20,0,5",
+            "--lr", "0.002",
+            "--min-voxels", "32",
+            "--max-voxels", "128",
+        ])
+
+        assert captured_kwargs["n"] == 25
+        assert captured_kwargs["level_iters"] == [20, 0, 5]
+        assert captured_kwargs["lr"] == pytest.approx(0.002)
+        assert captured_kwargs["min_voxels"] == 32
+        assert captured_kwargs["max_voxels"] == 128
+        assert out_path.exists()

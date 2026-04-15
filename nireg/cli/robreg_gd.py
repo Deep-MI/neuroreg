@@ -1,10 +1,22 @@
 #!/usr/bin/env python3
 """Command-line interface for legacy gradient-descent image registration (robreg_gd)."""
 
+from __future__ import annotations
+
 import argparse
 import logging
 import sys
 from typing import Any, cast
+
+
+def _parse_int_csv(value: str) -> list[int]:
+    items = [part.strip() for part in value.split(",") if part.strip()]
+    if not items:
+        raise argparse.ArgumentTypeError("Expected a comma-separated list of integers")
+    try:
+        return [int(part) for part in items]
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("Expected a comma-separated list of integers") from exc
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -17,12 +29,10 @@ def _build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
-    # ── required ────────────────────────────────────────────────────────────
     p.add_argument("--mov", required=True, metavar="FILE", help="Moving (source) image (NIfTI or MGZ).")
     p.add_argument("--ref", required=True, metavar="FILE", help="Reference (target/fixed) image (NIfTI or MGZ).")
     p.add_argument("--out", required=True, metavar="LTA", help="Output LTA file for the recovered transformation.")
 
-    # ── transform ───────────────────────────────────────────────────────────
     p.add_argument(
         "--dof",
         type=int,
@@ -32,13 +42,26 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Degrees of freedom: 3=translation, 6=rigid, 9=rigid+scale, 12=affine.",
     )
 
-    # ── optimisation ────────────────────────────────────────────────────────
     p.add_argument(
         "--n_iters",
         type=int,
         default=None,
         metavar="N",
-        help="Maximum number of optimisation iterations per pyramid level (default: auto from register_pyramid).",
+        help="Uniform number of optimisation iterations per pyramid level.",
+    )
+    p.add_argument(
+        "--level-iters",
+        type=_parse_int_csv,
+        default=None,
+        help="Comma-separated per-level iteration schedule in coarse->fine order. Use 0 to skip a level.",
+    )
+    p.add_argument("--lr", type=float, default=None, help="Optimizer step size used on every executed pyramid level.")
+    p.add_argument("--min-voxels", type=int, default=16, help="Minimum pyramid level size.")
+    p.add_argument(
+        "--max-voxels",
+        type=int,
+        default=None,
+        help="Largest allowed dimension of the finest pyramid level. Omit to run up to original resolution.",
     )
     p.add_argument(
         "--noinit",
@@ -47,7 +70,6 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--device", default="cpu", metavar="DEVICE", help="PyTorch device, e.g. 'cpu' or 'cuda'.")
 
-    # ── misc ────────────────────────────────────────────────────────────────
     p.add_argument("--verbose", action="store_true", help="Enable INFO-level logging.")
     p.add_argument("--debug", action="store_true", help="Enable DEBUG-level logging.")
 
@@ -64,12 +86,10 @@ def main(args=None) -> None:
     parser = _build_parser()
     ns = parser.parse_args(args)
 
-    # ── logging ─────────────────────────────────────────────────────────────
     level = logging.DEBUG if ns.debug else (logging.INFO if ns.verbose else logging.WARNING)
     logging.basicConfig(level=level, format="%(levelname)s %(name)s: %(message)s")
     logger = logging.getLogger("nireg.cli.robreg_gd")
 
-    # ── load images (needed for LTA.write geometry metadata) ────────────────
     logger.info("Loading moving image:    %s", ns.mov)
     logger.info("Loading reference image: %s", ns.ref)
     try:
@@ -82,30 +102,33 @@ def main(args=None) -> None:
     mov_img = cast(Any, mov_img)
     ref_img = cast(Any, ref_img)
 
-    # ── register ────────────────────────────────────────────────────────────
-    # Pass paths so register_pyramid handles loading internally.
-    # return_v2v=True → vox-to-vox matrix, consistent with lta_type=0 below.
-    kwargs = dict(dof=ns.dof, device=ns.device, return_v2v=True, centroid_init=not ns.noinit)
+    kwargs = dict(
+        dof=ns.dof,
+        device=ns.device,
+        return_v2v=True,
+        centroid_init=not ns.noinit,
+        level_iters=ns.level_iters,
+        min_voxels=ns.min_voxels,
+        max_voxels=ns.max_voxels,
+        lr=ns.lr,
+    )
     if ns.n_iters is not None:
         kwargs["n"] = ns.n_iters
 
-    logger.info("Starting image-to-image registration (dof=%d) …", ns.dof)
+    logger.info(
+        "Starting image-to-image registration (dof=%d, n=%s, level_iters=%s, lr=%s, min_voxels=%d, max_voxels=%s) ...",
+        ns.dof,
+        ns.n_iters,
+        ns.level_iters,
+        ns.lr,
+        ns.min_voxels,
+        ns.max_voxels,
+    )
     v2v = register_pyramid(mov_img, ref_img, **kwargs)
 
-    # ── write LTA ───────────────────────────────────────────────────────────
-    # lta_type=0 (LINEAR_VOX_TO_VOX) matches the vox-to-vox matrix returned
-    # by register_pyramid(..., return_v2v=True).
-    # LTA.from_matrix() constructs the LTA object; .write() serialises it to disk.
     LTA.from_matrix(v2v.numpy(), ns.mov, cast(Any, mov_img), ns.ref, cast(Any, ref_img), lta_type=0).write(ns.out)
     logger.info("Wrote LTA: %s", ns.out)
     print(f"Output: {ns.out}")
 
-<<<<<<< HEAD
 if __name__ == "__main__":
     main()
-=======
-
-if __name__ == "__main__":
-    main()
-
->>>>>>> 05f7c62 (auto call main)

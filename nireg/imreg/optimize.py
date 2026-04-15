@@ -60,6 +60,7 @@ def training_loop(
     normalize: bool = True,
     optimizer_name: str = "adam",
     verbose: bool = False,
+    trace_fn=None,
 ) -> list[float]:
     """Optimise a registration model for a fixed number of iterations.
 
@@ -101,6 +102,10 @@ def training_loop(
         Name of the optimiser; controls the LBFGS closure path.
     verbose : bool, default=False
         If ``True``, emit per-iteration debug information.
+    trace_fn : callable, optional
+        Optional callback invoked as ``trace_fn(event=..., **payload)``.
+        When provided, the loop emits ``"iter_end"`` events with the current
+        iteration index, scalar loss, v2v transform, and transform change.
 
     Returns
     -------
@@ -131,7 +136,12 @@ def training_loop(
         def closure():
             optimizer.zero_grad()
             preds = model(src_image)
-            t = trg_image.view(preds.size())
+            if tuple(int(v) for v in preds.shape) != tuple(int(v) for v in trg_image.shape):
+                raise ValueError(
+                    "Predicted image shape does not match target image shape: "
+                    f"preds={tuple(preds.shape)} vs trg={tuple(trg_image.shape)}."
+                )
+            t = trg_image
             if loss_name == "mse":
                 loss = F.mse_loss(preds, t)
             elif loss_name == "huber":
@@ -187,6 +197,15 @@ def training_loop(
         v2v = model.get_v2v_from_weights(tuple(int(v) for v in src_image.shape))
         diff = torch.norm(last_v2v - v2v)
         last_v2v = v2v
+
+        if trace_fn is not None:
+            trace_fn(
+                event="iter_end",
+                iteration=i,
+                loss=losses[-1],
+                v2v=v2v.detach().clone(),
+                transform_diff=float(diff),
+            )
 
         if verbose:
             logger.debug("weights: %s", model.weights)

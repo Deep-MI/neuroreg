@@ -9,8 +9,9 @@ import torch
 
 from nireg import register_pyramid as register_pyramid_public
 from nireg.imreg.losses import mi_loss, ncc_loss, nmi_loss
+from nireg.imreg.reg_model import RegModel
 from nireg.imreg.robreg import register_pyramid as register_pyramid_robreg
-from nireg.imreg.robreg_gd import register_pyramid
+from nireg.imreg.robreg_gd import register_level, register_pyramid
 
 
 def _make_blob(shape: tuple[int, int, int] = (20, 20, 20), shift: tuple[float, float, float] = (0, 0, 0)) -> np.ndarray:
@@ -58,6 +59,135 @@ class TestRegisterPyramidSynthetic:
         seen_shapes.clear()
         register_pyramid(img, img, return_v2v=True, centroid_init=False, n=1, min_voxels=16, max_voxels=None)
         assert seen_shapes == [(16, 16, 16), (32, 32, 32), (64, 64, 64), (128, 128, 128)]
+
+    def test_register_pyramid_uses_per_level_iteration_schedule(self, monkeypatch: pytest.MonkeyPatch):
+        seen: list[tuple[tuple[int, int, int], int]] = []
+
+        def fake_register_level(simg, timg, **kwargs):
+            seen.append((tuple(int(v) for v in simg.shape), int(kwargs["n"])))
+            return torch.eye(4), [], None
+
+        monkeypatch.setattr("nireg.imreg.robreg_gd.register_level", fake_register_level)
+
+        img = _make_img(shape=(64, 64, 64))
+        register_pyramid(
+            img,
+            img,
+            return_v2v=True,
+            centroid_init=False,
+            n=99,
+            level_iters=[7, 3, 1],
+            min_voxels=16,
+            max_voxels=None,
+        )
+        assert seen == [((16, 16, 16), 7), ((32, 32, 32), 3), ((64, 64, 64), 1)]
+
+    def test_register_pyramid_rejects_wrong_number_of_level_iterations(self):
+        img = _make_img(shape=(64, 64, 64))
+        with pytest.raises(ValueError, match="level_iters"):
+            register_pyramid(
+                img,
+                img,
+                return_v2v=True,
+                centroid_init=False,
+                n=1,
+                level_iters=[5, 2],
+                min_voxels=16,
+                max_voxels=None,
+                device="cpu",
+            )
+
+    def test_reg_model_maps_source_onto_target_grid_when_shapes_differ(self):
+        src = torch.from_numpy(_make_blob((20, 20, 20)))
+        trg = torch.from_numpy(_make_blob((24, 24, 24)))
+        model = RegModel(
+            dof=6,
+            source_shape=tuple(int(v) for v in src.shape),
+            target_shape=tuple(int(v) for v in trg.shape),
+        )
+        preds = model(src)
+        assert preds.shape == trg.shape
+
+    def test_register_level_runs_when_source_and_target_shapes_differ(self):
+        src = torch.from_numpy(_make_blob((20, 20, 20), shift=(2, 0, 0)))
+        trg = torch.from_numpy(_make_blob((24, 24, 24)))
+        v2v, losses, model = register_level(src, trg, dof=6, centroid_init=True, n=2, loss_name="mi", device="cpu")
+        assert v2v.shape == (4, 4)
+        assert torch.isfinite(v2v).all()
+        assert len(losses) == 2
+        assert model(src).shape == trg.shape
+
+    def test_register_level_trace_hook_receives_iter_events(self):
+        src = torch.from_numpy(_make_blob((20, 20, 20), shift=(1, 0, 0)))
+        trg = torch.from_numpy(_make_blob((20, 20, 20)))
+        events: list[dict[str, object]] = []
+
+        def trace_fn(**payload):
+            events.append(payload)
+
+        _v2v, losses, _model = register_level(
+            src,
+            trg,
+            dof=6,
+            centroid_init=False,
+            n=3,
+            loss_name="nmi",
+            device="cpu",
+            trace_fn=trace_fn,
+        )
+        iter_events = [e for e in events if e["event"] == "iter_end"]
+        assert len(iter_events) == 3
+        assert len(losses) == 3
+        assert all("v2v" in e for e in iter_events)
+
+    def test_register_level_uses_custom_adam_lr(self, monkeypatch: pytest.MonkeyPatch):
+        captured: dict[str, float] = {}
+
+        class FakeAdam:
+            def __init__(self, params, lr):
+                _ = list(params)
+                captured["lr"] = float(lr)
+
+            def zero_grad(self):
+                return None
+
+            def step(self):
+                return None
+
+        monkeypatch.setattr("nireg.imreg.robreg_gd.torch.optim.Adam", FakeAdam)
+        monkeypatch.setattr("nireg.imreg.robreg_gd.training_loop", lambda *args, **kwargs: [])
+
+        src = torch.from_numpy(_make_blob((16, 16, 16)))
+        trg = torch.from_numpy(_make_blob((16, 16, 16)))
+        v2v, losses, _ = register_level(src, trg, centroid_init=False, n=1, lr=0.005, device="cpu")
+
+        assert captured["lr"] == pytest.approx(0.005)
+        assert v2v.shape == (4, 4)
+        assert losses == []
+
+    def test_register_pyramid_trace_hook_receives_level_events(self):
+        img = _make_img(shape=(32, 32, 32))
+        events: list[dict[str, object]] = []
+
+        def trace_fn(**payload):
+            events.append(payload)
+
+        _ = register_pyramid(
+            img,
+            img,
+            return_v2v=True,
+            centroid_init=False,
+            dof=6,
+            n=1,
+            loss_name="nmi",
+            min_voxels=16,
+            device="cpu",
+            trace_fn=trace_fn,
+        )
+        assert any(e["event"] == "run_start" for e in events)
+        assert any(e["event"] == "level_start" for e in events)
+        assert any(e["event"] == "level_end" for e in events)
+        assert all("n_iterations" in e for e in events if e["event"] in {"level_start", "level_end"})
 
 
 class TestPublicRobregWrapper:
@@ -263,7 +393,6 @@ class TestRegisterPyramidNewLosses:
 
     def test_register_pyramid_ncc_loss_decreases(self):
         """NCC loss should decrease over iterations when images are misaligned."""
-        from nireg.imreg.robreg_gd import register_level
         src = torch.from_numpy(_make_blob(shape=(32, 32, 32), shift=(4, 0, 0)))
         trg = torch.from_numpy(_make_blob(shape=(32, 32, 32)))
         _, losses, _ = register_level(src, trg, dof=6, centroid_init=False, n=15,

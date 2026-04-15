@@ -100,7 +100,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--gradient_weight", type=float, default=0.0, help="Weight for gradient cost term when --cost=both.")
 
     # ── optimisation ─────────────────────────────────────────────────────────
-    p.add_argument("--n_iters", type=int, default=500, metavar="N", help="Number of RMSprop optimisation iterations.")
+    p.add_argument("--n_iters", type=int, default=200, metavar="N", help="Number of RMSprop optimisation iterations.")
     p.add_argument("--lr", type=float, default=0.005, help="Optimiser learning rate.")
     p.add_argument("--subsample", type=int, default=2, metavar="N", help="Use every N-th surface vertex (1 = all).")
 

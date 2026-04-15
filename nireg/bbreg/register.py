@@ -38,8 +38,9 @@ def register_surface(
     slope: float = 0.5,
     gradient_weight: float = 0.0,
     subsample: int = 1,
-    n_iters: int = 100,
+    n_iters: int = 200,
     lr: float = 0.01,
+    early_stop_patience: int = 20,
     device: str = "cpu",
 ) -> tuple[torch.Tensor, BBRModel]:
     """Register a moving image to cortical surface boundaries using BBR."""
@@ -199,22 +200,62 @@ def register_surface(
         device=device,
     ).to(device)
 
-    logger.info("Optimizing: %d iterations  lr=%.4f", n_iters, lr)
+    logger.info(
+        "Optimizing: %d iterations  lr=%.4f  early_stop_patience=%d",
+        n_iters,
+        lr,
+        early_stop_patience,
+    )
     optimizer = torch.optim.RMSprop(model.parameters(), lr=lr)
 
     losses = []
+    best_cost = float("inf")
+    best_iteration = -1
+    iters_since_best = 0
+    best_transform: torch.Tensor | None = None
+    best_params: torch.Tensor | None = None
+
     for iteration in range(n_iters):
         optimizer.zero_grad()
         cost = model()
         cost.backward()
         optimizer.step()
-        losses.append(cost.item())
-        if iteration % 10 == 0 or iteration == n_iters - 1:
-            logger.info("  iter %4d  cost = %.6f", iteration, cost.item())
 
-    final_transform = model.get_transform_matrix()
+        with torch.no_grad():
+            current_cost = model().item()
+            losses.append(current_cost)
+            if current_cost < best_cost:
+                best_cost = current_cost
+                best_iteration = iteration
+                iters_since_best = 0
+                best_transform = model.get_transform_matrix().detach().clone()
+                best_params = model.transform_params.detach().clone()
+            else:
+                iters_since_best += 1
+
+        if iteration % 10 == 0 or iteration == n_iters - 1:
+            logger.info("  iter %4d  cost = %.6f  best = %.6f @ %d", iteration, current_cost, best_cost, best_iteration)
+
+        if early_stop_patience > 0 and iters_since_best >= early_stop_patience:
+            logger.info(
+                "Early stopping at iter %d after %d iterations without improvement; best cost %.6f at iter %d",
+                iteration,
+                iters_since_best,
+                best_cost,
+                best_iteration,
+            )
+            break
+
+    if best_transform is None or best_params is None:
+        raise RuntimeError("BBR optimization did not produce any iterate.")
+
+    with torch.no_grad():
+        model.transform_params.copy_(best_params)
+
+    final_transform = best_transform
     elapsed = time.perf_counter() - start
     logger.info("Registration finished in %.2f s", elapsed)
+    logger.info("Using best iterate: cost = %.6f at iter %d", best_cost, best_iteration)
     logger.debug("Final transform (trg_RAS→mov_RAS):\n%s", final_transform)
 
     if lta_name is not None:

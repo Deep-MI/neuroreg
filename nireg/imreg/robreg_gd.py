@@ -22,6 +22,29 @@ def _shape3(shape: torch.Size | tuple[int, ...]) -> tuple[int, int, int]:
     return int(shape[0]), int(shape[1]), int(shape[2])
 
 
+def _resolve_level_iterations(
+    n_levels: int,
+    n: int,
+    level_iters: list[int] | tuple[int, ...] | None,
+) -> list[int]:
+    """Return the optimizer iteration budget for each pyramid level.
+
+    The returned list follows the execution order used by the pyramid loop:
+    coarse → fine.
+    """
+    if level_iters is None:
+        return [int(n)] * int(n_levels)
+    resolved = [int(v) for v in level_iters]
+    if len(resolved) != int(n_levels):
+        raise ValueError(
+            "level_iters must provide exactly one iteration count per executed pyramid level "
+            f"(expected {n_levels}, got {len(resolved)})."
+        )
+    if any(v < 0 for v in resolved):
+        raise ValueError("level_iters must contain non-negative iteration counts only.")
+    return resolved
+
+
 def _smooth_finest_pyramid_level(levels: list[torch.Tensor]) -> list[torch.Tensor]:
     """Return pyramid levels with only the finest level smoothed for legacy GD registration."""
     if not levels:
@@ -42,8 +65,10 @@ def register_level(
     loss_beta: float | None = None,
     loss_bins: int = 32,
     optimizer: str = "adam",
+    lr: float | None = None,
     verbose: bool = False,
     device: str = "cpu",
+    trace_fn=None,
 ) -> tuple[Tensor, list[float], "RegModel"]:
     """Run legacy gradient-descent registration on a single pyramid level.
 
@@ -80,10 +105,16 @@ def register_level(
         Ignored for other loss functions.
     optimizer : {"adam", "lbfgs"}, default="adam"
         Optimizer used to fit the registration model.
+    lr : float, optional
+        Optimizer learning rate / step size. When ``None``, preserve the legacy
+        defaults: ``1e-3`` for Adam and ``1.0`` for LBFGS.
     verbose : bool, default=False
         If ``True``, emit progress information during optimization.
     device : str, default="cpu"
         Torch device on which to run the optimization.
+    trace_fn : callable, optional
+        Optional callback invoked during optimization. Forwarded to
+        :func:`training_loop`.
 
     Returns
     -------
@@ -110,9 +141,14 @@ def register_level(
     m = RegModel(dof=dof, v2v_init=v2v_init, source_shape=source_shape, target_shape=target_shape, device=device)
 
     if optimizer.lower() == "lbfgs":
-        opt = torch.optim.LBFGS(m.parameters(), lr=1.0, max_iter=20, line_search_fn="strong_wolfe")
+        opt = torch.optim.LBFGS(
+            m.parameters(),
+            lr=1.0 if lr is None else float(lr),
+            max_iter=20,
+            line_search_fn="strong_wolfe",
+        )
     elif optimizer.lower() == "adam":
-        opt = torch.optim.Adam(m.parameters(), lr=0.001)
+        opt = torch.optim.Adam(m.parameters(), lr=0.001 if lr is None else float(lr))
     else:
         raise ValueError(f"Unknown optimizer '{optimizer}'. Choose from: 'adam', 'lbfgs'.")
 
@@ -127,6 +163,7 @@ def register_level(
         loss_bins=loss_bins,
         optimizer_name=optimizer,
         verbose=verbose,
+        trace_fn=trace_fn,
     )
     v2v = m.get_v2v_from_weights(source_shape, target_shape)
     return v2v, losses, m
@@ -141,14 +178,17 @@ def register_pyramid(
     centroid_init: bool = True,
     dof: int = 6,
     n: int = 30,
+    level_iters: list[int] | tuple[int, ...] | None = None,
     loss_name: str = "mse",
     loss_beta: float | None = None,
     loss_bins: int = 32,
     optimizer: str = "adam",
+    lr: float | None = None,
     min_voxels: int = 16,
     max_voxels: int | None = None,
     isotropic: bool = False,
     device: str = "cpu",
+    trace_fn=None,
 ) -> Tensor:
     """Run the legacy gradient-descent multiresolution registration path.
 
@@ -171,6 +211,9 @@ def register_pyramid(
         Transformation degrees of freedom used by the legacy model.
     n : int, default=30
         Number of optimizer iterations per pyramid level.
+    level_iters : sequence of int, optional
+        Per-level iteration budget in pyramid execution order (coarse → fine).
+        When provided, overrides the uniform ``n`` value.
     loss_name : str, default="mse"
         Similarity metric — see :func:`register_level` for accepted values and
         the meaning of ``loss_beta`` for each choice.
@@ -181,6 +224,9 @@ def register_pyramid(
         Ignored for other loss functions.
     optimizer : {"adam", "lbfgs"}, default="adam"
         Optimizer used at each pyramid level.
+    lr : float, optional
+        Optimizer learning rate / step size forwarded to
+        :func:`register_level`. When ``None``, preserve the legacy defaults.
     min_voxels : int, default=16
         Minimum size constraint passed to the shared pyramid builder.
     max_voxels : int, optional
@@ -191,6 +237,10 @@ def register_pyramid(
         building the pyramid.
     device : str, default="cpu"
         Torch device on which to run the legacy optimization.
+    trace_fn : callable, optional
+        Optional callback invoked as ``trace_fn(event=..., **payload)``.
+        Emits ``run_start``, ``level_start``, ``iter_end``, and ``level_end``
+        events containing the current transform estimate on each pyramid level.
 
     Returns
     -------
@@ -253,25 +303,60 @@ def register_pyramid(
             f"the default minimum dimension is 32 voxels."
         )
 
+    iterations_per_level = _resolve_level_iterations(len(simgs), n=n, level_iters=level_iters)
+
     Mr2r = torch.eye(4, 4, dtype=saffines[0].dtype)
     Mv2v = torch.eye(4, 4, dtype=saffines[0].dtype)
+    if trace_fn is not None:
+        trace_fn(event="run_start", Mr2r=Mr2r.detach().clone(), Mv2v=Mv2v.detach().clone(), n_levels=len(simgs))
     count = 0
     debug = False
     m = None
     for si, sa, ti, ta in zip(reversed(simgs), reversed(saffines), reversed(timgs), reversed(taffines), strict=True):
+        n_level = iterations_per_level[count]
         logger.info("Resolution level %d: %s", count, list(si.size()))
+        if trace_fn is not None:
+            trace_fn(
+                event="level_start",
+                level_index=count,
+                pyramid_shape=tuple(int(v) for v in si.shape),
+                Mr2r=Mr2r.detach().clone(),
+                n_iterations=n_level,
+                optimizer=optimizer,
+                lr=lr,
+            )
+
+        def _level_trace(_count=count, _si=si, _sa=sa, _ta=ta, **payload):
+            if trace_fn is None:
+                return
+            event = payload.pop("event")
+            if event == "iter_end":
+                v2v_iter = payload["v2v"].double()
+                Mr2r_iter = _ta.double() @ v2v_iter @ torch.inverse(_sa.double())
+                trace_fn(
+                    event="iter_end",
+                    level_index=_count,
+                    pyramid_shape=tuple(int(v) for v in _si.shape),
+                    Mr2r=Mr2r_iter.detach().clone(),
+                    **payload,
+                )
+            else:
+                trace_fn(event=event, level_index=_count, pyramid_shape=tuple(int(v) for v in _si.shape), **payload)
+
         if count == 0:
             Mv2v, losses, m = register_level(
                 si,
                 ti,
                 dof=dof,
                 centroid_init=centroid_init,
-                n=n,
+                n=n_level,
                 loss_name=loss_name,
                 loss_beta=loss_beta,
                 loss_bins=loss_bins,
                 optimizer=optimizer,
+                lr=lr,
                 device=device,
+                trace_fn=_level_trace,
             )
         else:
             Mv2v_init = torch.inverse(ta.double()) @ Mr2r @ sa.double()
@@ -282,17 +367,31 @@ def register_pyramid(
                 dof=dof,
                 v2v_init=Mv2v_init,
                 centroid_init=False,
-                n=n,
+                n=n_level,
                 loss_name=loss_name,
                 loss_beta=loss_beta,
                 loss_bins=loss_bins,
                 optimizer=optimizer,
+                lr=lr,
                 device=device,
+                trace_fn=_level_trace,
             )
         Mv2v = Mv2v.double()
         logger.debug("Mv2v:\n%s", Mv2v.numpy())
         Mr2r = ta.double() @ Mv2v @ torch.inverse(sa.double())
         logger.debug("Mr2r:\n%s", Mr2r.numpy())
+        if trace_fn is not None:
+            trace_fn(
+                event="level_end",
+                level_index=count,
+                pyramid_shape=tuple(int(v) for v in si.shape),
+                Mr2r=Mr2r.detach().clone(),
+                Mv2v=Mv2v.detach().clone(),
+                n_iterations=n_level,
+                optimizer=optimizer,
+                lr=lr,
+                losses=list(losses),
+            )
         if debug:
             sname = "pyramidS-rr" + str(count) + ".mgz"
             tname = "pyramidT-rr" + str(count) + ".mgz"
@@ -325,8 +424,22 @@ def register_pyramid(
             )
         else:
             logger.info("Writing mapped image: %s", mapped_name)
-            mapped = m.map_image(sdata, mode="bilinear").detach()
-            mapped_img = nib.MGHImage(mapped.squeeze().numpy(), src.affine, src.header)
+            from ..image.map import map_r2r as _map_r2r
+
+            sdata_full = torch.from_numpy(src.get_fdata()).float()
+            src_affine_t = torch.from_numpy(src.affine).float()
+            trg_affine_t = torch.from_numpy(trg.affine).float()
+            mapped = _map_r2r(
+                sdata_full,
+                Mr2r.float(),
+                source_affine=src_affine_t,
+                target_affine=trg_affine_t,
+                target_shape=_shape3(trg.shape),
+                mode="bilinear",
+            ).detach()
+            header = trg.header.copy()
+            header.set_data_dtype(np.float32)
+            mapped_img = nib.MGHImage(mapped.squeeze().numpy().astype(np.float32), trg.affine, header)
             mapped_img.to_filename(mapped_name)
     logger.info("register_pyramid total time: %.2f s", time.perf_counter() - start)
     if return_v2v:
@@ -342,10 +455,12 @@ def register_pyramid_sym(
     return_v2v: bool = False,
     dof: int = 6,
     n: int = 30,
+    level_iters: list[int] | tuple[int, ...] | None = None,
     loss_name: str = "mse",
     loss_beta: float | None = None,
     loss_bins: int = 32,
     optimizer: str = "adam",
+    lr: float | None = None,
     min_voxels: int = 16,
     max_voxels: int | None = None,
     device: str = "cpu",
@@ -368,6 +483,9 @@ def register_pyramid_sym(
         Transformation degrees of freedom used by the legacy model.
     n : int, default=30
         Number of optimizer iterations per pyramid level.
+    level_iters : sequence of int, optional
+        Per-level iteration budget in pyramid execution order (coarse → fine).
+        When provided, overrides the uniform ``n`` value.
     loss_name : str, default="mse"
         Similarity metric — see :func:`register_level` for accepted values and
         the meaning of ``loss_beta`` for each choice.
@@ -378,6 +496,9 @@ def register_pyramid_sym(
         Ignored for other loss functions.
     optimizer : {"adam", "lbfgs"}, default="adam"
         Optimizer used at each symmetric pyramid level.
+    lr : float, optional
+        Optimizer learning rate / step size forwarded to
+        :func:`register_level`. When ``None``, preserve the legacy defaults.
     min_voxels : int, default=16
         Minimum size constraint passed to the shared pyramid builder.
     max_voxels : int, optional
@@ -442,15 +563,20 @@ def register_pyramid_sym(
         raise ValueError(f"build_gaussian_pyramid returned no levels (isotropic shape {list(src_iso.shape)}).")
 
     n_levels = len(simgs)
-    M = get_ixform_centroids(simgs[-1], timgs[-1]).double()
+    iterations_per_level = _resolve_level_iterations(n_levels, n=n, level_iters=level_iters)
+    # Initialize with identity in RAS space (like directed path)
+    Mr2r_iso = torch.eye(4, dtype=torch.float64)
 
     from ..image.map import map as _map_img
 
-    for level_idx, (si, _sa, ti, _ta) in enumerate(
+    for level_idx, (si, sa, ti, ta) in enumerate(
         zip(reversed(simgs), reversed(saffines), reversed(timgs), reversed(taffines), strict=True)
     ):
         pyramid_level = n_levels - 1 - level_idx
         logger.info("Sym level %d (pyramid %d): shape=%s", level_idx, pyramid_level, list(si.shape))
+
+        # Convert RAS-to-RAS to voxel-to-voxel at this pyramid level
+        M = torch.inverse(ta.double()) @ Mr2r_iso @ sa.double()
 
         midspace_shape = _shape3(si.shape)
         mh, mhi = matrix_sqrt_schur(M.float())
@@ -464,24 +590,30 @@ def register_pyramid_sym(
             dof=dof,
             v2v_init=None,
             centroid_init=False,
-            n=n,
+            n=iterations_per_level[level_idx],
             loss_name=loss_name,
             loss_beta=loss_beta,
             loss_bins=loss_bins,
             optimizer=optimizer,
+            lr=lr,
             device=device,
         )
         delta_v2v = delta_v2v.double()
 
-        mh2 = torch.inverse(mhi.double())
-        M = mh2 @ delta_v2v @ mh.double()
+        # Transform path: src --[mh]--> mid_src --[delta]--> mid_trg --[inv(mhi)]--> trg
+        # So: M_new = inv(mhi) @ delta_v2v @ mh
+        mhi_inv = torch.inverse(mhi.double())
+        M_new = mhi_inv @ delta_v2v @ mh.double()
 
-        if level_idx < n_levels - 1:
-            M[:3, 3] *= 2.0
+        # Convert back to RAS-to-RAS for next level (no manual scaling needed!)
+        Mr2r_iso = ta.double() @ M_new @ torch.inverse(sa.double())
 
-    Mv2v_orig = Rtrg.double() @ M @ torch.inverse(Rsrc.double())
+    # Mr2r_iso is in isotropic RAS space; convert to original RAS space
+    # Same logic as directed path (lines 409-411)
     src_affine_t = torch.from_numpy(src.affine).double()
     trg_affine_t = torch.from_numpy(trg.affine).double()
+    Mv2v_iso = torch.inverse(trg_iso_aff.double()) @ Mr2r_iso @ src_iso_aff.double()
+    Mv2v_orig = Rtrg.double() @ Mv2v_iso @ torch.inverse(Rsrc.double())
     Mr2r = trg_affine_t @ Mv2v_orig @ torch.inverse(src_affine_t)
 
     if lta_name is not None:
@@ -500,7 +632,9 @@ def register_pyramid_sym(
             target_affine=trg_affine_t.float(),
             target_shape=_shape3(trg.shape),
         ).detach()
-        mapped_img = nib.MGHImage(mapped.squeeze().numpy(), trg.affine, trg.header)
+        header = trg.header.copy()
+        header.set_data_dtype(np.float32)
+        mapped_img = nib.MGHImage(mapped.squeeze().numpy().astype(np.float32), trg.affine, header)
         mapped_img.to_filename(mapped_name)
 
     logger.info("register_pyramid_sym total time: %.2f s", time.perf_counter() - start)
