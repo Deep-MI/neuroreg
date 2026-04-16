@@ -9,8 +9,8 @@ The main user-facing tools are:
 
 - **`robreg`** – IRLS-based robust image-to-image registration
   (the current public robust-registration path; analogous to FreeSurfer's `mri_robust_register`)
-- **`robreg_gd`** – legacy gradient-descent image-to-image registration
-  (kept for comparison and experimentation during early development)
+- **`coreg`** – image-based cross-modal registration
+  (gradient-descent registration for cases where only images are available)
 - **`bbreg`** – boundary-based registration using cortical surface meshes
   (analogous to FreeSurfer's `bbregister` / `mri_segreg`)
 - **`lta`** – transform comparison / inversion / concatenation utilities
@@ -31,9 +31,7 @@ Registers a moving image to a reference image using a multi-resolution
 IRLS-based robust registration path with Tukey weighting.
 
 This path is currently intended for **same-contrast or very similar-contrast**
-image pairs. General cross-sequence / cross-modal registration (for example
-plain T2→T1 image-to-image registration without surfaces) is **not** currently
-implemented in `robreg`.
+image pairs.
 
 ```
 robreg --mov <moving.nii.gz> --ref <reference.nii.gz> --out <output.lta> [options]
@@ -71,18 +69,15 @@ robreg --mov T1_repeat.nii.gz --ref T1_baseline.mgz --out T1_repeat_to_T1_baseli
 
 ---
 
-### `robreg_gd` — legacy image-to-image registration
+### `coreg` — image-based cross-modal registration
 
-This is the older gradient-descent registration path. It is still available
-for comparison while the package architecture stabilizes, but it is no longer
-the default/public `robreg` implementation.
-
-Like the public `robreg` path, this legacy image-to-image method is currently
-meant for **same-contrast or similar-contrast** registration, not general
-cross-sequence T2→T1 image-only alignment.
+This is the image-based gradient-descent registration path used for
+**cross-sequence / cross-modal** registration when no surfaces or segmentation
+are available. In practice it is the package's image-only counterpart to
+FreeSurfer's `mri_coreg`.
 
 ```
-robreg_gd --mov <moving.nii.gz> --ref <reference.nii.gz> --out <output.lta> [options]
+coreg --mov <moving.nii.gz> --ref <reference.nii.gz> --out <output.lta> [options]
 ```
 
 **Options**
@@ -99,7 +94,7 @@ robreg_gd --mov <moving.nii.gz> --ref <reference.nii.gz> --out <output.lta> [opt
 **Example**
 
 ```bash
-robreg_gd --mov T1_repeat.nii.gz --ref T1_baseline.mgz --out T1_repeat_to_T1_legacy.lta --dof 6 --verbose
+coreg --mov T2.nii.gz --ref T1.mgz --out T2_to_T1.lta --dof 6 --verbose
 ```
 
 ---
@@ -204,7 +199,7 @@ Unified command for manipulating FreeSurfer LTA transform files with three
 subcommands: `diff`, `invert`, and `concat`.
 
 ```
-lta diff    LTA1 [LTA2] [options]    # Compare transforms
+lta diff    LTA1 [LTA2] [options]     # Compare transforms
 lta invert  INPUT OUTPUT              # Invert a transform
 lta concat  LTA1 LTA2 OUTPUT          # Concatenate two transforms
 ```
@@ -317,7 +312,7 @@ lta concat moving_to_intermediate.lta intermediate_to_fixed.lta moving_to_fixed.
 import nibabel as nib
 
 from neuroreg import register_pyramid, register_surface
-from neuroreg.imreg.robreg_gd import register_pyramid as register_pyramid_gd
+from neuroreg.imreg.coreg import register_pyramid as register_pyramid_coreg
 
 # Public robust image-to-image registration (IRLS-backed).
 # Intended for same-/similar-contrast pairs; symmetric mode is the default.
@@ -328,9 +323,9 @@ mov_img = nib.load("T1_repeat.nii.gz")
 ref_img = nib.load("T1_baseline.mgz")
 transform_r2r_loaded = register_pyramid(mov_img, ref_img)
 
-# Legacy gradient-descent path for cross-modal image registration when no
+# Image-based cross-modal registration path for cases where no
 # white-matter surface or segmentation is available.
-transform_gd = register_pyramid_gd("T2.nii.gz", "T1.mgz", loss_name="nmi")
+transform_coreg = register_pyramid_coreg("T2.nii.gz", "T1.mgz", loss_name="nmi")
 
 # Surface-based (BBR) registration — Mode A: subject directory
 transform, model = register_surface(
@@ -368,7 +363,7 @@ Current DOF support is:
 | Command / API path | Supported DOF |
 |--------------------|---------------|
 | `robreg` / public `register_pyramid()` | `6` only |
-| `robreg_gd` / `neuroreg.imreg.robreg_gd.register_pyramid()` | `3`, `6`, `9`, `12` |
+| `coreg` / `neuroreg.imreg.coreg.register_pyramid()` | `3`, `6`, `9`, `12` |
 | `bbreg` | `6`, `9`, `12` |
 
 The public `robreg` path is intentionally rigid-only for now because it tracks
@@ -376,7 +371,7 @@ the current IRLS implementation.
 
 Also note that the current public `robreg` path is aimed at same-/similar-contrast
 registration. For cross-sequence alignment such as T2→T1, the current options are
-`robreg_gd` (image-based GD) or `bbreg` when a segmentation or surfaces are
+`coreg` (image-based GD) or `bbreg` when a segmentation or surfaces are
 available.
 
 ## API Documentation

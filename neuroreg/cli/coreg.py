@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Command-line interface for legacy gradient-descent image registration (robreg_gd)."""
+"""Command-line interface for image-based cross-modal registration (coreg)."""
 
 from __future__ import annotations
 
@@ -26,10 +26,10 @@ def _parse_int_csv(value: str) -> list[int]:
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="robreg_gd",
+        prog="coreg",
         description=(
-            "Legacy gradient-descent 3-D image-to-image registration using PyTorch optimisation.\n"
-            "This is the pre-IRLS robreg path."
+            "Gradient-descent 3-D image-to-image registration using PyTorch optimisation.\n"
+            "This is the main image-based cross-modal registration path."
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -69,9 +69,21 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Largest allowed dimension of the finest pyramid level. Omit to run up to original resolution.",
     )
     p.add_argument(
+        "--nosym",
+        dest="symmetric",
+        action="store_false",
+        default=argparse.SUPPRESS,
+        help="Disable symmetric halfway-space registration and run directed registration.",
+    )
+    p.add_argument(
         "--noinit",
         action="store_true",
         help="Skip centroid-based initialization and start from identity (matches FreeSurfer --noinit).",
+    )
+    p.add_argument(
+        "--isotropic",
+        action="store_true",
+        help="Enable shared isotropic preprocessing before building the pyramid.",
     )
     p.add_argument("--device", default="cpu", metavar="DEVICE", help="PyTorch device, e.g. 'cpu' or 'cuda'.")
 
@@ -82,25 +94,27 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main(args=None) -> None:
-    """Entry point for the ``robreg_gd`` command-line interface.
+    """Entry point for the ``coreg`` command-line interface.
 
-    This wrapper exposes the legacy image-to-image gradient-descent path with a
+    This wrapper exposes the image-based gradient-descent registration path used
+    for cross-modal alignment when only images are available. It provides a
     small set of practical knobs: transform DOF, pyramid iteration schedule,
-    optional centroid initialization, and pyramid resolution limits. The written
-    output LTA is a voxel-to-voxel transform in public ``moving -> reference``
-    direction.
+    optional centroid initialization, symmetric vs directed mode, and optional
+    isotropic preprocessing. The written output LTA is a voxel-to-voxel
+    transform in public ``moving -> reference`` direction.
     """
     import nibabel as nib
 
-    from neuroreg.imreg.robreg_gd import register_pyramid
+    from neuroreg.imreg.coreg import register_pyramid
     from neuroreg.transforms import LTA
 
     parser = _build_parser()
     ns = parser.parse_args(args)
+    ns.symmetric = getattr(ns, "symmetric", True)
 
     level = logging.DEBUG if ns.debug else (logging.INFO if ns.verbose else logging.WARNING)
     logging.basicConfig(level=level, format="%(levelname)s %(name)s: %(message)s")
-    logger = logging.getLogger("neuroreg.cli.robreg_gd")
+    logger = logging.getLogger("neuroreg.cli.coreg")
 
     logger.info("Loading moving image:    %s", ns.mov)
     logger.info("Loading reference image: %s", ns.ref)
@@ -119,6 +133,8 @@ def main(args=None) -> None:
         device=ns.device,
         return_v2v=True,
         centroid_init=not ns.noinit,
+        symmetric=ns.symmetric,
+        isotropic=ns.isotropic,
         level_iters=ns.level_iters,
         min_voxels=ns.min_voxels,
         max_voxels=ns.max_voxels,
@@ -128,8 +144,14 @@ def main(args=None) -> None:
         kwargs["n"] = ns.n_iters
 
     logger.info(
-        "Starting image-to-image registration (dof=%d, n=%s, level_iters=%s, lr=%s, min_voxels=%d, max_voxels=%s) ...",
+        (
+            "Starting image-to-image registration "
+            "(dof=%d, symmetric=%s, isotropic=%s, n=%s, "
+            "level_iters=%s, lr=%s, min_voxels=%d, max_voxels=%s) ..."
+        ),
         ns.dof,
+        ns.symmetric,
+        ns.isotropic,
         ns.n_iters,
         ns.level_iters,
         ns.lr,

@@ -7,8 +7,8 @@ Image registration API
 .. automodule:: neuroreg.imreg.robreg
    :members: register_pyramid
 
-``neuroreg.imreg.robreg_gd``
--------------------------
+``neuroreg.imreg.coreg``
+----------------------
 
-.. automodule:: neuroreg.imreg.robreg_gd
+.. automodule:: neuroreg.imreg.coreg
    :members: register_pyramid

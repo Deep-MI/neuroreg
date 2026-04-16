@@ -90,7 +90,7 @@ tracker = 'https://github.com/Deep-MI/neuroreg/issues'
 
 [project.scripts]
 robreg          = "neuroreg.cli.robreg:main"
-robreg_gd       = "neuroreg.cli.robreg_gd:main"
+coreg           = "neuroreg.cli.coreg:main"
 bbreg           = "neuroreg.cli.bbreg:main"
 lta             = "neuroreg.cli.lta:main"
 neuroreg-sys_info  = "neuroreg.cli.sys_info:run"

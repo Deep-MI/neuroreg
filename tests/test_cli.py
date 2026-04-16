@@ -6,7 +6,7 @@ import pytest
 import torch
 
 from neuroreg.cli.robreg import main as robreg_main
-from neuroreg.cli.robreg_gd import main as robreg_gd_main
+from neuroreg.cli.coreg import main as coreg_main
 
 
 def _write_zero_image(path: Path) -> None:
@@ -107,7 +107,7 @@ class TestRobregCli:
             ])
 
 
-class TestRobregGdCli:
+class TestCoregCli:
     def test_main_forwards_noinit(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         mov_path = tmp_path / "mov.nii.gz"
         ref_path = tmp_path / "ref.nii.gz"
@@ -129,13 +129,13 @@ class TestRobregGdCli:
             def write(self, path):
                 Path(path).write_text("dummy")
 
-        monkeypatch.setattr("neuroreg.imreg.robreg_gd.register_pyramid", fake_register_pyramid)
+        monkeypatch.setattr("neuroreg.imreg.coreg.register_pyramid", fake_register_pyramid)
         monkeypatch.setattr(
             "neuroreg.transforms.LTA.from_matrix",
             lambda *args, **kwargs: _DummyLTA(),
         )
 
-        robreg_gd_main([
+        coreg_main([
             "--mov", str(mov_path),
             "--ref", str(ref_path),
             "--out", str(out_path),
@@ -171,13 +171,13 @@ class TestRobregGdCli:
             def write(self, path):
                 Path(path).write_text("dummy")
 
-        monkeypatch.setattr("neuroreg.imreg.robreg_gd.register_pyramid", fake_register_pyramid)
+        monkeypatch.setattr("neuroreg.imreg.coreg.register_pyramid", fake_register_pyramid)
         monkeypatch.setattr(
             "neuroreg.transforms.LTA.from_matrix",
             lambda *args, **kwargs: _DummyLTA(),
         )
 
-        robreg_gd_main([
+        coreg_main([
             "--mov", str(mov_path),
             "--ref", str(ref_path),
             "--out", str(out_path),

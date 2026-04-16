@@ -15,15 +15,14 @@ Example::
 
    robreg --mov moving.nii.gz --ref fixed.nii.gz --out moving_to_fixed.lta
 
-robreg_gd
----------
+coreg
+-----
 
-Legacy gradient-descent image registration kept for comparison and
-experimentation.
+Image-based cross-modal registration when only images are available.
 
 Example::
 
-   robreg_gd --mov moving.nii.gz --ref fixed.nii.gz --out moving_to_fixed.lta --dof 6
+   coreg --mov moving.nii.gz --ref fixed.nii.gz --out moving_to_fixed.lta --dof 6
 
 bbreg
 -----

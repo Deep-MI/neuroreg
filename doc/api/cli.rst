@@ -10,10 +10,10 @@ listed first so the code reference stays centered on the user-facing tools.
 .. automodule:: neuroreg.cli.robreg
    :members: main
 
-``neuroreg.cli.robreg_gd``
------------------------
+``neuroreg.cli.coreg``
+---------------------
 
-.. automodule:: neuroreg.cli.robreg_gd
+.. automodule:: neuroreg.cli.coreg
    :members: main
 
 ``neuroreg.cli.bbreg``

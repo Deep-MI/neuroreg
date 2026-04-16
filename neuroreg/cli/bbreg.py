@@ -252,13 +252,13 @@ def _run_default_nmi_prealign(
 ) -> np.ndarray:
     """Run the default coarse image-based prealignment for ``bbreg``.
 
-    This uses the legacy gradient-descent registration path with an NMI loss and
+    This uses the default image-based coregistration path with an NMI loss and
     a short two-level pyramid. The returned transform is always a RAS-to-RAS
     matrix in public ``moving/source -> target/reference`` direction so it can
     be passed directly to :func:`neuroreg.bbreg.register.register_surface` as
     ``init_ras``.
     """
-    from neuroreg.imreg.robreg_gd import register_pyramid
+    from neuroreg.imreg.coreg import register_pyramid
 
     prealign_ref = _mask_reference_image(ref_img, mask_img)
     logger.info(
@@ -270,6 +270,7 @@ def _run_default_nmi_prealign(
         prealign_ref,
         return_v2v=False,
         centroid_init=False,
+        symmetric=False,
         dof=6,
         level_iters=[30, 10],
         loss_name="nmi",

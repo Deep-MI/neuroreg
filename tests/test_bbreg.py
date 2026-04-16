@@ -33,7 +33,7 @@ class TestBbregCli:
 
         monkeypatch.setattr("neuroreg.bbreg.register.register_surface", fake_register_surface)
         monkeypatch.setattr(
-            "neuroreg.imreg.robreg_gd.register_pyramid",
+            "neuroreg.imreg.coreg.register_pyramid",
             lambda *args, **kwargs: torch.eye(4, dtype=torch.float64),
         )
 
@@ -76,7 +76,7 @@ class TestBbregCli:
             return prealign_r2r
 
         monkeypatch.setattr("neuroreg.bbreg.register.register_surface", fake_register_surface)
-        monkeypatch.setattr("neuroreg.imreg.robreg_gd.register_pyramid", fake_register_pyramid)
+        monkeypatch.setattr("neuroreg.imreg.coreg.register_pyramid", fake_register_pyramid)
 
         bbreg_main([
             "--mov", str(mov_path),
@@ -115,7 +115,7 @@ class TestBbregCli:
             raise AssertionError("prealignment should not run")
 
         monkeypatch.setattr("neuroreg.bbreg.register.register_surface", fake_register_surface)
-        monkeypatch.setattr("neuroreg.imreg.robreg_gd.register_pyramid", fail_register_pyramid)
+        monkeypatch.setattr("neuroreg.imreg.coreg.register_pyramid", fail_register_pyramid)
 
         bbreg_main([
             "--mov", str(mov_path),
@@ -148,7 +148,7 @@ class TestBbregCli:
             raise AssertionError("prealignment should not run when --init-lta is provided")
 
         monkeypatch.setattr("neuroreg.bbreg.register.register_surface", fake_register_surface)
-        monkeypatch.setattr("neuroreg.imreg.robreg_gd.register_pyramid", fail_register_pyramid)
+        monkeypatch.setattr("neuroreg.imreg.coreg.register_pyramid", fail_register_pyramid)
 
         bbreg_main([
             "--mov", str(mov_path),
@@ -189,7 +189,7 @@ class TestBbregCli:
             return torch.eye(4, dtype=torch.float64)
 
         monkeypatch.setattr("neuroreg.bbreg.register.register_surface", fake_register_surface)
-        monkeypatch.setattr("neuroreg.imreg.robreg_gd.register_pyramid", fake_register_pyramid)
+        monkeypatch.setattr("neuroreg.imreg.coreg.register_pyramid", fake_register_pyramid)
 
         bbreg_main([
             "--mov", str(mov_path),
@@ -225,7 +225,7 @@ class TestBbregCli:
             return torch.eye(4, dtype=torch.float64)
 
         monkeypatch.setattr("neuroreg.bbreg.register.register_surface", fake_register_surface)
-        monkeypatch.setattr("neuroreg.imreg.robreg_gd.register_pyramid", fake_register_pyramid)
+        monkeypatch.setattr("neuroreg.imreg.coreg.register_pyramid", fake_register_pyramid)
 
         bbreg_main([
             "--mov", str(mov_path),
@@ -263,7 +263,7 @@ class TestBbregCli:
             return torch.eye(4, dtype=torch.float64)
 
         monkeypatch.setattr("neuroreg.bbreg.register.register_surface", fake_register_surface)
-        monkeypatch.setattr("neuroreg.imreg.robreg_gd.register_pyramid", fake_register_pyramid)
+        monkeypatch.setattr("neuroreg.imreg.coreg.register_pyramid", fake_register_pyramid)
 
         bbreg_main([
             "--mov", str(mov_path),
