@@ -12,7 +12,7 @@ from typing import Any, cast
 def _parse_int_csv(value: str) -> list[int]:
     """Parse a coarse-to-fine pyramid iteration schedule from the CLI.
 
-    The resulting list is forwarded to ``register_pyramid(level_iters=...)``.
+    The resulting list is forwarded to ``coreg(level_iters=...)``.
     Users can pass ``0`` for any intermediate level they want to skip.
     """
     items = [part.strip() for part in value.split(",") if part.strip()]
@@ -105,7 +105,7 @@ def main(args=None) -> None:
     """
     import nibabel as nib
 
-    from neuroreg.imreg.coreg import register_pyramid
+    from neuroreg.imreg.coreg import coreg
     from neuroreg.transforms import LTA
 
     parser = _build_parser()
@@ -158,7 +158,7 @@ def main(args=None) -> None:
         ns.min_voxels,
         ns.max_voxels,
     )
-    v2v = register_pyramid(mov_img, ref_img, **kwargs)
+    v2v = coreg(mov_img, ref_img, **kwargs)
 
     LTA.from_matrix(v2v.numpy(), ns.mov, cast(Any, mov_img), ns.ref, cast(Any, ref_img), lta_type=0).write(ns.out)
     logger.info("Wrote LTA: %s", ns.out)

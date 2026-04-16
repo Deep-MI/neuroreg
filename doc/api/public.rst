@@ -3,6 +3,8 @@ Public entry points
 
 Top-level functions exposed from :mod:`neuroreg`.
 
-.. autofunction:: neuroreg.register_pyramid
+.. autofunction:: neuroreg.robreg
 
-.. autofunction:: neuroreg.register_surface
+.. autofunction:: neuroreg.coreg
+
+.. autofunction:: neuroreg.bbreg

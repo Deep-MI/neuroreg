@@ -8,11 +8,11 @@ import numpy as np
 import pytest
 import torch
 
-from neuroreg import register_pyramid as register_pyramid_public
+import neuroreg.imreg.coreg as coreg_impl
+from neuroreg import coreg, robreg
+from neuroreg.imreg.coreg import register_gd_pyramid, register_level
 from neuroreg.imreg.losses import mi_loss, ncc_loss, nmi_loss
 from neuroreg.imreg.reg_model import RegModel
-from neuroreg.imreg.robreg import register_pyramid as register_pyramid_robreg
-from neuroreg.imreg.coreg import register_level, register_pyramid
 
 
 def _make_blob(shape: tuple[int, int, int] = (20, 20, 20), shift: tuple[float, float, float] = (0, 0, 0)) -> np.ndarray:
@@ -28,8 +28,8 @@ def _make_blob(shape: tuple[int, int, int] = (20, 20, 20), shift: tuple[float, f
 
 
 def _make_img(
-    shape: tuple[int, int, int] = (20, 20, 20),
-    shift: tuple[float, float, float] = (0, 0, 0),
+        shape: tuple[int, int, int] = (20, 20, 20),
+        shift: tuple[float, float, float] = (0, 0, 0),
 ) -> nib.Nifti1Image:
     affine = cast(Any, np.eye(4, dtype=np.float32))
     data = cast(Any, _make_blob(shape, shift))
@@ -39,7 +39,7 @@ def _make_img(
 class TestRegisterPyramidSynthetic:
     def test_register_pyramid_returns_v2v_on_identical_images(self):
         img = _make_img()
-        v2v = register_pyramid(
+        v2v = register_gd_pyramid(
             img,
             img,
             return_v2v=True,
@@ -54,8 +54,8 @@ class TestRegisterPyramidSynthetic:
         assert torch.allclose(v2v, torch.eye(4, dtype=v2v.dtype), atol=1.0)
 
     def test_register_pyramid_returns_original_v2v_after_isotropic_resampling(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
+            self,
+            monkeypatch: pytest.MonkeyPatch,
     ):
         img = _make_img(shape=(16, 16, 16))
         rsrc = torch.tensor(
@@ -82,7 +82,7 @@ class TestRegisterPyramidSynthetic:
         monkeypatch.setattr(image_map_module, "resample_isotropic", fake_resample_isotropic)
         monkeypatch.setattr("neuroreg.imreg.coreg.register_level", fake_register_level)
 
-        v2v = register_pyramid(
+        v2v = register_gd_pyramid(
             img,
             img.__class__(img.get_fdata(), img.affine.copy()),
             return_v2v=True,
@@ -108,7 +108,7 @@ class TestRegisterPyramidSynthetic:
         monkeypatch.setattr("neuroreg.imreg.coreg.register_level", fake_register_level)
 
         img = _make_img(shape=(128, 128, 128))
-        register_pyramid(
+        register_gd_pyramid(
             img,
             img,
             return_v2v=True,
@@ -121,7 +121,7 @@ class TestRegisterPyramidSynthetic:
         assert seen_shapes == [(16, 16, 16), (32, 32, 32), (64, 64, 64)]
 
         seen_shapes.clear()
-        register_pyramid(
+        register_gd_pyramid(
             img,
             img,
             return_v2v=True,
@@ -143,7 +143,7 @@ class TestRegisterPyramidSynthetic:
         monkeypatch.setattr("neuroreg.imreg.coreg.register_level", fake_register_level)
 
         img = _make_img(shape=(64, 64, 64))
-        register_pyramid(
+        register_gd_pyramid(
             img,
             img,
             return_v2v=True,
@@ -159,7 +159,7 @@ class TestRegisterPyramidSynthetic:
     def test_register_pyramid_rejects_wrong_number_of_level_iterations(self):
         img = _make_img(shape=(64, 64, 64))
         with pytest.raises(ValueError, match="level_iters"):
-            register_pyramid(
+            register_gd_pyramid(
                 img,
                 img,
                 return_v2v=True,
@@ -247,7 +247,7 @@ class TestRegisterPyramidSynthetic:
         def trace_fn(**payload):
             events.append(payload)
 
-        _ = register_pyramid(
+        _ = register_gd_pyramid(
             img,
             img,
             return_v2v=True,
@@ -272,7 +272,7 @@ class TestRegisterPyramidSynthetic:
         def trace_fn(**payload):
             events.append(payload)
 
-        _ = register_pyramid(
+        _ = register_gd_pyramid(
             img,
             img,
             return_v2v=True,
@@ -302,7 +302,7 @@ class TestRegisterPyramidSynthetic:
         monkeypatch.setattr("neuroreg.imreg.coreg.register_level", fake_register_level)
 
         img = _make_img(shape=(32, 32, 32))
-        _ = register_pyramid(
+        _ = register_gd_pyramid(
             img,
             img,
             return_v2v=True,
@@ -326,7 +326,7 @@ class TestRegisterPyramidSynthetic:
         monkeypatch.setattr(image_map_module, "resample_isotropic", fail_resample)
 
         img = _make_img(shape=(16, 16, 16))
-        v2v = register_pyramid(
+        v2v = register_gd_pyramid(
             img,
             img.__class__(img.get_fdata(), img.affine.copy()),
             return_v2v=True,
@@ -343,7 +343,7 @@ class TestRegisterPyramidSynthetic:
 
 
 class TestPublicRobregWrapper:
-    def test_top_level_register_pyramid_defaults_to_symmetric(self, monkeypatch: pytest.MonkeyPatch):
+    def test_top_level_robreg_defaults_to_symmetric(self, monkeypatch: pytest.MonkeyPatch):
         captured: dict[str, object] = {}
 
         def fake_register_irls_pyramid(**kwargs):
@@ -353,13 +353,13 @@ class TestPublicRobregWrapper:
         monkeypatch.setattr("neuroreg.imreg.robreg.register_irls_pyramid", fake_register_irls_pyramid)
 
         img = _make_img()
-        Mr2r = register_pyramid_public(img, img, return_v2v=False, centroid_init=False, dof=6, nmax=1)
+        Mr2r = robreg(img, img, return_v2v=False, centroid_init=False, dof=6, nmax=1)
 
         assert captured["symmetric"] is True
         assert Mr2r.shape == (4, 4)
         assert torch.isfinite(Mr2r).all()
 
-    def test_top_level_register_pyramid_can_disable_symmetric_mode(self, monkeypatch: pytest.MonkeyPatch):
+    def test_top_level_robreg_can_disable_symmetric_mode(self, monkeypatch: pytest.MonkeyPatch):
         captured: dict[str, object] = {}
 
         def fake_register_irls_pyramid(**kwargs):
@@ -369,13 +369,13 @@ class TestPublicRobregWrapper:
         monkeypatch.setattr("neuroreg.imreg.robreg.register_irls_pyramid", fake_register_irls_pyramid)
 
         img = _make_img()
-        Mr2r = register_pyramid_public(img, img, return_v2v=False, centroid_init=False, dof=6, nmax=1, symmetric=False)
+        Mr2r = robreg(img, img, return_v2v=False, centroid_init=False, dof=6, nmax=1, symmetric=False)
 
         assert captured["symmetric"] is False
         assert Mr2r.shape == (4, 4)
         assert torch.isfinite(Mr2r).all()
 
-    def test_register_pyramid_accepts_file_paths(self, tmp_path):
+    def test_robreg_accepts_file_paths(self, tmp_path):
         src = _make_img()
         trg = _make_img()
         src_path = tmp_path / "src.nii.gz"
@@ -383,7 +383,7 @@ class TestPublicRobregWrapper:
         nib.save(src, src_path)
         nib.save(trg, trg_path)
 
-        Mr2r = register_pyramid_robreg(
+        Mr2r = robreg(
             str(src_path),
             str(trg_path),
             return_v2v=False,
@@ -393,6 +393,46 @@ class TestPublicRobregWrapper:
         )
         assert Mr2r.shape == (4, 4)
         assert torch.isfinite(Mr2r).all()
+
+
+class TestPublicCoregWrapper:
+    def test_top_level_coreg_forwards_to_register_gd_pyramid(self, monkeypatch: pytest.MonkeyPatch):
+        captured: dict[str, object] = {}
+
+        def fake_register_gd_pyramid(*args, **kwargs):
+            captured["args"] = args
+            captured.update(kwargs)
+            return torch.eye(4)
+
+        monkeypatch.setattr("neuroreg.imreg.coreg.register_gd_pyramid", fake_register_gd_pyramid)
+
+        img = _make_img()
+        Mr2r = coreg(img, img, return_v2v=False, centroid_init=False, dof=6, n=1)
+
+        assert captured["centroid_init"] is False
+        assert captured["dof"] == 6
+        assert len(cast(tuple[Any, Any], captured["args"])) == 2
+        assert Mr2r.shape == (4, 4)
+        assert torch.isfinite(Mr2r).all()
+
+    def test_module_level_coreg_alias_forwards_to_register_gd_pyramid(self, monkeypatch: pytest.MonkeyPatch):
+        captured: dict[str, object] = {}
+
+        def fake_register_gd_pyramid(*args, **kwargs):
+            captured["args"] = args
+            captured.update(kwargs)
+            return torch.eye(4)
+
+        monkeypatch.setattr("neuroreg.imreg.coreg.register_gd_pyramid", fake_register_gd_pyramid)
+
+        img = _make_img()
+        Mv2v = coreg_impl.coreg(img, img, return_v2v=True, centroid_init=False, dof=3, n=1)
+
+        assert captured["return_v2v"] is True
+        assert captured["dof"] == 3
+        assert len(cast(tuple[Any, Any], captured["args"])) == 2
+        assert Mv2v.shape == (4, 4)
+        assert torch.isfinite(Mv2v).all()
 
 
 # ---------------------------------------------------------------------------
@@ -508,12 +548,12 @@ class TestLossFunctions:
 # ---------------------------------------------------------------------------
 
 class TestRegisterPyramidNewLosses:
-    """Smoke tests: run register_pyramid with each new loss on a simple example."""
+    """Smoke tests: run GD pyramid registration with each new loss on a simple example."""
 
     @pytest.mark.parametrize("loss_name", ["ncc", "mi", "nmi"])
     def test_register_pyramid_new_loss_produces_finite_transform(self, loss_name):
         img = _make_img(shape=(32, 32, 32))
-        v2v = register_pyramid(
+        v2v = register_gd_pyramid(
             img, img,
             return_v2v=True,
             centroid_init=False,
@@ -531,7 +571,7 @@ class TestRegisterPyramidNewLosses:
     @pytest.mark.parametrize("loss_name", ["ncc", "mi", "nmi"])
     def test_register_pyramid_new_loss_near_identity_on_same_image(self, loss_name):
         img = _make_img(shape=(32, 32, 32))
-        v2v = register_pyramid(
+        v2v = register_gd_pyramid(
             img, img,
             return_v2v=True,
             centroid_init=False,

@@ -1,3 +1,4 @@
+import importlib
 from pathlib import Path
 from typing import cast
 
@@ -7,13 +8,16 @@ import pytest
 import torch
 from torch import nn
 
-from neuroreg.bbreg.register import register_surface
+from neuroreg import bbreg
 from neuroreg.cli.bbreg import main as bbreg_main
 
 
 def _write_zero_image(path: Path) -> None:
     data = torch.zeros(8, 8, 8, dtype=torch.float32).numpy()
     nib.save(nib.Nifti1Image(data, affine=torch.eye(4).numpy()), path)
+
+
+bbreg_register_module = importlib.import_module("neuroreg.bbreg.register")
 
 
 class TestBbregCli:
@@ -31,9 +35,9 @@ class TestBbregCli:
             captured_kwargs.update(kwargs)
             return torch.eye(4), object()
 
-        monkeypatch.setattr("neuroreg.bbreg.register.register_surface", fake_register_surface)
+        monkeypatch.setattr(bbreg_register_module, "register_surface", fake_register_surface)
         monkeypatch.setattr(
-            "neuroreg.imreg.coreg.register_pyramid",
+            "neuroreg.imreg.coreg.coreg",
             lambda *args, **kwargs: torch.eye(4, dtype=torch.float64),
         )
 
@@ -75,8 +79,8 @@ class TestBbregCli:
             captured_prealign_kwargs.update(kwargs)
             return prealign_r2r
 
-        monkeypatch.setattr("neuroreg.bbreg.register.register_surface", fake_register_surface)
-        monkeypatch.setattr("neuroreg.imreg.coreg.register_pyramid", fake_register_pyramid)
+        monkeypatch.setattr(bbreg_register_module, "register_surface", fake_register_surface)
+        monkeypatch.setattr("neuroreg.imreg.coreg.coreg", fake_register_pyramid)
 
         bbreg_main([
             "--mov", str(mov_path),
@@ -114,8 +118,8 @@ class TestBbregCli:
         def fail_register_pyramid(*args, **kwargs):
             raise AssertionError("prealignment should not run")
 
-        monkeypatch.setattr("neuroreg.bbreg.register.register_surface", fake_register_surface)
-        monkeypatch.setattr("neuroreg.imreg.coreg.register_pyramid", fail_register_pyramid)
+        monkeypatch.setattr(bbreg_register_module, "register_surface", fake_register_surface)
+        monkeypatch.setattr("neuroreg.imreg.coreg.coreg", fail_register_pyramid)
 
         bbreg_main([
             "--mov", str(mov_path),
@@ -147,8 +151,8 @@ class TestBbregCli:
         def fail_register_pyramid(*args, **kwargs):
             raise AssertionError("prealignment should not run when --init-lta is provided")
 
-        monkeypatch.setattr("neuroreg.bbreg.register.register_surface", fake_register_surface)
-        monkeypatch.setattr("neuroreg.imreg.coreg.register_pyramid", fail_register_pyramid)
+        monkeypatch.setattr(bbreg_register_module, "register_surface", fake_register_surface)
+        monkeypatch.setattr("neuroreg.imreg.coreg.coreg", fail_register_pyramid)
 
         bbreg_main([
             "--mov", str(mov_path),
@@ -188,8 +192,8 @@ class TestBbregCli:
             captured_ref_sum["sum"] = float(ref_img.get_fdata().sum())
             return torch.eye(4, dtype=torch.float64)
 
-        monkeypatch.setattr("neuroreg.bbreg.register.register_surface", fake_register_surface)
-        monkeypatch.setattr("neuroreg.imreg.coreg.register_pyramid", fake_register_pyramid)
+        monkeypatch.setattr(bbreg_register_module, "register_surface", fake_register_surface)
+        monkeypatch.setattr("neuroreg.imreg.coreg.coreg", fake_register_pyramid)
 
         bbreg_main([
             "--mov", str(mov_path),
@@ -224,8 +228,8 @@ class TestBbregCli:
             captured_ref_sum["sum"] = float(ref_img.get_fdata().sum())
             return torch.eye(4, dtype=torch.float64)
 
-        monkeypatch.setattr("neuroreg.bbreg.register.register_surface", fake_register_surface)
-        monkeypatch.setattr("neuroreg.imreg.coreg.register_pyramid", fake_register_pyramid)
+        monkeypatch.setattr(bbreg_register_module, "register_surface", fake_register_surface)
+        monkeypatch.setattr("neuroreg.imreg.coreg.coreg", fake_register_pyramid)
 
         bbreg_main([
             "--mov", str(mov_path),
@@ -262,8 +266,8 @@ class TestBbregCli:
             captured_ref_sum["sum"] = float(ref_img.get_fdata().sum())
             return torch.eye(4, dtype=torch.float64)
 
-        monkeypatch.setattr("neuroreg.bbreg.register.register_surface", fake_register_surface)
-        monkeypatch.setattr("neuroreg.imreg.coreg.register_pyramid", fake_register_pyramid)
+        monkeypatch.setattr(bbreg_register_module, "register_surface", fake_register_surface)
+        monkeypatch.setattr("neuroreg.imreg.coreg.coreg", fake_register_pyramid)
 
         bbreg_main([
             "--mov", str(mov_path),
@@ -277,9 +281,9 @@ class TestBbregCli:
 
 class TestBbregRegister:
     def test_register_surface_returns_best_iterate_and_stops_early(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        tmp_path: Path,
+            self,
+            monkeypatch: pytest.MonkeyPatch,
+            tmp_path: Path,
     ):
         mov_path = tmp_path / "mov.nii.gz"
         ref_path = tmp_path / "ref.nii.gz"
@@ -325,12 +329,12 @@ class TestBbregRegister:
                 "faces": torch.tensor([[0, 1, 2]], dtype=torch.int64),
             }
 
-        monkeypatch.setattr("neuroreg.bbreg.register.load_surface", fake_load_surface)
-        monkeypatch.setattr("neuroreg.bbreg.register.get_vox2ras_tkr", lambda header: torch.eye(4).numpy())
-        monkeypatch.setattr("neuroreg.bbreg.register.BBRModel", FakeBBRModel)
+        monkeypatch.setattr(bbreg_register_module, "load_surface", fake_load_surface)
+        monkeypatch.setattr(bbreg_register_module, "get_vox2ras_tkr", lambda header: torch.eye(4).numpy())
+        monkeypatch.setattr(bbreg_register_module, "BBRModel", FakeBBRModel)
         monkeypatch.setattr("torch.optim.RMSprop", FakeOptimizer)
 
-        transform, model = register_surface(
+        transform, model = bbreg(
             mov=str(mov_path),
             ref=str(ref_path),
             lh_surf=str(tmp_path / "lh.white"),
@@ -343,9 +347,9 @@ class TestBbregRegister:
         assert model.call_count == 8
 
     def test_register_surface_init_ras_uses_mov_to_trg_direction(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        tmp_path: Path,
+            self,
+            monkeypatch: pytest.MonkeyPatch,
+            tmp_path: Path,
     ):
         mov_path = tmp_path / "mov.nii.gz"
         ref_path = tmp_path / "ref.nii.gz"
@@ -386,12 +390,12 @@ class TestBbregRegister:
         init_ras = np.eye(4, dtype=np.float64)
         init_ras[0, 3] = 3.0
 
-        monkeypatch.setattr("neuroreg.bbreg.register.load_surface", fake_load_surface)
-        monkeypatch.setattr("neuroreg.bbreg.register.get_vox2ras_tkr", lambda header: torch.eye(4).numpy())
-        monkeypatch.setattr("neuroreg.bbreg.register.BBRModel", FakeBBRModel)
+        monkeypatch.setattr(bbreg_register_module, "load_surface", fake_load_surface)
+        monkeypatch.setattr(bbreg_register_module, "get_vox2ras_tkr", lambda header: torch.eye(4).numpy())
+        monkeypatch.setattr(bbreg_register_module, "BBRModel", FakeBBRModel)
         monkeypatch.setattr("torch.optim.RMSprop", FakeOptimizer)
 
-        transform, _ = register_surface(
+        transform, _ = bbreg(
             mov=str(mov_path),
             ref=str(ref_path),
             lh_surf=str(tmp_path / "lh.white"),

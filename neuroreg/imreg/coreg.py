@@ -6,13 +6,13 @@ import numpy as np
 import torch
 from torch import Tensor
 
+from .init import get_ixform_centroids
+from .optimize import training_loop
+from .reg_model import RegModel
 from ..image import build_gaussian_pyramid
 from ..image.pyramid import _PYRAMID_FILTER, _smooth3d, get_pyramid_limits
 from ..transforms import LTA
 from ..transforms.matrices import matrix_sqrt_schur
-from .init import get_ixform_centroids
-from .optimize import training_loop
-from .reg_model import RegModel
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +23,9 @@ def _shape3(shape: torch.Size | tuple[int, ...]) -> tuple[int, int, int]:
 
 
 def _resolve_level_iterations(
-    n_levels: int,
-    n: int,
-    level_iters: list[int] | tuple[int, ...] | None,
+        n_levels: int,
+        n: int,
+        level_iters: list[int] | tuple[int, ...] | None,
 ) -> list[int]:
     """Return the optimizer iteration budget for each pyramid level.
 
@@ -55,20 +55,20 @@ def _smooth_finest_pyramid_level(levels: list[torch.Tensor]) -> list[torch.Tenso
 
 
 def register_level(
-    simg: Tensor,
-    timg: Tensor,
-    dof: int = 6,
-    v2v_init: Tensor | None = None,
-    centroid_init: bool = True,
-    n: int = 30,
-    loss_name: str = "mse",
-    loss_beta: float | None = None,
-    loss_bins: int = 32,
-    optimizer: str = "adam",
-    lr: float | None = None,
-    verbose: bool = False,
-    device: str = "cpu",
-    trace_fn=None,
+        simg: Tensor,
+        timg: Tensor,
+        dof: int = 6,
+        v2v_init: Tensor | None = None,
+        centroid_init: bool = True,
+        n: int = 30,
+        loss_name: str = "mse",
+        loss_beta: float | None = None,
+        loss_bins: int = 32,
+        optimizer: str = "adam",
+        lr: float | None = None,
+        verbose: bool = False,
+        device: str = "cpu",
+        trace_fn=None,
 ) -> tuple[Tensor, list[float], "RegModel"]:
     """Run legacy gradient-descent registration on a single pyramid level.
 
@@ -169,27 +169,27 @@ def register_level(
     return v2v, losses, model
 
 
-def register_pyramid(
-    src: str | nib.Nifti1Image,
-    trg: str | nib.Nifti1Image,
-    lta_name: str | None = None,
-    mapped_name: str | None = None,
-    return_v2v: bool = False,
-    centroid_init: bool = True,
-    symmetric: bool = True,
-    dof: int = 6,
-    n: int = 30,
-    level_iters: list[int] | tuple[int, ...] | None = None,
-    loss_name: str = "mse",
-    loss_beta: float | None = None,
-    loss_bins: int = 32,
-    optimizer: str = "adam",
-    lr: float | None = None,
-    min_voxels: int = 16,
-    max_voxels: int | None = None,
-    isotropic: bool = False,
-    device: str = "cpu",
-    trace_fn=None,
+def register_gd_pyramid(
+        src: str | nib.Nifti1Image,
+        trg: str | nib.Nifti1Image,
+        lta_name: str | None = None,
+        mapped_name: str | None = None,
+        return_v2v: bool = False,
+        centroid_init: bool = True,
+        symmetric: bool = True,
+        dof: int = 6,
+        n: int = 30,
+        level_iters: list[int] | tuple[int, ...] | None = None,
+        loss_name: str = "mse",
+        loss_beta: float | None = None,
+        loss_bins: int = 32,
+        optimizer: str = "adam",
+        lr: float | None = None,
+        min_voxels: int = 16,
+        max_voxels: int | None = None,
+        isotropic: bool = False,
+        device: str = "cpu",
+        trace_fn=None,
 ) -> Tensor:
     """Run the legacy gradient-descent multiresolution registration path.
 
@@ -339,7 +339,7 @@ def register_pyramid(
         from ..image.map import map as _map_img
 
         for level_idx, (si, sa, ti, ta) in enumerate(
-            zip(reversed(simgs), reversed(saffines), reversed(timgs), reversed(taffines), strict=True)
+                zip(reversed(simgs), reversed(saffines), reversed(timgs), reversed(taffines), strict=True)
         ):
             pyramid_level = n_levels - 1 - level_idx
             logger.info("Sym level %d (pyramid %d): shape=%s", level_idx, pyramid_level, list(si.shape))
@@ -420,7 +420,7 @@ def register_pyramid(
                 )
     else:
         for level_idx, (si, sa, ti, ta) in enumerate(
-            zip(reversed(simgs), reversed(saffines), reversed(timgs), reversed(taffines), strict=True)
+                zip(reversed(simgs), reversed(saffines), reversed(timgs), reversed(taffines), strict=True)
         ):
             n_level = iterations_per_level[level_idx]
             logger.info("Resolution level %d: %s", level_idx, list(si.size()))
@@ -532,10 +532,15 @@ def register_pyramid(
         mapped_img = nib.MGHImage(mapped.squeeze().numpy().astype(np.float32), trg.affine, header)
         mapped_img.to_filename(mapped_name)
 
-    logger.info("register_pyramid total time: %.2f s", time.perf_counter() - start)
+    logger.info("register_gd_pyramid total time: %.2f s", time.perf_counter() - start)
     if return_v2v:
         return Mv2v_orig
     return Mr2r
 
 
-__all__ = ["register_level", "register_pyramid", "RegModel"]
+def coreg(*args, **kwargs) -> Tensor:
+    """Public module-level alias for the GD image-registration path."""
+    return register_gd_pyramid(*args, **kwargs)
+
+
+__all__ = ["register_level", "register_gd_pyramid", "coreg", "RegModel"]

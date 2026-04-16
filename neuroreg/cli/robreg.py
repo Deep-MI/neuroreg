@@ -91,7 +91,7 @@ def main(args=None) -> None:
     """Entry point for the ``robreg`` command."""
     import nibabel as nib
 
-    from neuroreg.imreg.robreg import register_pyramid
+    from neuroreg.imreg.robreg import robreg
     from neuroreg.transforms import LTA
 
     parser = _build_parser()
@@ -118,7 +118,7 @@ def main(args=None) -> None:
 
     # ── register ────────────────────────────────────────────────────────────
     logger.info("Starting IRLS registration (dof=%d, symmetric=%s) …", ns.dof, ns.symmetric)
-    Mr2r = register_pyramid(
+    Mr2r = robreg(
         mov_img,
         ref_img,
         return_v2v=False,

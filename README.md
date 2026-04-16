@@ -1,4 +1,5 @@
 [![PyPI version](https://badge.fury.io/py/neuroreg.svg)](https://pypi.org/project/neuroreg/)
+
 # neuroreg
 
 neuroreg is a tool for the robust registration of 3D neuroimaging data (e.g. MRI).
@@ -41,25 +42,25 @@ Run `robreg -h` for a full argument summary with defaults.
 
 **Required arguments**
 
-| Argument | Description |
-|----------|-------------|
-| `--mov FILE` | Moving (source) image (NIfTI or MGZ). |
-| `--ref FILE` | Reference (target/fixed) image (NIfTI or MGZ). |
-| `--out LTA` | Output LTA file for the recovered transformation. |
+| Argument     | Description                                       |
+|--------------|---------------------------------------------------|
+| `--mov FILE` | Moving (source) image (NIfTI or MGZ).             |
+| `--ref FILE` | Reference (target/fixed) image (NIfTI or MGZ).    |
+| `--out LTA`  | Output LTA file for the recovered transformation. |
 
 **Options**
 
-| Argument | Default | Description |
-|----------|---------|-------------|
-| `--dof {6}` | `6` | Degrees of freedom. The public `robreg` path is currently rigid-only. |
-| `--nmax N` | `5` | Maximum number of outer IRLS iterations per pyramid level. |
-| `--sat FLOAT` | `6.0` | Tukey biweight saturation threshold. |
-| `--nosym` | off | Disable symmetric halfway-space registration and run directed registration. Symmetric registration is the default. |
-| `--noinit` | off | Skip centroid-based initialization and start from identity (like FreeSurfer `--noinit`). |
-| `--mapped FILE` | — | Save the warped moving image. |
-| `--outliers FILE` | — | Save an outlier map (`1 - Tukey weights`). |
-| `--verbose` | off | Enable INFO-level logging. |
-| `--debug` | off | Enable DEBUG-level logging. |
+| Argument          | Default | Description                                                                                                        |
+|-------------------|---------|--------------------------------------------------------------------------------------------------------------------|
+| `--dof {6}`       | `6`     | Degrees of freedom. The public `robreg` path is currently rigid-only.                                              |
+| `--nmax N`        | `5`     | Maximum number of outer IRLS iterations per pyramid level.                                                         |
+| `--sat FLOAT`     | `6.0`   | Tukey biweight saturation threshold.                                                                               |
+| `--nosym`         | off     | Disable symmetric halfway-space registration and run directed registration. Symmetric registration is the default. |
+| `--noinit`        | off     | Skip centroid-based initialization and start from identity (like FreeSurfer `--noinit`).                           |
+| `--mapped FILE`   | —       | Save the warped moving image.                                                                                      |
+| `--outliers FILE` | —       | Save an outlier map (`1 - Tukey weights`).                                                                         |
+| `--verbose`       | off     | Enable INFO-level logging.                                                                                         |
+| `--debug`         | off     | Enable DEBUG-level logging.                                                                                        |
 
 **Example**
 
@@ -82,14 +83,14 @@ coreg --mov <moving.nii.gz> --ref <reference.nii.gz> --out <output.lta> [options
 
 **Options**
 
-| Argument | Default | Description |
-|----------|---------|-------------|
-| `--dof {3,6,9,12}` | `6` | Degrees of freedom: 3=translation, 6=rigid, 9=rigid+scale, 12=affine. |
-| `--n_iters N` | auto | Maximum optimisation iterations per pyramid level. |
-| `--noinit` | off | Skip centroid-based initialization and start from identity. |
-| `--device DEVICE` | `cpu` | PyTorch device, e.g. `cpu` or `cuda`. |
-| `--verbose` | off | Enable INFO-level logging. |
-| `--debug` | off | Enable DEBUG-level logging. |
+| Argument           | Default | Description                                                           |
+|--------------------|---------|-----------------------------------------------------------------------|
+| `--dof {3,6,9,12}` | `6`     | Degrees of freedom: 3=translation, 6=rigid, 9=rigid+scale, 12=affine. |
+| `--n_iters N`      | auto    | Maximum optimisation iterations per pyramid level.                    |
+| `--noinit`         | off     | Skip centroid-based initialization and start from identity.           |
+| `--device DEVICE`  | `cpu`   | PyTorch device, e.g. `cpu` or `cuda`.                                 |
+| `--verbose`        | off     | Enable INFO-level logging.                                            |
+| `--debug`          | off     | Enable DEBUG-level logging.                                           |
 
 **Example**
 
@@ -137,37 +138,37 @@ specified in this mode.
 
 **Required arguments**
 
-| Argument | Description |
-|----------|-------------|
-| `--mov FILE` | Moving image to register (NIfTI or MGZ). |
-| `--out LTA` | Output LTA file for the recovered transformation. |
-| `--subject_dir DIR` | *(Mode A)* Subject directory with surfaces and `mri/orig.mgz`. |
-| `--lh_surf / --rh_surf FILE` | *(Mode B)* Explicit left / right white surface files. |
-| `--ref FILE` | *(Mode B)* Reference T1 image (required with explicit surfaces). |
-| `--seg FILE` | *(Mode C)* Parcellation / aseg file; surfaces extracted automatically. |
+| Argument                     | Description                                                            |
+|------------------------------|------------------------------------------------------------------------|
+| `--mov FILE`                 | Moving image to register (NIfTI or MGZ).                               |
+| `--out LTA`                  | Output LTA file for the recovered transformation.                      |
+| `--subject_dir DIR`          | *(Mode A)* Subject directory with surfaces and `mri/orig.mgz`.         |
+| `--lh_surf / --rh_surf FILE` | *(Mode B)* Explicit left / right white surface files.                  |
+| `--ref FILE`                 | *(Mode B)* Reference T1 image (required with explicit surfaces).       |
+| `--seg FILE`                 | *(Mode C)* Parcellation / aseg file; surfaces extracted automatically. |
 
 **Options**
 
-| Argument | Default | Description |
-|----------|---------|-------------|
-| `--dof {6,9,12}` | `6` | Degrees of freedom: 6=rigid, 9=rigid+scale, 12=affine. |
-| `--contrast {t1,t2}` | auto | Tissue contrast: `t1` (WM>GM) or `t2` (GM>WM). Auto-detected if omitted. |
-| `--cost {contrast,gradient,both}` | `contrast` | BBR cost term. |
-| `--wm_proj_abs MM` | `1.4` | WM projection depth in mm. |
-| `--gm_proj_frac FRAC` | `0.5` | GM projection as fraction of cortical thickness. |
-| `--slope SLOPE` | `0.5` | Slope of the BBR sigmoid cost function. |
-| `--gradient_weight W` | `0.0` | Weight for gradient cost term when `--cost=both`. |
-| `--n_iters N` | `500` | Number of RMSprop optimisation iterations. |
-| `--lr LR` | `0.005` | Optimiser learning rate. |
-| `--subsample N` | `2` | Use every N-th surface vertex (1 = all). |
-| `--lh_thickness / --rh_thickness FILE` | — | *(Mode B)* Cortical thickness files for GM projection. |
-| `--seg_smooth_sigma SIGMA` | `0.5` | *(Mode C)* Gaussian pre-blur sigma (voxels) before marching cubes. |
-| `--seg_mc_level LEVEL` | `0.45` | *(Mode C)* Marching-cubes iso-level. |
-| `--seg_smooth_iters N` | `50` | *(Mode C)* Taubin smoothing iterations after marching cubes. |
-| `--init_lta FILE` | — | Initialise from an existing LTA transform (e.g. from a prior `robreg` run or a previous `bbreg` pass). |
-| `--device DEVICE` | `cpu` | PyTorch device, e.g. `cpu` or `cuda`. |
-| `--verbose` | off | Enable INFO-level logging. |
-| `--debug` | off | Enable DEBUG-level logging. |
+| Argument                               | Default    | Description                                                                                            |
+|----------------------------------------|------------|--------------------------------------------------------------------------------------------------------|
+| `--dof {6,9,12}`                       | `6`        | Degrees of freedom: 6=rigid, 9=rigid+scale, 12=affine.                                                 |
+| `--contrast {t1,t2}`                   | auto       | Tissue contrast: `t1` (WM>GM) or `t2` (GM>WM). Auto-detected if omitted.                               |
+| `--cost {contrast,gradient,both}`      | `contrast` | BBR cost term.                                                                                         |
+| `--wm_proj_abs MM`                     | `1.4`      | WM projection depth in mm.                                                                             |
+| `--gm_proj_frac FRAC`                  | `0.5`      | GM projection as fraction of cortical thickness.                                                       |
+| `--slope SLOPE`                        | `0.5`      | Slope of the BBR sigmoid cost function.                                                                |
+| `--gradient_weight W`                  | `0.0`      | Weight for gradient cost term when `--cost=both`.                                                      |
+| `--n_iters N`                          | `500`      | Number of RMSprop optimisation iterations.                                                             |
+| `--lr LR`                              | `0.005`    | Optimiser learning rate.                                                                               |
+| `--subsample N`                        | `2`        | Use every N-th surface vertex (1 = all).                                                               |
+| `--lh_thickness / --rh_thickness FILE` | —          | *(Mode B)* Cortical thickness files for GM projection.                                                 |
+| `--seg_smooth_sigma SIGMA`             | `0.5`      | *(Mode C)* Gaussian pre-blur sigma (voxels) before marching cubes.                                     |
+| `--seg_mc_level LEVEL`                 | `0.45`     | *(Mode C)* Marching-cubes iso-level.                                                                   |
+| `--seg_smooth_iters N`                 | `50`       | *(Mode C)* Taubin smoothing iterations after marching cubes.                                           |
+| `--init_lta FILE`                      | —          | Initialise from an existing LTA transform (e.g. from a prior `robreg` run or a previous `bbreg` pass). |
+| `--device DEVICE`                      | `cpu`      | PyTorch device, e.g. `cpu` or `cuda`.                                                                  |
+| `--verbose`                            | off        | Enable INFO-level logging.                                                                             |
+| `--debug`                              | off        | Enable DEBUG-level logging.                                                                            |
 
 **Examples**
 
@@ -220,24 +221,24 @@ lta diff LTA1 [LTA2] [--dist {1,2,3,4,5,7}] [--radius MM] [--normdiv FLOAT]
 
 **Distance types**
 
-| `--dist` | Metric |
-|----------|--------|
-| `1` | Rigid transform distance: √(‖log R_d‖² + ‖T_d‖²) |
-| `2` | Affine RMS distance (Jenkinson 1999) — **default** |
-| `3` | Mean displacement at the 8 corners of the source volume (mm) |
-| `4` | Max displacement on a sphere of radius `r` |
-| `5` | Determinant of M1 (or M1·M2 when two transforms are given) |
-| `7` | Polar decomposition: rotation, shear, scales, translation, determinant |
+| `--dist` | Metric                                                                 |
+|----------|------------------------------------------------------------------------|
+| `1`      | Rigid transform distance: √(‖log R_d‖² + ‖T_d‖²)                       |
+| `2`      | Affine RMS distance (Jenkinson 1999) — **default**                     |
+| `3`      | Mean displacement at the 8 corners of the source volume (mm)           |
+| `4`      | Max displacement on a sphere of radius `r`                             |
+| `5`      | Determinant of M1 (or M1·M2 when two transforms are given)             |
+| `7`      | Polar decomposition: rotation, shear, scales, translation, determinant |
 
 **Options**
 
-| Argument | Default | Description |
-|----------|---------|-------------|
-| `--dist {1,2,3,4,5,7}` | `2` | Distance type (see table above). |
-| `--radius MM` | `100` | Sphere / RMS radius in mm (used by dist 2 and 4). |
-| `--normdiv FLOAT` | `1` | Divide the final distance by this value (must be > 0). |
-| `--invert1` | off | Invert LTA1 before comparison. |
-| `--invert2` | off | Invert LTA2 before comparison (requires a second LTA). |
+| Argument               | Default | Description                                            |
+|------------------------|---------|--------------------------------------------------------|
+| `--dist {1,2,3,4,5,7}` | `2`     | Distance type (see table above).                       |
+| `--radius MM`          | `100`   | Sphere / RMS radius in mm (used by dist 2 and 4).      |
+| `--normdiv FLOAT`      | `1`     | Divide the final distance by this value (must be > 0). |
+| `--invert1`            | off     | Invert LTA1 before comparison.                         |
+| `--invert2`            | off     | Invert LTA2 before comparison (requires a second LTA). |
 
 **Examples**
 
@@ -311,24 +312,23 @@ lta concat moving_to_intermediate.lta intermediate_to_fixed.lta moving_to_fixed.
 ```python
 import nibabel as nib
 
-from neuroreg import register_pyramid, register_surface
-from neuroreg.imreg.coreg import register_pyramid as register_pyramid_coreg
+from neuroreg import bbreg, coreg, robreg
 
 # Public robust image-to-image registration (IRLS-backed).
 # Intended for same-/similar-contrast pairs; symmetric mode is the default.
-transform_r2r = register_pyramid("T1_repeat.nii.gz", "T1_baseline.mgz")
+transform_r2r = robreg("T1_repeat.nii.gz", "T1_baseline.mgz")
 
 # The same public robreg path with pre-loaded nibabel images.
 mov_img = nib.load("T1_repeat.nii.gz")
 ref_img = nib.load("T1_baseline.mgz")
-transform_r2r_loaded = register_pyramid(mov_img, ref_img)
+transform_r2r_loaded = robreg(mov_img, ref_img)
 
 # Image-based cross-modal registration path for cases where no
 # white-matter surface or segmentation is available.
-transform_coreg = register_pyramid_coreg("T2.nii.gz", "T1.mgz", loss_name="nmi")
+transform_coreg = coreg("T2.nii.gz", "T1.mgz", loss_name="nmi")
 
 # Surface-based (BBR) registration — Mode A: subject directory
-transform, model = register_surface(
+transform, model = bbreg(
     mov="fMRI.nii.gz",
     subject_dir="/data/subjects/sub-01",
     lta_name="fMRI_to_T1.lta",
@@ -336,7 +336,7 @@ transform, model = register_surface(
 )
 
 # Surface-based (BBR) registration — Mode B: explicit surface files
-transform, model = register_surface(
+transform, model = bbreg(
     mov="T2.nii.gz",
     lh_surf="/data/subjects/sub-01/surf/lh.white",
     rh_surf="/data/subjects/sub-01/surf/rh.white",
@@ -348,23 +348,22 @@ transform, model = register_surface(
 )
 
 # Surface-based (BBR) registration — Mode C: segmentation (no surface files needed)
-transform, model = register_surface(
+transform, model = bbreg(
     mov="fMRI.nii.gz",
     seg="/data/subjects/sub-01/mri/aparc+aseg.mgz",
     lta_name="fMRI_to_T1.lta",
 )
 ```
 
-
 ## Degrees of freedom
 
 Current DOF support is:
 
-| Command / API path | Supported DOF |
-|--------------------|---------------|
-| `robreg` / public `register_pyramid()` | `6` only |
-| `coreg` / `neuroreg.imreg.coreg.register_pyramid()` | `3`, `6`, `9`, `12` |
-| `bbreg` | `6`, `9`, `12` |
+| Command / API path           | Supported DOF       |
+|------------------------------|---------------------|
+| `robreg` / public `robreg()` | `6` only            |
+| `coreg` / public `coreg()`   | `3`, `6`, `9`, `12` |
+| `bbreg` / public `bbreg()`   | `6`, `9`, `12`      |
 
 The public `robreg` path is intentionally rigid-only for now because it tracks
 the current IRLS implementation.

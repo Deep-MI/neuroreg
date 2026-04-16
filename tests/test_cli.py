@@ -5,8 +5,8 @@ import nibabel as nib
 import pytest
 import torch
 
-from neuroreg.cli.robreg import main as robreg_main
 from neuroreg.cli.coreg import main as coreg_main
+from neuroreg.cli.robreg import main as robreg_main
 
 
 def _write_zero_image(path: Path) -> None:
@@ -34,7 +34,7 @@ class TestRobregCli:
             def write(self, path):
                 Path(path).write_text("dummy")
 
-        monkeypatch.setattr("neuroreg.imreg.robreg.register_pyramid", fake_register_pyramid)
+        monkeypatch.setattr("neuroreg.imreg.robreg.robreg", fake_register_pyramid)
         monkeypatch.setattr(
             "neuroreg.transforms.LTA.from_matrix",
             lambda *args, **kwargs: _DummyLTA(),
@@ -74,7 +74,7 @@ class TestRobregCli:
             def write(self, path):
                 Path(path).write_text("dummy")
 
-        monkeypatch.setattr("neuroreg.imreg.robreg.register_pyramid", fake_register_pyramid)
+        monkeypatch.setattr("neuroreg.imreg.robreg.robreg", fake_register_pyramid)
         monkeypatch.setattr(
             "neuroreg.transforms.LTA.from_matrix",
             lambda *args, **kwargs: _DummyLTA(),
@@ -129,7 +129,7 @@ class TestCoregCli:
             def write(self, path):
                 Path(path).write_text("dummy")
 
-        monkeypatch.setattr("neuroreg.imreg.coreg.register_pyramid", fake_register_pyramid)
+        monkeypatch.setattr("neuroreg.imreg.coreg.coreg", fake_register_pyramid)
         monkeypatch.setattr(
             "neuroreg.transforms.LTA.from_matrix",
             lambda *args, **kwargs: _DummyLTA(),
@@ -150,9 +150,9 @@ class TestCoregCli:
         assert out_path.exists()
 
     def test_main_forwards_level_schedule_and_optimizer_settings(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        tmp_path: Path,
+            self,
+            monkeypatch: pytest.MonkeyPatch,
+            tmp_path: Path,
     ):
         mov_path = tmp_path / "mov.nii.gz"
         ref_path = tmp_path / "ref.nii.gz"
@@ -171,7 +171,7 @@ class TestCoregCli:
             def write(self, path):
                 Path(path).write_text("dummy")
 
-        monkeypatch.setattr("neuroreg.imreg.coreg.register_pyramid", fake_register_pyramid)
+        monkeypatch.setattr("neuroreg.imreg.coreg.coreg", fake_register_pyramid)
         monkeypatch.setattr(
             "neuroreg.transforms.LTA.from_matrix",
             lambda *args, **kwargs: _DummyLTA(),

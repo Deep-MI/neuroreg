@@ -136,7 +136,7 @@ def register_irls_pyramid(
     """Run the tensor-level IRLS pyramid registration pipeline.
 
     This is the high-level multiresolution orchestration used by the public
-    :func:`register_pyramid` API. It keeps the solver logic in
+    :func:`robreg` API. It keeps the solver logic in
     :func:`neuroreg.imreg.irls.register_irls` but owns the product-level concerns:
     isotropic preprocessing, pyramid scheduling, level-to-level transform
     propagation, and optional outlier-map writing.
@@ -310,7 +310,7 @@ def register_irls_pyramid(
     return T, all_info
 
 
-def register_pyramid(
+def robreg(
     src: ImageLike,
     trg: ImageLike,
     *,
@@ -415,6 +415,6 @@ def register_pyramid(
     return trg_aff.double() @ T_v2v.double() @ torch.inverse(src_aff.double())
 
 
-__all__ = ["register_irls_pyramid", "register_pyramid"]
+__all__ = ["register_irls_pyramid", "robreg"]
 
 
