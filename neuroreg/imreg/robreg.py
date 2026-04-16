@@ -11,10 +11,10 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from ..image import build_gaussian_pyramid, get_pyramid_limits
-from ..image.map import resample_isotropic_tensor
 from .init import get_ixform_centroids
 from .irls import register_irls
+from ..image import build_gaussian_pyramid, get_pyramid_limits
+from ..image.map import resample_isotropic_tensor
 
 ImageLike = str | Path | Any | Tensor
 
@@ -22,8 +22,8 @@ logger = logging.getLogger(__name__)
 
 
 def _as_tensor_and_affine(
-    image: ImageLike,
-    affine: Tensor | None = None,
+        image: ImageLike,
+        affine: Tensor | None = None,
 ) -> tuple[Tensor, Tensor]:
     """Convert a supported image input into tensor data and a voxel-to-RAS affine.
 
@@ -114,24 +114,24 @@ def _save_outlier_map(all_info: list[dict[str, Any]], outliers_name: str, verbos
 
 
 def register_irls_pyramid(
-    src: Tensor,
-    trg: Tensor,
-    src_affine: Tensor | None = None,
-    trg_affine: Tensor | None = None,
-    initial_transform: Tensor | None = None,
-    centroid_init: bool = True,
-    min_voxels: int = 16,
-    max_voxels: int | None = None,
-    nmax: int = 5,
-    sat: float = 6.0,
-    epsit: float = 0.01,
-    max_irls: int = 20,
-    isotropic: bool = True,
-    symmetric: bool = True,
-    adaptive_sat: bool = False,
-    target_outlier_pct: float = 5.0,
-    outliers_name: str | None = None,
-    verbose: bool = False,
+        src: Tensor,
+        trg: Tensor,
+        src_affine: Tensor | None = None,
+        trg_affine: Tensor | None = None,
+        initial_transform: Tensor | None = None,
+        centroid_init: bool = True,
+        min_voxels: int = 16,
+        max_voxels: int | None = None,
+        nmax: int = 5,
+        sat: float = 6.0,
+        epsit: float = 0.01,
+        max_irls: int = 20,
+        isotropic: bool = True,
+        symmetric: bool = True,
+        adaptive_sat: bool = False,
+        target_outlier_pct: float = 5.0,
+        outliers_name: str | None = None,
+        verbose: bool = False,
 ) -> tuple[Tensor, list[dict[str, Any]]]:
     """Run the tensor-level IRLS pyramid registration pipeline.
 
@@ -311,23 +311,23 @@ def register_irls_pyramid(
 
 
 def robreg(
-    src: ImageLike,
-    trg: ImageLike,
-    *,
-    src_affine: Tensor | None = None,
-    trg_affine: Tensor | None = None,
-    return_v2v: bool = False,
-    centroid_init: bool = True,
-    dof: int = 6,
-    nmax: int = 5,
-    sat: float = 6.0,
-    symmetric: bool = True,
-    isotropic: bool = True,
-    adaptive_sat: bool = False,
-    target_outlier_pct: float = 5.0,
-    outliers_name: str | None = None,
-    verbose: bool = False,
-    device: str = "cpu",
+        src: ImageLike,
+        trg: ImageLike,
+        *,
+        src_affine: Tensor | None = None,
+        trg_affine: Tensor | None = None,
+        return_v2v: bool = False,
+        centroid_init: bool = True,
+        dof: int = 6,
+        nmax: int = 5,
+        sat: float = 6.0,
+        symmetric: bool = True,
+        isotropic: bool = True,
+        adaptive_sat: bool = False,
+        target_outlier_pct: float = 5.0,
+        outliers_name: str | None = None,
+        verbose: bool = False,
+        device: str = "cpu",
 ) -> Tensor:
     """Register two images with the public IRLS robust-registration path.
 
@@ -408,13 +408,17 @@ def robreg(
         outliers_name=outliers_name,
         verbose=verbose,
     )
+    T_v2v = T_v2v.to(device=src_aff.device)
 
     if return_v2v:
         return T_v2v
 
-    return trg_aff.double() @ T_v2v.double() @ torch.inverse(src_aff.double())
+    work_dtype = src_aff.dtype if src_aff.device.type == "mps" else torch.float64
+    return (
+            trg_aff.to(dtype=work_dtype)
+            @ T_v2v.to(dtype=work_dtype)
+            @ torch.inverse(src_aff.to(dtype=work_dtype))
+    )
 
 
 __all__ = ["register_irls_pyramid", "robreg"]
-
-

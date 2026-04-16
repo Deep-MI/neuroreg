@@ -26,17 +26,17 @@ def _det_mps_compatible(R: torch.Tensor) -> torch.Tensor:
     if R.shape[0] == 4 and R.shape[1] == 4:
         # For 4x4 matrices, extract the 3x3 rotation block
         R = R[:3, :3]
-    
+
     if R.shape != (3, 3):
         # Fallback to torch.linalg.det for other cases
         # (will work on CPU/CUDA, may fail on MPS for non-3x3)
         return torch.linalg.det(R)
-    
+
     # Compute determinant using cofactor expansion along first row
     det = (
-        R[0, 0] * (R[1, 1] * R[2, 2] - R[1, 2] * R[2, 1])
-        - R[0, 1] * (R[1, 0] * R[2, 2] - R[1, 2] * R[2, 0])
-        + R[0, 2] * (R[1, 0] * R[2, 1] - R[1, 1] * R[2, 0])
+            R[0, 0] * (R[1, 1] * R[2, 2] - R[1, 2] * R[2, 1])
+            - R[0, 1] * (R[1, 0] * R[2, 2] - R[1, 2] * R[2, 0])
+            + R[0, 2] * (R[1, 0] * R[2, 1] - R[1, 1] * R[2, 0])
     )
     return det
 
@@ -134,11 +134,10 @@ def get_rotation_rodrigues(rotvec: torch.Tensor) -> torch.Tensor:
         cross_mat[2, 0] = -axis[1]
         cross_mat[2, 1] = axis[0]
         rmat = (
-            torch.eye(3, dtype=rotvec.dtype, device=rotvec.device)
-            + torch.sin(theta) * cross_mat
-            + (1.0 - torch.cos(theta)) * (cross_mat @ cross_mat)
+                torch.eye(3, dtype=rotvec.dtype, device=rotvec.device)
+                + torch.sin(theta) * cross_mat
+                + (1.0 - torch.cos(theta)) * (cross_mat @ cross_mat)
         )
-
 
     r4x4 = torch.eye(4, dtype=rotvec.dtype, device=rotvec.device)
     r4x4[:3, :3] = rmat
@@ -361,7 +360,7 @@ def _is_rotation_matrix(R: torch.Tensor, atol: float = 1e-4) -> bool:
 
 
 def get_affine(
-    translation: torch.Tensor, rotvec: torch.Tensor | None = None, scales: torch.Tensor | None = None
+        translation: torch.Tensor, rotvec: torch.Tensor | None = None, scales: torch.Tensor | None = None
 ) -> torch.Tensor:
     """Generate a 4 × 4 affine matrix from translation, rotation, and scale.
 
@@ -431,9 +430,10 @@ def convert_v2v_to_torch(v2v: torch.Tensor, source_shape, target_shape=None) -> 
 
     dtype = v2v.dtype
     device = v2v.device
+    work_dtype = torch.float32 if device.type == "mps" else torch.float64
 
-    # Backward v2v in nibabel (D, H, W) order; float64 for numerical accuracy.
-    inv_v2v_dhw = torch.inverse(v2v.double())
+    # Backward v2v in nibabel (D, H, W) order.
+    inv_v2v_dhw = torch.inverse(v2v.to(dtype=work_dtype))
 
     # Reorder from nibabel (D, H, W) to PyTorch (W, H, D) = (x, y, z) order.
     # Swap axis 0 (D) ↔ axis 2 (W); leave axis 1 (H) and the homogeneous row/col.
@@ -445,8 +445,8 @@ def convert_v2v_to_torch(v2v: torch.Tensor, source_shape, target_shape=None) -> 
 
     # Normalisation scale factors in (W, H, D) = (x, y, z) order.
     # reversed((D, H, W)) = (W, H, D).
-    sf_src = torch.tensor(list(reversed(source_shape)), dtype=torch.float64, device=device) / 2.0
-    sf_trg = torch.tensor(list(reversed(target_shape)), dtype=torch.float64, device=device) / 2.0
+    sf_src = torch.tensor(list(reversed(source_shape)), dtype=work_dtype, device=device) / 2.0
+    sf_trg = torch.tensor(list(reversed(target_shape)), dtype=work_dtype, device=device) / 2.0
 
     # denorm_trg : target normalised [-1, 1] → target voxel index [0, N-1]
     #   vox = (norm + 1) * (N/2) - 0.5    (align_corners=False)
@@ -469,11 +469,11 @@ def convert_v2v_to_torch(v2v: torch.Tensor, source_shape, target_shape=None) -> 
 
 
 def convert_r2r_to_torch(
-    r2r: torch.Tensor,
-    source_shape,
-    source_affine: torch.Tensor,
-    target_shape=None,
-    target_affine: torch.Tensor | None = None,
+        r2r: torch.Tensor,
+        source_shape,
+        source_affine: torch.Tensor,
+        target_shape=None,
+        target_affine: torch.Tensor | None = None,
 ) -> torch.Tensor:
     """Convert a RAS-to-RAS affine matrix to PyTorch grid-sample format.
 
@@ -619,11 +619,11 @@ LINEAR_RAS_TO_RAS = 1
 
 
 def convert_transform_type(
-    matrix: npt.ArrayLike,
-    src_affine: npt.ArrayLike,
-    dst_affine: npt.ArrayLike,
-    from_type: int,
-    to_type: int,
+        matrix: npt.ArrayLike,
+        src_affine: npt.ArrayLike,
+        dst_affine: npt.ArrayLike,
+        from_type: int,
+        to_type: int,
 ) -> np.ndarray:
     """Convert a transformation matrix between vox-to-vox and RAS-to-RAS.
 

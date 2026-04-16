@@ -48,10 +48,10 @@ _DERFILTER = torch.tensor([-0.10689, -0.28461, 0.0, 0.28461, 0.10689])
 
 
 def _conv1d_along(
-    vol: torch.Tensor,
-    kernel: torch.Tensor,
-    dim: int,
-    padding_mode: str = 'replicate',
+        vol: torch.Tensor,
+        kernel: torch.Tensor,
+        dim: int,
+        padding_mode: str = 'replicate',
 ) -> torch.Tensor:
     """Convolve a 3-D volume with a 1-D kernel along one spatial dimension.
 
@@ -75,13 +75,13 @@ def _conv1d_along(
     x = vol.unsqueeze(0).unsqueeze(0)
 
     # reshape kernel to [1, 1, k] and expand to the right conv3d weight shape
-    if dim == 0:                         # along depth
+    if dim == 0:  # along depth
         w = k.view(1, 1, K, 1, 1)
         pads = (0, 0, 0, 0, pad, pad)
-    elif dim == 1:                       # along height
+    elif dim == 1:  # along height
         w = k.view(1, 1, 1, K, 1)
         pads = (0, 0, pad, pad, 0, 0)
-    else:                                # along width
+    else:  # along width
         w = k.view(1, 1, 1, 1, K)
         pads = (pad, pad, 0, 0, 0, 0)
 
@@ -130,9 +130,9 @@ def compute_partials(img: torch.Tensor) -> tuple[torch.Tensor, ...]:
 # ---------------------------------------------------------------------------
 
 def construct_Ab(
-    src_warped: torch.Tensor,
-    trg: torch.Tensor,
-    eps: float = 1e-5,
+        src_warped: torch.Tensor,
+        trg: torch.Tensor,
+        eps: float = 1e-5,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Build gradient matrix A and residual vector b.
 
@@ -167,7 +167,7 @@ def construct_Ab(
     # Average image for gradients (matches FreeSurfer)
     SpTh = (src_warped + trg) * 0.5
     fx, fy, fz, _ = compute_partials(SpTh)
-    
+
     # Difference for b: compute difference THEN blur (matches FreeSurfer)
     # FreeSurfer: SmT = src - trg; SmT = blur(SmT); b = SmT
     SmT = src_warped - trg
@@ -185,10 +185,10 @@ def construct_Ab(
     fxf = fx.flatten()
     fyf = fy.flatten()
     fzf = fz.flatten()
-    xf  = gx.flatten()
-    yf  = gy.flatten()
-    zf  = gz.flatten()
-    bf  = b_vol.flatten()
+    xf = gx.flatten()
+    yf = gy.flatten()
+    zf = gz.flatten()
+    bf = b_vol.flatten()
     src_flat = src_warped.flatten()
     trg_flat = trg.flatten()
 
@@ -197,16 +197,16 @@ def construct_Ab(
     # 2. NaN gradients
     # 3. Near-zero gradients
     # 4. Finite values
-    
+
     # Check for outside/background values (typically 0)
     # FreeSurfer uses: fabs(val - outside_val) > eps
     # For typical images, outside_val = 0, so this checks |val| > eps
     outside_eps = 1e-5
     valid = (src_flat.abs() > outside_eps) & (trg_flat.abs() > outside_eps)
-    
+
     # Non-zero gradient
     valid &= (fxf.abs() + fyf.abs() + fzf.abs()) > eps
-    
+
     # Finite values
     valid &= torch.isfinite(fxf) & torch.isfinite(fyf) & torch.isfinite(fzf)
     valid &= torch.isfinite(bf)
@@ -214,20 +214,20 @@ def construct_Ab(
     fxv = fxf[valid]
     fyv = fyf[valid]
     fzv = fzf[valid]
-    xv  = xf[valid]
-    yv  = yf[valid]
-    zv  = zf[valid]
-    bv  = bf[valid]
+    xv = xf[valid]
+    yv = yf[valid]
+    zv = zf[valid]
+    bv = bf[valid]
 
     # Rigid Jacobian: [tx, ty, tz, rx, ry, rz]
     A = torch.stack([
         fxv,
         fyv,
         fzv,
-        fzv * yv - fyv * zv,   # ∂/∂rx
-        fxv * zv - fzv * xv,   # ∂/∂ry
-        fyv * xv - fxv * yv,   # ∂/∂rz
-    ], dim=1)                   # [N, 6]
+        fzv * yv - fyv * zv,  # ∂/∂rx
+        fxv * zv - fzv * xv,  # ∂/∂ry
+        fyv * xv - fxv * yv,  # ∂/∂rz
+    ], dim=1)  # [N, 6]
 
     return A, bv, valid
 
@@ -237,9 +237,9 @@ def construct_Ab(
 # ---------------------------------------------------------------------------
 
 def solve_wls(
-    A: torch.Tensor,
-    b: torch.Tensor,
-    w_sqrt: torch.Tensor,
+        A: torch.Tensor,
+        b: torch.Tensor,
+        w_sqrt: torch.Tensor,
 ) -> torch.Tensor:
     """Solve  (√W A) p = √W b  via QR / least-squares.
 
@@ -253,11 +253,12 @@ def solve_wls(
     -------
     p : [DOF]
     """
-    Aw = A * w_sqrt.unsqueeze(1)   # [N, DOF]
-    bw = b * w_sqrt                # [N]
-    # torch.linalg.lstsq is QR-backed, equivalent to vnl_qr
+    Aw = A * w_sqrt.unsqueeze(1)  # [N, DOF]
+    bw = b * w_sqrt  # [N]
+    # torch.linalg.lstsq is QR-backed, equivalent to vnl_qr.
+    # On MPS this may fall back to CPU, so move the solution back to Aw's device.
     result = torch.linalg.lstsq(Aw, bw, driver='gelsd')
-    return result.solution
+    return result.solution.to(device=Aw.device)
 
 
 # ---------------------------------------------------------------------------
@@ -277,12 +278,12 @@ def _sqrt_tukey(r: torch.Tensor, sat: float) -> torch.Tensor:
 # ---------------------------------------------------------------------------
 
 def irls_inner_loop(
-    A: torch.Tensor,
-    b: torch.Tensor,
-    sat: float = 4.685,
-    max_iterations: int = 20,
-    eps: float = 2e-12,
-    verbose: bool = False,
+        A: torch.Tensor,
+        b: torch.Tensor,
+        sat: float = 4.685,
+        max_iterations: int = 20,
+        eps: float = 2e-12,
+        verbose: bool = False,
 ) -> tuple[torch.Tensor, torch.Tensor, float, float]:
     """IRLS inner loop: iteratively re-weighted least squares.
 
@@ -311,13 +312,13 @@ def irls_inner_loop(
     err     : float  final weighted residual  Σw²r² / Σw²  (used for outer-loop cost)
     """
     N = b.shape[0]
-    r = b.clone()                    # initial residuals: p = 0
+    r = b.clone()  # initial residuals: p = 0
 
-    p       = b.new_zeros(A.shape[1])
-    w_sqrt  = b.new_ones(N)
+    p = b.new_zeros(A.shape[1])
+    w_sqrt = b.new_ones(N)
     err_prev = float('inf')
-    err_cur  = float('inf')
-    sigma    = torch.tensor(1.0)   # fallback
+    err_cur = float('inf')
+    sigma = torch.tensor(1.0)  # fallback
 
     p_last = p.clone()
     w_last = w_sqrt.clone()
@@ -342,8 +343,8 @@ def irls_inner_loop(
         r = b - A @ p
 
         # --- 5. Weighted error  ε = Σw²r² / Σw² ---
-        w2  = w_sqrt * w_sqrt
-        sw  = w2.sum()
+        w2 = w_sqrt * w_sqrt
+        sw = w2.sum()
         swr = (w2 * r * r).sum()
         if sw > 0:
             err_cur = (swr / sw).item()
@@ -362,7 +363,7 @@ def irls_inner_loop(
         # --- 6. Stop if error increased ---
         if err_cur > err_prev:
             # revert to previous
-            p      = p_last
+            p = p_last
             w_sqrt = w_last
             if verbose:
                 logger.debug("    IRLS: error increased, reverting to iter %d", iteration)
@@ -374,9 +375,9 @@ def irls_inner_loop(
             break
 
         # save for potential revert
-        p_last     = p.clone()
-        w_last     = w_sqrt.clone()
-        err_prev   = err_cur
+        p_last = p.clone()
+        w_last = w_sqrt.clone()
+        err_prev = err_cur
 
     return p, w_sqrt, float(sigma), float(err_cur)
 
@@ -386,11 +387,11 @@ def irls_inner_loop(
 # ---------------------------------------------------------------------------
 
 def register_step(
-    src_warped: torch.Tensor,
-    trg: torch.Tensor,
-    sat: float = 4.685,
-    max_irls: int = 20,
-    verbose: bool = False,
+        src_warped: torch.Tensor,
+        trg: torch.Tensor,
+        sat: float = 4.685,
+        max_irls: int = 20,
+        verbose: bool = False,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, float, float]:
     """Build A, b then run IRLS.  Returns (p, w_sqrt, valid_mask, sigma, err)."""
     A, b, valid = construct_Ab(src_warped, trg)
@@ -404,17 +405,17 @@ def register_step(
 # ---------------------------------------------------------------------------
 
 def register_irls(
-    src: torch.Tensor,
-    trg: torch.Tensor,
-    initial_transform: torch.Tensor | None = None,
-    nmax: int = 5,
-    sat: float = 4.685,
-    epsit: float = 0.01,
-    max_irls: int = 20,
-    symmetric: bool = True,
-    adaptive_sat: bool = False,
-    target_outlier_pct: float = 5.0,
-    verbose: bool = False,
+        src: torch.Tensor,
+        trg: torch.Tensor,
+        initial_transform: torch.Tensor | None = None,
+        nmax: int = 5,
+        sat: float = 4.685,
+        epsit: float = 0.01,
+        max_irls: int = 20,
+        symmetric: bool = True,
+        adaptive_sat: bool = False,
+        target_outlier_pct: float = 5.0,
+        verbose: bool = False,
 ) -> tuple[torch.Tensor, dict]:
     """IRLS rigid registration at a single resolution level.
 
@@ -444,7 +445,7 @@ def register_irls(
     from ..image.map import map as map_image  # lazy import to avoid circular
 
     T = initial_transform.clone() if initial_transform is not None \
-        else torch.eye(4, dtype=src.dtype)
+        else torch.eye(4, dtype=src.dtype, device=src.device)
 
     # Normalise both images to roughly [0, 1] so that residuals and σ are on a
     # consistent scale regardless of scanner intensity range.  Identical to
@@ -463,11 +464,11 @@ def register_irls(
     # iterations.  At coarse levels the cost steadily falls; at the finest
     # level tiny oscillations can occur — keeping the best avoids storing a
     # slightly diverged final step.
-    best_T      = T.clone()
+    best_T = T.clone()
     best_w_sqrt = None
-    best_valid  = None
-    best_err    = float('inf')
-    
+    best_valid = None
+    best_err = float('inf')
+
     # Adaptive sat: start with provided value, increase if outliers too high
     current_sat = sat
 
@@ -480,7 +481,9 @@ def register_irls(
         if symmetric:
             # Symmetric mode: compute midspace transforms and warp both images
             mh, mhi = matrix_sqrt_schur(T)
-            
+            mh = mh.to(device=src.device, dtype=src.dtype)
+            mhi = mhi.to(device=src.device, dtype=src.dtype)
+
             src_warped = map_image(
                 src_n, mh,
                 is_torch_mat=False,
@@ -488,7 +491,7 @@ def register_irls(
                 mode='bilinear',
                 padding_mode='zeros',
             ).float()
-            
+
             trg_warped = map_image(
                 trg_n, mhi,
                 is_torch_mat=False,
@@ -496,7 +499,7 @@ def register_irls(
                 mode='bilinear',
                 padding_mode='zeros',
             ).float()
-            
+
             # Build system in midspace
             A, b, valid = construct_Ab(src_warped, trg_warped)
         else:
@@ -508,7 +511,7 @@ def register_irls(
                 mode='bilinear',
                 padding_mode='zeros',
             ).float()
-            
+
             # Build system in target space
             A, b, valid = construct_Ab(src_warped, trg_n)
 
@@ -516,28 +519,28 @@ def register_irls(
         p, w_sqrt, sigma_val, err_val = irls_inner_loop(
             A, b, sat=current_sat, max_iterations=max_irls, verbose=verbose)
         info['sigma_hist'].append(sigma_val)
-        
+
         # Check outlier percentage for adaptive sat adjustment
         zero_pct = (w_sqrt == 0).float().mean().item() * 100
-        
+
         if adaptive_sat:
             # Bidirectional adaptive sat: adjust proportionally to error
             error = zero_pct - target_outlier_pct
             tolerance = 1.0  # Only adjust if error > 1%
-            
+
             if abs(error) > tolerance:
                 old_sat = current_sat
-                
+
                 # Proportional adjustment: bigger error = bigger change
                 # Scale factor: 10% error → ~10% adjustment (clamped)
                 # This is much gentler than the previous 50% jump
                 adjustment_pct = error / 10.0  # 10% error → 10% adjustment
                 adjustment_pct = max(-0.20, min(0.25, adjustment_pct))  # Limit: -20% to +25%
                 current_sat = current_sat * (1.0 + adjustment_pct)
-                
+
                 # Keep sat within reasonable bounds
                 current_sat = max(3.0, min(15.0, current_sat))
-                
+
                 if verbose:
                     direction = "increasing" if current_sat > old_sat else "decreasing"
                     logger.info(
@@ -547,7 +550,7 @@ def register_irls(
                     )
             # Re-solve with new sat (A, b already built above)
             p, w_sqrt, sigma_val, err_new = irls_inner_loop(
-                A, b, sat=current_sat, max_iterations=max_irls, 
+                A, b, sat=current_sat, max_iterations=max_irls,
                 verbose=verbose
             )
             info['sigma_hist'][-1] = sigma_val
@@ -559,8 +562,9 @@ def register_irls(
             # Symmetric mode: M_new = inv(mhi) @ δ @ mh
             assert mh is not None and mhi is not None
             delta = params_to_rigid_matrix(p.float())
-            mh2 = torch.inverse(mhi.double())  # = mh (by construction)
-            T = mh2.float() @ delta @ mh
+            work_dtype = src.dtype if src.device.type == "mps" else torch.float64
+            mh2 = torch.inverse(mhi.to(dtype=work_dtype))  # = mh (by construction)
+            T = mh2.to(dtype=src.dtype) @ delta @ mh
         else:
             # Directed mode: T_new = T_delta @ T_old
             T_delta = params_to_rigid_matrix(p.float())
@@ -581,10 +585,10 @@ def register_irls(
         # FreeSurfer's outer loop runs all nmax iterations and only stops
         # on AffineTransDist convergence).
         if err_val < best_err:
-            best_err    = err_val
-            best_T      = T.clone()
+            best_err = err_val
+            best_T = T.clone()
             best_w_sqrt = w_sqrt.clone()
-            best_valid  = valid.clone()
+            best_valid = valid.clone()
 
         if dist <= epsit:
             info['converged'] = True
@@ -595,7 +599,6 @@ def register_irls(
     # Return the best T found (usually the same as final, guards against
     # minor oscillation at the finest level).
     T = best_T
-    info['weights']    = best_w_sqrt
+    info['weights'] = best_w_sqrt
     info['valid_mask'] = best_valid
     return T, info
-

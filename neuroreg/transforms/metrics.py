@@ -34,8 +34,8 @@ def _rot_log_norm(R: np.ndarray) -> float:
 
 
 def rigid_dist(
-    M1: npt.ArrayLike,
-    M2: npt.ArrayLike | None = None,
+        M1: npt.ArrayLike,
+        M2: npt.ArrayLike | None = None,
 ) -> float:
     r"""Rigid-transform distance between *M1* and *M2* (or *M1* vs identity).
 
@@ -74,9 +74,9 @@ def rigid_dist(
 
 
 def affine_dist(
-    M1: npt.ArrayLike | torch.Tensor,
-    M2: npt.ArrayLike | torch.Tensor | None = None,
-    radius: float = 100.0,
+        M1: npt.ArrayLike | torch.Tensor,
+        M2: npt.ArrayLike | torch.Tensor | None = None,
+        radius: float = 100.0,
 ) -> float:
     r"""RMS affine-transform distance (Jenkinson 1999).
 
@@ -125,7 +125,8 @@ def affine_dist(
             M2_t = M2.to(device=M1_t.device)
         else:
             M2_t = torch.as_tensor(M2, dtype=M1_t.dtype, device=M1_t.device)
-        dT = M1_t.double() - M2_t.double()
+        work_dtype = torch.float32 if M1_t.device.type == "mps" else torch.float64
+        dT = M1_t.to(dtype=work_dtype) - M2_t.to(dtype=work_dtype)
         tdq = (dT[:3, 3] ** 2).sum()
         dR = dT[:3, :3]
         tr = torch.trace(dR.T @ dR)
@@ -138,10 +139,10 @@ def affine_dist(
 
 
 def corner_dist(
-    M: npt.ArrayLike,
-    src_shape: tuple[int, int, int],
-    M2: npt.ArrayLike | None = None,
-    src_affine: npt.ArrayLike | None = None,
+        M: npt.ArrayLike,
+        src_shape: tuple[int, int, int],
+        M2: npt.ArrayLike | None = None,
+        src_affine: npt.ArrayLike | None = None,
 ) -> float:
     """Mean displacement at the 8 corners of the source volume.
 
@@ -189,9 +190,9 @@ def corner_dist(
 
 
 def sphere_dist(
-    M1: npt.ArrayLike,
-    M2: npt.ArrayLike | None = None,
-    radius: float = 100.0,
+        M1: npt.ArrayLike,
+        M2: npt.ArrayLike | None = None,
+        radius: float = 100.0,
 ) -> float:
     r"""Maximum displacement on a sphere of given radius (mm).
 

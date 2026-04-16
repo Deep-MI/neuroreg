@@ -9,12 +9,12 @@ import neuroreg.transforms.matrices as trans
 
 
 def map(
-    image: torch.Tensor,
-    transform: torch.Tensor,
-    is_torch_mat: bool = True,
-    target_shape: tuple[int, int, int] | None = None,
-    mode: str = "bilinear",
-    padding_mode: str = "zeros",
+        image: torch.Tensor,
+        transform: torch.Tensor,
+        is_torch_mat: bool = True,
+        target_shape: tuple[int, int, int] | None = None,
+        mode: str = "bilinear",
+        padding_mode: str = "zeros",
 ) -> torch.Tensor:
     """Map an input image to another space using the inverse transformation matrix.
 
@@ -58,6 +58,7 @@ def map(
         torch_transform = trans.convert_v2v_to_torch(transform, image.shape, target_shape)
     else:
         torch_transform = transform[:3, :]
+    torch_transform = torch_transform.to(device=image.device)
     out_shape = target_shape if target_shape is not None else image.shape
     grid_size = (1, 1) + tuple(out_shape)
     grid = nn.functional.affine_grid(torch_transform.unsqueeze(0).float(), grid_size, align_corners=False)
@@ -67,13 +68,13 @@ def map(
 
 
 def map_r2r(
-    image: torch.Tensor,
-    r2r: torch.Tensor,
-    source_affine: torch.Tensor,
-    target_affine: torch.Tensor,
-    target_shape: tuple[int, int, int] | None = None,
-    mode: str = "bilinear",
-    padding_mode: str = "zeros",
+        image: torch.Tensor,
+        r2r: torch.Tensor,
+        source_affine: torch.Tensor,
+        target_affine: torch.Tensor,
+        target_shape: tuple[int, int, int] | None = None,
+        mode: str = "bilinear",
+        padding_mode: str = "zeros",
 ) -> torch.Tensor:
     """Map an image using a RAS-to-RAS transform without a v2v intermediate.
 
@@ -116,10 +117,10 @@ def map_r2r(
 
 
 def resample_isotropic(
-    img: nib.Nifti1Image,
-    iso: float,
-    out_shape: tuple[int, int, int] | None = None,
-    mode: str = "bilinear",
+        img: nib.Nifti1Image,
+        iso: float,
+        out_shape: tuple[int, int, int] | None = None,
+        mode: str = "bilinear",
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Resample a NIfTI image to an isotropic grid.
 
@@ -201,11 +202,11 @@ def resample_isotropic(
 
 
 def resample_isotropic_tensor(
-    img: torch.Tensor,
-    affine: np.ndarray,
-    iso: float,
-    out_shape: tuple[int, int, int] | None = None,
-    mode: str = "bilinear",
+        img: torch.Tensor,
+        affine: np.ndarray,
+        iso: float,
+        out_shape: tuple[int, int, int] | None = None,
+        mode: str = "bilinear",
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Resample a torch tensor to an isotropic grid.
 
@@ -264,5 +265,3 @@ def resample_isotropic_tensor(
     Rvox = torch.inverse(orig_affine) @ iso_affine
 
     return resampled, iso_affine.float(), Rvox.float()
-
-
