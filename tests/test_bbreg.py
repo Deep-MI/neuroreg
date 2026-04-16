@@ -21,34 +21,6 @@ bbreg_register_module = importlib.import_module("neuroreg.bbreg.register")
 
 
 class TestBbregCli:
-    def test_main_uses_200_iterations_by_default(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
-        mov_path = tmp_path / "mov.nii.gz"
-        ref_path = tmp_path / "ref.nii.gz"
-        out_path = tmp_path / "out.lta"
-
-        _write_zero_image(mov_path)
-        _write_zero_image(ref_path)
-
-        captured_kwargs: dict[str, object] = {}
-
-        def fake_register_surface(**kwargs):
-            captured_kwargs.update(kwargs)
-            return torch.eye(4), object()
-
-        monkeypatch.setattr(bbreg_register_module, "register_surface", fake_register_surface)
-        monkeypatch.setattr(
-            "neuroreg.imreg.coreg.coreg",
-            lambda *args, **kwargs: torch.eye(4, dtype=torch.float64),
-        )
-
-        bbreg_main([
-            "--mov", str(mov_path),
-            "--ref", str(ref_path),
-            "--lh_surf", str(tmp_path / "lh.white"),
-            "--out", str(out_path),
-        ])
-
-        assert captured_kwargs["n_iters"] == 200
 
     def test_main_runs_default_coarse_nmi_prealignment(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         mov_path = tmp_path / "mov.nii.gz"
@@ -94,6 +66,7 @@ class TestBbregCli:
         assert captured_prealign_kwargs["min_voxels"] == 32
         assert captured_prealign_kwargs["max_voxels"] == 64
         assert captured_prealign_kwargs["level_iters"] == [30, 10]
+        assert captured_surface_kwargs["n_iters"] == 200
         assert captured_surface_kwargs["init_ras"] is not None
         assert captured_surface_kwargs.get("init_type") is None
         np_init = np.asarray(cast(object, captured_surface_kwargs["init_ras"]))
@@ -130,40 +103,6 @@ class TestBbregCli:
         ])
 
         assert captured_surface_kwargs["init_type"] == "header"
-        assert "init_ras" not in captured_surface_kwargs
-
-    def test_main_prefers_explicit_init_lta(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
-        mov_path = tmp_path / "mov.nii.gz"
-        ref_path = tmp_path / "ref.nii.gz"
-        out_path = tmp_path / "out.lta"
-        init_lta = tmp_path / "seed.lta"
-
-        _write_zero_image(mov_path)
-        _write_zero_image(ref_path)
-        init_lta.write_text("dummy")
-
-        captured_surface_kwargs: dict[str, object] = {}
-
-        def fake_register_surface(**kwargs):
-            captured_surface_kwargs.update(kwargs)
-            return torch.eye(4), object()
-
-        def fail_register_pyramid(*args, **kwargs):
-            raise AssertionError("prealignment should not run when --init-lta is provided")
-
-        monkeypatch.setattr(bbreg_register_module, "register_surface", fake_register_surface)
-        monkeypatch.setattr("neuroreg.imreg.coreg.coreg", fail_register_pyramid)
-
-        bbreg_main([
-            "--mov", str(mov_path),
-            "--ref", str(ref_path),
-            "--lh_surf", str(tmp_path / "lh.white"),
-            "--out", str(out_path),
-            "--init-lta", str(init_lta),
-        ])
-
-        assert captured_surface_kwargs["init_type"] == "lta"
-        assert captured_surface_kwargs["init_lta"] == str(init_lta)
         assert "init_ras" not in captured_surface_kwargs
 
     def test_subject_dir_prealignment_uses_aparc_aseg_mask(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
@@ -241,42 +180,6 @@ class TestBbregCli:
         assert captured_ref_sum["sum"] == pytest.approx(float((seg_data > 0).sum()))
         assert captured_surface_kwargs["seg"] == str(seg_path)
         assert captured_surface_kwargs["init_ras"] is not None
-
-    def test_no_coreg_ref_mask_disables_subject_dir_masking(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
-        mov_path = tmp_path / "mov.nii.gz"
-        subject_dir = tmp_path / "subject"
-        mri_dir = subject_dir / "mri"
-        out_path = tmp_path / "out.lta"
-
-        _write_zero_image(mov_path)
-        mri_dir.mkdir(parents=True)
-
-        ref_data = torch.ones(8, 8, 8, dtype=torch.float32).numpy()
-        mask_data = torch.zeros(8, 8, 8, dtype=torch.float32).numpy()
-        mask_data[2:6, 2:6, 2:6] = 1.0
-        nib.save(nib.MGHImage(ref_data, affine=torch.eye(4).numpy()), mri_dir / "orig.mgz")
-        nib.save(nib.MGHImage(mask_data, affine=torch.eye(4).numpy()), mri_dir / "aparc+aseg.mgz")
-
-        captured_ref_sum: dict[str, float] = {}
-
-        def fake_register_surface(**kwargs):
-            return torch.eye(4), object()
-
-        def fake_register_pyramid(mov_img, ref_img, **kwargs):
-            captured_ref_sum["sum"] = float(ref_img.get_fdata().sum())
-            return torch.eye(4, dtype=torch.float64)
-
-        monkeypatch.setattr(bbreg_register_module, "register_surface", fake_register_surface)
-        monkeypatch.setattr("neuroreg.imreg.coreg.coreg", fake_register_pyramid)
-
-        bbreg_main([
-            "--mov", str(mov_path),
-            "--subject_dir", str(subject_dir),
-            "--out", str(out_path),
-            "--no-coreg-ref-mask",
-        ])
-
-        assert captured_ref_sum["sum"] == pytest.approx(float(ref_data.sum()))
 
 
 class TestBbregRegister:

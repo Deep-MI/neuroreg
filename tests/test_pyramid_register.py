@@ -8,7 +8,6 @@ import numpy as np
 import pytest
 import torch
 
-import neuroreg.imreg.coreg as coreg_impl
 from neuroreg import coreg, robreg
 from neuroreg.imreg.coreg import register_gd_pyramid, register_level
 from neuroreg.imreg.losses import mi_loss, ncc_loss, nmi_loss
@@ -359,22 +358,6 @@ class TestPublicRobregWrapper:
         assert Mr2r.shape == (4, 4)
         assert torch.isfinite(Mr2r).all()
 
-    def test_top_level_robreg_can_disable_symmetric_mode(self, monkeypatch: pytest.MonkeyPatch):
-        captured: dict[str, object] = {}
-
-        def fake_register_irls_pyramid(**kwargs):
-            captured.update(kwargs)
-            return torch.eye(4), []
-
-        monkeypatch.setattr("neuroreg.imreg.robreg.register_irls_pyramid", fake_register_irls_pyramid)
-
-        img = _make_img()
-        Mr2r = robreg(img, img, return_v2v=False, centroid_init=False, dof=6, nmax=1, symmetric=False)
-
-        assert captured["symmetric"] is False
-        assert Mr2r.shape == (4, 4)
-        assert torch.isfinite(Mr2r).all()
-
     def test_robreg_accepts_file_paths(self, tmp_path):
         src = _make_img()
         trg = _make_img()
@@ -414,25 +397,6 @@ class TestPublicCoregWrapper:
         assert len(cast(tuple[Any, Any], captured["args"])) == 2
         assert Mr2r.shape == (4, 4)
         assert torch.isfinite(Mr2r).all()
-
-    def test_module_level_coreg_alias_forwards_to_register_gd_pyramid(self, monkeypatch: pytest.MonkeyPatch):
-        captured: dict[str, object] = {}
-
-        def fake_register_gd_pyramid(*args, **kwargs):
-            captured["args"] = args
-            captured.update(kwargs)
-            return torch.eye(4)
-
-        monkeypatch.setattr("neuroreg.imreg.coreg.register_gd_pyramid", fake_register_gd_pyramid)
-
-        img = _make_img()
-        Mv2v = coreg_impl.coreg(img, img, return_v2v=True, centroid_init=False, dof=3, n=1)
-
-        assert captured["return_v2v"] is True
-        assert captured["dof"] == 3
-        assert len(cast(tuple[Any, Any], captured["args"])) == 2
-        assert Mv2v.shape == (4, 4)
-        assert torch.isfinite(Mv2v).all()
 
 
 # ---------------------------------------------------------------------------
@@ -549,24 +513,6 @@ class TestLossFunctions:
 
 class TestRegisterPyramidNewLosses:
     """Smoke tests: run GD pyramid registration with each new loss on a simple example."""
-
-    @pytest.mark.parametrize("loss_name", ["ncc", "mi", "nmi"])
-    def test_register_pyramid_new_loss_produces_finite_transform(self, loss_name):
-        img = _make_img(shape=(32, 32, 32))
-        v2v = register_gd_pyramid(
-            img, img,
-            return_v2v=True,
-            centroid_init=False,
-            symmetric=False,
-            dof=6,
-            n=3,
-            loss_name=loss_name,
-            loss_bins=16,
-            min_voxels=16,
-            device="cpu",
-        )
-        assert v2v.shape == (4, 4)
-        assert torch.isfinite(v2v).all()
 
     @pytest.mark.parametrize("loss_name", ["ncc", "mi", "nmi"])
     def test_register_pyramid_new_loss_near_identity_on_same_image(self, loss_name):

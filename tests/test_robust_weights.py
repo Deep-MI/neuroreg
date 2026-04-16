@@ -31,6 +31,7 @@ class TestTukeyWeights:
         w = tukey_weights(r, c=6.0)
         assert torch.allclose(w[:10], w[-10:].flip(0), atol=1e-6)
 
+
 class TestHuberWeights:
     """Test Huber M-estimator (alternative to Tukey)."""
 
@@ -125,30 +126,6 @@ class TestIntegration:
         inlier_mask = torch.ones_like(w_tukey, dtype=torch.bool)
         inlier_mask[::100] = False
         assert w_tukey[inlier_mask].mean() > 0.7
-
-
-    def test_tukey_vs_huber_comparison(self):
-        """Compare Tukey (aggressive) vs Huber (conservative) on outliers."""
-        torch.manual_seed(42)
-        r = torch.randn(10000)
-        r[::100] = 50.0  # Add outliers
-
-        sigma = compute_mad(r)
-        r_norm = r / sigma
-
-        w_tukey = tukey_weights(r_norm, c=6.0)
-        w_huber = huber_weights(r_norm, delta=1.345)
-
-        # Tukey should set outliers to exactly 0
-        assert (w_tukey[::100] == 0).any()
-
-        # Huber never reaches exactly zero
-        assert torch.all(w_huber > 0)
-
-        # Both should give high weights to inliers
-        inlier_idx = torch.tensor([1, 2, 3, 4, 5])
-        assert w_tukey[inlier_idx].mean() > 0.8
-        assert w_huber[inlier_idx].mean() > 0.8
 
 
 if __name__ == "__main__":

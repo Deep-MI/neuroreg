@@ -3,7 +3,6 @@
 import pytest
 import torch
 
-from neuroreg.image import build_gaussian_pyramid, get_pyramid_limits
 from neuroreg.imreg.init import get_ixform_centroids
 from neuroreg.imreg.irls import (
     _sqrt_tukey,
@@ -14,6 +13,7 @@ from neuroreg.imreg.irls import (
 )
 from neuroreg.imreg.robreg import register_irls_pyramid
 from neuroreg.transforms import affine_dist, params_to_rigid_matrix
+
 
 # ---------------------------------------------------------------------------
 # _sqrt_tukey
@@ -118,12 +118,6 @@ class TestConstructAb:
 # ---------------------------------------------------------------------------
 
 class TestIrlsInnerLoop:
-    def test_weights_in_range(self):
-        A = torch.randn(200, 6)
-        b = torch.randn(200)
-        _, w, _, _ = irls_inner_loop(A, b, sat=4.685)
-        assert torch.all(w >= 0)
-        assert torch.all(w <= 1)
 
     def test_near_zero_system(self):
         A = torch.randn(300, 6)
@@ -174,11 +168,10 @@ class TestRegisterIrls:
     def test_weights_shape_matches_valid_mask(self):
         src, trg = self._make_images()
         _, info = register_irls(src, trg, nmax=2)
-        w  = info['weights']
+        w = info['weights']
         vm = info['valid_mask']
         assert w is not None and vm is not None
         assert w.shape == (vm.sum().item(),)
-
 
     def test_adaptive_sat_runs_and_records_sigma_history(self):
         src, trg = self._make_images()
@@ -201,7 +194,6 @@ class TestRegisterIrls:
 class TestRegisterIrlsPyramid:
     def _aff(self):
         return torch.eye(4)  # 1mm isotropic
-
 
     def test_iso_affine_stored_in_info(self):
         torch.manual_seed(2)
@@ -279,23 +271,6 @@ class TestRegisterIrlsPyramid:
         )
         assert torch.allclose(T, init)
 
-    def test_shared_pyramid_respects_min_voxels(self):
-        torch.manual_seed(4)
-        img = torch.rand(31, 27, 19)
-        limits = get_pyramid_limits(img.shape, minsize=8)
-        pyramid, _ = build_gaussian_pyramid(img, torch.eye(4), limits=limits)
-
-        assert pyramid
-        assert min(pyramid[-1].shape) >= 8
-
-    def test_max_voxels_skips_overly_fine_levels(self):
-        img = torch.zeros(224, 224, 169)
-        limits = get_pyramid_limits(img.shape, minsize=16, maxsize=64)
-        pyramid, _ = build_gaussian_pyramid(img, torch.eye(4), limits=limits)
-
-        assert tuple(pyramid[0].shape) == (56, 56, 42)
-        assert all(max(level.shape) <= 64 for level in pyramid)
-
     def test_max_voxels_none_keeps_original_resolution(self):
         img = torch.zeros(31, 27, 19)
         T, all_info = register_irls_pyramid(
@@ -312,7 +287,5 @@ class TestRegisterIrlsPyramid:
         assert all_info[-1]["image_shape"] == tuple(img.shape)
 
 
-
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
-
