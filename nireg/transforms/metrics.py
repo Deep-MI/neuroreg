@@ -110,6 +110,7 @@ def affine_dist(
     -------
     float
         RMS displacement in mm.
+
     Notes
     -----
     The function accepts either NumPy-like arrays or torch tensors. When torch
@@ -324,4 +325,3 @@ __all__ = [
     "rigid_dist",
     "sphere_dist",
 ]
-

@@ -1,18 +1,9 @@
 #!/usr/bin/env python3
 """Unified LTA transform manipulation CLI.
 
-Subcommands
------------
-diff    Compute distance metrics between two LTAs (or one vs identity).
-invert  Invert an LTA and write the result to a new file.
-concat  Concatenate two LTAs (A→B then B→C) into a single A→C transform.
-
-Usage
------
-lta diff   LTA1 [LTA2] [--dist {1,2,3,4,5,7}] [--radius MM] [--normdiv FLOAT]
-                       [--invert1] [--invert2]
-lta invert INPUT OUTPUT
-lta concat LTA1 LTA2 OUTPUT
+Available subcommands are ``diff`` to compare transforms, ``invert`` to invert
+an LTA, and ``concat`` to chain two LTAs. Run ``lta --help`` or
+``lta <subcommand> --help`` for the full command syntax.
 """
 
 import argparse

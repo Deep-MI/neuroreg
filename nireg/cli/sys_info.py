@@ -3,15 +3,24 @@ import argparse
 from .._sys_info import sys_info
 
 
-def main() -> None:
-    """Run sys_info() command."""
-    parser = argparse.ArgumentParser(prog=f"{__package__.split('.')[0]}-sys_info", description="sys_info")
+def _build_parser() -> argparse.ArgumentParser:
+    """Create the argument parser for the ``nireg-sys_info`` command."""
+    parser = argparse.ArgumentParser(
+        prog=f"{__package__.split('.')[0]}-sys_info",
+        description="Display dependency and runtime information for nireg.",
+    )
     parser.add_argument(
         "--developer",
-        help="display information for optional dependencies",
+        help="Display information for optional dependencies.",
         action="store_true",
     )
-    args = parser.parse_args()
+    return parser
+
+
+def main(args=None) -> None:
+    """Run the ``nireg-sys_info`` command."""
+    parser = _build_parser()
+    args = parser.parse_args(args)
 
     sys_info(developer=args.developer)
 
@@ -23,4 +32,3 @@ def run() -> None:
 
 if __name__ == "__main__":
     main()
-

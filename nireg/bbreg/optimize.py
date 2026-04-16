@@ -30,14 +30,14 @@ class BBRModel(nn.Module):
     The optimisable transform is parameterised as Euler-angle rotations plus
     translations in scanner-RAS space (trg_RAS → mov_RAS).
 
-    Coordinate pipeline
-    -------------------
-    Surface vertices are stored in target-image tkRAS space.  On every
-    forward pass the full chain is assembled::
+    Notes
+    -----
+    Surface vertices are stored in target-image tkRAS space. On every forward
+    pass the full coordinate chain is assembled::
 
-        trg_tkRAS  →[trg_tkras2ras]→  trg_RAS
-                   →[ras2ras param]→  mov_RAS
-                   →[inv(mov_affine)]→ mov_vox  →  grid_sample
+        trg_tkRAS  ->[trg_tkras2ras]->  trg_RAS
+                   ->[ras2ras param]->  mov_RAS
+                   ->[inv(mov_affine)]-> mov_vox -> grid_sample
 
     Parameters
     ----------

@@ -89,33 +89,39 @@ def project_vertices(
     normals : torch.Tensor, shape (N, 3)
         Surface normal vectors (should be unit length)
     distance : float
-        Absolute distance to project (mm)
-        Positive = outward (along normal)
-        Negative = inward (opposite to normal)
+        Absolute distance to project in mm. Positive values project outward
+        along the normal; negative values project inward.
     thickness : torch.Tensor, shape (N,), optional
-        Per-vertex cortical thickness values
+        Per-vertex cortical thickness values.
     fraction : float, optional
-        Fractional distance based on thickness
-        If provided, effective distance = fraction * thickness
+        Fractional distance based on thickness. If provided, the effective
+        distance includes ``fraction * thickness``.
 
     Returns
     -------
     projected : torch.Tensor, shape (N, 3)
-        Projected vertex positions
+        Projected vertex positions.
 
     Notes
     -----
-    If both distance and fraction are provided, they are combined:
+    If both ``distance`` and ``fraction`` are provided, they are combined as::
+
         effective_distance = distance + fraction * thickness
 
     Examples
     --------
-    # Project 2mm into white matter (inward)
-    wm_vertices = project_vertices(vertices, normals, distance=-2.0)
+    Project 2 mm into white matter (inward)::
 
-    # Project 50% of cortical thickness into gray matter (outward)
-    gm_vertices = project_vertices(vertices, normals,
-                                   thickness=thickness, fraction=0.5)
+        wm_vertices = project_vertices(vertices, normals, distance=-2.0)
+
+    Project 50% of cortical thickness into gray matter (outward)::
+
+        gm_vertices = project_vertices(
+            vertices,
+            normals,
+            thickness=thickness,
+            fraction=0.5,
+        )
     """
     effective_distance = distance
 
