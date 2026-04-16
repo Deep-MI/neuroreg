@@ -320,22 +320,17 @@ from neuroreg import register_pyramid, register_surface
 from neuroreg.imreg.robreg_gd import register_pyramid as register_pyramid_gd
 
 # Public robust image-to-image registration (IRLS-backed).
-# Accepts file paths or pre-loaded nibabel images.
-# Intended for same-/similar-contrast image pairs.
-# Symmetric halfway-space registration is the default.
-# Returns vox-to-vox when return_v2v=True, or RAS-to-RAS by default.
-transform = register_pyramid("T1_repeat.nii.gz", "T1_baseline.mgz", return_v2v=True, dof=6)
+# Intended for same-/similar-contrast pairs; symmetric mode is the default.
+transform_r2r = register_pyramid("T1_repeat.nii.gz", "T1_baseline.mgz")
 
 # The same public robreg path with pre-loaded nibabel images.
 mov_img = nib.load("T1_repeat.nii.gz")
 ref_img = nib.load("T1_baseline.mgz")
-transform_r2r = register_pyramid(mov_img, ref_img, dof=6)
+transform_r2r_loaded = register_pyramid(mov_img, ref_img)
 
-# Explicitly switch off symmetry if you want directed registration.
-transform_directed = register_pyramid(mov_img, ref_img, dof=6, symmetric=False)
-
-# Legacy gradient-descent path (optional / transitional).
-transform_gd = register_pyramid_gd("T1_repeat.nii.gz", "T1_baseline.mgz", return_v2v=True, dof=6)
+# Legacy gradient-descent path for cross-modal image registration when no
+# white-matter surface or segmentation is available.
+transform_gd = register_pyramid_gd("T2.nii.gz", "T1.mgz", loss_name="nmi")
 
 # Surface-based (BBR) registration — Mode A: subject directory
 transform, model = register_surface(
@@ -365,6 +360,7 @@ transform, model = register_surface(
 )
 ```
 
+
 ## Degrees of freedom
 
 Current DOF support is:
@@ -378,10 +374,10 @@ Current DOF support is:
 The public `robreg` path is intentionally rigid-only for now because it tracks
 the current IRLS implementation.
 
-Also note that the current image-based `robreg` / `robreg_gd` costs are aimed
-at same-/similar-contrast registration. For cross-sequence alignment such as
-T2→T1, the currently supported option is `bbreg` when a segmentation or
-surfaces are available.
+Also note that the current public `robreg` path is aimed at same-/similar-contrast
+registration. For cross-sequence alignment such as T2→T1, the current options are
+`robreg_gd` (image-based GD) or `bbreg` when a segmentation or surfaces are
+available.
 
 ## API Documentation
 
