@@ -3,7 +3,7 @@ requires = ['setuptools >= 61.0.0']
 build-backend = 'setuptools.build_meta'
 
 [project]
-name = 'nireg'
+name = 'neuroreg'
 version = '0.1.0-dev'
 description = 'A package for 3D neuroimaging registration with PyTorch.'
 readme = 'README.md'
@@ -73,40 +73,40 @@ test = [
     'pytest-timeout',
 ]
 all = [
-    'nireg[build]',
-    'nireg[doc]',
-    'nireg[style]',
-    'nireg[test]',
+    'neuroreg[build]',
+    'neuroreg[doc]',
+    'neuroreg[style]',
+    'neuroreg[test]',
 ]
 full = [
-    'nireg[all]',
+    'neuroreg[all]',
 ]
 
 [project.urls]
-homepage = 'https://Deep-MI.github.io/nireg/dev/index.html'
-documentation = 'https://Deep-MI.github.io/nireg/dev/index.html'
-source = 'https://github.com/Deep-MI/nireg'
-tracker = 'https://github.com/Deep-MI/nireg/issues'
+homepage = 'https://Deep-MI.github.io/neuroreg/dev/index.html'
+documentation = 'https://Deep-MI.github.io/neuroreg/dev/index.html'
+source = 'https://github.com/Deep-MI/neuroreg'
+tracker = 'https://github.com/Deep-MI/neuroreg/issues'
 
 [project.scripts]
-robreg          = "nireg.cli.robreg:main"
-robreg_gd       = "nireg.cli.robreg_gd:main"
-bbreg           = "nireg.cli.bbreg:main"
-lta             = "nireg.cli.lta:main"
-nireg-sys_info  = "nireg.cli.sys_info:run"
+robreg          = "neuroreg.cli.robreg:main"
+robreg_gd       = "neuroreg.cli.robreg_gd:main"
+bbreg           = "neuroreg.cli.bbreg:main"
+lta             = "neuroreg.cli.lta:main"
+neuroreg-sys_info  = "neuroreg.cli.sys_info:run"
 
 [tool.setuptools]
 include-package-data = false
 
 [tool.setuptools.packages.find]
-include = ['nireg*']
-exclude = ['nireg*tests']
+include = ['neuroreg*']
+exclude = ['neuroreg*tests']
 
 [tool.pydocstyle]
 convention = 'numpy'
 ignore-decorators = '(copy_doc|property|.*setter|.*getter|pyqtSlot|Slot)'
 match = '^(?!setup|__init__|test_).*\.py'
-match-dir = '^nireg.*'
+match-dir = '^neuroreg.*'
 add_ignore = 'D100,D104,D107'
 
 [tool.ruff]
@@ -136,7 +136,7 @@ select = [
 #ignore-words-list = 'coo,daty'
 check-filenames = true
 check-hidden = true
-skip = './.git,./build,./.mypy_cache,./.pytest_cache,./.venv,./doc-build,*/data/*,./nireg-data,./scratch,./.agent-work,./.agentbridge'
+skip = './.git,./build,./.mypy_cache,./.pytest_cache,./.venv,./doc-build,*/data/*,./neuroreg-data,./scratch,./.agent-work,./.agentbridge'
 
 [tool.pytest.ini_options]
 minversion = '6.0'
@@ -149,8 +149,8 @@ branch = true
 cover_pylib = false
 omit = [
     '**/__init__.py',
-    '**/nireg/_version.py',
-    '**/nireg/cli/*',
+    '**/neuroreg/_version.py',
+    '**/neuroreg/cli/*',
     '**/tests/**',
 ]
 

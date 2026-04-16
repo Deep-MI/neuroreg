@@ -1,4 +1,4 @@
-"""Sphinx configuration for the nireg documentation."""
+"""Sphinx configuration for the neuroreg documentation."""
 
 from __future__ import annotations
 
@@ -50,7 +50,7 @@ def _stage_docs_assets() -> None:
 _stage_docs_assets()
 sys.path.insert(0, str(PROJECT_ROOT))
 
-project = "nireg"
+project = "neuroreg"
 author = "Martin Reuter"
 copyright = "2026, Martin Reuter"
 
@@ -85,5 +85,5 @@ nbsphinx_execute = "never"
 myst_enable_extensions = ["colon_fence", "deflist"]
 
 html_theme = "furo"
-html_title = "nireg"
+html_title = "neuroreg"
 html_static_path: list[str] = []

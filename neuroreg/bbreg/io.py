@@ -29,7 +29,7 @@ def load_surface(
         Path to cortex label file (e.g., lh.cortex.label).  When provided a
         boolean ``cortex_mask`` tensor is added to the result; vertices *not*
         in the label (medial wall, brainstem, etc.) will be masked out inside
-        :class:`~nireg.bbreg.optimize.BBRModel` before the cost is computed.
+        :class:`~neuroreg.bbreg.optimize.BBRModel` before the cost is computed.
     device : str
         Device to load tensors on ('cpu' or 'cuda')
 

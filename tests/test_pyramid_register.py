@@ -7,11 +7,11 @@ import numpy as np
 import pytest
 import torch
 
-from nireg import register_pyramid as register_pyramid_public
-from nireg.imreg.losses import mi_loss, ncc_loss, nmi_loss
-from nireg.imreg.reg_model import RegModel
-from nireg.imreg.robreg import register_pyramid as register_pyramid_robreg
-from nireg.imreg.robreg_gd import register_level, register_pyramid
+from neuroreg import register_pyramid as register_pyramid_public
+from neuroreg.imreg.losses import mi_loss, ncc_loss, nmi_loss
+from neuroreg.imreg.reg_model import RegModel
+from neuroreg.imreg.robreg import register_pyramid as register_pyramid_robreg
+from neuroreg.imreg.robreg_gd import register_level, register_pyramid
 
 
 def _make_blob(shape: tuple[int, int, int] = (20, 20, 20), shift: tuple[float, float, float] = (0, 0, 0)) -> np.ndarray:
@@ -50,7 +50,7 @@ class TestRegisterPyramidSynthetic:
             seen_shapes.append(tuple(int(v) for v in simg.shape))
             return torch.eye(4), [], None
 
-        monkeypatch.setattr("nireg.imreg.robreg_gd.register_level", fake_register_level)
+        monkeypatch.setattr("neuroreg.imreg.robreg_gd.register_level", fake_register_level)
 
         img = _make_img(shape=(128, 128, 128))
         register_pyramid(img, img, return_v2v=True, centroid_init=False, n=1, min_voxels=16, max_voxels=64)
@@ -67,7 +67,7 @@ class TestRegisterPyramidSynthetic:
             seen.append((tuple(int(v) for v in simg.shape), int(kwargs["n"])))
             return torch.eye(4), [], None
 
-        monkeypatch.setattr("nireg.imreg.robreg_gd.register_level", fake_register_level)
+        monkeypatch.setattr("neuroreg.imreg.robreg_gd.register_level", fake_register_level)
 
         img = _make_img(shape=(64, 64, 64))
         register_pyramid(
@@ -154,8 +154,8 @@ class TestRegisterPyramidSynthetic:
             def step(self):
                 return None
 
-        monkeypatch.setattr("nireg.imreg.robreg_gd.torch.optim.Adam", FakeAdam)
-        monkeypatch.setattr("nireg.imreg.robreg_gd.training_loop", lambda *args, **kwargs: [])
+        monkeypatch.setattr("neuroreg.imreg.robreg_gd.torch.optim.Adam", FakeAdam)
+        monkeypatch.setattr("neuroreg.imreg.robreg_gd.training_loop", lambda *args, **kwargs: [])
 
         src = torch.from_numpy(_make_blob((16, 16, 16)))
         trg = torch.from_numpy(_make_blob((16, 16, 16)))
@@ -198,7 +198,7 @@ class TestPublicRobregWrapper:
             captured.update(kwargs)
             return torch.eye(4), []
 
-        monkeypatch.setattr("nireg.imreg.robreg.register_irls_pyramid", fake_register_irls_pyramid)
+        monkeypatch.setattr("neuroreg.imreg.robreg.register_irls_pyramid", fake_register_irls_pyramid)
 
         img = _make_img()
         Mr2r = register_pyramid_public(img, img, return_v2v=False, centroid_init=False, dof=6, nmax=1)
@@ -214,7 +214,7 @@ class TestPublicRobregWrapper:
             captured.update(kwargs)
             return torch.eye(4), []
 
-        monkeypatch.setattr("nireg.imreg.robreg.register_irls_pyramid", fake_register_irls_pyramid)
+        monkeypatch.setattr("neuroreg.imreg.robreg.register_irls_pyramid", fake_register_irls_pyramid)
 
         img = _make_img()
         Mr2r = register_pyramid_public(img, img, return_v2v=False, centroid_init=False, dof=6, nmax=1, symmetric=False)

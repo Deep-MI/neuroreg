@@ -46,7 +46,7 @@ Examples::
    lta invert in.lta out.lta
    lta concat a_to_b.lta b_to_c.lta a_to_c.lta
 
-nireg-sys_info
+neuroreg-sys_info
 --------------
 
 Print package, dependency, and runtime information useful for debugging
@@ -54,4 +54,4 @@ installations and CI environments.
 
 Example::
 
-   nireg-sys_info --developer
+   neuroreg-sys_info --developer

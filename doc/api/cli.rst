@@ -4,32 +4,32 @@ CLI modules
 These are the Python modules behind the documented console commands. They are
 listed first so the code reference stays centered on the user-facing tools.
 
-``nireg.cli.robreg``
+``neuroreg.cli.robreg``
 --------------------
 
-.. automodule:: nireg.cli.robreg
+.. automodule:: neuroreg.cli.robreg
    :members: main
 
-``nireg.cli.robreg_gd``
+``neuroreg.cli.robreg_gd``
 -----------------------
 
-.. automodule:: nireg.cli.robreg_gd
+.. automodule:: neuroreg.cli.robreg_gd
    :members: main
 
-``nireg.cli.bbreg``
+``neuroreg.cli.bbreg``
 -------------------
 
-.. automodule:: nireg.cli.bbreg
+.. automodule:: neuroreg.cli.bbreg
    :members: main
 
-``nireg.cli.lta``
+``neuroreg.cli.lta``
 -----------------
 
-.. automodule:: nireg.cli.lta
+.. automodule:: neuroreg.cli.lta
    :members: main
 
-``nireg.cli.sys_info``
+``neuroreg.cli.sys_info``
 ----------------------
 
-.. automodule:: nireg.cli.sys_info
+.. automodule:: neuroreg.cli.sys_info
    :members: main, run

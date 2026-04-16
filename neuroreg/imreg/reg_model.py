@@ -4,8 +4,8 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-import nireg.transforms.matrices as trans
-from nireg.image import map as image_map
+import neuroreg.transforms.matrices as trans
+from neuroreg.image import map as image_map
 
 
 class RegModel(nn.Module):

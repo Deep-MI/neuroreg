@@ -92,15 +92,15 @@ def main(args=None) -> None:
     """
     import nibabel as nib
 
-    from nireg.imreg.robreg_gd import register_pyramid
-    from nireg.transforms import LTA
+    from neuroreg.imreg.robreg_gd import register_pyramid
+    from neuroreg.transforms import LTA
 
     parser = _build_parser()
     ns = parser.parse_args(args)
 
     level = logging.DEBUG if ns.debug else (logging.INFO if ns.verbose else logging.WARNING)
     logging.basicConfig(level=level, format="%(levelname)s %(name)s: %(message)s")
-    logger = logging.getLogger("nireg.cli.robreg_gd")
+    logger = logging.getLogger("neuroreg.cli.robreg_gd")
 
     logger.info("Loading moving image:    %s", ns.mov)
     logger.info("Loading reference image: %s", ns.ref)

@@ -1,14 +1,14 @@
 Image registration API
 ======================
 
-``nireg.imreg.robreg``
+``neuroreg.imreg.robreg``
 ----------------------
 
-.. automodule:: nireg.imreg.robreg
+.. automodule:: neuroreg.imreg.robreg
    :members: register_pyramid
 
-``nireg.imreg.robreg_gd``
+``neuroreg.imreg.robreg_gd``
 -------------------------
 
-.. automodule:: nireg.imreg.robreg_gd
+.. automodule:: neuroreg.imreg.robreg_gd
    :members: register_pyramid

@@ -91,8 +91,8 @@ def main(args=None) -> None:
     """Entry point for the ``robreg`` command."""
     import nibabel as nib
 
-    from nireg.imreg.robreg import register_pyramid
-    from nireg.transforms import LTA
+    from neuroreg.imreg.robreg import register_pyramid
+    from neuroreg.transforms import LTA
 
     parser = _build_parser()
     ns = parser.parse_args(args)
@@ -101,7 +101,7 @@ def main(args=None) -> None:
     # ── logging ─────────────────────────────────────────────────────────────
     level = logging.DEBUG if ns.debug else (logging.INFO if ns.verbose else logging.WARNING)
     logging.basicConfig(level=level, format="%(levelname)s %(name)s: %(message)s")
-    logger = logging.getLogger("nireg.cli.robreg")
+    logger = logging.getLogger("neuroreg.cli.robreg")
 
     # ── load images ─────────────────────────────────────────────────────────
     logger.info("Loading moving image:    %s", ns.mov)
@@ -146,7 +146,7 @@ def main(args=None) -> None:
     if ns.mapped:
         import torch
 
-        from nireg.image.map import map_r2r
+        from neuroreg.image.map import map_r2r
 
         mov_data = torch.from_numpy(mov_img.get_fdata()).float()
         mov_affine = torch.from_numpy(mov_img.affine).float()

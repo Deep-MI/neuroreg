@@ -1,19 +1,19 @@
-"""Tests for IRLS rigid registration (nireg.imreg.irls)."""
+"""Tests for IRLS rigid registration (neuroreg.imreg.irls)."""
 
 import pytest
 import torch
 
-from nireg.image import build_gaussian_pyramid, get_pyramid_limits
-from nireg.imreg.init import get_ixform_centroids
-from nireg.imreg.irls import (
+from neuroreg.image import build_gaussian_pyramid, get_pyramid_limits
+from neuroreg.imreg.init import get_ixform_centroids
+from neuroreg.imreg.irls import (
     _sqrt_tukey,
     compute_partials,
     construct_Ab,
     irls_inner_loop,
     register_irls,
 )
-from nireg.imreg.robreg import register_irls_pyramid
-from nireg.transforms import affine_dist, params_to_rigid_matrix
+from neuroreg.imreg.robreg import register_irls_pyramid
+from neuroreg.transforms import affine_dist, params_to_rigid_matrix
 
 # ---------------------------------------------------------------------------
 # _sqrt_tukey

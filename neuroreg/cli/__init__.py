@@ -1,4 +1,4 @@
-"""Command-line entry points for nireg tools.
+"""Command-line entry points for neuroreg tools.
 
 Available commands
 ------------------

@@ -9,8 +9,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from nireg.cli.lta import main
-from nireg.transforms import (
+from neuroreg.cli.lta import main
+from neuroreg.transforms import (
     LTA,
     affine_dist,
     corner_dist,
@@ -248,7 +248,7 @@ class TestLtaDiffCLI:
     def test_module_entrypoint_runs(self, identity_lta, tmp_path):
         output_path = tmp_path / "module_diff.txt"
         proc = subprocess.run(
-            [sys.executable, "-m", "nireg.cli.lta", "diff", identity_lta],
+            [sys.executable, "-m", "neuroreg.cli.lta", "diff", identity_lta],
             check=False,
             capture_output=True,
             text=True,

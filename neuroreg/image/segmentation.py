@@ -2,7 +2,7 @@
 
 This module converts a FreeSurfer-style parcellation (``aseg``, ``aparc+aseg``,
 or equivalent) into white-matter surfaces suitable for use with
-:func:`nireg.bbreg.register.register_surface` / the ``bbreg`` CLI.
+:func:`neuroreg.bbreg.register.register_surface` / the ``bbreg`` CLI.
 
 The workflow is entirely CPU-based (numpy + scipy + scikit-image) and does
 **not** require PyTorch or a GPU.
@@ -17,10 +17,10 @@ Typical pipeline
    faces as numpy arrays.
 3. :func:`surfaces_from_segmentation` — convenience wrapper that runs steps 1
    and 2 for both hemispheres and returns data dicts compatible with
-   :func:`nireg.bbreg.register.register_surface`.
+   :func:`neuroreg.bbreg.register.register_surface`.
 
 When surfaces are derived from a segmentation no thickness file is available.
-The callers should pass ``thickness=None``; :class:`~nireg.bbreg.optimize.BBRModel`
+The callers should pass ``thickness=None``; :class:`~neuroreg.bbreg.optimize.BBRModel`
 will then fall back to projecting a fixed distance outside the white surface.
 """
 
@@ -34,7 +34,7 @@ import nibabel as nib
 import numpy as np
 from scipy.ndimage import uniform_filter
 
-from nireg.bbreg.io import get_vox2ras_tkr
+from neuroreg.bbreg.io import get_vox2ras_tkr
 
 if TYPE_CHECKING:
     import numpy.typing as npt
@@ -466,8 +466,8 @@ def surfaces_from_segmentation(
     Convenience wrapper that calls :func:`simplify_segmentation` followed by
     :func:`extract_wm_surface` for each requested hemisphere and returns
     data dicts in the same format that
-    :func:`nireg.bbreg.io.load_surface_from_subject` produces, so they can
-    be passed directly to :func:`nireg.bbreg.register.register_surface`.
+    :func:`neuroreg.bbreg.io.load_surface_from_subject` produces, so they can
+    be passed directly to :func:`neuroreg.bbreg.register.register_surface`.
 
     Because no thickness file is available the ``'thickness'`` key is set to
     ``None``; ``BBRModel`` will then use a fixed outward projection distance

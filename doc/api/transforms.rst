@@ -1,25 +1,25 @@
 Transform API
 =============
 
-``nireg.transforms.LTA``
+``neuroreg.transforms.LTA``
 ------------------------
 
-.. autoclass:: nireg.transforms.LTA
+.. autoclass:: neuroreg.transforms.LTA
    :members:
 
 Selected transform helpers
 --------------------------
 
-.. autofunction:: nireg.transforms.convert_transform_type
+.. autofunction:: neuroreg.transforms.convert_transform_type
 
-.. autofunction:: nireg.transforms.get_affine
+.. autofunction:: neuroreg.transforms.get_affine
 
-.. autofunction:: nireg.transforms.decompose_transform
+.. autofunction:: neuroreg.transforms.decompose_transform
 
-.. autofunction:: nireg.transforms.rigid_dist
+.. autofunction:: neuroreg.transforms.rigid_dist
 
-.. autofunction:: nireg.transforms.affine_dist
+.. autofunction:: neuroreg.transforms.affine_dist
 
-.. autofunction:: nireg.transforms.corner_dist
+.. autofunction:: neuroreg.transforms.corner_dist
 
-.. autofunction:: nireg.transforms.sphere_dist
+.. autofunction:: neuroreg.transforms.sphere_dist

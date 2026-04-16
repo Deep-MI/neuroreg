@@ -5,7 +5,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-import nireg.transforms.matrices as trans
+import neuroreg.transforms.matrices as trans
 
 
 def map(
@@ -27,7 +27,7 @@ def map(
     is_torch_mat : bool, optional
         If ``True`` (default), *transform* is already in PyTorch grid-sample
         format (3 × 4 or 4 × 4).  If ``False``, it is treated as a vox-to-vox
-        matrix and converted via :func:`~nireg.transforms.matrices.convert_v2v_to_torch`.
+        matrix and converted via :func:`~neuroreg.transforms.matrices.convert_v2v_to_torch`.
     target_shape : tuple[int, int, int], optional
         Shape of the output grid ``(D, H, W)``.  Only used when
         ``is_torch_mat=False``.  Defaults to the shape of *image*.
@@ -78,7 +78,7 @@ def map_r2r(
     """Map an image using a RAS-to-RAS transform without a v2v intermediate.
 
     Wrapper around :func:`map` that calls
-    :func:`~nireg.transforms.matrices.convert_r2r_to_torch` to build the
+    :func:`~neuroreg.transforms.matrices.convert_r2r_to_torch` to build the
     PyTorch grid transform directly from the physical-space (RAS) chain::
 
         trg_norm → trg_vox → trg_RAS → src_RAS → src_vox → src_norm

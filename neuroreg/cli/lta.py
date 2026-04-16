@@ -11,7 +11,7 @@ import sys
 
 import numpy as np
 
-from nireg.transforms import LTA, decompose_transform
+from neuroreg.transforms import LTA, decompose_transform
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 

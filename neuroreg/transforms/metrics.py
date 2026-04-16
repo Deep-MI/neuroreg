@@ -2,7 +2,7 @@
 
 These functions operate on raw affine matrices (and, for corner-based metrics,
 explicit source geometry) without any knowledge of the FreeSurfer ``.lta`` file
-format. Geometry-aware LTA wrappers live in :mod:`nireg.transforms.lta`.
+format. Geometry-aware LTA wrappers live in :mod:`neuroreg.transforms.lta`.
 """
 
 from __future__ import annotations

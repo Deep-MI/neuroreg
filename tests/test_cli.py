@@ -5,8 +5,8 @@ import nibabel as nib
 import pytest
 import torch
 
-from nireg.cli.robreg import main as robreg_main
-from nireg.cli.robreg_gd import main as robreg_gd_main
+from neuroreg.cli.robreg import main as robreg_main
+from neuroreg.cli.robreg_gd import main as robreg_gd_main
 
 
 def _write_zero_image(path: Path) -> None:
@@ -34,9 +34,9 @@ class TestRobregCli:
             def write(self, path):
                 Path(path).write_text("dummy")
 
-        monkeypatch.setattr("nireg.imreg.robreg.register_pyramid", fake_register_pyramid)
+        monkeypatch.setattr("neuroreg.imreg.robreg.register_pyramid", fake_register_pyramid)
         monkeypatch.setattr(
-            "nireg.transforms.LTA.from_matrix",
+            "neuroreg.transforms.LTA.from_matrix",
             lambda *args, **kwargs: _DummyLTA(),
         )
 
@@ -74,9 +74,9 @@ class TestRobregCli:
             def write(self, path):
                 Path(path).write_text("dummy")
 
-        monkeypatch.setattr("nireg.imreg.robreg.register_pyramid", fake_register_pyramid)
+        monkeypatch.setattr("neuroreg.imreg.robreg.register_pyramid", fake_register_pyramid)
         monkeypatch.setattr(
-            "nireg.transforms.LTA.from_matrix",
+            "neuroreg.transforms.LTA.from_matrix",
             lambda *args, **kwargs: _DummyLTA(),
         )
 
@@ -129,9 +129,9 @@ class TestRobregGdCli:
             def write(self, path):
                 Path(path).write_text("dummy")
 
-        monkeypatch.setattr("nireg.imreg.robreg_gd.register_pyramid", fake_register_pyramid)
+        monkeypatch.setattr("neuroreg.imreg.robreg_gd.register_pyramid", fake_register_pyramid)
         monkeypatch.setattr(
-            "nireg.transforms.LTA.from_matrix",
+            "neuroreg.transforms.LTA.from_matrix",
             lambda *args, **kwargs: _DummyLTA(),
         )
 
@@ -171,9 +171,9 @@ class TestRobregGdCli:
             def write(self, path):
                 Path(path).write_text("dummy")
 
-        monkeypatch.setattr("nireg.imreg.robreg_gd.register_pyramid", fake_register_pyramid)
+        monkeypatch.setattr("neuroreg.imreg.robreg_gd.register_pyramid", fake_register_pyramid)
         monkeypatch.setattr(
-            "nireg.transforms.LTA.from_matrix",
+            "neuroreg.transforms.LTA.from_matrix",
             lambda *args, **kwargs: _DummyLTA(),
         )
 

@@ -4,10 +4,10 @@ from .._sys_info import sys_info
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    """Create the argument parser for the ``nireg-sys_info`` command."""
+    """Create the argument parser for the ``neuroreg-sys_info`` command."""
     parser = argparse.ArgumentParser(
         prog=f"{__package__.split('.')[0]}-sys_info",
-        description="Display dependency and runtime information for nireg.",
+        description="Display dependency and runtime information for neuroreg.",
     )
     parser.add_argument(
         "--developer",
@@ -18,7 +18,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main(args=None) -> None:
-    """Run the ``nireg-sys_info`` command."""
+    """Run the ``neuroreg-sys_info`` command."""
     parser = _build_parser()
     args = parser.parse_args(args)
 
@@ -26,7 +26,7 @@ def main(args=None) -> None:
 
 
 def run() -> None:
-    """Backward-compatible alias for the sys_info CLI entrypoint."""
+    """Run the sys_info CLI entrypoint."""
     main()
 
 

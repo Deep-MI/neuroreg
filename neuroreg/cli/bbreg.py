@@ -255,10 +255,10 @@ def _run_default_nmi_prealign(
     This uses the legacy gradient-descent registration path with an NMI loss and
     a short two-level pyramid. The returned transform is always a RAS-to-RAS
     matrix in public ``moving/source -> target/reference`` direction so it can
-    be passed directly to :func:`nireg.bbreg.register.register_surface` as
+    be passed directly to :func:`neuroreg.bbreg.register.register_surface` as
     ``init_ras``.
     """
-    from nireg.imreg.robreg_gd import register_pyramid
+    from neuroreg.imreg.robreg_gd import register_pyramid
 
     prealign_ref = _mask_reference_image(ref_img, mask_img)
     logger.info(
@@ -288,10 +288,10 @@ def main(args=None) -> None:
 
     The CLI normalizes the different input modes, optionally runs a coarse NMI
     prealignment to obtain a ``moving -> target`` initialization, and then calls
-    :func:`nireg.bbreg.register.register_surface` with a consistent public
+    :func:`neuroreg.bbreg.register.register_surface` with a consistent public
     transform direction.
     """
-    from nireg.bbreg.register import register_surface
+    from neuroreg.bbreg.register import register_surface
 
     parser = _build_parser()
     ns = parser.parse_args(args)
@@ -299,7 +299,7 @@ def main(args=None) -> None:
 
     level = logging.DEBUG if ns.debug else (logging.INFO if ns.verbose else logging.WARNING)
     logging.basicConfig(level=level, format="%(levelname)s %(name)s: %(message)s")
-    logger = logging.getLogger("nireg.cli.bbreg")
+    logger = logging.getLogger("neuroreg.cli.bbreg")
 
     kwargs: dict[str, Any] = dict(
         mov=ns.mov,

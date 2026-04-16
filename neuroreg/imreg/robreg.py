@@ -137,7 +137,7 @@ def register_irls_pyramid(
 
     This is the high-level multiresolution orchestration used by the public
     :func:`register_pyramid` API. It keeps the solver logic in
-    :func:`nireg.imreg.irls.register_irls` but owns the product-level concerns:
+    :func:`neuroreg.imreg.irls.register_irls` but owns the product-level concerns:
     isotropic preprocessing, pyramid scheduling, level-to-level transform
     propagation, and optional outlier-map writing.
 

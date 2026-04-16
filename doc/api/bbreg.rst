@@ -1,8 +1,8 @@
 Boundary-based registration API
 ===============================
 
-``nireg.bbreg.register``
+``neuroreg.bbreg.register``
 ------------------------
 
-.. automodule:: nireg.bbreg.register
+.. automodule:: neuroreg.bbreg.register
    :members: register_surface

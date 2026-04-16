@@ -1,7 +1,7 @@
-[![PyPI version](https://badge.fury.io/py/nireg.svg)](https://pypi.org/project/nireg/)
-# nireg
+[![PyPI version](https://badge.fury.io/py/neuroreg.svg)](https://pypi.org/project/neuroreg/)
+# neuroreg
 
-Nireg is a tool for the robust registration of 3D neuroimaging data (e.g. MRI).
+neuroreg is a tool for the robust registration of 3D neuroimaging data (e.g. MRI).
 It uses PyTorch's automatic differentiation for gradient-based optimisation and
 can run efficiently on a GPU.
 
@@ -20,7 +20,7 @@ This project is a work-in-progress in an early development stage.
 ## Installation
 
 ```bash
-pip install nireg
+pip install neuroreg
 ```
 
 ## Command-line interface
@@ -316,8 +316,8 @@ lta concat moving_to_intermediate.lta intermediate_to_fixed.lta moving_to_fixed.
 ```python
 import nibabel as nib
 
-from nireg import register_pyramid, register_surface
-from nireg.imreg.robreg_gd import register_pyramid as register_pyramid_gd
+from neuroreg import register_pyramid, register_surface
+from neuroreg.imreg.robreg_gd import register_pyramid as register_pyramid_gd
 
 # Public robust image-to-image registration (IRLS-backed).
 # Accepts file paths or pre-loaded nibabel images.
@@ -372,7 +372,7 @@ Current DOF support is:
 | Command / API path | Supported DOF |
 |--------------------|---------------|
 | `robreg` / public `register_pyramid()` | `6` only |
-| `robreg_gd` / `nireg.imreg.robreg_gd.register_pyramid()` | `3`, `6`, `9`, `12` |
+| `robreg_gd` / `neuroreg.imreg.robreg_gd.register_pyramid()` | `3`, `6`, `9`, `12` |
 | `bbreg` | `6`, `9`, `12` |
 
 The public `robreg` path is intentionally rigid-only for now because it tracks
@@ -385,7 +385,7 @@ surfaces are available.
 
 ## API Documentation
 
-The API Documentation can be found at https://deep-mi.org/nireg .
+The API Documentation can be found at https://deep-mi.org/neuroreg .
 
 ## References
 
