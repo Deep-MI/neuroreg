@@ -261,6 +261,15 @@ def solve_wls(
     return result.solution.to(device=Aw.device)
 
 
+def move_tensor(tensor: torch.Tensor, device: torch.device, dtype: torch.dtype) -> torch.Tensor:
+    """Move a tensor to the requested device first, then adjust dtype if needed."""
+    if tensor.device != device:
+        tensor = tensor.to(device=device)
+    if tensor.dtype != dtype:
+        tensor = tensor.to(dtype=dtype)
+    return tensor
+
+
 # ---------------------------------------------------------------------------
 # Tukey sqrt-weights  (FreeSurfer: getSqrtTukeyDiaWeights)
 # w = 1 − (r/sat)²  for |r| < sat,  else 0
@@ -444,8 +453,11 @@ def register_irls(
     """
     from ..image.map import map as map_image  # lazy import to avoid circular
 
-    T = initial_transform.clone() if initial_transform is not None \
+    T = (
+        initial_transform.clone().to(device=src.device, dtype=src.dtype)
+        if initial_transform is not None
         else torch.eye(4, dtype=src.dtype, device=src.device)
+    )
 
     # Normalise both images to roughly [0, 1] so that residuals and σ are on a
     # consistent scale regardless of scanner intensity range.  Identical to
@@ -456,7 +468,6 @@ def register_irls(
 
     src_shape: tuple[int, int, int] = (int(src_n.shape[0]), int(src_n.shape[1]), int(src_n.shape[2]))
     trg_shape: tuple[int, int, int] = (int(trg_n.shape[0]), int(trg_n.shape[1]), int(trg_n.shape[2]))
-
     info = dict(iterations=0, converged=False, dists=[], weights=None,
                 valid_mask=None, image_shape=trg_shape, sigma_hist=[])
 
@@ -481,11 +492,11 @@ def register_irls(
         if symmetric:
             # Symmetric mode: compute midspace transforms and warp both images
             mh, mhi = matrix_sqrt_schur(T)
-            mh = mh.to(device=src.device, dtype=src.dtype)
-            mhi = mhi.to(device=src.device, dtype=src.dtype)
+            mh_warp = mh.to(device=src.device, dtype=src.dtype)
+            mhi_warp = mhi.to(device=src.device, dtype=src.dtype)
 
             src_warped = map_image(
-                src_n, mh,
+                src_n, mh_warp,
                 is_torch_mat=False,
                 target_shape=src_shape,
                 mode='bilinear',
@@ -493,7 +504,7 @@ def register_irls(
             ).float()
 
             trg_warped = map_image(
-                trg_n, mhi,
+                trg_n, mhi_warp,
                 is_torch_mat=False,
                 target_shape=src_shape,
                 mode='bilinear',
@@ -505,7 +516,7 @@ def register_irls(
         else:
             # Directed mode: warp source to target space
             src_warped = map_image(
-                src_n, T,
+                src_n, T.to(device=src.device, dtype=src.dtype),
                 is_torch_mat=False,
                 target_shape=trg_shape,
                 mode='bilinear',
@@ -557,17 +568,15 @@ def register_irls(
             err_val = err_new
             zero_pct = (w_sqrt == 0).float().mean().item() * 100
 
-        # Compose transforms based on mode
         if symmetric:
             # Symmetric mode: M_new = inv(mhi) @ δ @ mh
             assert mh is not None and mhi is not None
-            delta = params_to_rigid_matrix(p.float())
-            work_dtype = src.dtype if src.device.type == "mps" else torch.float64
-            mh2 = torch.inverse(mhi.to(dtype=work_dtype))  # = mh (by construction)
-            T = mh2.to(dtype=src.dtype) @ delta @ mh
+            delta = params_to_rigid_matrix(p)
+            mh2 = torch.inverse(mhi)  # = mh (by construction)
+            T = mh2 @ delta @ mh
         else:
             # Directed mode: T_new = T_delta @ T_old
-            T_delta = params_to_rigid_matrix(p.float())
+            T_delta = params_to_rigid_matrix(p)
             T = T_delta @ T_prev
 
         # Convergence metric (Jenkinson affine RMS distance on successive updates)

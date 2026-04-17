@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import warnings
 from pathlib import Path
 from typing import Any, cast
 
@@ -12,13 +13,27 @@ import torch
 from torch import Tensor
 
 from .init import get_ixform_centroids
-from .irls import register_irls
+from .irls import move_tensor, register_irls
 from ..image import build_gaussian_pyramid, get_pyramid_limits
 from ..image.map import resample_isotropic_tensor
 
 ImageLike = str | Path | Any | Tensor
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_robreg_device(device: str | torch.device) -> torch.device:
+    """Resolve the requested robreg device, warning on unsupported MPS."""
+    resolved = torch.device(device)
+    if resolved.type == "mps":
+        warnings.warn(
+            "IRLS robreg does not support MPS due to lack of float64; falling back to CPU. "
+            "Keep using the device argument for CPU/CUDA selection.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        return torch.device("cpu")
+    return resolved
 
 
 def _as_tensor_and_affine(
@@ -194,6 +209,21 @@ def register_irls_pyramid(
         If isotropic registration is requested without both affines, or if no
         pyramid level satisfies ``min_voxels``.
     """
+    if src.device.type == "mps" or trg.device.type == "mps":
+        warnings.warn(
+            "IRLS robreg does not support MPS due to lack of float64; falling back to CPU.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        src = src.to(device="cpu")
+        trg = trg.to(device="cpu")
+        if src_affine is not None:
+            src_affine = src_affine.to(device="cpu")
+        if trg_affine is not None:
+            trg_affine = trg_affine.to(device="cpu")
+        if initial_transform is not None:
+            initial_transform = initial_transform.to(device="cpu")
+
     if isotropic:
         if src_affine is None or trg_affine is None:
             raise ValueError("src_affine and trg_affine required when isotropic=True")
@@ -215,9 +245,17 @@ def register_irls_pyramid(
             logger.info("  Trg resampled: %s → %s", trg.shape, trg_iso.shape)
 
         if initial_transform is not None:
-            T_iso = Rtrg.double() @ initial_transform.double() @ torch.inverse(Rsrc.double())
+            T_iso = (
+                move_tensor(Rtrg, device=src.device, dtype=src.dtype)
+                @ move_tensor(initial_transform, device=src.device, dtype=src.dtype)
+                @ torch.inverse(move_tensor(Rsrc, device=src.device, dtype=src.dtype))
+            )
         elif centroid_init:
-            T_iso = get_ixform_centroids(src_iso.float(), trg_iso.float()).float()
+            T_iso = move_tensor(
+                get_ixform_centroids(src_iso.float(), trg_iso.float()),
+                device=src.device,
+                dtype=src.dtype,
+            )
             if verbose:
                 t = T_iso[:3, 3].tolist()
                 logger.info(
@@ -227,7 +265,7 @@ def register_irls_pyramid(
                     t[2],
                 )
         else:
-            T_iso = torch.eye(4, dtype=torch.float32)
+            T_iso = torch.eye(4, dtype=src.dtype, device=src.device)
             if verbose:
                 logger.info("Centroid initialization disabled; starting from identity in isotropic space")
 
@@ -246,14 +284,18 @@ def register_irls_pyramid(
         pyramid_src, _ = build_gaussian_pyramid(src, src_affine_for_pyramid, limits=shared_limits)
         pyramid_trg, _ = build_gaussian_pyramid(trg, trg_affine_for_pyramid, limits=shared_limits)
         if initial_transform is not None:
-            T_iso = initial_transform.float()
+            T_iso = move_tensor(initial_transform, device=src.device, dtype=src.dtype)
         elif centroid_init:
-            T_iso = get_ixform_centroids(src.float(), trg.float()).float()
+            T_iso = move_tensor(
+                get_ixform_centroids(src.float(), trg.float()),
+                device=src.device,
+                dtype=src.dtype,
+            )
             if verbose:
                 t = T_iso[:3, 3].tolist()
                 logger.info("Centroid initialization: [%.6f, %.6f, %.6f]", t[0], t[1], t[2])
         else:
-            T_iso = torch.eye(4, dtype=torch.float32)
+            T_iso = torch.eye(4, dtype=src.dtype, device=src.device)
             if verbose:
                 logger.info("Centroid initialization disabled; starting from identity")
         Rsrc = torch.eye(4, dtype=torch.float32)
@@ -267,7 +309,7 @@ def register_irls_pyramid(
             f"Target levels: {[tuple(level.shape) for level in pyramid_trg]}"
         )
 
-    T = T_iso if T_iso is not None else torch.eye(4, dtype=torch.float32)
+    T = T_iso if T_iso is not None else torch.eye(4, dtype=src.dtype, device=src.device)
     all_info: list[dict[str, Any]] = []
 
     for lvl in range(len(pyramid_src) - 1, -1, -1):
@@ -301,8 +343,11 @@ def register_irls_pyramid(
         all_info.append(info)
 
     if isotropic:
-        T = Rtrg.double() @ T.double() @ torch.inverse(Rsrc.double())
-        T = T.float()
+        T = (
+            Rtrg.to(device=T.device, dtype=T.dtype)
+            @ T
+            @ torch.inverse(Rsrc.to(device=T.device, dtype=T.dtype))
+        )
 
     if outliers_name is not None:
         _save_outlier_map(all_info, outliers_name, verbose=verbose)
@@ -388,10 +433,11 @@ def robreg(
     src_data, src_aff = _as_tensor_and_affine(src, src_affine)
     trg_data, trg_aff = _as_tensor_and_affine(trg, trg_affine)
 
-    src_data = src_data.to(device)
-    trg_data = trg_data.to(device)
-    src_aff = src_aff.to(device)
-    trg_aff = trg_aff.to(device)
+    run_device = _resolve_robreg_device(device)
+    src_data = src_data.to(run_device)
+    trg_data = trg_data.to(run_device)
+    src_aff = src_aff.to(run_device)
+    trg_aff = trg_aff.to(run_device)
 
     T_v2v, _ = register_irls_pyramid(
         src=src_data,
@@ -408,16 +454,16 @@ def robreg(
         outliers_name=outliers_name,
         verbose=verbose,
     )
-    T_v2v = T_v2v.to(device=src_aff.device)
 
     if return_v2v:
         return T_v2v
 
-    work_dtype = src_aff.dtype if src_aff.device.type == "mps" else torch.float64
+    work_device = T_v2v.device
+    work_dtype = T_v2v.dtype
     return (
-            trg_aff.to(dtype=work_dtype)
-            @ T_v2v.to(dtype=work_dtype)
-            @ torch.inverse(src_aff.to(dtype=work_dtype))
+            move_tensor(trg_aff, device=work_device, dtype=work_dtype)
+            @ move_tensor(T_v2v, device=work_device, dtype=work_dtype)
+            @ torch.inverse(move_tensor(src_aff, device=work_device, dtype=work_dtype))
     )
 
 

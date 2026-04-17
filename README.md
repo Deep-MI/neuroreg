@@ -33,6 +33,8 @@ IRLS-based robust registration path with Tukey weighting.
 
 This path is currently intended for **same-contrast or very similar-contrast**
 image pairs.
+On Apple MPS, the current public IRLS path falls back to CPU with a warning due
+to lack of double precision support on MPS.
 
 ```
 robreg --mov <moving.nii.gz> --ref <reference.nii.gz> --out <output.lta> [options]
@@ -316,19 +318,20 @@ from neuroreg import bbreg, coreg, robreg
 
 # Public robust image-to-image registration (IRLS-backed).
 # Intended for same-/similar-contrast pairs; symmetric mode is the default.
-transform_r2r = robreg("T1_repeat.nii.gz", "T1_baseline.mgz")
+# On Apple MPS, this path currently warns and falls back to CPU.
+transform_robreg = robreg("T1_repeat.nii.gz", "T1_baseline.mgz")
 
 # The same public robreg path with pre-loaded nibabel images.
 mov_img = nib.load("T1_repeat.nii.gz")
 ref_img = nib.load("T1_baseline.mgz")
-transform_r2r_loaded = robreg(mov_img, ref_img)
+transform_robreg_loaded = robreg(mov_img, ref_img)
 
 # Image-based cross-modal registration path for cases where no
 # white-matter surface or segmentation is available.
 transform_coreg = coreg("T2.nii.gz", "T1.mgz", loss_name="nmi")
 
 # Surface-based (BBR) registration — Mode A: subject directory
-transform, model = bbreg(
+transform_bbreg = bbreg(
     mov="fMRI.nii.gz",
     subject_dir="/data/subjects/sub-01",
     lta_name="fMRI_to_T1.lta",
@@ -336,7 +339,7 @@ transform, model = bbreg(
 )
 
 # Surface-based (BBR) registration — Mode B: explicit surface files
-transform, model = bbreg(
+transform_bbreg = bbreg(
     mov="T2.nii.gz",
     lh_surf="/data/subjects/sub-01/surf/lh.white",
     rh_surf="/data/subjects/sub-01/surf/rh.white",
@@ -348,10 +351,17 @@ transform, model = bbreg(
 )
 
 # Surface-based (BBR) registration — Mode C: segmentation (no surface files needed)
-transform, model = bbreg(
+transform_bbreg = bbreg(
     mov="fMRI.nii.gz",
     seg="/data/subjects/sub-01/mri/aparc+aseg.mgz",
     lta_name="fMRI_to_T1.lta",
+)
+
+# For debugging or inspection, request the fitted model explicitly.
+transform_bbreg, model_bbreg = bbreg(
+    mov="fMRI.nii.gz",
+    subject_dir="/data/subjects/sub-01",
+    return_model=True,
 )
 ```
 

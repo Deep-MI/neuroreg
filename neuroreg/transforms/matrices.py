@@ -77,13 +77,14 @@ def matrix_sqrt_schur(M: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
     """
     from scipy.linalg import sqrtm as scipy_sqrtm  # lazy import – not always needed
 
-    M_np = M.detach().double().cpu().numpy()
+    M_np = M.detach().cpu().double().numpy()
     mh_np = scipy_sqrtm(M_np)
     # scipy may return a complex array with tiny imaginary residuals — take real part
     mh_np = np.real(mh_np)
     mh = torch.from_numpy(mh_np).to(dtype=M.dtype, device=M.device)
-    mi = torch.inverse(M.double().to(device=M.device))
-    mhi = (mh.double() @ mi).to(dtype=M.dtype)
+    work_dtype = torch.float32 if M.device.type == "mps" else torch.float64
+    mi = torch.inverse(M.to(device=M.device, dtype=work_dtype))
+    mhi = (mh.to(dtype=work_dtype) @ mi).to(dtype=M.dtype)
     return mh, mhi
 
 

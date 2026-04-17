@@ -237,15 +237,16 @@ class TestBbregRegister:
         monkeypatch.setattr(bbreg_register_module, "BBRModel", FakeBBRModel)
         monkeypatch.setattr("torch.optim.RMSprop", FakeOptimizer)
 
-        transform, model = bbreg(
+        transform_bbreg, model = bbreg(
             mov=str(mov_path),
             ref=str(ref_path),
             lh_surf=str(tmp_path / "lh.white"),
             n_iters=10,
             early_stop_patience=2,
+            return_model=True,
         )
 
-        assert transform[0, 3].item() == pytest.approx(-4.0)
+        assert transform_bbreg[0, 3].item() == pytest.approx(-4.0)
         assert model.transform_params[0].item() == pytest.approx(4.0)
         assert model.call_count == 8
 
@@ -298,7 +299,7 @@ class TestBbregRegister:
         monkeypatch.setattr(bbreg_register_module, "BBRModel", FakeBBRModel)
         monkeypatch.setattr("torch.optim.RMSprop", FakeOptimizer)
 
-        transform, _ = bbreg(
+        transform_bbreg = bbreg(
             mov=str(mov_path),
             ref=str(ref_path),
             lh_surf=str(tmp_path / "lh.white"),
@@ -308,4 +309,4 @@ class TestBbregRegister:
 
         expected_internal = torch.from_numpy(np.linalg.inv(init_ras)).float()
         assert torch.allclose(captured_init["init_transform"], expected_internal)
-        assert torch.allclose(transform, torch.eye(4, dtype=transform.dtype))
+        assert torch.allclose(transform_bbreg, torch.eye(4, dtype=transform_bbreg.dtype))

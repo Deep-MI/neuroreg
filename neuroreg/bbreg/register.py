@@ -7,42 +7,43 @@ import nibabel as nib
 import numpy as np
 import torch
 
-from ..transforms import LINEAR_RAS_TO_RAS, LINEAR_VOX_TO_VOX, LTA, convert_transform_type
 from .io import get_vox2ras_tkr, load_surface, load_surface_from_subject
 from .optimize import BBRModel
+from ..transforms import LINEAR_RAS_TO_RAS, LINEAR_VOX_TO_VOX, LTA, convert_transform_type
 
 logger = logging.getLogger(__name__)
 
 
 def register_surface(
-    mov: str | nib.Nifti1Image,
-    lh_surf: str | None = None,
-    rh_surf: str | None = None,
-    lh_thickness: str | None = None,
-    rh_thickness: str | None = None,
-    ref: str | nib.Nifti1Image | None = None,
-    subject_dir: str | None = None,
-    seg: str | None = None,
-    lta_name: str | None = None,
-    dof: int = 6,
-    contrast: Literal["t1", "t2"] | None = None,
-    init_type: Literal["header", "lta"] = "header",
-    init_lta: str | None = None,
-    init_ras: np.ndarray | None = None,
-    cost_type: Literal["contrast", "gradient", "both"] = "contrast",
-    wm_proj_abs: float = 1.4,
-    gm_proj_frac: float = 0.5,
-    gm_proj_abs: float | None = None,
-    lh_cortex_label: str | None = None,
-    rh_cortex_label: str | None = None,
-    slope: float = 0.5,
-    gradient_weight: float = 0.0,
-    subsample: int = 1,
-    n_iters: int = 200,
-    lr: float = 0.01,
-    early_stop_patience: int = 20,
-    device: str = "cpu",
-) -> tuple[torch.Tensor, BBRModel]:
+        mov: str | nib.Nifti1Image,
+        lh_surf: str | None = None,
+        rh_surf: str | None = None,
+        lh_thickness: str | None = None,
+        rh_thickness: str | None = None,
+        ref: str | nib.Nifti1Image | None = None,
+        subject_dir: str | None = None,
+        seg: str | None = None,
+        lta_name: str | None = None,
+        dof: int = 6,
+        contrast: Literal["t1", "t2"] | None = None,
+        init_type: Literal["header", "lta"] = "header",
+        init_lta: str | None = None,
+        init_ras: np.ndarray | None = None,
+        cost_type: Literal["contrast", "gradient", "both"] = "contrast",
+        wm_proj_abs: float = 1.4,
+        gm_proj_frac: float = 0.5,
+        gm_proj_abs: float | None = None,
+        lh_cortex_label: str | None = None,
+        rh_cortex_label: str | None = None,
+        slope: float = 0.5,
+        gradient_weight: float = 0.0,
+        subsample: int = 1,
+        n_iters: int = 200,
+        lr: float = 0.01,
+        early_stop_patience: int = 20,
+        device: str = "cpu",
+        return_model: bool = False,
+) -> torch.Tensor | tuple[torch.Tensor, BBRModel]:
     """Register a moving image to cortical surface boundaries using BBR.
 
     This is the main Python API for the boundary-based registration path. The
@@ -114,12 +115,16 @@ def register_surface(
         early stopping.
     device : str, default="cpu"
         Torch device on which to run the optimization.
+    return_model : bool, default=False
+        If ``True``, also return the fitted ``BBRModel`` for debugging or
+        inspection.
 
     Returns
     -------
-    tuple[torch.Tensor, BBRModel]
-        The best-found RAS-to-RAS transform in public ``moving/source ->
-        target/reference`` direction together with the fitted ``BBRModel``.
+    torch.Tensor or tuple[torch.Tensor, BBRModel]
+        By default, returns the best-found RAS-to-RAS transform in public
+        ``moving/source -> target/reference`` direction. When
+        ``return_model=True``, also returns the fitted ``BBRModel``.
 
     Raises
     ------
@@ -364,9 +369,10 @@ def register_surface(
             lta_type=0,
         ).write(lta_name)
 
-    return torch.from_numpy(ras_mov_to_trg).to(best_transform), model
+    transform_bbreg = torch.from_numpy(ras_mov_to_trg).to(best_transform)
+    if return_model:
+        return transform_bbreg, model
+    return transform_bbreg
 
 
 __all__ = ["register_surface"]
-
-
