@@ -399,7 +399,15 @@ class RegModel(nn.Module):
 
         """
         v2v = self.get_v2v_from_weights(sshape, tshape)
-        return torch.tensor(taffine) @ v2v.double() @ torch.inverse(torch.tensor(saffine))
+        dtype = v2v.dtype
+        device = v2v.device
+        taffine_ras = taffine.to(device=device)
+        saffine_ras = saffine.to(device=device)
+        if taffine_ras.dtype != dtype:
+            taffine_ras = taffine_ras.to(dtype=dtype)
+        if saffine_ras.dtype != dtype:
+            saffine_ras = saffine_ras.to(dtype=dtype)
+        return taffine_ras @ v2v @ torch.inverse(saffine_ras)
 
     def map_image(
         self,
