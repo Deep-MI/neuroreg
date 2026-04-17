@@ -310,12 +310,14 @@
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">lta1</span><span class="o">.</span><span class="n">sphere_dist</span><span class="p">(</span><span class="n">lta2</span><span class="p">,</span><span class="w"> </span><span class="n">radius</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">radius</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">ns</span><span class="o">.</span><span class="n">normdiv</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
     <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">dist</span> <span class="o">==</span> <span class="mi">5</span><span class="p">:</span>
-        <span class="c1"># det is multiplicative: det(M1 @ M2) == det(M1) * det(M2)</span>
+        <span class="c1"># Concatenation determinant: det(M1 @ M2) = det(M1) * det(M2).</span>
         <span class="n">result</span> <span class="o">=</span> <span class="n">lta1</span><span class="o">.</span><span class="n">det</span> <span class="k">if</span> <span class="n">lta2</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">lta1</span><span class="o">.</span><span class="n">det</span> <span class="o">*</span> <span class="n">lta2</span><span class="o">.</span><span class="n">det</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">result</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">ns</span><span class="o">.</span><span class="n">normdiv</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
     <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">dist</span> <span class="o">==</span> <span class="mi">7</span><span class="p">:</span>
-        <span class="c1"># Single transform: use the LTA method; two transforms: compose then decompose.</span>
+        <span class="c1"># Decompose the concatenation M1 @ M2 (not the difference inv(M1) @ M2).</span>
+        <span class="c1"># Single transform: decompose M1 alone.</span>
+        <span class="c1"># Two transforms: compose M1 @ M2 first, then decompose.</span>
         <span class="n">d</span> <span class="o">=</span> <span class="n">lta1</span><span class="o">.</span><span class="n">decompose</span><span class="p">()</span> <span class="k">if</span> <span class="n">lta2</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">decompose_transform</span><span class="p">(</span><span class="n">lta1</span><span class="o">.</span><span class="n">r2r</span><span class="p">()</span> <span class="o">@</span> <span class="n">lta2</span><span class="o">.</span><span class="n">r2r</span><span class="p">())</span>
         <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">printoptions</span><span class="p">(</span><span class="n">precision</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">suppress</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Decompose into Rot · Shear · diag(Scales) + Trans:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -354,15 +356,26 @@
             <span class="s2">&quot;transforms (vox-to-vox LTAs are converted automatically).</span><span class="se">\n</span><span class="s2">&quot;</span>
             <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
             <span class="s2">&quot;Distance types:</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;  1   Rigid transform distance  sqrt(||log R_d||² + ||T_d||²)</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;  1   Rigid transform distance  sqrt(||log R||² + ||T||²)</span><span class="se">\n</span><span class="s2">&quot;</span>
             <span class="s2">&quot;      D = inv(M1) @ M2  (or M1 vs identity)</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;      R = upper-left 3×3 rotation block of D</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;      T = upper-right 3×1 translation column of D</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;      Units: mixed (mm and rad added in quadrature)</span><span class="se">\n</span><span class="s2">&quot;</span>
             <span class="s2">&quot;  2   Affine RMS distance (Jenkinson 1999)  [default]</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;      sqrt(r²/5 · Tr(AᵀA) + ||T_d||²),  D = M1 − M2</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;      sqrt(r²/5 · Tr(AᵀA) + ‖T‖²),  D = M1 − M2  (or M1 − I)</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;      A = upper-left 3×3 of D; r = --radius (default 100 mm)</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;      T = upper-right 3×1 translation column of D</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;      Units: mm (RMS displacement over a sphere of radius r)</span><span class="se">\n</span><span class="s2">&quot;</span>
             <span class="s2">&quot;  3   8-corner mean displacement (mm, image-specific)</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;  4   Max displacement on sphere of radius r (mm)</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;      D = inv(M1) @ M2</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;  5   Determinant of M1 (· M2 when given)</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;  7   Polar decomposition: rotation, shear, scale, translation</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;      One transform:  mean‖M1·c − c‖ for each src corner c in RAS.</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;      Two transforms: mean‖M1·c − M2·c‖  (same src corners).</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;  4   Max displacement on a sphere of radius r (mm, image-independent)</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;      Md = inv(M1) @ M2  (or M1 vs identity)</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;      displacement(p) = ‖Md·p − p‖  over ~1600 sphere samples</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;  5   Determinant  det(M1)  (or det(M1 @ M2) = det(M1)*det(M2) when M2 given)</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;      Uses matrix concatenation (not the difference); det is order-independent.</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;  7   Polar decomposition of M1 (or M1 @ M2, i.e. concatenation):</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;      prints Rot, RotVec, RotAngle, Shear, Scales, Trans, |Trans|, det</span><span class="se">\n</span><span class="s2">&quot;</span>
         <span class="p">),</span>
     <span class="p">)</span>
     <span class="n">diff_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;lta1&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;LTA1&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;First (or only) LTA transform file.&quot;</span><span class="p">)</span>

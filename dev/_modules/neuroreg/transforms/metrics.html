@@ -393,18 +393,32 @@
         <span class="n">M2</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">src_affine</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Mean displacement at the 8 corners of the source volume.</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Mean displacement at the 8 corners of the source volume.</span>
 
-<span class="sd">    Places the 8 corners of the source volume in RAS space using *src_affine*,</span>
-<span class="sd">    maps them through the RAS-to-RAS transform(s), and returns the mean</span>
-<span class="sd">    Euclidean displacement.</span>
+<span class="sd">    For a **single transform** (*M2* is ``None``), places each of the 8 source</span>
+<span class="sd">    corners in RAS space via *src_affine* and measures how far *M* moves each</span>
+<span class="sd">    corner from its original RAS position:</span>
 
-<span class="sd">    **Image-specific metric**: the result depends on the source image shape</span>
-<span class="sd">    and affine, not just the transform. The corners are at the edges of the</span>
-<span class="sd">    source FOV — for a large or padded FOV they may be far from brain tissue,</span>
-<span class="sd">    making the result less representative than :func:`sphere_dist`. When</span>
-<span class="sd">    comparing two transforms (*M* and *M2*), both must register the same</span>
-<span class="sd">    source image (so *src_affine* and *src_shape* are unambiguous).</span>
+<span class="sd">    .. math::</span>
+
+<span class="sd">        d_i = \|M \cdot c_i - c_i\|, \quad</span>
+<span class="sd">        \text{result} = \tfrac{1}{8}\sum_i d_i</span>
+
+<span class="sd">    For **two transforms**, measures the separation between the two mappings of</span>
+<span class="sd">    each corner:</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">        d_i = \|M_1 \cdot c_i - M_2 \cdot c_i\|, \quad</span>
+<span class="sd">        \text{result} = \tfrac{1}{8}\sum_i d_i</span>
+
+<span class="sd">    Both transforms must map the same source image, so *src_affine* and</span>
+<span class="sd">    *src_shape* are unambiguous.</span>
+
+<span class="sd">    **Image-specific metric**: the result depends on the source image geometry,</span>
+<span class="sd">    not just the transform. Corners at the edge of a large or padded FOV may</span>
+<span class="sd">    be far from brain tissue, making the result less representative than</span>
+<span class="sd">    :func:`sphere_dist` for typical neuroimaging use.</span>
 
 <span class="sd">    Corresponds to **dist type 3** in FreeSurfer&#39;s ``lta_diff``.</span>
 
@@ -412,14 +426,15 @@
 <span class="sd">    ----------</span>
 <span class="sd">    M : array-like, shape (4, 4)</span>
 <span class="sd">        First (or only) RAS-to-RAS transform.</span>
-<span class="sd">    src_shape : tuple of int</span>
-<span class="sd">        Voxel dimensions of the source volume.</span>
+<span class="sd">    src_shape : tuple of int (i_size, j_size, k_size)</span>
+<span class="sd">        Voxel dimensions of the source volume (width x height x depth).</span>
 <span class="sd">    M2 : array-like, shape (4, 4), optional</span>
-<span class="sd">        Second RAS-to-RAS transform. When ``None``, displacement from identity</span>
-<span class="sd">        is measured.</span>
+<span class="sd">        Second RAS-to-RAS transform. When ``None``, displacement of each corner</span>
+<span class="sd">        from its own RAS position (that is, comparison with identity) is</span>
+<span class="sd">        measured.</span>
 <span class="sd">    src_affine : array-like, shape (4, 4), optional</span>
-<span class="sd">        Voxel-to-RAS affine of the source image. When given, corners are</span>
-<span class="sd">        converted to RAS (mm) before applying the transforms; the result is in</span>
+<span class="sd">        Voxel-to-RAS affine of the source image. When given, the 8 corners are</span>
+<span class="sd">        converted to RAS before applying the transform(s) and the result is in</span>
 <span class="sd">        mm. When ``None``, corners remain in voxel units.</span>
 
 <span class="sd">    Returns</span>
@@ -449,19 +464,22 @@
 <span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Maximum displacement on a sphere of given radius (mm).</span>
 
 <span class="sd">    Samples approximately 1,600 points on a sphere of *radius* mm centred at</span>
-<span class="sd">    the RAS origin and returns the peak displacement caused by the transform</span>
+<span class="sd">    the RAS origin and returns the **peak** displacement caused by the transform</span>
 <span class="sd">    difference. Both matrices must be **RAS-to-RAS** so that the sphere is in a</span>
 <span class="sd">    meaningful physical space and displacements are in mm.</span>
 
 <span class="sd">    .. math::</span>
 
-<span class="sd">        M_d = M_1^{-1} M_2 \quad (\text{or } M_1 \text{ when } M_2 = \text{None})</span>
+<span class="sd">        M_d = M_1^{-1} M_2 \quad \text{(or } M_d = M_1 \text{ when } M_2 = \text{None)}</span>
 
-<span class="sd">        \mathrm{displacement}(p) = \|M_d \, p - p\|</span>
+<span class="sd">        \text{result} = \max_{p\,\in\,\text{sphere}} \|M_d \, p - p\|</span>
 
-<span class="sd">    Unlike :func:`corner_dist` this metric is image-independent: the sphere is</span>
-<span class="sd">    a canonical approximation of the head and the result is a pure property of</span>
-<span class="sd">    the transform.</span>
+<span class="sd">    When *M2* is ``None``, this measures how far *M1* alone displaces points on</span>
+<span class="sd">    the sphere from their original positions (comparison with identity).</span>
+
+<span class="sd">    Unlike :func:`corner_dist` this metric is **image-independent**: the sphere</span>
+<span class="sd">    is a canonical approximation of the head and the result depends only on the</span>
+<span class="sd">    transforms, not on source volume geometry.</span>
 
 <span class="sd">    Corresponds to **dist type 4** in FreeSurfer&#39;s ``lta_diff``.</span>
 
@@ -478,7 +496,7 @@
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    float</span>
-<span class="sd">        Maximum displacement in mm.</span>
+<span class="sd">        Maximum displacement in mm over all sampled sphere points.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">M1a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">M1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
     <span class="n">Md</span> <span class="o">=</span> <span class="n">M1a</span> <span class="k">if</span> <span class="n">M2</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">M1a</span><span class="p">)</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">M2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">))</span>
@@ -521,8 +539,9 @@
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    M : array-like, shape (4, 4)</span>
-<span class="sd">        Affine matrix to decompose. Pre-compose transforms before calling if a</span>
-<span class="sd">        relative decomposition is needed (e.g. ``decompose_transform(M1 @ M2)``).</span>
+<span class="sd">        Affine matrix to decompose. For the two-transform case pass the</span>
+<span class="sd">        **concatenation** ``M1 @ M2`` (not the difference ``inv(M1) @ M2``).</span>
+<span class="sd">        Example: ``decompose_transform(lta1.r2r() @ lta2.r2r())``.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>

@@ -759,18 +759,28 @@
 <div class="viewcode-block" id="LTA.corner_dist">
 <a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.LTA.corner_dist">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">corner_dist</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">LTA</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Mean displacement at the 8 volume corners in RAS mm.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Mean displacement at the 8 source-volume corners in RAS mm.</span>
 
 <span class="sd">        Operates on the RAS-to-RAS representation (converts automatically if</span>
-<span class="sd">        stored as vox-to-vox).  **Image-specific**: depends on source volume</span>
-<span class="sd">        geometry; see :func:`corner_dist` for limitations.</span>
+<span class="sd">        stored as vox-to-vox). **Image-specific**: depends on source volume</span>
+<span class="sd">        shape and affine; see :func:`corner_dist` for the full description and</span>
+<span class="sd">        limitations.</span>
+
+<span class="sd">        * *other* is ``None`` - measures how far each corner moves from its</span>
+<span class="sd">          original RAS position under this transform.</span>
+<span class="sd">        * *other* is given - measures the separation between the two</span>
+<span class="sd">          transforms&#39; mappings of each corner; both LTAs must share the same</span>
+<span class="sd">          source image.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        other : LTA, optional</span>
-<span class="sd">            Second transform; ``None`` compares against identity.</span>
+<span class="sd">            Second transform. ``None`` compares this transform against identity.</span>
 
-<span class="sd">        Delegates to :func:`corner_dist`.</span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+<span class="sd">            Mean corner displacement in mm. Delegates to :func:`corner_dist`.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">src_volume</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="p">[</span><span class="s2">&quot;volume&quot;</span><span class="p">]</span>
         <span class="n">src_shape</span> <span class="o">=</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">src_volume</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">src_volume</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">src_volume</span><span class="p">[</span><span class="mi">2</span><span class="p">]))</span>

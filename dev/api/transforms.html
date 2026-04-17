@@ -486,23 +486,36 @@ stored as vox-to-vox).  Delegates to <a class="reference internal" href="#neuror
 <dl class="py method">
 <dt class="sig sig-object py" id="neuroreg.transforms.LTA.corner_dist">
 <span class="sig-name descname"><span class="pre">corner_dist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/lta.html#LTA.corner_dist"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.LTA.corner_dist" title="Link to this definition">¶</a></dt>
-<dd><p>Mean displacement at the 8 volume corners in RAS mm.</p>
+<dd><p>Mean displacement at the 8 source-volume corners in RAS mm.</p>
 <p>Operates on the RAS-to-RAS representation (converts automatically if
-stored as vox-to-vox).  <strong>Image-specific</strong>: depends on source volume
-geometry; see <a class="reference internal" href="#neuroreg.transforms.corner_dist" title="neuroreg.transforms.corner_dist"><code class="xref py py-func docutils literal notranslate"><span class="pre">corner_dist()</span></code></a> for limitations.</p>
+stored as vox-to-vox). <strong>Image-specific</strong>: depends on source volume
+shape and affine; see <a class="reference internal" href="#neuroreg.transforms.corner_dist" title="neuroreg.transforms.corner_dist"><code class="xref py py-func docutils literal notranslate"><span class="pre">corner_dist()</span></code></a> for the full description and
+limitations.</p>
+<ul class="simple">
+<li><p><em>other</em> is <code class="docutils literal notranslate"><span class="pre">None</span></code> - measures how far each corner moves from its
+original RAS position under this transform.</p></li>
+<li><p><em>other</em> is given - measures the separation between the two
+transforms’ mappings of each corner; both LTAs must share the same
+source image.</p></li>
+</ul>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>other</strong><span class="classifier">LTA, optional</span></dt><dd><p>Second transform; <code class="docutils literal notranslate"><span class="pre">None</span></code> compares against identity.</p>
+<dt><strong>other</strong><span class="classifier">LTA, optional</span></dt><dd><p>Second transform. <code class="docutils literal notranslate"><span class="pre">None</span></code> compares this transform against identity.</p>
 </dd>
-<dt><strong>Delegates to :func:`corner_dist`.</strong></dt><dd></dd>
 </dl>
 </dd>
-<dt class="field-even">Parameters<span class="colon">:</span></dt>
-<dd class="field-even"><p><strong>other</strong> (<a class="reference internal" href="#neuroreg.transforms.LTA" title="neuroreg.transforms.lta.LTA"><em>LTA</em></a><em> | </em><em>None</em>)</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>float</dt><dd><p>Mean corner displacement in mm. Delegates to <a class="reference internal" href="#neuroreg.transforms.corner_dist" title="neuroreg.transforms.corner_dist"><code class="xref py py-func docutils literal notranslate"><span class="pre">corner_dist()</span></code></a>.</p>
 </dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>float</p>
+</dl>
+</dd>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>other</strong> (<a class="reference internal" href="#neuroreg.transforms.LTA" title="neuroreg.transforms.lta.LTA"><em>LTA</em></a><em> | </em><em>None</em>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>float</p>
 </dd>
 </dl>
 </dd></dl>
@@ -637,8 +650,9 @@ vector is in mm because the input is expected to be RAS-to-RAS.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>M</strong><span class="classifier">array-like, shape (4, 4)</span></dt><dd><p>Affine matrix to decompose. Pre-compose transforms before calling if a
-relative decomposition is needed (e.g. <code class="docutils literal notranslate"><span class="pre">decompose_transform(M1</span> <span class="pre">&#64;</span> <span class="pre">M2)</span></code>).</p>
+<dt><strong>M</strong><span class="classifier">array-like, shape (4, 4)</span></dt><dd><p>Affine matrix to decompose. For the two-transform case pass the
+<strong>concatenation</strong> <code class="docutils literal notranslate"><span class="pre">M1</span> <span class="pre">&#64;</span> <span class="pre">M2</span></code> (not the difference <code class="docutils literal notranslate"><span class="pre">inv(M1)</span> <span class="pre">&#64;</span> <span class="pre">M2</span></code>).
+Example: <code class="docutils literal notranslate"><span class="pre">decompose_transform(lta1.r2r()</span> <span class="pre">&#64;</span> <span class="pre">lta2.r2r())</span></code>.</p>
 </dd>
 </dl>
 </dd>
@@ -772,28 +786,41 @@ conversion, which keeps it suitable for CPU/GPU registration loops.</p>
 <dt class="sig sig-object py" id="neuroreg.transforms.corner_dist">
 <span class="sig-prename descclassname"><span class="pre">neuroreg.transforms.</span></span><span class="sig-name descname"><span class="pre">corner_dist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">M</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src_shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">M2</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src_affine</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/metrics.html#corner_dist"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.corner_dist" title="Link to this definition">¶</a></dt>
 <dd><p>Mean displacement at the 8 corners of the source volume.</p>
-<p>Places the 8 corners of the source volume in RAS space using <em>src_affine</em>,
-maps them through the RAS-to-RAS transform(s), and returns the mean
-Euclidean displacement.</p>
-<p><strong>Image-specific metric</strong>: the result depends on the source image shape
-and affine, not just the transform. The corners are at the edges of the
-source FOV — for a large or padded FOV they may be far from brain tissue,
-making the result less representative than <a class="reference internal" href="#neuroreg.transforms.sphere_dist" title="neuroreg.transforms.sphere_dist"><code class="xref py py-func docutils literal notranslate"><span class="pre">sphere_dist()</span></code></a>. When
-comparing two transforms (<em>M</em> and <em>M2</em>), both must register the same
-source image (so <em>src_affine</em> and <em>src_shape</em> are unambiguous).</p>
+<p>For a <strong>single transform</strong> (<em>M2</em> is <code class="docutils literal notranslate"><span class="pre">None</span></code>), places each of the 8 source
+corners in RAS space via <em>src_affine</em> and measures how far <em>M</em> moves each
+corner from its original RAS position:</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[d_i = \|M \cdot c_i - c_i\|, \quad
+\text{result} = \tfrac{1}{8}\sum_i d_i\]</div>
+</div>
+<p>For <strong>two transforms</strong>, measures the separation between the two mappings of
+each corner:</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[d_i = \|M_1 \cdot c_i - M_2 \cdot c_i\|, \quad
+\text{result} = \tfrac{1}{8}\sum_i d_i\]</div>
+</div>
+<p>Both transforms must map the same source image, so <em>src_affine</em> and
+<em>src_shape</em> are unambiguous.</p>
+<p><strong>Image-specific metric</strong>: the result depends on the source image geometry,
+not just the transform. Corners at the edge of a large or padded FOV may
+be far from brain tissue, making the result less representative than
+<a class="reference internal" href="#neuroreg.transforms.sphere_dist" title="neuroreg.transforms.sphere_dist"><code class="xref py py-func docutils literal notranslate"><span class="pre">sphere_dist()</span></code></a> for typical neuroimaging use.</p>
 <p>Corresponds to <strong>dist type 3</strong> in FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">lta_diff</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>M</strong><span class="classifier">array-like, shape (4, 4)</span></dt><dd><p>First (or only) RAS-to-RAS transform.</p>
 </dd>
-<dt><strong>src_shape</strong><span class="classifier">tuple of int</span></dt><dd><p>Voxel dimensions of the source volume.</p>
+<dt><strong>src_shape</strong><span class="classifier">tuple of int (i_size, j_size, k_size)</span></dt><dd><p>Voxel dimensions of the source volume (width x height x depth).</p>
 </dd>
-<dt><strong>M2</strong><span class="classifier">array-like, shape (4, 4), optional</span></dt><dd><p>Second RAS-to-RAS transform. When <code class="docutils literal notranslate"><span class="pre">None</span></code>, displacement from identity
-is measured.</p>
+<dt><strong>M2</strong><span class="classifier">array-like, shape (4, 4), optional</span></dt><dd><p>Second RAS-to-RAS transform. When <code class="docutils literal notranslate"><span class="pre">None</span></code>, displacement of each corner
+from its own RAS position (that is, comparison with identity) is
+measured.</p>
 </dd>
-<dt><strong>src_affine</strong><span class="classifier">array-like, shape (4, 4), optional</span></dt><dd><p>Voxel-to-RAS affine of the source image. When given, corners are
-converted to RAS (mm) before applying the transforms; the result is in
+<dt><strong>src_affine</strong><span class="classifier">array-like, shape (4, 4), optional</span></dt><dd><p>Voxel-to-RAS affine of the source image. When given, the 8 corners are
+converted to RAS before applying the transform(s) and the result is in
 mm. When <code class="docutils literal notranslate"><span class="pre">None</span></code>, corners remain in voxel units.</p>
 </dd>
 </dl>
@@ -823,16 +850,18 @@ mm. When <code class="docutils literal notranslate"><span class="pre">None</span
 <span class="sig-prename descclassname"><span class="pre">neuroreg.transforms.</span></span><span class="sig-name descname"><span class="pre">sphere_dist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">M1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">M2</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/metrics.html#sphere_dist"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.sphere_dist" title="Link to this definition">¶</a></dt>
 <dd><p>Maximum displacement on a sphere of given radius (mm).</p>
 <p>Samples approximately 1,600 points on a sphere of <em>radius</em> mm centred at
-the RAS origin and returns the peak displacement caused by the transform
+the RAS origin and returns the <strong>peak</strong> displacement caused by the transform
 difference. Both matrices must be <strong>RAS-to-RAS</strong> so that the sphere is in a
 meaningful physical space and displacements are in mm.</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
-\[ \begin{align}\begin{aligned}M_d = M_1^{-1} M_2 \quad (\text{or } M_1 \text{ when } M_2 = \text{None})\\\mathrm{displacement}(p) = \|M_d \, p - p\|\end{aligned}\end{align} \]</div>
+\[ \begin{align}\begin{aligned}M_d = M_1^{-1} M_2 \quad \text{(or } M_d = M_1 \text{ when } M_2 = \text{None)}\\\text{result} = \max_{p\,\in\,\text{sphere}} \|M_d \, p - p\|\end{aligned}\end{align} \]</div>
 </div>
-<p>Unlike <a class="reference internal" href="#neuroreg.transforms.corner_dist" title="neuroreg.transforms.corner_dist"><code class="xref py py-func docutils literal notranslate"><span class="pre">corner_dist()</span></code></a> this metric is image-independent: the sphere is
-a canonical approximation of the head and the result is a pure property of
-the transform.</p>
+<p>When <em>M2</em> is <code class="docutils literal notranslate"><span class="pre">None</span></code>, this measures how far <em>M1</em> alone displaces points on
+the sphere from their original positions (comparison with identity).</p>
+<p>Unlike <a class="reference internal" href="#neuroreg.transforms.corner_dist" title="neuroreg.transforms.corner_dist"><code class="xref py py-func docutils literal notranslate"><span class="pre">corner_dist()</span></code></a> this metric is <strong>image-independent</strong>: the sphere
+is a canonical approximation of the head and the result depends only on the
+transforms, not on source volume geometry.</p>
 <p>Corresponds to <strong>dist type 4</strong> in FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">lta_diff</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -848,7 +877,7 @@ is returned.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
-<dt>float</dt><dd><p>Maximum displacement in mm.</p>
+<dt>float</dt><dd><p>Maximum displacement in mm over all sampled sphere points.</p>
 </dd>
 </dl>
 </dd>
