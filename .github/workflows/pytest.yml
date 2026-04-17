@@ -37,9 +37,9 @@ jobs:
           python -m pip install --progress-bar off --upgrade pip setuptools wheel
           python -m pip install --progress-bar off .[test]
       - name: Display system information
-        run: nireg-sys_info --developer
+        run: neuroreg-sys_info --developer
       - name: Run pytest
-        run: pytest --cov=nireg --cov-report=xml --cov-config=pyproject.toml
+        run: pytest --cov=neuroreg --cov-report=xml --cov-config=pyproject.toml
 #      - name: Upload to codecov
 #        if: ${{ matrix.os == 'ubuntu' && matrix.python-version == '3.11' }}
 #        uses: codecov/codecov-action@v5
@@ -50,4 +50,4 @@ jobs:
 #          fail_ci_if_error: true # optional (default = false)
 #          verbose: true # optional (default = false)
 #          token: ${{ secrets.CODECOV_TOKEN }}
-#          slug: deep-mi/nireg
+#          slug: deep-mi/neuroreg
