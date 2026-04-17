@@ -8,4 +8,4 @@ matches the checked-in notebook content.
 .. toctree::
    :maxdepth: 1
 
-   generated/notebooks/example
+   generated/notebooks/robreg
