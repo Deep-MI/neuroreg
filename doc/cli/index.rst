@@ -46,7 +46,7 @@ Examples::
    lta concat a_to_b.lta b_to_c.lta a_to_c.lta
 
 neuroreg-sys_info
---------------
+-----------------
 
 Print package, dependency, and runtime information useful for debugging
 installations and CI environments.

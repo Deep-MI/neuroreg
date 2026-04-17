@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import sys
 from pathlib import Path
 
+import certifi
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DOC_ROOT = Path(__file__).resolve().parent
@@ -45,6 +47,24 @@ def _stage_docs_assets() -> None:
                 *cells,
             ]
         (NOTEBOOKS_DST / notebook.name).write_text(f"{json.dumps(notebook_data, indent=1)}\n")
+
+
+DOCS_BIN = DOC_ROOT / "bin"
+
+
+def ensure_pandoc_installed(_: object) -> None:
+    """Install Pandoc into the docs tree when it is not already available."""
+    import pypandoc
+
+    os.environ.setdefault("SSL_CERT_FILE", certifi.where())
+    os.environ.setdefault("REQUESTS_CA_BUNDLE", certifi.where())
+
+    pandoc_dir = str(DOCS_BIN)
+    current_path = os.environ.get("PATH", "")
+    path_entries = current_path.split(os.pathsep) if current_path else []
+    if pandoc_dir not in path_entries:
+        os.environ["PATH"] = os.pathsep.join([*path_entries, pandoc_dir]) if path_entries else pandoc_dir
+    pypandoc.ensure_pandoc_installed(targetfolder=pandoc_dir, delete_installer=True)
 
 
 _stage_docs_assets()
@@ -87,3 +107,8 @@ myst_enable_extensions = ["colon_fence", "deflist"]
 html_theme = "furo"
 html_title = "neuroreg"
 html_static_path: list[str] = []
+
+
+def setup(app: object) -> None:
+    """Register Sphinx build hooks for docs prerequisites."""
+    app.connect("builder-inited", ensure_pandoc_installed)

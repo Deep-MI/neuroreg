@@ -2,7 +2,7 @@ Transform API
 =============
 
 ``neuroreg.transforms.LTA``
-------------------------
+---------------------------
 
 .. autoclass:: neuroreg.transforms.LTA
    :members:
