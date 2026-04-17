@@ -134,7 +134,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "  5   Determinant  det(M1)  (or det(M1 @ M2) = det(M1)*det(M2) when M2 given)\n"
             "      Uses matrix concatenation (not the difference); det is order-independent.\n"
             "  7   Polar decomposition of M1 (or M1 @ M2, i.e. concatenation):\n"
-            "      prints Rot, RotVec, RotAngle, Shear, Scales, Trans, |Trans|, det\n"
+            "      prints Rot, RotVec, RotAngle, Shear, Scales, Trans, abs(Trans), det\n"
         ),
     )
     diff_p.add_argument("lta1", metavar="LTA1", help="First (or only) LTA transform file.")

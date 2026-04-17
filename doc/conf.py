@@ -85,6 +85,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx_copybutton",
     "sphinx_design",
+    "sphinxarg.ext",
     "sphinxcontrib.bibtex",
 ]
 
