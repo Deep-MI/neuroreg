@@ -6,13 +6,13 @@ import numpy as np
 import torch
 from torch import Tensor
 
+from .init import get_ixform_centroids
+from .optimize import training_loop
+from .reg_model import RegModel
 from ..image import build_gaussian_pyramid
 from ..image.pyramid import _PYRAMID_FILTER, _smooth3d, get_pyramid_limits
 from ..transforms import LTA
 from ..transforms.matrices import matrix_sqrt_schur
-from .init import get_ixform_centroids
-from .optimize import training_loop
-from .reg_model import RegModel
 
 logger = logging.getLogger(__name__)
 
@@ -538,9 +538,122 @@ def register_gd_pyramid(
     return Mr2r
 
 
-def coreg(*args, **kwargs) -> Tensor:
-    """Public module-level alias for the GD image-registration path."""
-    return register_gd_pyramid(*args, **kwargs)
+def coreg(
+        src: str | nib.Nifti1Image,
+        trg: str | nib.Nifti1Image,
+        lta_name: str | None = None,
+        mapped_name: str | None = None,
+        return_v2v: bool = False,
+        centroid_init: bool = True,
+        symmetric: bool = True,
+        dof: int = 6,
+        n: int = 30,
+        level_iters: list[int] | tuple[int, ...] | None = None,
+        loss_name: str = "mse",
+        loss_beta: float | None = None,
+        loss_bins: int = 32,
+        optimizer: str = "adam",
+        lr: float | None = None,
+        min_voxels: int = 16,
+        max_voxels: int | None = None,
+        isotropic: bool = False,
+        device: str = "cpu",
+        trace_fn=None,
+) -> Tensor:
+    """Public gradient-descent image-registration entry point.
+
+    This is the user-facing alias for :func:`register_gd_pyramid`, the legacy
+    gradient-descent multiresolution registration path. It supports same-modality
+    and cross-modality registration through a configurable similarity loss,
+    optional isotropic resampling, and either symmetric halfway-space updates or
+    directed source-to-target optimization.
+
+    Parameters
+    ----------
+    src, trg : str or nib.Nifti1Image
+        Moving/source and fixed/target images, either as file paths or loaded
+        nibabel images.
+    lta_name : str, optional
+        If provided, write the final transform to this LTA file.
+    mapped_name : str, optional
+        If provided, write the final mapped moving image to this file.
+    return_v2v : bool, default=False
+        If ``True``, return the final voxel-to-voxel transform. Otherwise,
+        return the final RAS-to-RAS transform.
+    centroid_init : bool, default=True
+        Whether to use centroid alignment for initialization on the coarsest
+        pyramid level.
+    symmetric : bool, default=True
+        If ``True``, run the legacy halfway-space updates. If ``False``, run
+        the directed source-to-target optimization path.
+    dof : int, default=6
+        Transformation degrees of freedom used by the legacy model.
+    n : int, default=30
+        Number of optimizer iterations per pyramid level.
+    level_iters : sequence of int, optional
+        Per-level iteration budget in pyramid execution order (coarse -> fine).
+        When provided, overrides the uniform ``n`` value.
+    loss_name : str, default="mse"
+        Similarity metric - see :func:`register_level` for accepted values and
+        the meaning of ``loss_beta`` for each choice.
+    loss_beta : float, optional
+        Primary hyper-parameter for the chosen loss (see ``loss_name``).
+    loss_bins : int, default=32
+        Number of intensity histogram bins used by ``"mi"`` and ``"nmi"``.
+        Ignored for other loss functions.
+    optimizer : {"adam", "lbfgs"}, default="adam"
+        Optimizer used at each pyramid level.
+    lr : float, optional
+        Optimizer learning rate / step size forwarded to
+        :func:`register_level`. When ``None``, preserve the legacy defaults.
+    min_voxels : int, default=16
+        Minimum size constraint passed to the shared pyramid builder.
+    max_voxels : int, optional
+        Maximum allowed size of the finest pyramid level to process. When
+        ``None`` (default), include the original/full-resolution level.
+    isotropic : bool, default=False
+        If ``True``, resample both images to a common isotropic grid before
+        building the pyramid.
+    device : str, default="cpu"
+        Torch device on which to run the legacy optimization.
+    trace_fn : callable, optional
+        Optional callback invoked as ``trace_fn(event=..., **payload)``.
+        Emits ``run_start``, ``level_start``, ``iter_end``, and ``level_end``
+        events containing the current transform estimate on each pyramid level.
+
+    Returns
+    -------
+    Tensor
+        Final transform matrix. This is voxel-to-voxel when
+        ``return_v2v=True`` and RAS-to-RAS otherwise.
+
+    Raises
+    ------
+    ValueError
+        If pyramid construction yields no usable levels for either image.
+    """
+    return register_gd_pyramid(
+        src=src,
+        trg=trg,
+        lta_name=lta_name,
+        mapped_name=mapped_name,
+        return_v2v=return_v2v,
+        centroid_init=centroid_init,
+        symmetric=symmetric,
+        dof=dof,
+        n=n,
+        level_iters=level_iters,
+        loss_name=loss_name,
+        loss_beta=loss_beta,
+        loss_bins=loss_bins,
+        optimizer=optimizer,
+        lr=lr,
+        min_voxels=min_voxels,
+        max_voxels=max_voxels,
+        isotropic=isotropic,
+        device=device,
+        trace_fn=trace_fn,
+    )
 
 
 __all__ = ["register_level", "register_gd_pyramid", "coreg", "RegModel"]
