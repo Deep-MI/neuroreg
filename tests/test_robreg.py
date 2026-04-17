@@ -1,0 +1,68 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import nibabel as nib
+import numpy as np
+import pytest
+import torch
+
+from neuroreg import robreg
+
+
+def _make_blob(shape: tuple[int, int, int] = (20, 20, 20), shift: tuple[float, float, float] = (0, 0, 0)) -> np.ndarray:
+    zz, yy, xx = np.meshgrid(
+        np.arange(shape[0], dtype=np.float32),
+        np.arange(shape[1], dtype=np.float32),
+        np.arange(shape[2], dtype=np.float32),
+        indexing="ij",
+    )
+    center = (np.asarray(shape, dtype=np.float32) - 1.0) / 2.0 + np.asarray(shift, dtype=np.float32)
+    dist2 = (zz - center[0]) ** 2 + (yy - center[1]) ** 2 + (xx - center[2]) ** 2
+    return np.exp(-dist2 / 18.0).astype(np.float32)
+
+
+def _make_img(
+        shape: tuple[int, int, int] = (20, 20, 20),
+        shift: tuple[float, float, float] = (0, 0, 0),
+) -> nib.Nifti1Image:
+    affine = np.eye(4, dtype=np.float32)
+    data = _make_blob(shape, shift)
+    return nib.Nifti1Image(data, affine)
+
+
+class TestPublicRobregWrapper:
+    def test_top_level_robreg_defaults_to_symmetric(self, monkeypatch: pytest.MonkeyPatch):
+        captured: dict[str, object] = {}
+
+        def fake_register_irls_pyramid(**kwargs):
+            captured.update(kwargs)
+            return torch.eye(4), []
+
+        monkeypatch.setattr("neuroreg.imreg.robreg.register_irls_pyramid", fake_register_irls_pyramid)
+
+        img = _make_img()
+        mr2r = robreg(img, img, return_v2v=False, centroid_init=False, dof=6, nmax=1)
+
+        assert captured["symmetric"] is True
+        assert mr2r.shape == (4, 4)
+        assert torch.isfinite(mr2r).all()
+
+    def test_robreg_accepts_file_paths(self, tmp_path: Path):
+        src = _make_img()
+        trg = _make_img()
+        src_path = tmp_path / "src.nii.gz"
+        trg_path = tmp_path / "trg.nii.gz"
+        nib.save(src, src_path)
+        nib.save(trg, trg_path)
+
+        mr2r = robreg(
+            str(src_path),
+            str(trg_path),
+            return_v2v=False,
+            centroid_init=False,
+            dof=6,
+            nmax=1,
+        )
+        assert mr2r.shape == (4, 4)
+        assert torch.isfinite(mr2r).all()

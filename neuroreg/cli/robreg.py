@@ -131,13 +131,14 @@ def main(args=None) -> None:
         outliers_name=ns.outliers,
         verbose=ns.verbose or ns.debug,
     )
+    Mr2r_cpu = Mr2r.detach().cpu()
 
     # ── write LTA ───────────────────────────────────────────────────────────
     LTA.from_matrix(
-        Mr2r.numpy(), 
-        ns.mov, mov_img, 
+        Mr2r_cpu.numpy(),
+        ns.mov, mov_img,
         ns.ref, ref_img,
-        lta_type=1  # RAS-to-RAS
+        lta_type=1,  # RAS-to-RAS
     ).write(ns.out)
     logger.info("Wrote LTA: %s", ns.out)
     print(f"Transform: {ns.out}")
@@ -156,7 +157,7 @@ def main(args=None) -> None:
 
         mapped_data = map_r2r(
             mov_data,
-            Mr2r.float(),
+            Mr2r_cpu.float(),
             source_affine=mov_affine,
             target_affine=ref_affine,
             target_shape=target_shape,

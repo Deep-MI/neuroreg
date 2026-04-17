@@ -159,8 +159,9 @@ def main(args=None) -> None:
         ns.max_voxels,
     )
     v2v = coreg(mov_img, ref_img, **kwargs)
+    v2v_cpu = v2v.detach().cpu()
 
-    LTA.from_matrix(v2v.numpy(), ns.mov, cast(Any, mov_img), ns.ref, cast(Any, ref_img), lta_type=0).write(ns.out)
+    LTA.from_matrix(v2v_cpu.numpy(), ns.mov, cast(Any, mov_img), ns.ref, cast(Any, ref_img), lta_type=0).write(ns.out)
     logger.info("Wrote LTA: %s", ns.out)
     print(f"Output: {ns.out}")
 

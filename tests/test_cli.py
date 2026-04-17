@@ -9,6 +9,26 @@ from neuroreg.cli.coreg import main as coreg_main
 from neuroreg.cli.robreg import main as robreg_main
 
 
+class _TensorRequiringCpu:
+    def __init__(self, tensor: torch.Tensor):
+        self._tensor = tensor
+        self._detached = False
+        self._on_cpu = False
+
+    def detach(self):
+        self._detached = True
+        return self
+
+    def cpu(self):
+        self._on_cpu = True
+        return self
+
+    def numpy(self):
+        if not (self._detached and self._on_cpu):
+            raise RuntimeError("tensor must be detached and moved to CPU before numpy()")
+        return self._tensor.numpy()
+
+
 def _write_zero_image(path: Path) -> None:
     data = torch.zeros(8, 8, 8, dtype=torch.float32).numpy()
     nib.save(nib.Nifti1Image(data, affine=torch.eye(4).numpy()), path)
@@ -28,7 +48,7 @@ class TestRobregCli:
         def fake_register_pyramid(*args, **kwargs):
             captured["args"] = args
             captured.update(kwargs)
-            return torch.eye(4)
+            return _TensorRequiringCpu(torch.eye(4))
 
         class _DummyLTA:
             def write(self, path):
@@ -88,7 +108,7 @@ class TestCoregCli:
             nonlocal captured_args
             captured_args = args
             captured_kwargs.update(kwargs)
-            return torch.eye(4)
+            return _TensorRequiringCpu(torch.eye(4))
 
         class _DummyLTA:
             def write(self, path):
