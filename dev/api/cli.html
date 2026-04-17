@@ -247,10 +247,70 @@
         <article role="main" id="furo-main-content">
           <section id="cli-modules">
 <h1>CLI modules<a class="headerlink" href="#cli-modules" title="Link to this heading">¶</a></h1>
-<p>These are the Python modules behind the documented console commands. They are
-listed first so the code reference stays centered on the user-facing tools.</p>
+<p>These pages document the installed console commands directly from the live
+<code class="docutils literal notranslate"><span class="pre">argparse</span></code> parsers, so the Sphinx reference stays aligned with each command’s
+<code class="docutils literal notranslate"><span class="pre">--help</span></code> output.</p>
+<section id="robreg">
+<h2><code class="docutils literal notranslate"><span class="pre">robreg</span></code><a class="headerlink" href="#robreg" title="Link to this heading">¶</a></h2>
+<p><p>IRLS robust 3-D image-to-image registration.
+Uses Iteratively Reweighted Least Squares with Tukey biweights,
+closely matching FreeSurfer’s mri_robust_register algorithm.</p>
+</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">robreg</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">mov</span> <span class="n">FILE</span> <span class="o">--</span><span class="n">ref</span> <span class="n">FILE</span> <span class="o">--</span><span class="n">out</span> <span class="n">LTA</span> <span class="p">[</span><span class="o">--</span><span class="n">dof</span> <span class="p">{</span><span class="mi">6</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">nmax</span> <span class="n">N</span><span class="p">]</span>
+              <span class="p">[</span><span class="o">--</span><span class="n">sat</span> <span class="n">FLOAT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">nosym</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">noinit</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">mapped</span> <span class="n">FILE</span><span class="p">]</span>
+              <span class="p">[</span><span class="o">--</span><span class="n">outliers</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
+</pre></div>
+</div>
+<section id="neuroreg.cli.robreg-_build_parser-named-arguments">
+<h3>Named Arguments<a class="headerlink" href="#neuroreg.cli.robreg-_build_parser-named-arguments" title="Link to this heading">¶</a></h3>
+<dl class="option-list">
+<dt><kbd>--mov</kbd></dt>
+<dd><p>Moving (source) image (NIfTI or MGZ).</p>
+</dd>
+<dt><kbd>--ref</kbd></dt>
+<dd><p>Reference (target/fixed) image (NIfTI or MGZ).</p>
+</dd>
+<dt><kbd>--out</kbd></dt>
+<dd><p>Output LTA file for the recovered transformation.</p>
+</dd>
+<dt><kbd>--dof</kbd></dt>
+<dd><p>Possible choices: 6</p>
+<p>Degrees of freedom: 6=rigid. IRLS robreg currently supports rigid registration only.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">6</span></code></p>
+</dd>
+<dt><kbd>--nmax</kbd></dt>
+<dd><p>Maximum number of outer IRLS iterations per pyramid level.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">5</span></code></p>
+</dd>
+<dt><kbd>--sat</kbd></dt>
+<dd><p>Tukey biweight saturation threshold (higher = less robust).</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">6.0</span></code></p>
+</dd>
+<dt><kbd>--nosym</kbd></dt>
+<dd><p>Disable symmetric halfway-space registration and run directed registration.</p>
+</dd>
+<dt><kbd>--noinit</kbd></dt>
+<dd><p>Skip centroid-based initialization and start from identity (matches FreeSurfer –noinit).</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--mapped</kbd></dt>
+<dd><p>Save warped moving image to this file (MGZ format).</p>
+</dd>
+<dt><kbd>--outliers</kbd></dt>
+<dd><p>Save outlier map (1 - Tukey weights) to this file (MGZ format). High values indicate poorly registered regions (outliers), low values indicate well-registered regions. Use with heat colormap in freeview for visualization.</p>
+</dd>
+<dt><kbd>--verbose</kbd></dt>
+<dd><p>Enable INFO-level logging.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--debug</kbd></dt>
+<dd><p>Enable DEBUG-level logging.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+</dl>
+</section>
 <section id="module-neuroreg.cli.robreg">
-<span id="neuroreg-cli-robreg"></span><h2><code class="docutils literal notranslate"><span class="pre">neuroreg.cli.robreg</span></code><a class="headerlink" href="#module-neuroreg.cli.robreg" title="Link to this heading">¶</a></h2>
+<span id="python-module"></span><h3>Python module<a class="headerlink" href="#module-neuroreg.cli.robreg" title="Link to this heading">¶</a></h3>
 <p>Command-line interface for IRLS-backed robust registration (robreg).</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.cli.robreg.main">
@@ -264,9 +324,79 @@ listed first so the code reference stays centered on the user-facing tools.</p>
 </dd></dl>
 
 </section>
-<section id="module-neuroreg.cli.coreg">
-<span id="neuroreg-cli-coreg"></span><h2><code class="docutils literal notranslate"><span class="pre">neuroreg.cli.coreg</span></code><a class="headerlink" href="#module-neuroreg.cli.coreg" title="Link to this heading">¶</a></h2>
-<p>Command-line interface for image-based cross-modal registration (coreg).</p>
+</section>
+<section id="coreg">
+<h2><code class="docutils literal notranslate"><span class="pre">coreg</span></code><a class="headerlink" href="#coreg" title="Link to this heading">¶</a></h2>
+<p><p>Gradient-descent 3-D image-to-image registration using PyTorch optimisation.
+This is the main image-based cross-modal registration path.</p>
+</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">coreg</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">mov</span> <span class="n">FILE</span> <span class="o">--</span><span class="n">ref</span> <span class="n">FILE</span> <span class="o">--</span><span class="n">out</span> <span class="n">LTA</span> <span class="p">[</span><span class="o">--</span><span class="n">dof</span> <span class="p">{</span><span class="mi">3</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">9</span><span class="p">,</span><span class="mi">12</span><span class="p">}]</span>
+             <span class="p">[</span><span class="o">--</span><span class="n">n_iters</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">level</span><span class="o">-</span><span class="n">iters</span> <span class="n">LEVEL_ITERS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">lr</span> <span class="n">LR</span><span class="p">]</span>
+             <span class="p">[</span><span class="o">--</span><span class="nb">min</span><span class="o">-</span><span class="n">voxels</span> <span class="n">MIN_VOXELS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="nb">max</span><span class="o">-</span><span class="n">voxels</span> <span class="n">MAX_VOXELS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">nosym</span><span class="p">]</span>
+             <span class="p">[</span><span class="o">--</span><span class="n">noinit</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">isotropic</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">device</span> <span class="n">DEVICE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
+</pre></div>
+</div>
+<section id="neuroreg.cli.coreg-_build_parser-named-arguments">
+<h3>Named Arguments<a class="headerlink" href="#neuroreg.cli.coreg-_build_parser-named-arguments" title="Link to this heading">¶</a></h3>
+<dl class="option-list">
+<dt><kbd>--mov</kbd></dt>
+<dd><p>Moving (source) image (NIfTI or MGZ).</p>
+</dd>
+<dt><kbd>--ref</kbd></dt>
+<dd><p>Reference (target/fixed) image (NIfTI or MGZ).</p>
+</dd>
+<dt><kbd>--out</kbd></dt>
+<dd><p>Output LTA file for the recovered transformation.</p>
+</dd>
+<dt><kbd>--dof</kbd></dt>
+<dd><p>Possible choices: 3, 6, 9, 12</p>
+<p>Degrees of freedom: 3=translation, 6=rigid, 9=rigid+scale, 12=affine.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">6</span></code></p>
+</dd>
+<dt><kbd>--n_iters</kbd></dt>
+<dd><p>Uniform number of optimisation iterations per pyramid level.</p>
+</dd>
+<dt><kbd>--level-iters</kbd></dt>
+<dd><p>Comma-separated per-level iteration schedule in coarse-&gt;fine order. Use 0 to skip a level.</p>
+</dd>
+<dt><kbd>--lr</kbd></dt>
+<dd><p>Optimizer step size used on every executed pyramid level.</p>
+</dd>
+<dt><kbd>--min-voxels</kbd></dt>
+<dd><p>Minimum pyramid level size.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">16</span></code></p>
+</dd>
+<dt><kbd>--max-voxels</kbd></dt>
+<dd><p>Largest allowed dimension of the finest pyramid level. Omit to run up to original resolution.</p>
+</dd>
+<dt><kbd>--nosym</kbd></dt>
+<dd><p>Disable symmetric halfway-space registration and run directed registration.</p>
+</dd>
+<dt><kbd>--noinit</kbd></dt>
+<dd><p>Skip centroid-based initialization and start from identity (matches FreeSurfer –noinit).</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--isotropic</kbd></dt>
+<dd><p>Enable shared isotropic preprocessing before building the pyramid.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--device</kbd></dt>
+<dd><p>PyTorch device, e.g. ‘cpu’ or ‘cuda’.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">'cpu'</span></code></p>
+</dd>
+<dt><kbd>--verbose</kbd></dt>
+<dd><p>Enable INFO-level logging.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--debug</kbd></dt>
+<dd><p>Enable DEBUG-level logging.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+</dl>
+</section>
+<section id="id1">
+<h3>Python module<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h3>
+<p id="module-neuroreg.cli.coreg">Command-line interface for image-based cross-modal registration (coreg).</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.cli.coreg.main">
 <span class="sig-prename descclassname"><span class="pre">neuroreg.cli.coreg.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/cli/coreg.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.cli.coreg.main" title="Link to this definition">¶</a></dt>
@@ -285,9 +415,172 @@ transform in public <code class="docutils literal notranslate"><span class="pre"
 </dd></dl>
 
 </section>
-<section id="module-neuroreg.cli.bbreg">
-<span id="neuroreg-cli-bbreg"></span><h2><code class="docutils literal notranslate"><span class="pre">neuroreg.cli.bbreg</span></code><a class="headerlink" href="#module-neuroreg.cli.bbreg" title="Link to this heading">¶</a></h2>
-<p>Command-line interface for boundary-based registration (bbreg).</p>
+</section>
+<section id="bbreg">
+<h2><code class="docutils literal notranslate"><span class="pre">bbreg</span></code><a class="headerlink" href="#bbreg" title="Link to this heading">¶</a></h2>
+<p><p>Boundary-based registration of a moving image to a T1 anatomy
+using cortical surface meshes.  Analogous to FreeSurfer’s bbregister.</p>
+<dl>
+<dt>Surface input — choose ONE of the following modes:</dt><dd><ol class="upperalpha">
+<li><dl class="option-list">
+<dt><kbd><span class="option">--subject_dir</span></kbd></dt>
+<dd><p>: FreeSurfer / FastSurfer subject directory
+(surfaces and T1 reference loaded automatically)</p>
+</dd>
+</dl>
+</li>
+<li><p>–lh_surf / –rh_surf  : explicit surface file(s) + –ref</p></li>
+<li><dl class="option-list">
+<dt><kbd><span class="option">--seg</span></kbd></dt>
+<dd><p>: parcellation / aseg file; surfaces are extracted
+automatically via marching cubes (no pre-built
+surface files needed)</p>
+</dd>
+</dl>
+</li>
+</ol>
+</dd>
+</dl>
+</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">bbreg</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">mov</span> <span class="n">FILE</span> <span class="o">--</span><span class="n">out</span> <span class="n">LTA</span> <span class="p">[</span><span class="o">--</span><span class="n">subject_dir</span> <span class="n">DIR</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">ref</span> <span class="n">FILE</span><span class="p">]</span>
+             <span class="p">[</span><span class="o">--</span><span class="n">lh_surf</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">rh_surf</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">lh_thickness</span> <span class="n">FILE</span><span class="p">]</span>
+             <span class="p">[</span><span class="o">--</span><span class="n">rh_thickness</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">seg</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">seg_smooth_sigma</span> <span class="n">SIGMA</span><span class="p">]</span>
+             <span class="p">[</span><span class="o">--</span><span class="n">seg_mc_level</span> <span class="n">LEVEL</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">seg_smooth_iters</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">dof</span> <span class="p">{</span><span class="mi">6</span><span class="p">,</span><span class="mi">9</span><span class="p">,</span><span class="mi">12</span><span class="p">}]</span>
+             <span class="p">[</span><span class="o">--</span><span class="n">contrast</span> <span class="p">{</span><span class="n">t1</span><span class="p">,</span><span class="n">t2</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">cost</span> <span class="p">{</span><span class="n">contrast</span><span class="p">,</span><span class="n">gradient</span><span class="p">,</span><span class="n">both</span><span class="p">}]</span>
+             <span class="p">[</span><span class="o">--</span><span class="n">wm_proj_abs</span> <span class="n">MM</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">gm_proj_frac</span> <span class="n">FRAC</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">slope</span> <span class="n">SLOPE</span><span class="p">]</span>
+             <span class="p">[</span><span class="o">--</span><span class="n">gradient_weight</span> <span class="n">GRADIENT_WEIGHT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">n_iters</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">lr</span> <span class="n">LR</span><span class="p">]</span>
+             <span class="p">[</span><span class="o">--</span><span class="n">subsample</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">lta</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">header</span><span class="p">]</span>
+             <span class="p">[</span><span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">coreg</span><span class="o">-</span><span class="n">ref</span><span class="o">-</span><span class="n">mask</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">device</span> <span class="n">DEVICE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
+</pre></div>
+</div>
+<section id="neuroreg.cli.bbreg-_build_parser-named-arguments">
+<h3>Named Arguments<a class="headerlink" href="#neuroreg.cli.bbreg-_build_parser-named-arguments" title="Link to this heading">¶</a></h3>
+<dl class="option-list">
+<dt><kbd>--mov</kbd></dt>
+<dd><p>Moving image to register (e.g. fMRI or T2, NIfTI or MGZ).</p>
+</dd>
+<dt><kbd>--out</kbd></dt>
+<dd><p>Output LTA file for the recovered transformation.</p>
+</dd>
+<dt><kbd>--dof</kbd></dt>
+<dd><p>Possible choices: 6, 9, 12</p>
+<p>Degrees of freedom: 6=rigid, 9=rigid+scale, 12=affine.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">6</span></code></p>
+</dd>
+<dt><kbd>--contrast</kbd></dt>
+<dd><p>Possible choices: t1, t2</p>
+<p>Tissue contrast: ‘t1’ (WM&gt;GM) or ‘t2’ (GM&gt;WM). Auto-detected from the image when not specified.</p>
+</dd>
+<dt><kbd>--cost</kbd></dt>
+<dd><p>Possible choices: contrast, gradient, both</p>
+<p>BBR cost term.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">'contrast'</span></code></p>
+</dd>
+<dt><kbd>--wm_proj_abs</kbd></dt>
+<dd><p>Absolute WM projection depth (mm).</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">1.4</span></code></p>
+</dd>
+<dt><kbd>--gm_proj_frac</kbd></dt>
+<dd><p>GM projection fraction of cortical thickness.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.5</span></code></p>
+</dd>
+<dt><kbd>--slope</kbd></dt>
+<dd><p>Slope of the BBR sigmoid cost function.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.5</span></code></p>
+</dd>
+<dt><kbd>--gradient_weight</kbd></dt>
+<dd><p>Weight for gradient cost term when –cost=both.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.0</span></code></p>
+</dd>
+<dt><kbd>--n_iters</kbd></dt>
+<dd><p>Number of RMSprop optimisation iterations.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">200</span></code></p>
+</dd>
+<dt><kbd>--lr</kbd></dt>
+<dd><p>Optimiser learning rate.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.005</span></code></p>
+</dd>
+<dt><kbd>--subsample</kbd></dt>
+<dd><p>Use every N-th surface vertex (1 = all).</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">2</span></code></p>
+</dd>
+<dt><kbd>--init-lta, --init_lta</kbd></dt>
+<dd><p>Initialise registration from an existing LTA file (e.g. from a prior robreg run, or a previous bbreg pass).</p>
+</dd>
+<dt><kbd>--init-header</kbd></dt>
+<dd><p>Assume that the geometry information in the cross-modal and anatomical are sufficient to get a close voxel-to-voxel registration. This usually is only the case if they were acquired in the same session.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--no-coreg-ref-mask</kbd></dt>
+<dd><p>Do not use aparc+aseg/aseg (or the provided segmentation) as a reference mask for the coarse NMI prealignment stage.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--device</kbd></dt>
+<dd><p>PyTorch device, e.g. ‘cpu’ or ‘cuda’.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">'cpu'</span></code></p>
+</dd>
+<dt><kbd>--verbose</kbd></dt>
+<dd><p>Enable INFO-level logging.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--debug</kbd></dt>
+<dd><p>Enable DEBUG-level logging.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+</dl>
+</section>
+<section id="neuroreg.cli.bbreg-_build_parser-mode-a-–-freesurfer-subject-directory">
+<h3>Mode A – FreeSurfer subject directory<a class="headerlink" href="#neuroreg.cli.bbreg-_build_parser-mode-a-–-freesurfer-subject-directory" title="Link to this heading">¶</a></h3>
+<dl class="option-list">
+<dt><kbd>--subject_dir</kbd></dt>
+<dd><p>Subject directory containing surf/lh.white, surf/rh.white, and mri/orig.mgz.</p>
+</dd>
+</dl>
+</section>
+<section id="neuroreg.cli.bbreg-_build_parser-mode-b-–-explicit-surface-files">
+<h3>Mode B – explicit surface files<a class="headerlink" href="#neuroreg.cli.bbreg-_build_parser-mode-b-–-explicit-surface-files" title="Link to this heading">¶</a></h3>
+<dl class="option-list">
+<dt><kbd>--ref</kbd></dt>
+<dd><p>Reference anatomical intensity image. Required for Mode B (explicit surfaces). Optional for Mode C (–seg) to drive coarse NMI prealignment.</p>
+</dd>
+<dt><kbd>--lh_surf</kbd></dt>
+<dd><p>Left-hemisphere white surface (e.g. surf/lh.white).</p>
+</dd>
+<dt><kbd>--rh_surf</kbd></dt>
+<dd><p>Right-hemisphere white surface (e.g. surf/rh.white).</p>
+</dd>
+<dt><kbd>--lh_thickness</kbd></dt>
+<dd><p>Left-hemisphere cortical thickness file.</p>
+</dd>
+<dt><kbd>--rh_thickness</kbd></dt>
+<dd><p>Right-hemisphere cortical thickness file.</p>
+</dd>
+</dl>
+</section>
+<section id="neuroreg.cli.bbreg-_build_parser-mode-c-–-segmentation-(aparc+aseg-/-aseg)">
+<h3>Mode C – segmentation (aparc+aseg / aseg)<a class="headerlink" href="#neuroreg.cli.bbreg-_build_parser-mode-c-–-segmentation-(aparc+aseg-/-aseg)" title="Link to this heading">¶</a></h3>
+<p>White surfaces are extracted on-the-fly via marching cubes. No pre-built surface files are needed and the segmentation header provides the target reference geometry.</p>
+<dl class="option-list">
+<dt><kbd>--seg</kbd></dt>
+<dd><p>Parcellation file (aparc+aseg.mgz, aseg.mgz, or NIfTI).</p>
+</dd>
+<dt><kbd>--seg_smooth_sigma</kbd></dt>
+<dd><p>Gaussian pre-blur sigma (voxels) before marching cubes. Default: 0.5.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.5</span></code></p>
+</dd>
+<dt><kbd>--seg_mc_level</kbd></dt>
+<dd><p>Marching-cubes iso-level. Default: 0.45.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.45</span></code></p>
+</dd>
+<dt><kbd>--seg_smooth_iters</kbd></dt>
+<dd><p>Taubin smoothing iterations after marching cubes. Default: 50.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">50</span></code></p>
+</dd>
+</dl>
+</section>
+<section id="id2">
+<h3>Python module<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
+<p id="module-neuroreg.cli.bbreg">Command-line interface for boundary-based registration (bbreg).</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.cli.bbreg.main">
 <span class="sig-prename descclassname"><span class="pre">neuroreg.cli.bbreg.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/cli/bbreg.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.cli.bbreg.main" title="Link to this definition">¶</a></dt>
@@ -304,9 +597,269 @@ transform direction.</p>
 </dd></dl>
 
 </section>
-<section id="module-neuroreg.cli.lta">
-<span id="neuroreg-cli-lta"></span><h2><code class="docutils literal notranslate"><span class="pre">neuroreg.cli.lta</span></code><a class="headerlink" href="#module-neuroreg.cli.lta" title="Link to this heading">¶</a></h2>
-<p>Unified LTA transform manipulation CLI.</p>
+</section>
+<section id="lta">
+<h2><code class="docutils literal notranslate"><span class="pre">lta</span></code><a class="headerlink" href="#lta" title="Link to this heading">¶</a></h2>
+<p><p>LTA transform manipulation utilities.</p>
+</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">lta</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="n">COMMAND</span> <span class="o">...</span>
+</pre></div>
+</div>
+<section id="neuroreg.cli.lta-_build_parser-positional-arguments">
+<h3>Positional Arguments<a class="headerlink" href="#neuroreg.cli.lta-_build_parser-positional-arguments" title="Link to this heading">¶</a></h3>
+<dl class="option-list">
+<dt><kbd>COMMAND</kbd></dt>
+<dd><p>Possible choices: diff, invert, concat</p>
+</dd>
+</dl>
+</section>
+<section id="Sub-commands">
+<h3>Sub-commands<a class="headerlink" href="#Sub-commands" title="Link to this heading">¶</a></h3>
+<section id="diff">
+<h4>diff<a class="headerlink" href="#diff" title="Link to this heading">¶</a></h4>
+<p>Compute distance metrics between two LTA transforms, or between
+one transform and identity.</p>
+<p>All metrics operate on the RAS-to-RAS representation of the stored
+transforms (vox-to-vox LTAs are converted automatically).</p>
+<dl class="simple">
+<dt>Distance types:</dt><dd><dl class="simple">
+<dt>1   Rigid transform distance  sqrt(||log R||² + ||T||²)</dt><dd><p>D = inv(M1) &#64; M2  (or M1 vs identity)
+R = upper-left 3×3 rotation block of D
+T = upper-right 3×1 translation column of D
+Units: mixed (mm and rad added in quadrature)</p>
+</dd>
+<dt>2   Affine RMS distance (Jenkinson 1999)  [default]</dt><dd><p>sqrt(r²/5 · Tr(AᵀA) + ‖T‖²),  D = M1 − M2  (or M1 − I)
+A = upper-left 3×3 of D; r = –radius (default 100 mm)
+T = upper-right 3×1 translation column of D
+Units: mm (RMS displacement over a sphere of radius r)</p>
+</dd>
+<dt>3   8-corner mean displacement (mm, image-specific)</dt><dd><p>One transform:  mean‖M1·c − c‖ for each src corner c in RAS.
+Two transforms: mean‖M1·c − M2·c‖  (same src corners).</p>
+</dd>
+<dt>4   Max displacement on a sphere of radius r (mm, image-independent)</dt><dd><p>Md = inv(M1) &#64; M2  (or M1 vs identity)
+displacement(p) = ‖Md·p − p‖  over ~1600 sphere samples</p>
+</dd>
+<dt>5   Determinant  det(M1)  (or det(M1 &#64; M2) = det(M1)*det(M2) when M2 given)</dt><dd><p>Uses matrix concatenation (not the difference); det is order-independent.</p>
+</dd>
+<dt>7   Polar decomposition of M1 (or M1 &#64; M2, i.e. concatenation):</dt><dd><p>prints Rot, RotVec, RotAngle, Shear, Scales, Trans, abs(Trans), det</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">lta</span> <span class="n">diff</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">dist</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">7</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">radius</span> <span class="n">MM</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">normdiv</span> <span class="n">FLOAT</span><span class="p">]</span>
+         <span class="p">[</span><span class="o">--</span><span class="n">invert1</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">invert2</span><span class="p">]</span>
+         <span class="n">LTA1</span> <span class="p">[</span><span class="n">LTA2</span><span class="p">]</span>
+</pre></div>
+</div>
+<section id="positional-arguments">
+<h5>Positional Arguments<a class="headerlink" href="#positional-arguments" title="Link to this heading">¶</a></h5>
+<dl class="option-list">
+<dt><kbd>LTA1</kbd></dt>
+<dd><p>First (or only) LTA transform file.</p>
+</dd>
+<dt><kbd>LTA2</kbd></dt>
+<dd><p>Second LTA file.  Omit to compare LTA1 against identity.</p>
+</dd>
+</dl>
+</section>
+<section id="named-arguments">
+<h5>Named Arguments<a class="headerlink" href="#named-arguments" title="Link to this heading">¶</a></h5>
+<dl class="option-list">
+<dt><kbd>--dist</kbd></dt>
+<dd><p>Possible choices: 1, 2, 3, 4, 5, 7</p>
+<p>Distance type (default: 2).</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">2</span></code></p>
+</dd>
+<dt><kbd>--radius</kbd></dt>
+<dd><p>Sphere / RMS radius in mm (dist 2 and 4, default: 100).</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">100.0</span></code></p>
+</dd>
+<dt><kbd>--normdiv</kbd></dt>
+<dd><p>Divide the final distance by this value (must be &gt; 0, default: 1).</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">1.0</span></code></p>
+</dd>
+<dt><kbd>--invert1</kbd></dt>
+<dd><p>Invert the first transform before comparison.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--invert2</kbd></dt>
+<dd><p>Invert the second transform before comparison.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+</dl>
+</section>
+</section>
+<section id="invert">
+<h4>invert<a class="headerlink" href="#invert" title="Link to this heading">¶</a></h4>
+<p>Invert a FreeSurfer LTA transform.</p>
+<p>The output is always stored as LINEAR_RAS_TO_RAS (type 1)
+with src and dst geometry blocks swapped.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">lta</span> <span class="n">invert</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="n">INPUT</span> <span class="n">OUTPUT</span>
+</pre></div>
+</div>
+<section id="positional-arguments_repeat1">
+<h5>Positional Arguments<a class="headerlink" href="#positional-arguments_repeat1" title="Link to this heading">¶</a></h5>
+<dl class="option-list">
+<dt><kbd>INPUT</kbd></dt>
+<dd><p>Input LTA file.</p>
+</dd>
+<dt><kbd>OUTPUT</kbd></dt>
+<dd><p>Output (inverted) LTA file.</p>
+</dd>
+</dl>
+</section>
+</section>
+<section id="concat">
+<h4>concat<a class="headerlink" href="#concat" title="Link to this heading">¶</a></h4>
+<p>Concatenate two LTA transforms.</p>
+<p>LTA1 maps A → B and LTA2 maps B → C.
+The output maps A → C with matrix  M_LTA2 &#64; M_LTA1.
+src geometry is taken from LTA1; dst geometry from LTA2.</p>
+<p>Equivalent to FreeSurfer’s mri_concatenate_lta.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">lta</span> <span class="n">concat</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="n">LTA1</span> <span class="n">LTA2</span> <span class="n">OUTPUT</span>
+</pre></div>
+</div>
+<section id="positional-arguments_repeat2">
+<h5>Positional Arguments<a class="headerlink" href="#positional-arguments_repeat2" title="Link to this heading">¶</a></h5>
+<dl class="option-list">
+<dt><kbd>LTA1</kbd></dt>
+<dd><p>First transform  (A → B).</p>
+</dd>
+<dt><kbd>LTA2</kbd></dt>
+<dd><p>Second transform (B → C).</p>
+</dd>
+<dt><kbd>OUTPUT</kbd></dt>
+<dd><p>Output LTA file  (A → C).</p>
+</dd>
+</dl>
+</section>
+</section>
+</section>
+<section id="lta-diff">
+<h3><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">diff</span></code><a class="headerlink" href="#lta-diff" title="Link to this heading">¶</a></h3>
+<p><p>Compute distance metrics between two LTA transforms, or between
+one transform and identity.</p>
+<p>All metrics operate on the RAS-to-RAS representation of the stored
+transforms (vox-to-vox LTAs are converted automatically).</p>
+<dl class="simple">
+<dt>Distance types:</dt><dd><dl class="simple">
+<dt>1   Rigid transform distance  sqrt(||log R||² + ||T||²)</dt><dd><p>D = inv(M1) &#64; M2  (or M1 vs identity)
+R = upper-left 3×3 rotation block of D
+T = upper-right 3×1 translation column of D
+Units: mixed (mm and rad added in quadrature)</p>
+</dd>
+<dt>2   Affine RMS distance (Jenkinson 1999)  [default]</dt><dd><p>sqrt(r²/5 · Tr(AᵀA) + ‖T‖²),  D = M1 − M2  (or M1 − I)
+A = upper-left 3×3 of D; r = –radius (default 100 mm)
+T = upper-right 3×1 translation column of D
+Units: mm (RMS displacement over a sphere of radius r)</p>
+</dd>
+<dt>3   8-corner mean displacement (mm, image-specific)</dt><dd><p>One transform:  mean‖M1·c − c‖ for each src corner c in RAS.
+Two transforms: mean‖M1·c − M2·c‖  (same src corners).</p>
+</dd>
+<dt>4   Max displacement on a sphere of radius r (mm, image-independent)</dt><dd><p>Md = inv(M1) &#64; M2  (or M1 vs identity)
+displacement(p) = ‖Md·p − p‖  over ~1600 sphere samples</p>
+</dd>
+<dt>5   Determinant  det(M1)  (or det(M1 &#64; M2) = det(M1)*det(M2) when M2 given)</dt><dd><p>Uses matrix concatenation (not the difference); det is order-independent.</p>
+</dd>
+<dt>7   Polar decomposition of M1 (or M1 &#64; M2, i.e. concatenation):</dt><dd><p>prints Rot, RotVec, RotAngle, Shear, Scales, Trans, abs(Trans), det</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">lta</span> <span class="n">diff</span> <span class="n">diff</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">dist</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">7</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">radius</span> <span class="n">MM</span><span class="p">]</span>
+                     <span class="p">[</span><span class="o">--</span><span class="n">normdiv</span> <span class="n">FLOAT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">invert1</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">invert2</span><span class="p">]</span>
+                     <span class="n">LTA1</span> <span class="p">[</span><span class="n">LTA2</span><span class="p">]</span>
+</pre></div>
+</div>
+<section id="neuroreg.cli.lta-_build_parser-positional-arguments">
+<h4>Positional Arguments<a class="headerlink" href="#neuroreg.cli.lta-_build_parser-positional-arguments" title="Link to this heading">¶</a></h4>
+<dl class="option-list">
+<dt><kbd>LTA1</kbd></dt>
+<dd><p>First (or only) LTA transform file.</p>
+</dd>
+<dt><kbd>LTA2</kbd></dt>
+<dd><p>Second LTA file.  Omit to compare LTA1 against identity.</p>
+</dd>
+</dl>
+</section>
+<section id="neuroreg.cli.lta-_build_parser-named-arguments">
+<h4>Named Arguments<a class="headerlink" href="#neuroreg.cli.lta-_build_parser-named-arguments" title="Link to this heading">¶</a></h4>
+<dl class="option-list">
+<dt><kbd>--dist</kbd></dt>
+<dd><p>Possible choices: 1, 2, 3, 4, 5, 7</p>
+<p>Distance type (default: 2).</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">2</span></code></p>
+</dd>
+<dt><kbd>--radius</kbd></dt>
+<dd><p>Sphere / RMS radius in mm (dist 2 and 4, default: 100).</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">100.0</span></code></p>
+</dd>
+<dt><kbd>--normdiv</kbd></dt>
+<dd><p>Divide the final distance by this value (must be &gt; 0, default: 1).</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">1.0</span></code></p>
+</dd>
+<dt><kbd>--invert1</kbd></dt>
+<dd><p>Invert the first transform before comparison.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--invert2</kbd></dt>
+<dd><p>Invert the second transform before comparison.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+</dl>
+</section>
+</section>
+<section id="lta-invert">
+<h3><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">invert</span></code><a class="headerlink" href="#lta-invert" title="Link to this heading">¶</a></h3>
+<p><p>Invert a FreeSurfer LTA transform.</p>
+<p>The output is always stored as LINEAR_RAS_TO_RAS (type 1)
+with src and dst geometry blocks swapped.</p>
+</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">lta</span> <span class="n">invert</span> <span class="n">invert</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="n">INPUT</span> <span class="n">OUTPUT</span>
+</pre></div>
+</div>
+<section id="neuroreg.cli.lta-_build_parser-positional-arguments">
+<h4>Positional Arguments<a class="headerlink" href="#neuroreg.cli.lta-_build_parser-positional-arguments" title="Link to this heading">¶</a></h4>
+<dl class="option-list">
+<dt><kbd>INPUT</kbd></dt>
+<dd><p>Input LTA file.</p>
+</dd>
+<dt><kbd>OUTPUT</kbd></dt>
+<dd><p>Output (inverted) LTA file.</p>
+</dd>
+</dl>
+</section>
+</section>
+<section id="lta-concat">
+<h3><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">concat</span></code><a class="headerlink" href="#lta-concat" title="Link to this heading">¶</a></h3>
+<p><p>Concatenate two LTA transforms.</p>
+<p>LTA1 maps A → B and LTA2 maps B → C.
+The output maps A → C with matrix  M_LTA2 &#64; M_LTA1.
+src geometry is taken from LTA1; dst geometry from LTA2.</p>
+<p>Equivalent to FreeSurfer’s mri_concatenate_lta.</p>
+</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">lta</span> <span class="n">concat</span> <span class="n">concat</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="n">LTA1</span> <span class="n">LTA2</span> <span class="n">OUTPUT</span>
+</pre></div>
+</div>
+<section id="neuroreg.cli.lta-_build_parser-positional-arguments">
+<h4>Positional Arguments<a class="headerlink" href="#neuroreg.cli.lta-_build_parser-positional-arguments" title="Link to this heading">¶</a></h4>
+<dl class="option-list">
+<dt><kbd>LTA1</kbd></dt>
+<dd><p>First transform  (A → B).</p>
+</dd>
+<dt><kbd>LTA2</kbd></dt>
+<dd><p>Second transform (B → C).</p>
+</dd>
+<dt><kbd>OUTPUT</kbd></dt>
+<dd><p>Output LTA file  (A → C).</p>
+</dd>
+</dl>
+</section>
+</section>
+<section id="id3">
+<h3>Python module<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
+<p id="module-neuroreg.cli.lta">Unified LTA transform manipulation CLI.</p>
 <p>Available subcommands are <code class="docutils literal notranslate"><span class="pre">diff</span></code> to compare transforms, <code class="docutils literal notranslate"><span class="pre">invert</span></code> to invert
 an LTA, and <code class="docutils literal notranslate"><span class="pre">concat</span></code> to chain two LTAs. Run <code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">--help</span></code> or
 <code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">&lt;subcommand&gt;</span> <span class="pre">--help</span></code> for the full command syntax.</p>
@@ -322,9 +875,26 @@ an LTA, and <code class="docutils literal notranslate"><span class="pre">concat<
 </dd></dl>
 
 </section>
-<section id="module-neuroreg.cli.sys_info">
-<span id="neuroreg-cli-sys-info"></span><h2><code class="docutils literal notranslate"><span class="pre">neuroreg.cli.sys_info</span></code><a class="headerlink" href="#module-neuroreg.cli.sys_info" title="Link to this heading">¶</a></h2>
-<dl class="py function">
+</section>
+<section id="neuroreg-sys-info">
+<h2><code class="docutils literal notranslate"><span class="pre">neuroreg-sys_info</span></code><a class="headerlink" href="#neuroreg-sys-info" title="Link to this heading">¶</a></h2>
+<p><p>Display dependency and runtime information for neuroreg.</p>
+</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">neuroreg</span><span class="o">-</span><span class="n">sys_info</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">developer</span><span class="p">]</span>
+</pre></div>
+</div>
+<section id="neuroreg.cli.sys_info-_build_parser-named-arguments">
+<h3>Named Arguments<a class="headerlink" href="#neuroreg.cli.sys_info-_build_parser-named-arguments" title="Link to this heading">¶</a></h3>
+<dl class="option-list">
+<dt><kbd>--developer</kbd></dt>
+<dd><p>Display information for optional dependencies.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+</dl>
+</section>
+<section id="id4">
+<h3>Python module<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h3>
+<span class="target" id="module-neuroreg.cli.sys_info"></span><dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.cli.sys_info.main">
 <span class="sig-prename descclassname"><span class="pre">neuroreg.cli.sys_info.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/cli/sys_info.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.cli.sys_info.main" title="Link to this definition">¶</a></dt>
 <dd><p>Run the <code class="docutils literal notranslate"><span class="pre">neuroreg-sys_info</span></code> command.</p>
@@ -346,6 +916,7 @@ an LTA, and <code class="docutils literal notranslate"><span class="pre">concat<
 </dl>
 </dd></dl>
 
+</section>
 </section>
 </section>
 
@@ -405,25 +976,77 @@ an LTA, and <code class="docutils literal notranslate"><span class="pre">concat<
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">CLI modules</a><ul>
-<li><a class="reference internal" href="#module-neuroreg.cli.robreg"><code class="docutils literal notranslate"><span class="pre">neuroreg.cli.robreg</span></code></a><ul>
+<li><a class="reference internal" href="#robreg"><code class="docutils literal notranslate"><span class="pre">robreg</span></code></a><ul>
+<li><a class="reference internal" href="#neuroreg.cli.robreg-_build_parser-named-arguments">Named Arguments</a></li>
+<li><a class="reference internal" href="#module-neuroreg.cli.robreg">Python module</a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.robreg.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#module-neuroreg.cli.coreg"><code class="docutils literal notranslate"><span class="pre">neuroreg.cli.coreg</span></code></a><ul>
+</ul>
+</li>
+<li><a class="reference internal" href="#coreg"><code class="docutils literal notranslate"><span class="pre">coreg</span></code></a><ul>
+<li><a class="reference internal" href="#neuroreg.cli.coreg-_build_parser-named-arguments">Named Arguments</a></li>
+<li><a class="reference internal" href="#id1">Python module</a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.coreg.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#module-neuroreg.cli.bbreg"><code class="docutils literal notranslate"><span class="pre">neuroreg.cli.bbreg</span></code></a><ul>
+</ul>
+</li>
+<li><a class="reference internal" href="#bbreg"><code class="docutils literal notranslate"><span class="pre">bbreg</span></code></a><ul>
+<li><a class="reference internal" href="#neuroreg.cli.bbreg-_build_parser-named-arguments">Named Arguments</a></li>
+<li><a class="reference internal" href="#neuroreg.cli.bbreg-_build_parser-mode-a-–-freesurfer-subject-directory">Mode A – FreeSurfer subject directory</a></li>
+<li><a class="reference internal" href="#neuroreg.cli.bbreg-_build_parser-mode-b-–-explicit-surface-files">Mode B – explicit surface files</a></li>
+<li><a class="reference internal" href="#neuroreg.cli.bbreg-_build_parser-mode-c-–-segmentation-(aparc+aseg-/-aseg)">Mode C – segmentation (aparc+aseg / aseg)</a></li>
+<li><a class="reference internal" href="#id2">Python module</a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.bbreg.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#module-neuroreg.cli.lta"><code class="docutils literal notranslate"><span class="pre">neuroreg.cli.lta</span></code></a><ul>
+</ul>
+</li>
+<li><a class="reference internal" href="#lta"><code class="docutils literal notranslate"><span class="pre">lta</span></code></a><ul>
+<li><a class="reference internal" href="#neuroreg.cli.lta-_build_parser-positional-arguments">Positional Arguments</a></li>
+<li><a class="reference internal" href="#Sub-commands">Sub-commands</a><ul>
+<li><a class="reference internal" href="#diff">diff</a><ul>
+<li><a class="reference internal" href="#positional-arguments">Positional Arguments</a></li>
+<li><a class="reference internal" href="#named-arguments">Named Arguments</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#invert">invert</a><ul>
+<li><a class="reference internal" href="#positional-arguments_repeat1">Positional Arguments</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#concat">concat</a><ul>
+<li><a class="reference internal" href="#positional-arguments_repeat2">Positional Arguments</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#lta-diff"><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">diff</span></code></a><ul>
+<li><a class="reference internal" href="#neuroreg.cli.lta-_build_parser-positional-arguments">Positional Arguments</a></li>
+<li><a class="reference internal" href="#neuroreg.cli.lta-_build_parser-named-arguments">Named Arguments</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#lta-invert"><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">invert</span></code></a><ul>
+<li><a class="reference internal" href="#neuroreg.cli.lta-_build_parser-positional-arguments">Positional Arguments</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#lta-concat"><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">concat</span></code></a><ul>
+<li><a class="reference internal" href="#neuroreg.cli.lta-_build_parser-positional-arguments">Positional Arguments</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#id3">Python module</a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.lta.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#module-neuroreg.cli.sys_info"><code class="docutils literal notranslate"><span class="pre">neuroreg.cli.sys_info</span></code></a><ul>
+</ul>
+</li>
+<li><a class="reference internal" href="#neuroreg-sys-info"><code class="docutils literal notranslate"><span class="pre">neuroreg-sys_info</span></code></a><ul>
+<li><a class="reference internal" href="#neuroreg.cli.sys_info-_build_parser-named-arguments">Named Arguments</a></li>
+<li><a class="reference internal" href="#id4">Python module</a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.sys_info.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.cli.sys_info.run"><code class="docutils literal notranslate"><span class="pre">run()</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>

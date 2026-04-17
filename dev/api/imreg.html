@@ -534,9 +534,104 @@ events containing the current transform estimate on each pyramid level.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.imreg.coreg.coreg">
-<span class="sig-prename descclassname"><span class="pre">neuroreg.imreg.coreg.</span></span><span class="sig-name descname"><span class="pre">coreg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/imreg/coreg.html#coreg"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.imreg.coreg.coreg" title="Link to this definition">¶</a></dt>
-<dd><p>Public module-level alias for the GD image-registration path.</p>
+<span class="sig-prename descclassname"><span class="pre">neuroreg.imreg.coreg.</span></span><span class="sig-name descname"><span class="pre">coreg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lta_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mapped_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_v2v</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">centroid_init</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symmetric</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dof</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">level_iters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loss_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'mse'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loss_beta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loss_bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'adam'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_voxels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">16</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_voxels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">isotropic</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trace_fn</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/imreg/coreg.html#coreg"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.imreg.coreg.coreg" title="Link to this definition">¶</a></dt>
+<dd><p>Public gradient-descent image-registration entry point.</p>
+<p>This is the user-facing alias for <a class="reference internal" href="#neuroreg.imreg.coreg.register_gd_pyramid" title="neuroreg.imreg.coreg.register_gd_pyramid"><code class="xref py py-func docutils literal notranslate"><span class="pre">register_gd_pyramid()</span></code></a>, the legacy
+gradient-descent multiresolution registration path. It supports same-modality
+and cross-modality registration through a configurable similarity loss,
+optional isotropic resampling, and either symmetric halfway-space updates or
+directed source-to-target optimization.</p>
 <dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>src, trg</strong><span class="classifier">str or nib.Nifti1Image</span></dt><dd><p>Moving/source and fixed/target images, either as file paths or loaded
+nibabel images.</p>
+</dd>
+<dt><strong>lta_name</strong><span class="classifier">str, optional</span></dt><dd><p>If provided, write the final transform to this LTA file.</p>
+</dd>
+<dt><strong>mapped_name</strong><span class="classifier">str, optional</span></dt><dd><p>If provided, write the final mapped moving image to this file.</p>
+</dd>
+<dt><strong>return_v2v</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, return the final voxel-to-voxel transform. Otherwise,
+return the final RAS-to-RAS transform.</p>
+</dd>
+<dt><strong>centroid_init</strong><span class="classifier">bool, default=True</span></dt><dd><p>Whether to use centroid alignment for initialization on the coarsest
+pyramid level.</p>
+</dd>
+<dt><strong>symmetric</strong><span class="classifier">bool, default=True</span></dt><dd><p>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, run the legacy halfway-space updates. If <code class="docutils literal notranslate"><span class="pre">False</span></code>, run
+the directed source-to-target optimization path.</p>
+</dd>
+<dt><strong>dof</strong><span class="classifier">int, default=6</span></dt><dd><p>Transformation degrees of freedom used by the legacy model.</p>
+</dd>
+<dt><strong>n</strong><span class="classifier">int, default=30</span></dt><dd><p>Number of optimizer iterations per pyramid level.</p>
+</dd>
+<dt><strong>level_iters</strong><span class="classifier">sequence of int, optional</span></dt><dd><p>Per-level iteration budget in pyramid execution order (coarse -&gt; fine).
+When provided, overrides the uniform <code class="docutils literal notranslate"><span class="pre">n</span></code> value.</p>
+</dd>
+<dt><strong>loss_name</strong><span class="classifier">str, default=”mse”</span></dt><dd><p>Similarity metric - see <code class="xref py py-func docutils literal notranslate"><span class="pre">register_level()</span></code> for accepted values and
+the meaning of <code class="docutils literal notranslate"><span class="pre">loss_beta</span></code> for each choice.</p>
+</dd>
+<dt><strong>loss_beta</strong><span class="classifier">float, optional</span></dt><dd><p>Primary hyper-parameter for the chosen loss (see <code class="docutils literal notranslate"><span class="pre">loss_name</span></code>).</p>
+</dd>
+<dt><strong>loss_bins</strong><span class="classifier">int, default=32</span></dt><dd><p>Number of intensity histogram bins used by <code class="docutils literal notranslate"><span class="pre">&quot;mi&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;nmi&quot;</span></code>.
+Ignored for other loss functions.</p>
+</dd>
+<dt><strong>optimizer</strong><span class="classifier">{“adam”, “lbfgs”}, default=”adam”</span></dt><dd><p>Optimizer used at each pyramid level.</p>
+</dd>
+<dt><strong>lr</strong><span class="classifier">float, optional</span></dt><dd><p>Optimizer learning rate / step size forwarded to
+<code class="xref py py-func docutils literal notranslate"><span class="pre">register_level()</span></code>. When <code class="docutils literal notranslate"><span class="pre">None</span></code>, preserve the legacy defaults.</p>
+</dd>
+<dt><strong>min_voxels</strong><span class="classifier">int, default=16</span></dt><dd><p>Minimum size constraint passed to the shared pyramid builder.</p>
+</dd>
+<dt><strong>max_voxels</strong><span class="classifier">int, optional</span></dt><dd><p>Maximum allowed size of the finest pyramid level to process. When
+<code class="docutils literal notranslate"><span class="pre">None</span></code> (default), include the original/full-resolution level.</p>
+</dd>
+<dt><strong>isotropic</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, resample both images to a common isotropic grid before
+building the pyramid.</p>
+</dd>
+<dt><strong>device</strong><span class="classifier">str, default=”cpu”</span></dt><dd><p>Torch device on which to run the legacy optimization.</p>
+</dd>
+<dt><strong>trace_fn</strong><span class="classifier">callable, optional</span></dt><dd><p>Optional callback invoked as <code class="docutils literal notranslate"><span class="pre">trace_fn(event=...,</span> <span class="pre">**payload)</span></code>.
+Emits <code class="docutils literal notranslate"><span class="pre">run_start</span></code>, <code class="docutils literal notranslate"><span class="pre">level_start</span></code>, <code class="docutils literal notranslate"><span class="pre">iter_end</span></code>, and <code class="docutils literal notranslate"><span class="pre">level_end</span></code>
+events containing the current transform estimate on each pyramid level.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>Tensor</dt><dd><p>Final transform matrix. This is voxel-to-voxel when
+<code class="docutils literal notranslate"><span class="pre">return_v2v=True</span></code> and RAS-to-RAS otherwise.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>ValueError</dt><dd><p>If pyramid construction yields no usable levels for either image.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>src</strong> (<em>str</em><em> | </em><em>Nifti1Image</em>)</p></li>
+<li><p><strong>trg</strong> (<em>str</em><em> | </em><em>Nifti1Image</em>)</p></li>
+<li><p><strong>lta_name</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>mapped_name</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>return_v2v</strong> (<em>bool</em>)</p></li>
+<li><p><strong>centroid_init</strong> (<em>bool</em>)</p></li>
+<li><p><strong>symmetric</strong> (<em>bool</em>)</p></li>
+<li><p><strong>dof</strong> (<em>int</em>)</p></li>
+<li><p><strong>n</strong> (<em>int</em>)</p></li>
+<li><p><strong>level_iters</strong> (<em>list</em><em>[</em><em>int</em><em>] </em><em>| </em><em>tuple</em><em>[</em><em>int</em><em>, </em><em>...</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>loss_name</strong> (<em>str</em>)</p></li>
+<li><p><strong>loss_beta</strong> (<em>float</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>loss_bins</strong> (<em>int</em>)</p></li>
+<li><p><strong>optimizer</strong> (<em>str</em>)</p></li>
+<li><p><strong>lr</strong> (<em>float</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>min_voxels</strong> (<em>int</em>)</p></li>
+<li><p><strong>max_voxels</strong> (<em>int</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>isotropic</strong> (<em>bool</em>)</p></li>
+<li><p><strong>device</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><em>Tensor</em></p>
 </dd>

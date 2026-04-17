@@ -1,35 +1,103 @@
 CLI modules
 ===========
 
-These are the Python modules behind the documented console commands. They are
-listed first so the code reference stays centered on the user-facing tools.
+These pages document the installed console commands directly from the live
+``argparse`` parsers, so the Sphinx reference stays aligned with each command's
+``--help`` output.
 
-``neuroreg.cli.robreg``
------------------------
+``robreg``
+----------
+
+.. argparse::
+   :module: neuroreg.cli.robreg
+   :func: _build_parser
+   :prog: robreg
+
+Python module
+~~~~~~~~~~~~~
 
 .. automodule:: neuroreg.cli.robreg
    :members: main
 
-``neuroreg.cli.coreg``
-----------------------
+``coreg``
+---------
+
+.. argparse::
+   :module: neuroreg.cli.coreg
+   :func: _build_parser
+   :prog: coreg
+
+Python module
+~~~~~~~~~~~~~
 
 .. automodule:: neuroreg.cli.coreg
    :members: main
 
-``neuroreg.cli.bbreg``
-----------------------
+``bbreg``
+----------
+
+.. argparse::
+   :module: neuroreg.cli.bbreg
+   :func: _build_parser
+   :prog: bbreg
+
+Python module
+~~~~~~~~~~~~~
 
 .. automodule:: neuroreg.cli.bbreg
    :members: main
 
-``neuroreg.cli.lta``
---------------------
+``lta``
+-------
+
+.. argparse::
+   :module: neuroreg.cli.lta
+   :func: _build_parser
+   :prog: lta
+
+``lta diff``
+~~~~~~~~~~~~
+
+.. argparse::
+   :module: neuroreg.cli.lta
+   :func: _build_parser
+   :prog: lta diff
+   :path: diff
+
+``lta invert``
+~~~~~~~~~~~~~~
+
+.. argparse::
+   :module: neuroreg.cli.lta
+   :func: _build_parser
+   :prog: lta invert
+   :path: invert
+
+``lta concat``
+~~~~~~~~~~~~~~
+
+.. argparse::
+   :module: neuroreg.cli.lta
+   :func: _build_parser
+   :prog: lta concat
+   :path: concat
+
+Python module
+~~~~~~~~~~~~~
 
 .. automodule:: neuroreg.cli.lta
    :members: main
 
-``neuroreg.cli.sys_info``
---------------------------
+``neuroreg-sys_info``
+---------------------
+
+.. argparse::
+   :module: neuroreg.cli.sys_info
+   :func: _build_parser
+   :prog: neuroreg-sys_info
+
+Python module
+~~~~~~~~~~~~~
 
 .. automodule:: neuroreg.cli.sys_info
    :members: main, run
