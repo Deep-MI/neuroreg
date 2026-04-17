@@ -144,18 +144,32 @@ def corner_dist(
         M2: npt.ArrayLike | None = None,
         src_affine: npt.ArrayLike | None = None,
 ) -> float:
-    """Mean displacement at the 8 corners of the source volume.
+    r"""Mean displacement at the 8 corners of the source volume.
 
-    Places the 8 corners of the source volume in RAS space using *src_affine*,
-    maps them through the RAS-to-RAS transform(s), and returns the mean
-    Euclidean displacement.
+    For a **single transform** (*M2* is ``None``), places each of the 8 source
+    corners in RAS space via *src_affine* and measures how far *M* moves each
+    corner from its original RAS position:
 
-    **Image-specific metric**: the result depends on the source image shape
-    and affine, not just the transform. The corners are at the edges of the
-    source FOV — for a large or padded FOV they may be far from brain tissue,
-    making the result less representative than :func:`sphere_dist`. When
-    comparing two transforms (*M* and *M2*), both must register the same
-    source image (so *src_affine* and *src_shape* are unambiguous).
+    .. math::
+
+        d_i = \|M \cdot c_i - c_i\|, \quad
+        \text{result} = \tfrac{1}{8}\sum_i d_i
+
+    For **two transforms**, measures the separation between the two mappings of
+    each corner:
+
+    .. math::
+
+        d_i = \|M_1 \cdot c_i - M_2 \cdot c_i\|, \quad
+        \text{result} = \tfrac{1}{8}\sum_i d_i
+
+    Both transforms must map the same source image, so *src_affine* and
+    *src_shape* are unambiguous.
+
+    **Image-specific metric**: the result depends on the source image geometry,
+    not just the transform. Corners at the edge of a large or padded FOV may
+    be far from brain tissue, making the result less representative than
+    :func:`sphere_dist` for typical neuroimaging use.
 
     Corresponds to **dist type 3** in FreeSurfer's ``lta_diff``.
 
@@ -163,14 +177,15 @@ def corner_dist(
     ----------
     M : array-like, shape (4, 4)
         First (or only) RAS-to-RAS transform.
-    src_shape : tuple of int
-        Voxel dimensions of the source volume.
+    src_shape : tuple of int (i_size, j_size, k_size)
+        Voxel dimensions of the source volume (width x height x depth).
     M2 : array-like, shape (4, 4), optional
-        Second RAS-to-RAS transform. When ``None``, displacement from identity
-        is measured.
+        Second RAS-to-RAS transform. When ``None``, displacement of each corner
+        from its own RAS position (that is, comparison with identity) is
+        measured.
     src_affine : array-like, shape (4, 4), optional
-        Voxel-to-RAS affine of the source image. When given, corners are
-        converted to RAS (mm) before applying the transforms; the result is in
+        Voxel-to-RAS affine of the source image. When given, the 8 corners are
+        converted to RAS before applying the transform(s) and the result is in
         mm. When ``None``, corners remain in voxel units.
 
     Returns
@@ -197,19 +212,22 @@ def sphere_dist(
     r"""Maximum displacement on a sphere of given radius (mm).
 
     Samples approximately 1,600 points on a sphere of *radius* mm centred at
-    the RAS origin and returns the peak displacement caused by the transform
+    the RAS origin and returns the **peak** displacement caused by the transform
     difference. Both matrices must be **RAS-to-RAS** so that the sphere is in a
     meaningful physical space and displacements are in mm.
 
     .. math::
 
-        M_d = M_1^{-1} M_2 \quad (\text{or } M_1 \text{ when } M_2 = \text{None})
+        M_d = M_1^{-1} M_2 \quad \text{(or } M_d = M_1 \text{ when } M_2 = \text{None)}
 
-        \mathrm{displacement}(p) = \|M_d \, p - p\|
+        \text{result} = \max_{p\,\in\,\text{sphere}} \|M_d \, p - p\|
 
-    Unlike :func:`corner_dist` this metric is image-independent: the sphere is
-    a canonical approximation of the head and the result is a pure property of
-    the transform.
+    When *M2* is ``None``, this measures how far *M1* alone displaces points on
+    the sphere from their original positions (comparison with identity).
+
+    Unlike :func:`corner_dist` this metric is **image-independent**: the sphere
+    is a canonical approximation of the head and the result depends only on the
+    transforms, not on source volume geometry.
 
     Corresponds to **dist type 4** in FreeSurfer's ``lta_diff``.
 
@@ -226,7 +244,7 @@ def sphere_dist(
     Returns
     -------
     float
-        Maximum displacement in mm.
+        Maximum displacement in mm over all sampled sphere points.
     """
     M1a = np.asarray(M1, dtype=float)
     Md = M1a if M2 is None else (np.linalg.inv(M1a) @ np.asarray(M2, dtype=float))
@@ -266,8 +284,9 @@ def decompose_transform(M: npt.ArrayLike) -> dict:
     Parameters
     ----------
     M : array-like, shape (4, 4)
-        Affine matrix to decompose. Pre-compose transforms before calling if a
-        relative decomposition is needed (e.g. ``decompose_transform(M1 @ M2)``).
+        Affine matrix to decompose. For the two-transform case pass the
+        **concatenation** ``M1 @ M2`` (not the difference ``inv(M1) @ M2``).
+        Example: ``decompose_transform(lta1.r2r() @ lta2.r2r())``.
 
     Returns
     -------

@@ -69,12 +69,14 @@ def _run_dist(ns: argparse.Namespace, lta1: LTA, lta2: LTA | None) -> None:
         print(f"{lta1.sphere_dist(lta2, radius=ns.radius) / ns.normdiv}")
 
     elif ns.dist == 5:
-        # det is multiplicative: det(M1 @ M2) == det(M1) * det(M2)
+        # Concatenation determinant: det(M1 @ M2) = det(M1) * det(M2).
         result = lta1.det if lta2 is None else lta1.det * lta2.det
         print(f"{result / ns.normdiv}")
 
     elif ns.dist == 7:
-        # Single transform: use the LTA method; two transforms: compose then decompose.
+        # Decompose the concatenation M1 @ M2 (not the difference inv(M1) @ M2).
+        # Single transform: decompose M1 alone.
+        # Two transforms: compose M1 @ M2 first, then decompose.
         d = lta1.decompose() if lta2 is None else decompose_transform(lta1.r2r() @ lta2.r2r())
         with np.printoptions(precision=10, suppress=False):
             print("\nDecompose into Rot · Shear · diag(Scales) + Trans:\n")
@@ -113,15 +115,26 @@ def _build_parser() -> argparse.ArgumentParser:
             "transforms (vox-to-vox LTAs are converted automatically).\n"
             "\n"
             "Distance types:\n"
-            "  1   Rigid transform distance  sqrt(||log R_d||² + ||T_d||²)\n"
+            "  1   Rigid transform distance  sqrt(||log R||² + ||T||²)\n"
             "      D = inv(M1) @ M2  (or M1 vs identity)\n"
+            "      R = upper-left 3×3 rotation block of D\n"
+            "      T = upper-right 3×1 translation column of D\n"
+            "      Units: mixed (mm and rad added in quadrature)\n"
             "  2   Affine RMS distance (Jenkinson 1999)  [default]\n"
-            "      sqrt(r²/5 · Tr(AᵀA) + ||T_d||²),  D = M1 − M2\n"
+            "      sqrt(r²/5 · Tr(AᵀA) + ‖T‖²),  D = M1 − M2  (or M1 − I)\n"
+            "      A = upper-left 3×3 of D; r = --radius (default 100 mm)\n"
+            "      T = upper-right 3×1 translation column of D\n"
+            "      Units: mm (RMS displacement over a sphere of radius r)\n"
             "  3   8-corner mean displacement (mm, image-specific)\n"
-            "  4   Max displacement on sphere of radius r (mm)\n"
-            "      D = inv(M1) @ M2\n"
-            "  5   Determinant of M1 (· M2 when given)\n"
-            "  7   Polar decomposition: rotation, shear, scale, translation\n"
+            "      One transform:  mean‖M1·c − c‖ for each src corner c in RAS.\n"
+            "      Two transforms: mean‖M1·c − M2·c‖  (same src corners).\n"
+            "  4   Max displacement on a sphere of radius r (mm, image-independent)\n"
+            "      Md = inv(M1) @ M2  (or M1 vs identity)\n"
+            "      displacement(p) = ‖Md·p − p‖  over ~1600 sphere samples\n"
+            "  5   Determinant  det(M1)  (or det(M1 @ M2) = det(M1)*det(M2) when M2 given)\n"
+            "      Uses matrix concatenation (not the difference); det is order-independent.\n"
+            "  7   Polar decomposition of M1 (or M1 @ M2, i.e. concatenation):\n"
+            "      prints Rot, RotVec, RotAngle, Shear, Scales, Trans, |Trans|, det\n"
         ),
     )
     diff_p.add_argument("lta1", metavar="LTA1", help="First (or only) LTA transform file.")

@@ -484,18 +484,28 @@ class LTA:
         return affine_dist(self.r2r(), other.r2r() if other is not None else None, radius=radius)
 
     def corner_dist(self, other: LTA | None = None) -> float:
-        """Mean displacement at the 8 volume corners in RAS mm.
+        """Mean displacement at the 8 source-volume corners in RAS mm.
 
         Operates on the RAS-to-RAS representation (converts automatically if
-        stored as vox-to-vox).  **Image-specific**: depends on source volume
-        geometry; see :func:`corner_dist` for limitations.
+        stored as vox-to-vox). **Image-specific**: depends on source volume
+        shape and affine; see :func:`corner_dist` for the full description and
+        limitations.
+
+        * *other* is ``None`` - measures how far each corner moves from its
+          original RAS position under this transform.
+        * *other* is given - measures the separation between the two
+          transforms' mappings of each corner; both LTAs must share the same
+          source image.
 
         Parameters
         ----------
         other : LTA, optional
-            Second transform; ``None`` compares against identity.
+            Second transform. ``None`` compares this transform against identity.
 
-        Delegates to :func:`corner_dist`.
+        Returns
+        -------
+        float
+            Mean corner displacement in mm. Delegates to :func:`corner_dist`.
         """
         src_volume = self.src["volume"]
         src_shape = (int(src_volume[0]), int(src_volume[1]), int(src_volume[2]))
