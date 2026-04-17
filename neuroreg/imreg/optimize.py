@@ -11,8 +11,11 @@ from .losses import mi_loss, ncc_loss, nmi_loss
 
 logger = logging.getLogger(__name__)
 
-# Loss names whose values are squared intensities and should be reported as RMSE.
+# Intensity-domain losses whose input images can be percentile-normalized.
 _INTENSITY_LOSS_NAMES = {"mse", "huber", "smooth_l1", "l1"}
+
+# Only true squared-error losses should be reported as RMSE.
+_RMSE_REPORTED_LOSS_NAMES = {"mse"}
 
 
 class EarlyStopper:
@@ -110,8 +113,9 @@ def training_loop(
     Returns
     -------
     list of float
-        Loss values recorded after each iteration.  Intensity losses are
-        reported as RMSE; NCC / MI / NMI are reported as the raw scalar.
+        Loss values recorded after each iteration. ``mse`` is reported as RMSE,
+        while ``huber``, ``smooth_l1``, ``l1``, ``ncc``, ``mi``, and ``nmi`` are
+        reported as their raw scalar losses.
     """
     losses: list[float] = []
     last_v2v = model.get_v2v_from_weights(tuple(int(v) for v in src_image.shape))
@@ -119,6 +123,7 @@ def training_loop(
     # Only scale loss_beta for intensity-based losses where beta has intensity units.
     # NCC win_size is in voxels; MI/NMI sigma is already in [0, 1] intensity units.
     _is_intensity_loss = loss_name in _INTENSITY_LOSS_NAMES
+    _report_rmse = loss_name in _RMSE_REPORTED_LOSS_NAMES
 
     if normalize and _is_intensity_loss:
         scale = torch.quantile(trg_image.abs().reshape(-1), 0.995).clamp(min=1.0)
@@ -180,11 +185,11 @@ def training_loop(
                 loss_tensor = torch.tensor(0.0, device=src_image.device)
             else:
                 loss_tensor = torch.tensor(float(loss), device=src_image.device)
-            losses.append(float(loss_tensor.sqrt()) if _is_intensity_loss else float(loss_tensor))
+            losses.append(float(loss_tensor.sqrt()) if _report_rmse else float(loss_tensor))
         else:
             loss = closure()
             optimizer.step()
-            losses.append(float(loss.sqrt()) if _is_intensity_loss else float(loss))
+            losses.append(float(loss.sqrt()) if _report_rmse else float(loss))
 
         if verbose:
             logger.debug("Loss (iter %d): %s", i, losses[-1])
