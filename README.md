@@ -1,22 +1,27 @@
 [![PyPI version](https://badge.fury.io/py/neuroreg.svg)](https://pypi.org/project/neuroreg/)
 
-# neuroreg
+# NeuroReg
 
-neuroreg is a tool for the robust registration of 3D neuroimaging data (e.g. MRI).
-It uses PyTorch's automatic differentiation for gradient-based optimisation and
-can run efficiently on a GPU.
+NeuroReg is a package for the robust registration of 3D neuroimaging data (e.g. MRI).
+It supports both image-to-image (within and cross modal) as well as image to
+landmark (WM-surface) or segmentation. It uses PyTorch's automatic differentiation
+for gradient-based optimisations and can run efficiently on a GPU.
 
 The main user-facing tools are:
 
-- **`robreg`** – IRLS-based robust image-to-image registration
-  (the current public robust-registration path; analogous to FreeSurfer's `mri_robust_register`)
-- **`coreg`** – image-based cross-modal registration
-  (gradient-descent registration for cases where only images are available)
-- **`bbreg`** – boundary-based registration using cortical surface meshes
+- **`robreg`** – Highly accurate and robust same modality image-to-image registration
+  (IRLS based, analogous to FreeSurfer's `mri_robust_register`)
+- **`coreg`** – Image-to-image cross-modal registration
+  (gradient-descent with normalized mutual information NMI, cf. `mri_coreg`)
+- **`bbreg`** – boundary-based registration using cortical WM surfaces or segmentations
   (analogous to FreeSurfer's `bbregister` / `mri_segreg`)
 - **`lta`** – transform comparison / inversion / concatenation utilities
 
-This project is a work-in-progress in an early development stage.
+This project is a work-in-progress in an early development stage. It is developed by
+the creator of FreeSurfer's `mri_robust_register` as an efficient pure Python
+replacement (with GPU support) and cross-modal extensions to support all your medical
+imaging reistration needs, with a focus on high accuracy and speed. If you find it 
+useful for a publication, please cite the relevant papers (see [References](#References)).
 
 ## Installation
 
