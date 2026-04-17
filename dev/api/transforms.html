@@ -1,0 +1,978 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Notebooks" href="../notebooks.html"><link rel="prev" title="Boundary-based registration API" href="bbreg.html">
+
+    <!-- Generated with Sphinx 7.4.7 and Furo 2025.12.19 -->
+        <title>Transform API - neuroreg</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">neuroreg</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  <span class="sidebar-brand-text">neuroreg</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../cli/index.html">CLI reference</a></li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Python API</a><input aria-label="Toggle navigation of Python API" checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="cli.html">CLI modules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="public.html">Public entry points</a></li>
+<li class="toctree-l2"><a class="reference internal" href="imreg.html">Image registration API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bbreg.html">Boundary-based registration API</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Transform API</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../notebooks.html">Notebooks</a><input aria-label="Toggle navigation of Notebooks" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../generated/notebooks/robreg.html">robreg</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../references.html">References</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../_sources/api/transforms.rst.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="transform-api">
+<h1>Transform API<a class="headerlink" href="#transform-api" title="Link to this heading">¶</a></h1>
+<section id="neuroreg-transforms-lta">
+<h2><code class="docutils literal notranslate"><span class="pre">neuroreg.transforms.LTA</span></code><a class="headerlink" href="#neuroreg-transforms-lta" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="neuroreg.transforms.LTA">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">neuroreg.transforms.</span></span><span class="sig-name descname"><span class="pre">LTA</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matrix</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lta_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dst</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/lta.html#LTA"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.LTA" title="Link to this definition">¶</a></dt>
+<dd><p>FreeSurfer Linear Transform Array.</p>
+<p>Wraps a 4×4 affine matrix together with source and destination volume
+geometry, mirroring the <code class="docutils literal notranslate"><span class="pre">.lta</span></code> file format used by FreeSurfer.</p>
+<p>Typical usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">lta</span> <span class="o">=</span> <span class="n">LTA</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s2">&quot;T2_to_T1.lta&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">lta</span><span class="o">.</span><span class="n">affine_dist</span><span class="p">())</span>        <span class="c1"># distance to identity</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">lta</span><span class="o">.</span><span class="n">affine_dist</span><span class="p">(</span><span class="n">other</span><span class="p">))</span>   <span class="c1"># distance to another LTA</span>
+<span class="n">lta</span><span class="o">.</span><span class="n">invert</span><span class="p">()</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;T1_to_T2.lta&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>matrix</strong> (<em>npt.ArrayLike</em>)</p></li>
+<li><p><strong>lta_type</strong> (<em>int</em>)</p></li>
+<li><p><strong>src</strong> (<em>dict</em>)</p></li>
+<li><p><strong>dst</strong> (<em>dict</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.LTA.read">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lta_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/lta.html#LTA.read"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.LTA.read" title="Link to this definition">¶</a></dt>
+<dd><p>Read a FreeSurfer <code class="docutils literal notranslate"><span class="pre">.lta</span></code> file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>filename</strong><span class="classifier">str or Path</span></dt><dd></dd>
+<dt><strong>lta_type</strong><span class="classifier">{0, 1, None}, optional</span></dt><dd><p>If given, convert the stored matrix to this type on load.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>LTA</dt><dd></dd>
+</dl>
+</dd>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> (<em>str</em><em> | </em><em>Path</em>)</p></li>
+<li><p><strong>lta_type</strong> (<em>int</em><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#neuroreg.transforms.LTA" title="neuroreg.transforms.lta.LTA"><em>LTA</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.LTA.from_matrix">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_matrix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matrix</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src_fname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src_img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dst_fname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dst_img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lta_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/lta.html#LTA.from_matrix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.LTA.from_matrix" title="Link to this definition">¶</a></dt>
+<dd><p>Create an LTA from a matrix and image geometry.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>matrix</strong><span class="classifier">array-like, shape (4, 4)</span></dt><dd><p>May be a <code class="docutils literal notranslate"><span class="pre">torch.Tensor</span></code> (detached automatically).</p>
+</dd>
+<dt><strong>src_fname</strong><span class="classifier">str</span></dt><dd><p>Source filename stored as metadata in the <code class="docutils literal notranslate"><span class="pre">.lta</span></code> file.</p>
+</dd>
+<dt><strong>src_img</strong><span class="classifier">path, nibabel header/image, or dict</span></dt><dd><p>Source image geometry.</p>
+</dd>
+<dt><strong>dst_fname</strong><span class="classifier">str</span></dt><dd><p>Destination filename stored as metadata.</p>
+</dd>
+<dt><strong>dst_img</strong><span class="classifier">path, nibabel header/image, or dict</span></dt><dd><p>Destination image geometry.</p>
+</dd>
+<dt><strong>lta_type</strong><span class="classifier">{0, 1}</span></dt><dd><p>0 = LINEAR_VOX_TO_VOX, 1 = LINEAR_RAS_TO_RAS (default).</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>matrix</strong> (<em>ArrayLike</em>)</p></li>
+<li><p><strong>src_fname</strong> (<em>str</em>)</p></li>
+<li><p><strong>src_img</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>Nifti1Header</em><em> | </em><em>MGHHeader</em><em> | </em><em>Nifti1Image</em><em> | </em><em>MGHImage</em><em> | </em><em>dict</em>)</p></li>
+<li><p><strong>dst_fname</strong> (<em>str</em>)</p></li>
+<li><p><strong>dst_img</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>Nifti1Header</em><em> | </em><em>MGHHeader</em><em> | </em><em>Nifti1Image</em><em> | </em><em>MGHImage</em><em> | </em><em>dict</em>)</p></li>
+<li><p><strong>lta_type</strong> (<em>int</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#neuroreg.transforms.LTA" title="neuroreg.transforms.lta.LTA"><em>LTA</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.LTA.write">
+<span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lta_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/lta.html#LTA.write"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.LTA.write" title="Link to this definition">¶</a></dt>
+<dd><p>Write to a FreeSurfer <code class="docutils literal notranslate"><span class="pre">.lta</span></code> file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>filename</strong><span class="classifier">str or Path</span></dt><dd></dd>
+<dt><strong>lta_type</strong><span class="classifier">{0, 1, None}, optional</span></dt><dd><p>Output transform type.  <code class="docutils literal notranslate"><span class="pre">0</span></code> = LINEAR_VOX_TO_VOX,
+<code class="docutils literal notranslate"><span class="pre">1</span></code> = LINEAR_RAS_TO_RAS.  When <code class="docutils literal notranslate"><span class="pre">None</span></code> (default) the matrix is
+written as stored.  When given and different from the stored type,
+the matrix is converted before writing; <code class="docutils literal notranslate"><span class="pre">self</span></code> is not mutated.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>filename</strong> (<em>str</em><em> | </em><em>Path</em>)</p></li>
+<li><p><strong>lta_type</strong> (<em>int</em><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.LTA.r2r">
+<span class="sig-name descname"><span class="pre">r2r</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/lta.html#LTA.r2r"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.LTA.r2r" title="Link to this definition">¶</a></dt>
+<dd><p>Return the 4×4 RAS-to-RAS matrix.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><em>ndarray</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.LTA.v2v">
+<span class="sig-name descname"><span class="pre">v2v</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/lta.html#LTA.v2v"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.LTA.v2v" title="Link to this definition">¶</a></dt>
+<dd><p>Return the 4×4 voxel-to-voxel matrix.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><em>ndarray</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.LTA.invert">
+<span class="sig-name descname"><span class="pre">invert</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/lta.html#LTA.invert"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.LTA.invert" title="Link to this definition">¶</a></dt>
+<dd><p>Return an inverted copy with src/dst swapped, stored as R2R.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#neuroreg.transforms.LTA" title="neuroreg.transforms.lta.LTA"><em>LTA</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.LTA.concat">
+<span class="sig-name descname"><span class="pre">concat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/lta.html#LTA.concat"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.LTA.concat" title="Link to this definition">¶</a></dt>
+<dd><p>Concatenate two transforms: <code class="docutils literal notranslate"><span class="pre">self</span></code> (A→B) followed by <code class="docutils literal notranslate"><span class="pre">other</span></code> (B→C).</p>
+<p>Returns a new LTA that maps directly from A to C, stored as R2R.
+The src geometry is taken from <code class="docutils literal notranslate"><span class="pre">self</span></code> and the dst geometry from
+<code class="docutils literal notranslate"><span class="pre">other</span></code>; the caller is responsible for ensuring that the intermediate
+spaces (<code class="docutils literal notranslate"><span class="pre">self.dst</span></code> / <code class="docutils literal notranslate"><span class="pre">other.src</span></code>) are compatible.</p>
+<p>Equivalent to FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">mri_concatenate_lta</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>other</strong><span class="classifier">LTA</span></dt><dd><p>The second transform to apply (maps B → C).</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>LTA</dt><dd><p>New LTA whose matrix is <code class="docutils literal notranslate"><span class="pre">other.r2r()</span> <span class="pre">&#64;</span> <span class="pre">self.r2r()</span></code>,
+with <code class="docutils literal notranslate"><span class="pre">src</span></code> from <code class="docutils literal notranslate"><span class="pre">self</span></code> and <code class="docutils literal notranslate"><span class="pre">dst</span></code> from <code class="docutils literal notranslate"><span class="pre">other</span></code>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>other</strong> (<a class="reference internal" href="#neuroreg.transforms.LTA" title="neuroreg.transforms.lta.LTA"><em>LTA</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#neuroreg.transforms.LTA" title="neuroreg.transforms.lta.LTA"><em>LTA</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.LTA.decompose">
+<span class="sig-name descname"><span class="pre">decompose</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/lta.html#LTA.decompose"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.LTA.decompose" title="Link to this definition">¶</a></dt>
+<dd><p>Polar decomposition of the R2R matrix.</p>
+<p>See <a class="reference internal" href="#neuroreg.transforms.decompose_transform" title="neuroreg.transforms.decompose_transform"><code class="xref py py-func docutils literal notranslate"><span class="pre">decompose_transform()</span></code></a> for the return dict keys.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="neuroreg.transforms.LTA.det">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">det</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><a class="headerlink" href="#neuroreg.transforms.LTA.det" title="Link to this definition">¶</a></dt>
+<dd><p>Determinant of the R2R matrix.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.LTA.rigid_dist">
+<span class="sig-name descname"><span class="pre">rigid_dist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/lta.html#LTA.rigid_dist"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.LTA.rigid_dist" title="Link to this definition">¶</a></dt>
+<dd><p>Rigid-transform distance to <em>other</em> (or identity).</p>
+<p>Operates on the RAS-to-RAS representation (converts automatically if
+stored as vox-to-vox).  Delegates to <a class="reference internal" href="#neuroreg.transforms.rigid_dist" title="neuroreg.transforms.rigid_dist"><code class="xref py py-func docutils literal notranslate"><span class="pre">rigid_dist()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>other</strong> (<a class="reference internal" href="#neuroreg.transforms.LTA" title="neuroreg.transforms.lta.LTA"><em>LTA</em></a><em> | </em><em>None</em>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.LTA.affine_dist">
+<span class="sig-name descname"><span class="pre">affine_dist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/lta.html#LTA.affine_dist"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.LTA.affine_dist" title="Link to this definition">¶</a></dt>
+<dd><p>Affine RMS distance to <em>other</em> (Jenkinson 1999).</p>
+<p>Operates on the RAS-to-RAS representation (converts automatically if
+stored as vox-to-vox).  Delegates to <a class="reference internal" href="#neuroreg.transforms.affine_dist" title="neuroreg.transforms.affine_dist"><code class="xref py py-func docutils literal notranslate"><span class="pre">affine_dist()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>other</strong> (<a class="reference internal" href="#neuroreg.transforms.LTA" title="neuroreg.transforms.lta.LTA"><em>LTA</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>radius</strong> (<em>float</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.LTA.corner_dist">
+<span class="sig-name descname"><span class="pre">corner_dist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/lta.html#LTA.corner_dist"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.LTA.corner_dist" title="Link to this definition">¶</a></dt>
+<dd><p>Mean displacement at the 8 volume corners in RAS mm.</p>
+<p>Operates on the RAS-to-RAS representation (converts automatically if
+stored as vox-to-vox).  <strong>Image-specific</strong>: depends on source volume
+geometry; see <a class="reference internal" href="#neuroreg.transforms.corner_dist" title="neuroreg.transforms.corner_dist"><code class="xref py py-func docutils literal notranslate"><span class="pre">corner_dist()</span></code></a> for limitations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>other</strong><span class="classifier">LTA, optional</span></dt><dd><p>Second transform; <code class="docutils literal notranslate"><span class="pre">None</span></code> compares against identity.</p>
+</dd>
+<dt><strong>Delegates to :func:`corner_dist`.</strong></dt><dd></dd>
+</dl>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>other</strong> (<a class="reference internal" href="#neuroreg.transforms.LTA" title="neuroreg.transforms.lta.LTA"><em>LTA</em></a><em> | </em><em>None</em>)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.LTA.sphere_dist">
+<span class="sig-name descname"><span class="pre">sphere_dist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/lta.html#LTA.sphere_dist"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.LTA.sphere_dist" title="Link to this definition">¶</a></dt>
+<dd><p>Max displacement on a sphere of given radius in RAS mm.</p>
+<p>Operates on the RAS-to-RAS representation (converts automatically if
+stored as vox-to-vox).  <strong>Image-independent</strong>: result depends only on
+the transform, not source/dst geometry.  Delegates to <a class="reference internal" href="#neuroreg.transforms.sphere_dist" title="neuroreg.transforms.sphere_dist"><code class="xref py py-func docutils literal notranslate"><span class="pre">sphere_dist()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>other</strong> (<a class="reference internal" href="#neuroreg.transforms.LTA" title="neuroreg.transforms.lta.LTA"><em>LTA</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>radius</strong> (<em>float</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="selected-transform-helpers">
+<h2>Selected transform helpers<a class="headerlink" href="#selected-transform-helpers" title="Link to this heading">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="neuroreg.transforms.convert_transform_type">
+<span class="sig-prename descclassname"><span class="pre">neuroreg.transforms.</span></span><span class="sig-name descname"><span class="pre">convert_transform_type</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matrix</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src_affine</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dst_affine</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">from_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">to_type</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/matrices.html#convert_transform_type"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.convert_transform_type" title="Link to this definition">¶</a></dt>
+<dd><p>Convert a transformation matrix between vox-to-vox and RAS-to-RAS.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>matrix</strong><span class="classifier">array-like, shape (4, 4)</span></dt><dd><p>Input transformation matrix.</p>
+</dd>
+<dt><strong>src_affine</strong><span class="classifier">array-like, shape (4, 4)</span></dt><dd><p>Source image voxel-to-RAS affine (nibabel <code class="docutils literal notranslate"><span class="pre">img.affine</span></code>).</p>
+</dd>
+<dt><strong>dst_affine</strong><span class="classifier">array-like, shape (4, 4)</span></dt><dd><p>Destination image voxel-to-RAS affine.</p>
+</dd>
+<dt><strong>from_type</strong><span class="classifier">int</span></dt><dd><p>Type of the input matrix:
+<code class="docutils literal notranslate"><span class="pre">LINEAR_VOX_TO_VOX</span></code> (0) or <code class="docutils literal notranslate"><span class="pre">LINEAR_RAS_TO_RAS</span></code> (1).</p>
+</dd>
+<dt><strong>to_type</strong><span class="classifier">int</span></dt><dd><p>Desired output type:
+<code class="docutils literal notranslate"><span class="pre">LINEAR_VOX_TO_VOX</span></code> (0) or <code class="docutils literal notranslate"><span class="pre">LINEAR_RAS_TO_RAS</span></code> (1).</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>np.ndarray, shape (4, 4)</dt><dd><p>Converted transformation matrix.  Returns a copy when
+<code class="docutils literal notranslate"><span class="pre">from_type</span> <span class="pre">==</span> <span class="pre">to_type</span></code>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>ValueError</dt><dd><p>If <em>from_type</em> or <em>to_type</em> is not 0 or 1.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>matrix</strong> (<em>ArrayLike</em>)</p></li>
+<li><p><strong>src_affine</strong> (<em>ArrayLike</em>)</p></li>
+<li><p><strong>dst_affine</strong> (<em>ArrayLike</em>)</p></li>
+<li><p><strong>from_type</strong> (<em>int</em>)</p></li>
+<li><p><strong>to_type</strong> (<em>int</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><em>ndarray</em></p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Conversion formulae (M = matrix, A_s = src_affine, A_d = dst_affine):</p>
+<ul class="simple">
+<li><p>vox→vox to RAS→RAS:  <code class="docutils literal notranslate"><span class="pre">A_d</span> <span class="pre">&#64;</span> <span class="pre">M</span> <span class="pre">&#64;</span> <span class="pre">inv(A_s)</span></code></p></li>
+<li><p>RAS→RAS to vox→vox:  <code class="docutils literal notranslate"><span class="pre">inv(A_d)</span> <span class="pre">&#64;</span> <span class="pre">M</span> <span class="pre">&#64;</span> <span class="pre">A_s</span></code></p></li>
+</ul>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="neuroreg.transforms.get_affine">
+<span class="sig-prename descclassname"><span class="pre">neuroreg.transforms.</span></span><span class="sig-name descname"><span class="pre">get_affine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">translation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rotvec</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scales</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/matrices.html#get_affine"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.get_affine" title="Link to this definition">¶</a></dt>
+<dd><p>Generate a 4 × 4 affine matrix from translation, rotation, and scale.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>translation</strong><span class="classifier">torch.Tensor, shape (3,)</span></dt><dd><p>Translation vector.</p>
+</dd>
+<dt><strong>rotvec</strong><span class="classifier">torch.Tensor, shape (3,), optional</span></dt><dd><p>Euler angles [rx, ry, rz] in radians.</p>
+</dd>
+<dt><strong>scales</strong><span class="classifier">torch.Tensor, shape (3,), optional</span></dt><dd><p>Per-axis scaling factors.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>torch.Tensor, shape (4, 4)</dt><dd><p>Affine transformation matrix.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>translation</strong> (<em>Tensor</em>)</p></li>
+<li><p><strong>rotvec</strong> (<em>Tensor</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>scales</strong> (<em>Tensor</em><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>Tensor</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="neuroreg.transforms.decompose_transform">
+<span class="sig-prename descclassname"><span class="pre">neuroreg.transforms.</span></span><span class="sig-name descname"><span class="pre">decompose_transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">M</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/metrics.html#decompose_transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.decompose_transform" title="Link to this definition">¶</a></dt>
+<dd><p>Polar decomposition of a 4×4 affine matrix.</p>
+<p>Decomposes the upper-left 3×3 linear part as</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[A = R \cdot S \cdot \operatorname{diag}(\text{scales})\]</div>
+</div>
+<p>where <em>R</em> is a proper rotation matrix, <em>S</em> is a shear matrix (ones on the
+diagonal), and <em>diag(scales)</em> captures anisotropic scaling. The translation
+vector is in mm because the input is expected to be RAS-to-RAS.</p>
+<p>Corresponds to <strong>dist type 7</strong> in FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">lta_diff</span></code> (decompose).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>M</strong><span class="classifier">array-like, shape (4, 4)</span></dt><dd><p>Affine matrix to decompose. Pre-compose transforms before calling if a
+relative decomposition is needed (e.g. <code class="docutils literal notranslate"><span class="pre">decompose_transform(M1</span> <span class="pre">&#64;</span> <span class="pre">M2)</span></code>).</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>dict</dt><dd><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">rotation</span></code><span class="classifier">ndarray, shape (3, 3)</span></dt><dd><p>Rotation matrix (det = +1).</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">rot_vec</span></code><span class="classifier">ndarray, shape (3,)</span></dt><dd><p>Rotation vector (axis × angle, radians).</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">rot_angle_deg</span></code><span class="classifier">float</span></dt><dd><p>Rotation angle in degrees.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">shear</span></code><span class="classifier">ndarray, shape (3, 3)</span></dt><dd><p>Shear matrix (unit diagonal).</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">scales</span></code><span class="classifier">ndarray, shape (3,)</span></dt><dd><p>Per-axis scale factors.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">translation</span></code><span class="classifier">ndarray, shape (3,)</span></dt><dd><p>Translation vector in mm.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">abs_trans</span></code><span class="classifier">float</span></dt><dd><p>Euclidean norm of the translation vector (mm).</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">determinant</span></code><span class="classifier">float</span></dt><dd><p>Determinant of the full 4×4 matrix.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>M</strong> (<em>ArrayLike</em>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="neuroreg.transforms.rigid_dist">
+<span class="sig-prename descclassname"><span class="pre">neuroreg.transforms.</span></span><span class="sig-name descname"><span class="pre">rigid_dist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">M1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">M2</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/metrics.html#rigid_dist"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.rigid_dist" title="Link to this definition">¶</a></dt>
+<dd><p>Rigid-transform distance between <em>M1</em> and <em>M2</em> (or <em>M1</em> vs identity).</p>
+<p>Both matrices must be <strong>RAS-to-RAS</strong>; the translation component is then
+in mm and the result has consistent physical units.</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[D = \sqrt{\|T_d\|^2 + \|\log R_d\|_F^2}\]</div>
+</div>
+<p>where <span class="math notranslate nohighlight">\(d = M_1^{-1} M_2\)</span> when <em>M2</em> is given, else <span class="math notranslate nohighlight">\(d = M_1\)</span>.
+<span class="math notranslate nohighlight">\(T_d\)</span> is the translation part (mm) and <span class="math notranslate nohighlight">\(\|\log R_d\|_F\)</span> is
+the Frobenius norm of the rotation-matrix logarithm (<code class="docutils literal notranslate"><span class="pre">sqrt(2)</span></code> × rotation
+angle in radians).</p>
+<p>Corresponds to <strong>dist type 1</strong> in FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">lta_diff</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>M1</strong><span class="classifier">array-like, shape (4, 4)</span></dt><dd><p>First (or only) RAS-to-RAS rigid transform.</p>
+</dd>
+<dt><strong>M2</strong><span class="classifier">array-like, shape (4, 4), optional</span></dt><dd><p>Second RAS-to-RAS rigid transform. When <code class="docutils literal notranslate"><span class="pre">None</span></code>, the distance to the
+identity is returned.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>float</dt><dd><p>Rigid-transform distance (mm and radians added in quadrature).</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>M1</strong> (<em>ArrayLike</em>)</p></li>
+<li><p><strong>M2</strong> (<em>ArrayLike</em><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="neuroreg.transforms.affine_dist">
+<span class="sig-prename descclassname"><span class="pre">neuroreg.transforms.</span></span><span class="sig-name descname"><span class="pre">affine_dist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">M1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">M2</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/metrics.html#affine_dist"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.affine_dist" title="Link to this definition">¶</a></dt>
+<dd><p>RMS affine-transform distance (Jenkinson 1999).</p>
+<p>Both matrices must be <strong>RAS-to-RAS</strong>; the translation component is then
+in mm and <em>radius</em> has a consistent mm interpretation.</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[D = \sqrt{\frac{r^2}{5} \operatorname{Tr}(A^\top A) + \|T_d\|^2}\]</div>
+</div>
+<p>where <span class="math notranslate nohighlight">\(d = M_1 - M_2\)</span> (or <span class="math notranslate nohighlight">\(M_1 - I\)</span> when <em>M2</em> is <code class="docutils literal notranslate"><span class="pre">None</span></code>),
+<em>A</em> is the upper-left 3×3 linear part of <em>d</em>, and <span class="math notranslate nohighlight">\(T_d\)</span> is the
+translation column (mm). <em>r</em> is the assumed brain radius in mm.</p>
+<p>Reference: Jenkinson (1999), <em>A method for motion correction of
+fMRI time-series</em>, FMRIB Technical Report TR99MJ1.</p>
+<p>Corresponds to <strong>dist type 2</strong> in FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">lta_diff</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>M1</strong><span class="classifier">array-like or torch.Tensor, shape (4, 4)</span></dt><dd><p>First (or only) RAS-to-RAS transform.</p>
+</dd>
+<dt><strong>M2</strong><span class="classifier">array-like or torch.Tensor, shape (4, 4), optional</span></dt><dd><p>Second RAS-to-RAS transform. When <code class="docutils literal notranslate"><span class="pre">None</span></code>, the distance to identity
+is returned.</p>
+</dd>
+<dt><strong>radius</strong><span class="classifier">float, default=100.0</span></dt><dd><p>Radius of the brain sphere in mm.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>float</dt><dd><p>RMS displacement in mm.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>M1</strong> (<em>ArrayLike</em><em> | </em><em>Tensor</em>)</p></li>
+<li><p><strong>M2</strong> (<em>ArrayLike</em><em> | </em><em>Tensor</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>radius</strong> (<em>float</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>float</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>The function accepts either NumPy-like arrays or torch tensors. When torch
+tensors are passed, the computation stays in torch until the final scalar
+conversion, which keeps it suitable for CPU/GPU registration loops.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="neuroreg.transforms.corner_dist">
+<span class="sig-prename descclassname"><span class="pre">neuroreg.transforms.</span></span><span class="sig-name descname"><span class="pre">corner_dist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">M</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src_shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">M2</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src_affine</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/metrics.html#corner_dist"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.corner_dist" title="Link to this definition">¶</a></dt>
+<dd><p>Mean displacement at the 8 corners of the source volume.</p>
+<p>Places the 8 corners of the source volume in RAS space using <em>src_affine</em>,
+maps them through the RAS-to-RAS transform(s), and returns the mean
+Euclidean displacement.</p>
+<p><strong>Image-specific metric</strong>: the result depends on the source image shape
+and affine, not just the transform. The corners are at the edges of the
+source FOV — for a large or padded FOV they may be far from brain tissue,
+making the result less representative than <a class="reference internal" href="#neuroreg.transforms.sphere_dist" title="neuroreg.transforms.sphere_dist"><code class="xref py py-func docutils literal notranslate"><span class="pre">sphere_dist()</span></code></a>. When
+comparing two transforms (<em>M</em> and <em>M2</em>), both must register the same
+source image (so <em>src_affine</em> and <em>src_shape</em> are unambiguous).</p>
+<p>Corresponds to <strong>dist type 3</strong> in FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">lta_diff</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>M</strong><span class="classifier">array-like, shape (4, 4)</span></dt><dd><p>First (or only) RAS-to-RAS transform.</p>
+</dd>
+<dt><strong>src_shape</strong><span class="classifier">tuple of int</span></dt><dd><p>Voxel dimensions of the source volume.</p>
+</dd>
+<dt><strong>M2</strong><span class="classifier">array-like, shape (4, 4), optional</span></dt><dd><p>Second RAS-to-RAS transform. When <code class="docutils literal notranslate"><span class="pre">None</span></code>, displacement from identity
+is measured.</p>
+</dd>
+<dt><strong>src_affine</strong><span class="classifier">array-like, shape (4, 4), optional</span></dt><dd><p>Voxel-to-RAS affine of the source image. When given, corners are
+converted to RAS (mm) before applying the transforms; the result is in
+mm. When <code class="docutils literal notranslate"><span class="pre">None</span></code>, corners remain in voxel units.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>float</dt><dd><p>Mean corner displacement in mm (or voxels if <em>src_affine</em> is <code class="docutils literal notranslate"><span class="pre">None</span></code>).</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>M</strong> (<em>ArrayLike</em>)</p></li>
+<li><p><strong>src_shape</strong> (<em>tuple</em><em>[</em><em>int</em><em>, </em><em>int</em><em>, </em><em>int</em><em>]</em>)</p></li>
+<li><p><strong>M2</strong> (<em>ArrayLike</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>src_affine</strong> (<em>ArrayLike</em><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="neuroreg.transforms.sphere_dist">
+<span class="sig-prename descclassname"><span class="pre">neuroreg.transforms.</span></span><span class="sig-name descname"><span class="pre">sphere_dist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">M1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">M2</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/metrics.html#sphere_dist"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.sphere_dist" title="Link to this definition">¶</a></dt>
+<dd><p>Maximum displacement on a sphere of given radius (mm).</p>
+<p>Samples approximately 1,600 points on a sphere of <em>radius</em> mm centred at
+the RAS origin and returns the peak displacement caused by the transform
+difference. Both matrices must be <strong>RAS-to-RAS</strong> so that the sphere is in a
+meaningful physical space and displacements are in mm.</p>
+<div class="math-wrapper docutils container">
+<div class="math notranslate nohighlight">
+\[ \begin{align}\begin{aligned}M_d = M_1^{-1} M_2 \quad (\text{or } M_1 \text{ when } M_2 = \text{None})\\\mathrm{displacement}(p) = \|M_d \, p - p\|\end{aligned}\end{align} \]</div>
+</div>
+<p>Unlike <a class="reference internal" href="#neuroreg.transforms.corner_dist" title="neuroreg.transforms.corner_dist"><code class="xref py py-func docutils literal notranslate"><span class="pre">corner_dist()</span></code></a> this metric is image-independent: the sphere is
+a canonical approximation of the head and the result is a pure property of
+the transform.</p>
+<p>Corresponds to <strong>dist type 4</strong> in FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">lta_diff</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>M1</strong><span class="classifier">array-like, shape (4, 4)</span></dt><dd><p>First (or only) RAS-to-RAS transform.</p>
+</dd>
+<dt><strong>M2</strong><span class="classifier">array-like, shape (4, 4), optional</span></dt><dd><p>Second RAS-to-RAS transform. When <code class="docutils literal notranslate"><span class="pre">None</span></code>, displacement from identity
+is returned.</p>
+</dd>
+<dt><strong>radius</strong><span class="classifier">float, default=100.0</span></dt><dd><p>Sphere radius in mm (roughly the head radius).</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>float</dt><dd><p>Maximum displacement in mm.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>M1</strong> (<em>ArrayLike</em>)</p></li>
+<li><p><strong>M2</strong> (<em>ArrayLike</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>radius</strong> (<em>float</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="../notebooks.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Notebooks</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="bbreg.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Boundary-based registration API</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2026, Martin Reuter
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Transform API</a><ul>
+<li><a class="reference internal" href="#neuroreg-transforms-lta"><code class="docutils literal notranslate"><span class="pre">neuroreg.transforms.LTA</span></code></a><ul>
+<li><a class="reference internal" href="#neuroreg.transforms.LTA"><code class="docutils literal notranslate"><span class="pre">LTA</span></code></a><ul>
+<li><a class="reference internal" href="#neuroreg.transforms.LTA.read"><code class="docutils literal notranslate"><span class="pre">LTA.read()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.LTA.from_matrix"><code class="docutils literal notranslate"><span class="pre">LTA.from_matrix()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.LTA.write"><code class="docutils literal notranslate"><span class="pre">LTA.write()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.LTA.r2r"><code class="docutils literal notranslate"><span class="pre">LTA.r2r()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.LTA.v2v"><code class="docutils literal notranslate"><span class="pre">LTA.v2v()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.LTA.invert"><code class="docutils literal notranslate"><span class="pre">LTA.invert()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.LTA.concat"><code class="docutils literal notranslate"><span class="pre">LTA.concat()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.LTA.decompose"><code class="docutils literal notranslate"><span class="pre">LTA.decompose()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.LTA.det"><code class="docutils literal notranslate"><span class="pre">LTA.det</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.LTA.rigid_dist"><code class="docutils literal notranslate"><span class="pre">LTA.rigid_dist()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.LTA.affine_dist"><code class="docutils literal notranslate"><span class="pre">LTA.affine_dist()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.LTA.corner_dist"><code class="docutils literal notranslate"><span class="pre">LTA.corner_dist()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.LTA.sphere_dist"><code class="docutils literal notranslate"><span class="pre">LTA.sphere_dist()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#selected-transform-helpers">Selected transform helpers</a><ul>
+<li><a class="reference internal" href="#neuroreg.transforms.convert_transform_type"><code class="docutils literal notranslate"><span class="pre">convert_transform_type()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.get_affine"><code class="docutils literal notranslate"><span class="pre">get_affine()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.decompose_transform"><code class="docutils literal notranslate"><span class="pre">decompose_transform()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.rigid_dist"><code class="docutils literal notranslate"><span class="pre">rigid_dist()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.affine_dist"><code class="docutils literal notranslate"><span class="pre">affine_dist()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.corner_dist"><code class="docutils literal notranslate"><span class="pre">corner_dist()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.sphere_dist"><code class="docutils literal notranslate"><span class="pre">sphere_dist()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    </body>
+</html>
