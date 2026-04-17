@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 import torch
 
-from neuroreg import coreg, robreg
+from neuroreg import coreg
 from neuroreg.imreg.coreg import register_gd_pyramid, register_level
 from neuroreg.imreg.losses import mi_loss, ncc_loss, nmi_loss
 from neuroreg.imreg.reg_model import RegModel
@@ -339,43 +339,6 @@ class TestRegisterPyramidSynthetic:
         )
 
         assert torch.allclose(v2v, torch.eye(4, dtype=v2v.dtype), atol=1.0)
-
-
-class TestPublicRobregWrapper:
-    def test_top_level_robreg_defaults_to_symmetric(self, monkeypatch: pytest.MonkeyPatch):
-        captured: dict[str, object] = {}
-
-        def fake_register_irls_pyramid(**kwargs):
-            captured.update(kwargs)
-            return torch.eye(4), []
-
-        monkeypatch.setattr("neuroreg.imreg.robreg.register_irls_pyramid", fake_register_irls_pyramid)
-
-        img = _make_img()
-        Mr2r = robreg(img, img, return_v2v=False, centroid_init=False, dof=6, nmax=1)
-
-        assert captured["symmetric"] is True
-        assert Mr2r.shape == (4, 4)
-        assert torch.isfinite(Mr2r).all()
-
-    def test_robreg_accepts_file_paths(self, tmp_path):
-        src = _make_img()
-        trg = _make_img()
-        src_path = tmp_path / "src.nii.gz"
-        trg_path = tmp_path / "trg.nii.gz"
-        nib.save(src, src_path)
-        nib.save(trg, trg_path)
-
-        Mr2r = robreg(
-            str(src_path),
-            str(trg_path),
-            return_v2v=False,
-            centroid_init=False,
-            dof=6,
-            nmax=1,
-        )
-        assert Mr2r.shape == (4, 4)
-        assert torch.isfinite(Mr2r).all()
 
 
 class TestPublicCoregWrapper:

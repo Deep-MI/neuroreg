@@ -6,13 +6,13 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from .init import get_ixform_centroids
-from .optimize import training_loop
-from .reg_model import RegModel
 from ..image import build_gaussian_pyramid
 from ..image.pyramid import _PYRAMID_FILTER, _smooth3d, get_pyramid_limits
 from ..transforms import LTA
 from ..transforms.matrices import matrix_sqrt_schur
+from .init import get_ixform_centroids
+from .optimize import training_loop
+from .reg_model import RegModel
 
 logger = logging.getLogger(__name__)
 

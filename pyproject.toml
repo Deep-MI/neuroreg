@@ -131,6 +131,7 @@ select = [
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
 "examples/*" = ["E501"]   # ignore too long lines in example ipynb
+"notebooks/*.ipynb" = ["E402"]
 
 [tool.codespell]
 #ignore-words-list = 'coo,daty'

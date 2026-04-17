@@ -12,10 +12,10 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from .init import get_ixform_centroids
-from .irls import move_tensor, register_irls
 from ..image import build_gaussian_pyramid, get_pyramid_limits
 from ..image.map import resample_isotropic_tensor
+from .init import get_ixform_centroids
+from .irls import move_tensor, register_irls
 
 ImageLike = str | Path | Any | Tensor
 

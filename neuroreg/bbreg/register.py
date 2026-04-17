@@ -7,9 +7,9 @@ import nibabel as nib
 import numpy as np
 import torch
 
+from ..transforms import LINEAR_RAS_TO_RAS, LINEAR_VOX_TO_VOX, LTA, convert_transform_type
 from .io import get_vox2ras_tkr, load_surface, load_surface_from_subject
 from .optimize import BBRModel
-from ..transforms import LINEAR_RAS_TO_RAS, LINEAR_VOX_TO_VOX, LTA, convert_transform_type
 
 logger = logging.getLogger(__name__)
 
