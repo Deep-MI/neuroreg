@@ -225,8 +225,8 @@ def _load_prealign_mask_image(ns: argparse.Namespace, mode: str) -> Any | None:
 
 
 def _mask_reference_image(
-    ref_img: Any,
-    mask_img: Any | None,
+        ref_img: Any,
+        mask_img: Any | None,
 ) -> Any:
     """Apply a binary mask to the fixed/reference image for NMI prealignment.
 
@@ -247,40 +247,36 @@ def _mask_reference_image(
 
 
 def _run_default_nmi_prealign(
-    mov_img: Any,
-    ref_img: Any,
-    mask_img: Any | None,
-    logger: logging.Logger,
-    device: str,
+        mov_img: Any,
+        ref_img: Any,
+        mask_img: Any | None,
+        logger: logging.Logger,
+        device: str,
 ) -> np.ndarray:
     """Run the default coarse image-based prealignment for ``bbreg``.
 
-    This uses the default image-based coregistration path with an NMI loss and
-    a short two-level pyramid. The returned transform is always a RAS-to-RAS
-    matrix in public ``moving/source -> target/reference`` direction so it can
-    be passed directly to :func:`neuroreg.bbreg.register.register_surface` as
+    This uses the Powell-based image-registration path with the standard
+    MRI_coreg-style NMI evaluator and an image-center initialization. The
+    returned transform is always a RAS-to-RAS matrix in public
+    ``moving/source -> target/reference`` direction so it can be passed
+    directly to :func:`neuroreg.bbreg.register.register_surface` as
     ``init_ras``.
     """
     from neuroreg.imreg.coreg import coreg
 
     prealign_ref = _mask_reference_image(ref_img, mask_img)
     logger.info(
-        "Running default coarse NMI prealignment "
-        "(image-center start, min_voxels=32, max_voxels=64, level_iters=[30, 10])%s",
+        "Running default Powell NMI prealignment (image-center start, sep=4)%s",
         " with aparc+aseg/aseg mask" if mask_img is not None else "",
     )
     Mr2r = coreg(
         mov_img,
         prealign_ref,
         return_v2v=False,
+        method="powell",
         init_type="image_center",
-        symmetric=False,
         dof=6,
-        level_iters=[30, 10],
-        loss_name="nmi",
-        min_voxels=32,
-        max_voxels=64,
-        isotropic=False,
+        powell_sep=4,
         device=device,
     )
     Mr2r_np = Mr2r.detach().cpu().numpy()

@@ -159,7 +159,7 @@ The WM/GM boundary surface is extracted on-the-fly from a parcellation or
 aseg file (e.g. `aparc+aseg.mgz`, `aseg.mgz`, or NIfTI) via marching cubes.
 The segmentation header provides the reference geometry for the BBR stage.
 An optional `--ref` can still be supplied in this mode to drive the coarse
-image-based NMI prealignment step.
+Powell-based image NMI prealignment step.
 
 **Required arguments**
 
