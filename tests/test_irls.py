@@ -1,5 +1,7 @@
 """Tests for IRLS rigid registration (neuroreg.imreg.irls)."""
 
+from typing import Any, cast
+
 import pytest
 import torch
 
@@ -334,3 +336,10 @@ class TestInitHelpers:
         expected_centroid[0, 3] = 2.0
         assert torch.allclose(centroid_v2v, expected_centroid)
         assert torch.allclose(image_center_v2v, torch.eye(4))
+
+    def test_invalid_init_type_raises_clear_error(self):
+        src = torch.zeros(9, 9, 9)
+        trg = torch.zeros(9, 9, 9)
+
+        with pytest.raises(ValueError, match="Unknown init_type"):
+            get_init_vox2vox(src, trg, init_type=cast(Any, "bogus"))

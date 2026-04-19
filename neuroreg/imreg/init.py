@@ -25,7 +25,16 @@ def normalize_init_type(init_type: InitType) -> ResolvedInitType:
     -------
     ResolvedInitType
         The validated initialization mode.
+
+    Raises
+    ------
+    ValueError
+        If ``init_type`` is not one of the supported initialization modes.
     """
+    if init_type not in {"header", "centroid", "image_center"}:
+        raise ValueError(
+            f"Unknown init_type '{init_type}'. Choose from: 'header', 'centroid', 'image_center'."
+        )
     return init_type
 
 
@@ -120,7 +129,6 @@ def get_ixform_centroids(
     )
 
 
-
 def get_ixform_image_centers(
         simg: Tensor,
         timg: Tensor,
@@ -143,7 +151,6 @@ def get_ixform_image_centers(
     )
 
 
-
 def get_vox2vox_from_header(saffine: Tensor, taffine: Tensor) -> Tensor:
     """Compute the header-derived voxel-to-voxel initialization transform.
 
@@ -160,7 +167,6 @@ def get_vox2vox_from_header(saffine: Tensor, taffine: Tensor) -> Tensor:
         The voxel-to-voxel transform implied by the two headers alone.
     """
     return torch.inverse(taffine) @ saffine
-
 
 
 def get_init_vox2vox(
