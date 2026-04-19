@@ -1,4 +1,3 @@
-
 """Tests for IRLS rigid registration (neuroreg.imreg.irls)."""
 
 import pytest
