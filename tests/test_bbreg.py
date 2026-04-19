@@ -61,11 +61,12 @@ class TestBbregCli:
             "--out", str(out_path),
         ])
 
-        assert captured_prealign_kwargs["loss_name"] == "nmi"
-        assert captured_prealign_kwargs["centroid_init"] is False
-        assert captured_prealign_kwargs["min_voxels"] == 32
-        assert captured_prealign_kwargs["max_voxels"] == 64
-        assert captured_prealign_kwargs["level_iters"] == [30, 10]
+        assert captured_prealign_kwargs["method"] == "powell"
+        assert captured_prealign_kwargs["init_type"] == "image_center"
+        assert captured_prealign_kwargs["dof"] == 6
+        assert captured_prealign_kwargs["powell_sep"] == 4
+        assert "level_iters" not in captured_prealign_kwargs
+        assert "loss_name" not in captured_prealign_kwargs
         assert captured_surface_kwargs["n_iters"] == 200
         assert captured_surface_kwargs["init_ras"] is not None
         assert captured_surface_kwargs.get("init_type") is None

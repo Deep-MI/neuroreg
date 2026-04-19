@@ -52,18 +52,18 @@ class EarlyStopper:
 
 
 def training_loop(
-    model: nn.Module,
-    optimizer: torch.optim.Optimizer,
-    src_image: torch.Tensor,
-    trg_image: torch.Tensor,
-    n: int = 30,
-    loss_name: str = "mse",
-    loss_beta: float | None = None,
-    loss_bins: int = 32,
-    normalize: bool = True,
-    optimizer_name: str = "adam",
-    verbose: bool = False,
-    trace_fn=None,
+        model: nn.Module,
+        optimizer: torch.optim.Optimizer,
+        src_image: torch.Tensor,
+        trg_image: torch.Tensor,
+        n: int = 30,
+        loss_name: str = "mse",
+        loss_beta: float | None = None,
+        loss_bins: int = 32,
+        normalize: bool = True,
+        optimizer_name: str = "adam",
+        verbose: bool = False,
+        trace_fn=None,
 ) -> list[float]:
     """Optimise a registration model for a fixed number of iterations.
 
@@ -118,7 +118,9 @@ def training_loop(
         reported as their raw scalar losses.
     """
     losses: list[float] = []
-    last_v2v = model.get_v2v_from_weights(tuple(int(v) for v in src_image.shape))
+    source_shape = tuple(int(v) for v in src_image.shape)
+    target_shape = tuple(int(v) for v in trg_image.shape)
+    last_v2v = model.get_v2v_from_weights(source_shape, target_shape)
 
     # Only scale loss_beta for intensity-based losses where beta has intensity units.
     # NCC win_size is in voxels; MI/NMI sigma is already in [0, 1] intensity units.
@@ -199,7 +201,7 @@ def training_loop(
                 else:
                     logger.debug("No gradient for %s", name)
 
-        v2v = model.get_v2v_from_weights(tuple(int(v) for v in src_image.shape))
+        v2v = model.get_v2v_from_weights(source_shape, target_shape)
         diff = torch.norm(last_v2v - v2v)
         last_v2v = v2v
 

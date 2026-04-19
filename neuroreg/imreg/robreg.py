@@ -14,7 +14,8 @@ from torch import Tensor
 
 from ..image import build_gaussian_pyramid, get_pyramid_limits
 from ..image.map import resample_isotropic_tensor
-from .init import get_ixform_centroids
+from .device import resolve_torch_device
+from .init import InitType, get_init_vox2vox, resolve_init_type
 from .irls import move_tensor, register_irls
 
 ImageLike = str | Path | Any | Tensor
@@ -24,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 def _resolve_robreg_device(device: str | torch.device) -> torch.device:
     """Resolve the requested robreg device, warning on unsupported MPS."""
-    resolved = torch.device(device)
+    resolved = resolve_torch_device(device)
     if resolved.type == "mps":
         warnings.warn(
             "IRLS robreg does not support MPS due to lack of float64; falling back to CPU. "
@@ -134,7 +135,7 @@ def register_irls_pyramid(
         src_affine: Tensor | None = None,
         trg_affine: Tensor | None = None,
         initial_transform: Tensor | None = None,
-        centroid_init: bool = True,
+        init_type: InitType = "centroid",
         min_voxels: int = 16,
         max_voxels: int | None = None,
         nmax: int = 5,
@@ -164,10 +165,10 @@ def register_irls_pyramid(
         Voxel-to-RAS affines. Required when ``isotropic=True``.
     initial_transform : Tensor, optional
         Initial voxel-to-voxel transform. If provided, it takes precedence over
-        centroid initialization.
-    centroid_init : bool, default=True
-        Whether to initialize with centroid alignment when no explicit initial
-        transform is supplied.
+        the requested initialization mode.
+    init_type : {"header", "centroid", "image_center"}, default="centroid"
+        Explicit initialization mode used when ``initial_transform`` is not
+        provided. ``"image_center"`` matches FreeSurfer's cras0-style center start.
     min_voxels : int, default=16
         Minimum size constraint passed to the shared pyramid builder.
     max_voxels : int, optional
@@ -224,6 +225,8 @@ def register_irls_pyramid(
         if initial_transform is not None:
             initial_transform = initial_transform.to(device="cpu")
 
+    resolved_init_type = resolve_init_type(init_type=init_type, default_init_type="centroid")
+
     if isotropic:
         if src_affine is None or trg_affine is None:
             raise ValueError("src_affine and trg_affine required when isotropic=True")
@@ -250,24 +253,27 @@ def register_irls_pyramid(
                 @ move_tensor(initial_transform, device=src.device, dtype=src.dtype)
                 @ torch.inverse(move_tensor(Rsrc, device=src.device, dtype=src.dtype))
             )
-        elif centroid_init:
+        else:
             T_iso = move_tensor(
-                get_ixform_centroids(src_iso.float(), trg_iso.float()),
+                get_init_vox2vox(
+                    src_iso.float(),
+                    trg_iso.float(),
+                    saffine=src_iso_aff,
+                    taffine=trg_iso_aff,
+                    init_type=resolved_init_type,
+                ),
                 device=src.device,
                 dtype=src.dtype,
             )
             if verbose:
                 t = T_iso[:3, 3].tolist()
                 logger.info(
-                    "Centroid initialization (isotropic space): [%.6f, %.6f, %.6f]",
+                    "%s initialization (isotropic space): [%.6f, %.6f, %.6f]",
+                    resolved_init_type,
                     t[0],
                     t[1],
                     t[2],
                 )
-        else:
-            T_iso = torch.eye(4, dtype=src.dtype, device=src.device)
-            if verbose:
-                logger.info("Centroid initialization disabled; starting from identity in isotropic space")
 
         shared_limits = get_pyramid_limits(src_iso.shape, trg_iso.shape, minsize=min_voxels, maxsize=max_voxels)
         pyramid_src, _ = build_gaussian_pyramid(src_iso, src_iso_aff, limits=shared_limits)
@@ -285,19 +291,21 @@ def register_irls_pyramid(
         pyramid_trg, _ = build_gaussian_pyramid(trg, trg_affine_for_pyramid, limits=shared_limits)
         if initial_transform is not None:
             T_iso = move_tensor(initial_transform, device=src.device, dtype=src.dtype)
-        elif centroid_init:
+        else:
             T_iso = move_tensor(
-                get_ixform_centroids(src.float(), trg.float()),
+                get_init_vox2vox(
+                    src.float(),
+                    trg.float(),
+                    saffine=src_affine_for_pyramid,
+                    taffine=trg_affine_for_pyramid,
+                    init_type=resolved_init_type,
+                ),
                 device=src.device,
                 dtype=src.dtype,
             )
             if verbose:
                 t = T_iso[:3, 3].tolist()
-                logger.info("Centroid initialization: [%.6f, %.6f, %.6f]", t[0], t[1], t[2])
-        else:
-            T_iso = torch.eye(4, dtype=src.dtype, device=src.device)
-            if verbose:
-                logger.info("Centroid initialization disabled; starting from identity")
+                logger.info("%s initialization: [%.6f, %.6f, %.6f]", resolved_init_type, t[0], t[1], t[2])
         Rsrc = torch.eye(4, dtype=torch.float32)
         Rtrg = torch.eye(4, dtype=torch.float32)
         iso_affine = trg_affine.detach().cpu().numpy() if trg_affine is not None else None
@@ -362,7 +370,7 @@ def robreg(
         src_affine: Tensor | None = None,
         trg_affine: Tensor | None = None,
         return_v2v: bool = False,
-        centroid_init: bool = True,
+        init_type: InitType = "centroid",
         dof: int = 6,
         nmax: int = 5,
         sat: float = 6.0,
@@ -390,8 +398,9 @@ def robreg(
     return_v2v : bool, default=False
         If ``True``, return the estimated transform in voxel coordinates. If
         ``False``, return the corresponding RAS-to-RAS transform.
-    centroid_init : bool, default=True
-        Whether to initialize the registration with centroid alignment.
+    init_type : {"header", "centroid", "image_center"}, default="centroid"
+        Explicit initialization mode used when no ``initial_transform`` is
+        supplied. ``"image_center"`` matches FreeSurfer's cras0-style center start.
     dof : int, default=6
         Degrees of freedom. The public IRLS path currently supports rigid
         registration only, so this must remain ``6``.
@@ -444,7 +453,7 @@ def robreg(
         trg=trg_data,
         src_affine=src_aff,
         trg_affine=trg_aff,
-        centroid_init=centroid_init,
+        init_type=init_type,
         nmax=nmax,
         sat=sat,
         symmetric=symmetric,

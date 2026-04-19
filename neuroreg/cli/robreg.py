@@ -57,10 +57,27 @@ def _build_parser() -> argparse.ArgumentParser:
         default=argparse.SUPPRESS,
         help="Disable symmetric halfway-space registration and run directed registration.",
     )
-    p.add_argument(
-        "--noinit",
-        action="store_true",
-        help="Skip centroid-based initialization and start from identity (matches FreeSurfer --noinit).",
+    init_group = p.add_mutually_exclusive_group()
+    init_group.add_argument(
+        "--init-header",
+        dest="init_type",
+        action="store_const",
+        const="header",
+        help="Use header alignment only.",
+    )
+    init_group.add_argument(
+        "--init-centroid",
+        dest="init_type",
+        action="store_const",
+        const="centroid",
+        help="Initialize by aligning intensity centroids in RAS.",
+    )
+    init_group.add_argument(
+        "--init-center",
+        dest="init_type",
+        action="store_const",
+        const="image_center",
+        help="Initialize by aligning geometric image centers in RAS (FreeSurfer cras0-style).",
     )
 
     # ── output options ──────────────────────────────────────────────────────
@@ -118,11 +135,8 @@ def main(args=None) -> None:
 
     # ── register ────────────────────────────────────────────────────────────
     logger.info("Starting IRLS registration (dof=%d, symmetric=%s) …", ns.dof, ns.symmetric)
-    Mr2r = robreg(
-        mov_img,
-        ref_img,
+    kwargs: dict[str, Any] = dict(
         return_v2v=False,
-        centroid_init=not ns.noinit,
         dof=ns.dof,
         nmax=ns.nmax,
         sat=ns.sat,
@@ -130,6 +144,13 @@ def main(args=None) -> None:
         isotropic=True,
         outliers_name=ns.outliers,
         verbose=ns.verbose or ns.debug,
+    )
+    if ns.init_type is not None:
+        kwargs["init_type"] = ns.init_type
+    Mr2r = robreg(
+        mov_img,
+        ref_img,
+        **kwargs,
     )
     Mr2r_cpu = Mr2r.detach().cpu()
 
@@ -178,4 +199,3 @@ def main(args=None) -> None:
 
 if __name__ == "__main__":
     main()
-

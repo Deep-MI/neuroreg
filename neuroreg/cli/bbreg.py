@@ -136,7 +136,12 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
 
-    p.add_argument("--device", default="cpu", metavar="DEVICE", help="PyTorch device, e.g. 'cpu' or 'cuda'.")
+    p.add_argument(
+        "--device",
+        default="cpu",
+        metavar="DEVICE",
+        help="Torch device string, e.g. 'cpu', 'cuda', 'mps', or 'gpu'.",
+    )
     p.add_argument("--verbose", action="store_true", help="Enable INFO-level logging.")
     p.add_argument("--debug", action="store_true", help="Enable DEBUG-level logging.")
 
@@ -235,9 +240,7 @@ def _mask_reference_image(
     ref_data = np.asarray(ref_img.get_fdata(), dtype=np.float32)
     mask_data = np.asarray(mask_img.get_fdata()) > 0
     if mask_data.shape != ref_data.shape:
-        raise ValueError(
-            f"Prealignment mask shape {mask_data.shape} does not match reference shape {ref_data.shape}."
-        )
+        raise ValueError(f"Prealignment mask shape {mask_data.shape} does not match reference shape {ref_data.shape}.")
 
     masked = ref_data * mask_data.astype(np.float32)
     return nib.Nifti1Image(masked, ref_img.affine)
@@ -252,31 +255,28 @@ def _run_default_nmi_prealign(
 ) -> np.ndarray:
     """Run the default coarse image-based prealignment for ``bbreg``.
 
-    This uses the default image-based coregistration path with an NMI loss and
-    a short two-level pyramid. The returned transform is always a RAS-to-RAS
-    matrix in public ``moving/source -> target/reference`` direction so it can
-    be passed directly to :func:`neuroreg.bbreg.register.register_surface` as
+    This uses the Powell-based image-registration path with the standard
+    MRI_coreg-style NMI evaluator and an image-center initialization. The
+    returned transform is always a RAS-to-RAS matrix in public
+    ``moving/source -> target/reference`` direction so it can be passed
+    directly to :func:`neuroreg.bbreg.register.register_surface` as
     ``init_ras``.
     """
     from neuroreg.imreg.coreg import coreg
 
     prealign_ref = _mask_reference_image(ref_img, mask_img)
     logger.info(
-        "Running default coarse NMI prealignment (header start, min_voxels=32, max_voxels=64, level_iters=[30, 10])%s",
+        "Running default Powell NMI prealignment (image-center start, sep=4)%s",
         " with aparc+aseg/aseg mask" if mask_img is not None else "",
     )
     Mr2r = coreg(
         mov_img,
         prealign_ref,
         return_v2v=False,
-        centroid_init=False,
-        symmetric=False,
+        method="powell",
+        init_type="image_center",
         dof=6,
-        level_iters=[30, 10],
-        loss_name="nmi",
-        min_voxels=32,
-        max_voxels=64,
-        isotropic=False,
+        powell_sep=4,
         device=device,
     )
     Mr2r_np = Mr2r.detach().cpu().numpy()
@@ -366,6 +366,7 @@ def main(args=None) -> None:
         sys.exit(1)
 
     print(f"Output: {ns.out}")
+
 
 if __name__ == "__main__":
     main()

@@ -28,8 +28,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="coreg",
         description=(
-            "Gradient-descent 3-D image-to-image registration using PyTorch optimisation.\n"
-            "This is the main image-based cross-modal registration path."
+            "3-D image-to-image registration.\n"
+            "Defaults to the MRI_coreg-style Powell path; use --method gd for the legacy PyTorch gradient-descent path."
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -45,6 +45,12 @@ def _build_parser() -> argparse.ArgumentParser:
         choices=[3, 6, 9, 12],
         metavar="{3,6,9,12}",
         help="Degrees of freedom: 3=translation, 6=rigid, 9=rigid+scale, 12=affine.",
+    )
+    p.add_argument(
+        "--method",
+        choices=["powell", "gd"],
+        default="powell",
+        help="Registration backend: Powell or legacy gradient descent ('gd').",
     )
 
     p.add_argument(
@@ -75,17 +81,71 @@ def _build_parser() -> argparse.ArgumentParser:
         default=argparse.SUPPRESS,
         help="Disable symmetric halfway-space registration and run directed registration.",
     )
-    p.add_argument(
-        "--noinit",
-        action="store_true",
-        help="Skip centroid-based initialization and start from identity (matches FreeSurfer --noinit).",
+    init_group = p.add_mutually_exclusive_group()
+    init_group.add_argument(
+        "--init-header",
+        dest="init_type",
+        action="store_const",
+        const="header",
+        help="Use header alignment only.",
+    )
+    init_group.add_argument(
+        "--init-centroid",
+        dest="init_type",
+        action="store_const",
+        const="centroid",
+        help="Initialize by aligning intensity centroids in RAS.",
+    )
+    init_group.add_argument(
+        "--init-center",
+        dest="init_type",
+        action="store_const",
+        const="image_center",
+        help="Initialize by aligning geometric image centers in RAS (FreeSurfer cras0-style).",
     )
     p.add_argument(
         "--isotropic",
         action="store_true",
         help="Enable shared isotropic preprocessing before building the pyramid.",
     )
-    p.add_argument("--device", default="cpu", metavar="DEVICE", help="PyTorch device, e.g. 'cpu' or 'cuda'.")
+    p.add_argument(
+        "--device",
+        default="cpu",
+        metavar="DEVICE",
+        help=(
+            "Torch device string, e.g. 'cpu', 'cuda', 'mps', or 'gpu'. The Powell backend currently falls back to CPU."
+        ),
+    )
+    p.add_argument(
+        "--powell-brute-limit",
+        type=float,
+        default=30.0,
+        help="Initial search half-width for the Powell-style brute-force stage.",
+    )
+    p.add_argument(
+        "--powell-brute-iters",
+        type=int,
+        default=1,
+        help="Number of coarse-to-fine passes in the Powell-style brute-force stage.",
+    )
+    p.add_argument(
+        "--powell-brute-samples",
+        type=int,
+        default=30,
+        help="Number of samples per dimension in the Powell-style brute-force stage.",
+    )
+    p.add_argument(
+        "--powell-maxiter",
+        type=int,
+        default=4,
+        help="Maximum Powell iterations in the Powell-style refinement stage.",
+    )
+    p.add_argument(
+        "--powell-sep",
+        type=int,
+        default=4,
+        help="Sampling spacing for the Powell-style MRI_coreg evaluator.",
+    )
 
     p.add_argument("--verbose", action="store_true", help="Enable INFO-level logging.")
     p.add_argument("--debug", action="store_true", help="Enable DEBUG-level logging.")
@@ -96,12 +156,11 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(args=None) -> None:
     """Entry point for the ``coreg`` command-line interface.
 
-    This wrapper exposes the image-based gradient-descent registration path used
-    for cross-modal alignment when only images are available. It provides a
-    small set of practical knobs: transform DOF, pyramid iteration schedule,
-    optional centroid initialization, symmetric vs directed mode, and optional
-    isotropic preprocessing. The written output LTA is a voxel-to-voxel
-    transform in public ``moving -> reference`` direction.
+    This wrapper exposes public image-based registration for cross-modal
+    alignment when only images are available. It defaults to the FreeSurfer-
+    style brute-force plus Powell path and keeps the legacy gradient-descent
+    backend available via ``--method gd``. The written output LTA is a
+    voxel-to-voxel transform in public ``moving -> reference`` direction.
     """
     import nibabel as nib
 
@@ -130,25 +189,33 @@ def main(args=None) -> None:
 
     kwargs = dict(
         dof=ns.dof,
+        method=ns.method,
         device=ns.device,
         return_v2v=True,
-        centroid_init=not ns.noinit,
         symmetric=ns.symmetric,
         isotropic=ns.isotropic,
         level_iters=ns.level_iters,
         min_voxels=ns.min_voxels,
         max_voxels=ns.max_voxels,
         lr=ns.lr,
+        powell_brute_force_limit=ns.powell_brute_limit,
+        powell_brute_force_iters=ns.powell_brute_iters,
+        powell_brute_force_samples=ns.powell_brute_samples,
+        powell_maxiter=ns.powell_maxiter,
+        powell_sep=ns.powell_sep,
     )
+    if ns.init_type is not None:
+        kwargs["init_type"] = ns.init_type
     if ns.n_iters is not None:
         kwargs["n"] = ns.n_iters
 
     logger.info(
         (
             "Starting image-to-image registration "
-            "(dof=%d, symmetric=%s, isotropic=%s, n=%s, "
-            "level_iters=%s, lr=%s, min_voxels=%d, max_voxels=%s) ..."
+            "(method=%s, dof=%d, symmetric=%s, isotropic=%s, n=%s, "
+            "level_iters=%s, lr=%s, min_voxels=%d, max_voxels=%s, powell_sep=%d) ..."
         ),
+        ns.method,
         ns.dof,
         ns.symmetric,
         ns.isotropic,
@@ -157,6 +224,7 @@ def main(args=None) -> None:
         ns.lr,
         ns.min_voxels,
         ns.max_voxels,
+        ns.powell_sep,
     )
     v2v = coreg(mov_img, ref_img, **kwargs)
     v2v_cpu = v2v.detach().cpu()
@@ -164,6 +232,7 @@ def main(args=None) -> None:
     LTA.from_matrix(v2v_cpu.numpy(), ns.mov, cast(Any, mov_img), ns.ref, cast(Any, ref_img), lta_type=0).write(ns.out)
     logger.info("Wrote LTA: %s", ns.out)
     print(f"Output: {ns.out}")
+
 
 if __name__ == "__main__":
     main()

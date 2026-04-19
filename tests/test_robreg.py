@@ -42,7 +42,7 @@ class TestPublicRobregWrapper:
         monkeypatch.setattr("neuroreg.imreg.robreg.register_irls_pyramid", fake_register_irls_pyramid)
 
         img = _make_img()
-        mr2r = robreg(img, img, return_v2v=False, centroid_init=False, dof=6, nmax=1)
+        mr2r = robreg(img, img, return_v2v=False, init_type="header", dof=6, nmax=1)
 
         assert captured["symmetric"] is True
         assert mr2r.shape == (4, 4)
@@ -60,7 +60,7 @@ class TestPublicRobregWrapper:
             str(src_path),
             str(trg_path),
             return_v2v=False,
-            centroid_init=False,
+            init_type="header",
             dof=6,
             nmax=1,
         )
