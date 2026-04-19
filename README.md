@@ -20,7 +20,7 @@ The main user-facing tools are:
 This project is a work-in-progress in an early development stage. It is developed by
 the creator of FreeSurfer's `mri_robust_register` as an efficient pure Python
 replacement (with GPU support) and cross-modal extensions to support all your medical
-imaging reistration needs, with a focus on high accuracy and speed. If you find it
+imaging registration needs, with a focus on high accuracy and speed. If you find it
 useful for a publication, please cite the relevant papers (see [References](#References)).
 
 ## Installation
