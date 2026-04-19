@@ -267,7 +267,7 @@ for gradient-based optimisations and can run efficiently on a GPU.</p>
 <p>This project is a work-in-progress in an early development stage. It is developed by
 the creator of FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">mri_robust_register</span></code> as an efficient pure Python
 replacement (with GPU support) and cross-modal extensions to support all your medical
-imaging reistration needs, with a focus on high accuracy and speed. If you find it
+imaging registration needs, with a focus on high accuracy and speed. If you find it
 useful for a publication, please cite the relevant papers (see <a class="reference internal" href="#references"><span class="std std-ref">References</span></a>).</p>
 <section id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h2>
@@ -336,9 +336,17 @@ to lack of double precision support on MPS.</p>
 <td><p>off</p></td>
 <td><p>Disable symmetric halfway-space registration and run directed registration. Symmetric registration is the default.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--noinit</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--init-header</span></code></p></td>
 <td><p>off</p></td>
-<td><p>Skip centroid-based initialization and start from identity (like FreeSurfer <code class="docutils literal notranslate"><span class="pre">--noinit</span></code>).</p></td>
+<td><p>Use header alignment only.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--init-centroid</span></code></p></td>
+<td><p>default</p></td>
+<td><p>Initialize by aligning intensity centroids in RAS.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--init-center</span></code></p></td>
+<td><p>off</p></td>
+<td><p>Initialize by aligning geometric image centers in RAS.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--mapped</span> <span class="pre">FILE</span></code></p></td>
 <td><p>—</p></td>
@@ -367,10 +375,11 @@ to lack of double precision support on MPS.</p>
 <hr class="docutils" />
 <section id="coreg-image-based-cross-modal-registration">
 <h3><code class="docutils literal notranslate"><span class="pre">coreg</span></code> — image-based cross-modal registration<a class="headerlink" href="#coreg-image-based-cross-modal-registration" title="Link to this heading">¶</a></h3>
-<p>This is the image-based gradient-descent registration path used for
-<strong>cross-sequence / cross-modal</strong> registration when no surfaces or segmentation
-are available. In practice it is the package’s image-only counterpart to
-FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">mri_coreg</span></code>.</p>
+<p>This is the package’s image-to-image registration path for
+<strong>cross-sequence / cross-modal</strong> alignment when no surfaces or segmentation
+are available. By default it runs the MRI_coreg-style Powell pipeline
+(coarse brute-force search plus Powell refinement); the older PyTorch
+gradient-descent path remains available via <code class="docutils literal notranslate"><span class="pre">--method</span> <span class="pre">gd</span></code>.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">coreg</span> <span class="o">--</span><span class="n">mov</span> <span class="o">&lt;</span><span class="n">moving</span><span class="o">.</span><span class="n">nii</span><span class="o">.</span><span class="n">gz</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">ref</span> <span class="o">&lt;</span><span class="n">reference</span><span class="o">.</span><span class="n">nii</span><span class="o">.</span><span class="n">gz</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">out</span> <span class="o">&lt;</span><span class="n">output</span><span class="o">.</span><span class="n">lta</span><span class="o">&gt;</span> <span class="p">[</span><span class="n">options</span><span class="p">]</span>
 </pre></div>
 </div>
@@ -388,17 +397,73 @@ FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">mri_
 <td><p><code class="docutils literal notranslate"><span class="pre">6</span></code></p></td>
 <td><p>Degrees of freedom: 3=translation, 6=rigid, 9=rigid+scale, 12=affine.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--n_iters</span> <span class="pre">N</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--method</span> <span class="pre">{powell,gd}</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">powell</span></code></p></td>
+<td><p>Registration backend: Powell by default, or legacy gradient descent.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--n_iters</span> <span class="pre">N</span></code></p></td>
 <td><p>auto</p></td>
-<td><p>Maximum optimisation iterations per pyramid level.</p></td>
+<td><p>Uniform optimisation iterations per executed pyramid level.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--noinit</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--level-iters</span> <span class="pre">A,B,...</span></code></p></td>
+<td><p>—</p></td>
+<td><p>Comma-separated coarse-to-fine per-level iteration schedule.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--lr</span> <span class="pre">LR</span></code></p></td>
+<td><p>auto</p></td>
+<td><p>Optimizer step size for the GD path.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--min-voxels</span> <span class="pre">N</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">16</span></code></p></td>
+<td><p>Minimum pyramid level size.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--max-voxels</span> <span class="pre">N</span></code></p></td>
+<td><p>full</p></td>
+<td><p>Largest allowed dimension of the finest processed pyramid level.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--nosym</span></code></p></td>
 <td><p>off</p></td>
-<td><p>Skip centroid-based initialization and start from identity.</p></td>
+<td><p>Disable symmetric halfway-space registration for the GD path.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">DEVICE</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--init-header</span></code></p></td>
+<td><p>off</p></td>
+<td><p>Use header alignment only.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--init-centroid</span></code></p></td>
+<td><p>off</p></td>
+<td><p>Initialize by aligning intensity centroids in RAS.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--init-center</span></code></p></td>
+<td><p>default</p></td>
+<td><p>Initialize by aligning geometric image centers in RAS.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--isotropic</span></code></p></td>
+<td><p>off</p></td>
+<td><p>Enable shared isotropic preprocessing before the GD pyramid.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">DEVICE</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">cpu</span></code></p></td>
-<td><p>PyTorch device, e.g. <code class="docutils literal notranslate"><span class="pre">cpu</span></code> or <code class="docutils literal notranslate"><span class="pre">cuda</span></code>.</p></td>
+<td><p>Torch device string, e.g. <code class="docutils literal notranslate"><span class="pre">cpu</span></code>, <code class="docutils literal notranslate"><span class="pre">cuda</span></code>, <code class="docutils literal notranslate"><span class="pre">mps</span></code>, or <code class="docutils literal notranslate"><span class="pre">gpu</span></code>. Powell falls back to CPU.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--powell-brute-limit</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">30.0</span></code></p></td>
+<td><p>Initial search half-width for the Powell brute-force stage.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--powell-brute-iters</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
+<td><p>Number of coarse-to-fine passes in the Powell brute-force stage.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--powell-brute-samples</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">30</span></code></p></td>
+<td><p>Samples per dimension in the Powell brute-force stage.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--powell-maxiter</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">4</span></code></p></td>
+<td><p>Maximum Powell iterations in the refinement stage.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--powell-sep</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">4</span></code></p></td>
+<td><p>Sampling spacing for the Powell MRI_coreg-style evaluator.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--verbose</span></code></p></td>
 <td><p>off</p></td>
@@ -441,8 +506,9 @@ when not specified.</p>
 </div>
 <p>The WM/GM boundary surface is extracted on-the-fly from a parcellation or
 aseg file (e.g. <code class="docutils literal notranslate"><span class="pre">aparc+aseg.mgz</span></code>, <code class="docutils literal notranslate"><span class="pre">aseg.mgz</span></code>, or NIfTI) via marching cubes.
-The segmentation header provides the reference geometry; <code class="docutils literal notranslate"><span class="pre">--ref</span></code> must <em>not</em> be
-specified in this mode.</p>
+The segmentation header provides the reference geometry for the BBR stage.
+An optional <code class="docutils literal notranslate"><span class="pre">--ref</span></code> can still be supplied in this mode to drive the coarse
+Powell-based image NMI prealignment step.</p>
 <p><strong>Required arguments</strong></p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
@@ -512,7 +578,7 @@ specified in this mode.</p>
 <td><p>Weight for gradient cost term when <code class="docutils literal notranslate"><span class="pre">--cost=both</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--n_iters</span> <span class="pre">N</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">500</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">200</span></code></p></td>
 <td><p>Number of RMSprop optimisation iterations.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--lr</span> <span class="pre">LR</span></code></p></td>
@@ -539,13 +605,21 @@ specified in this mode.</p>
 <td><p><code class="docutils literal notranslate"><span class="pre">50</span></code></p></td>
 <td><p><em>(Mode C)</em> Taubin smoothing iterations after marching cubes.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--init_lta</span> <span class="pre">FILE</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--init-lta</span> <span class="pre">FILE</span></code></p></td>
 <td><p>—</p></td>
-<td><p>Initialise from an existing LTA transform (e.g. from a prior <code class="docutils literal notranslate"><span class="pre">robreg</span></code> run or a previous <code class="docutils literal notranslate"><span class="pre">bbreg</span></code> pass).</p></td>
+<td><p>Initialize from an existing LTA transform.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--init-header</span></code></p></td>
+<td><p>off</p></td>
+<td><p>Skip coarse NMI prealignment and rely on header geometry only.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--no-coreg-ref-mask</span></code></p></td>
+<td><p>off</p></td>
+<td><p>Disable the default aparc+aseg/aseg mask during coarse NMI prealignment.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">DEVICE</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">cpu</span></code></p></td>
-<td><p>PyTorch device, e.g. <code class="docutils literal notranslate"><span class="pre">cpu</span></code> or <code class="docutils literal notranslate"><span class="pre">cuda</span></code>.</p></td>
+<td><p>Torch device string, e.g. <code class="docutils literal notranslate"><span class="pre">cpu</span></code>, <code class="docutils literal notranslate"><span class="pre">cuda</span></code>, <code class="docutils literal notranslate"><span class="pre">mps</span></code>, or <code class="docutils literal notranslate"><span class="pre">gpu</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--verbose</span></code></p></td>
 <td><p>off</p></td>

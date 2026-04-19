@@ -20,7 +20,7 @@ The main user-facing tools are:
 This project is a work-in-progress in an early development stage. It is developed by
 the creator of FreeSurfer's `mri_robust_register` as an efficient pure Python
 replacement (with GPU support) and cross-modal extensions to support all your medical
-imaging reistration needs, with a focus on high accuracy and speed. If you find it 
+imaging registration needs, with a focus on high accuracy and speed. If you find it
 useful for a publication, please cite the relevant papers (see [References](#References)).
 
 ## Installation
@@ -63,7 +63,9 @@ Run `robreg -h` for a full argument summary with defaults.
 | `--nmax N`        | `5`     | Maximum number of outer IRLS iterations per pyramid level.                                                         |
 | `--sat FLOAT`     | `6.0`   | Tukey biweight saturation threshold.                                                                               |
 | `--nosym`         | off     | Disable symmetric halfway-space registration and run directed registration. Symmetric registration is the default. |
-| `--noinit`        | off     | Skip centroid-based initialization and start from identity (like FreeSurfer `--noinit`).                           |
+| `--init-header`   | off     | Use header alignment only.                                                                                         |
+| `--init-centroid` | default | Initialize by aligning intensity centroids in RAS.                                                                 |
+| `--init-center`   | off     | Initialize by aligning geometric image centers in RAS.                                                             |
 | `--mapped FILE`   | —       | Save the warped moving image.                                                                                      |
 | `--outliers FILE` | —       | Save an outlier map (`1 - Tukey weights`).                                                                         |
 | `--verbose`       | off     | Enable INFO-level logging.                                                                                         |
@@ -79,10 +81,11 @@ robreg --mov T1_repeat.nii.gz --ref T1_baseline.mgz --out T1_repeat_to_T1_baseli
 
 ### `coreg` — image-based cross-modal registration
 
-This is the image-based gradient-descent registration path used for
-**cross-sequence / cross-modal** registration when no surfaces or segmentation
-are available. In practice it is the package's image-only counterpart to
-FreeSurfer's `mri_coreg`.
+This is the package's image-to-image registration path for
+**cross-sequence / cross-modal** alignment when no surfaces or segmentation
+are available. By default it runs the MRI_coreg-style Powell pipeline
+(coarse brute-force search plus Powell refinement); the older PyTorch
+gradient-descent path remains available via `--method gd`.
 
 ```
 coreg --mov <moving.nii.gz> --ref <reference.nii.gz> --out <output.lta> [options]
@@ -90,14 +93,28 @@ coreg --mov <moving.nii.gz> --ref <reference.nii.gz> --out <output.lta> [options
 
 **Options**
 
-| Argument           | Default | Description                                                           |
-|--------------------|---------|-----------------------------------------------------------------------|
-| `--dof {3,6,9,12}` | `6`     | Degrees of freedom: 3=translation, 6=rigid, 9=rigid+scale, 12=affine. |
-| `--n_iters N`      | auto    | Maximum optimisation iterations per pyramid level.                    |
-| `--noinit`         | off     | Skip centroid-based initialization and start from identity.           |
-| `--device DEVICE`  | `cpu`   | PyTorch device, e.g. `cpu` or `cuda`.                                 |
-| `--verbose`        | off     | Enable INFO-level logging.                                            |
-| `--debug`          | off     | Enable DEBUG-level logging.                                           |
+| Argument                 | Default  | Description                                                                         |
+|--------------------------|----------|-------------------------------------------------------------------------------------|
+| `--dof {3,6,9,12}`       | `6`      | Degrees of freedom: 3=translation, 6=rigid, 9=rigid+scale, 12=affine.               |
+| `--method {powell,gd}`   | `powell` | Registration backend: Powell by default, or legacy gradient descent.                |
+| `--n_iters N`            | auto     | Uniform optimisation iterations per executed pyramid level.                         |
+| `--level-iters A,B,...`  | —        | Comma-separated coarse-to-fine per-level iteration schedule.                        |
+| `--lr LR`                | auto     | Optimizer step size for the GD path.                                                |
+| `--min-voxels N`         | `16`     | Minimum pyramid level size.                                                         |
+| `--max-voxels N`         | full     | Largest allowed dimension of the finest processed pyramid level.                    |
+| `--nosym`                | off      | Disable symmetric halfway-space registration for the GD path.                       |
+| `--init-header`          | off      | Use header alignment only.                                                          |
+| `--init-centroid`        | off      | Initialize by aligning intensity centroids in RAS.                                  |
+| `--init-center`          | default  | Initialize by aligning geometric image centers in RAS.                              |
+| `--isotropic`            | off      | Enable shared isotropic preprocessing before the GD pyramid.                        |
+| `--device DEVICE`        | `cpu`    | Torch device string, e.g. `cpu`, `cuda`, `mps`, or `gpu`. Powell falls back to CPU. |
+| `--powell-brute-limit`   | `30.0`   | Initial search half-width for the Powell brute-force stage.                         |
+| `--powell-brute-iters`   | `1`      | Number of coarse-to-fine passes in the Powell brute-force stage.                    |
+| `--powell-brute-samples` | `30`     | Samples per dimension in the Powell brute-force stage.                              |
+| `--powell-maxiter`       | `4`      | Maximum Powell iterations in the refinement stage.                                  |
+| `--powell-sep`           | `4`      | Sampling spacing for the Powell MRI_coreg-style evaluator.                          |
+| `--verbose`              | off      | Enable INFO-level logging.                                                          |
+| `--debug`                | off      | Enable DEBUG-level logging.                                                         |
 
 **Example**
 
@@ -140,8 +157,9 @@ bbreg --mov <moving.nii.gz> --seg <aparc+aseg.mgz> --out <output.lta> [options]
 
 The WM/GM boundary surface is extracted on-the-fly from a parcellation or
 aseg file (e.g. `aparc+aseg.mgz`, `aseg.mgz`, or NIfTI) via marching cubes.
-The segmentation header provides the reference geometry; `--ref` must *not* be
-specified in this mode.
+The segmentation header provides the reference geometry for the BBR stage.
+An optional `--ref` can still be supplied in this mode to drive the coarse
+Powell-based image NMI prealignment step.
 
 **Required arguments**
 
@@ -156,26 +174,28 @@ specified in this mode.
 
 **Options**
 
-| Argument                               | Default    | Description                                                                                            |
-|----------------------------------------|------------|--------------------------------------------------------------------------------------------------------|
-| `--dof {6,9,12}`                       | `6`        | Degrees of freedom: 6=rigid, 9=rigid+scale, 12=affine.                                                 |
-| `--contrast {t1,t2}`                   | auto       | Tissue contrast: `t1` (WM>GM) or `t2` (GM>WM). Auto-detected if omitted.                               |
-| `--cost {contrast,gradient,both}`      | `contrast` | BBR cost term.                                                                                         |
-| `--wm_proj_abs MM`                     | `1.4`      | WM projection depth in mm.                                                                             |
-| `--gm_proj_frac FRAC`                  | `0.5`      | GM projection as fraction of cortical thickness.                                                       |
-| `--slope SLOPE`                        | `0.5`      | Slope of the BBR sigmoid cost function.                                                                |
-| `--gradient_weight W`                  | `0.0`      | Weight for gradient cost term when `--cost=both`.                                                      |
-| `--n_iters N`                          | `500`      | Number of RMSprop optimisation iterations.                                                             |
-| `--lr LR`                              | `0.005`    | Optimiser learning rate.                                                                               |
-| `--subsample N`                        | `2`        | Use every N-th surface vertex (1 = all).                                                               |
-| `--lh_thickness / --rh_thickness FILE` | —          | *(Mode B)* Cortical thickness files for GM projection.                                                 |
-| `--seg_smooth_sigma SIGMA`             | `0.5`      | *(Mode C)* Gaussian pre-blur sigma (voxels) before marching cubes.                                     |
-| `--seg_mc_level LEVEL`                 | `0.45`     | *(Mode C)* Marching-cubes iso-level.                                                                   |
-| `--seg_smooth_iters N`                 | `50`       | *(Mode C)* Taubin smoothing iterations after marching cubes.                                           |
-| `--init_lta FILE`                      | —          | Initialise from an existing LTA transform (e.g. from a prior `robreg` run or a previous `bbreg` pass). |
-| `--device DEVICE`                      | `cpu`      | PyTorch device, e.g. `cpu` or `cuda`.                                                                  |
-| `--verbose`                            | off        | Enable INFO-level logging.                                                                             |
-| `--debug`                              | off        | Enable DEBUG-level logging.                                                                            |
+| Argument                               | Default    | Description                                                              |
+|----------------------------------------|------------|--------------------------------------------------------------------------|
+| `--dof {6,9,12}`                       | `6`        | Degrees of freedom: 6=rigid, 9=rigid+scale, 12=affine.                   |
+| `--contrast {t1,t2}`                   | auto       | Tissue contrast: `t1` (WM>GM) or `t2` (GM>WM). Auto-detected if omitted. |
+| `--cost {contrast,gradient,both}`      | `contrast` | BBR cost term.                                                           |
+| `--wm_proj_abs MM`                     | `1.4`      | WM projection depth in mm.                                               |
+| `--gm_proj_frac FRAC`                  | `0.5`      | GM projection as fraction of cortical thickness.                         |
+| `--slope SLOPE`                        | `0.5`      | Slope of the BBR sigmoid cost function.                                  |
+| `--gradient_weight W`                  | `0.0`      | Weight for gradient cost term when `--cost=both`.                        |
+| `--n_iters N`                          | `200`      | Number of RMSprop optimisation iterations.                               |
+| `--lr LR`                              | `0.005`    | Optimiser learning rate.                                                 |
+| `--subsample N`                        | `2`        | Use every N-th surface vertex (1 = all).                                 |
+| `--lh_thickness / --rh_thickness FILE` | —          | *(Mode B)* Cortical thickness files for GM projection.                   |
+| `--seg_smooth_sigma SIGMA`             | `0.5`      | *(Mode C)* Gaussian pre-blur sigma (voxels) before marching cubes.       |
+| `--seg_mc_level LEVEL`                 | `0.45`     | *(Mode C)* Marching-cubes iso-level.                                     |
+| `--seg_smooth_iters N`                 | `50`       | *(Mode C)* Taubin smoothing iterations after marching cubes.             |
+| `--init-lta FILE`                      | —          | Initialize from an existing LTA transform.                               |
+| `--init-header`                        | off        | Skip coarse NMI prealignment and rely on header geometry only.           |
+| `--no-coreg-ref-mask`                  | off        | Disable the default aparc+aseg/aseg mask during coarse NMI prealignment. |
+| `--device DEVICE`                      | `cpu`      | Torch device string, e.g. `cpu`, `cuda`, `mps`, or `gpu`.                |
+| `--verbose`                            | off        | Enable INFO-level logging.                                               |
+| `--debug`                              | off        | Enable DEBUG-level logging.                                              |
 
 **Examples**
 

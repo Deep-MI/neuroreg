@@ -255,7 +255,8 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..image</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_gaussian_pyramid</span><span class="p">,</span> <span class="n">get_pyramid_limits</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..image.map</span><span class="w"> </span><span class="kn">import</span> <span class="n">resample_isotropic_tensor</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.init</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_ixform_centroids</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.device</span><span class="w"> </span><span class="kn">import</span> <span class="n">resolve_torch_device</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.init</span><span class="w"> </span><span class="kn">import</span> <span class="n">InitType</span><span class="p">,</span> <span class="n">get_init_vox2vox</span><span class="p">,</span> <span class="n">resolve_init_type</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.irls</span><span class="w"> </span><span class="kn">import</span> <span class="n">move_tensor</span><span class="p">,</span> <span class="n">register_irls</span>
 
 <span class="n">ImageLike</span> <span class="o">=</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="n">Any</span> <span class="o">|</span> <span class="n">Tensor</span>
@@ -265,7 +266,7 @@
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_robreg_device</span><span class="p">(</span><span class="n">device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve the requested robreg device, warning on unsupported MPS.&quot;&quot;&quot;</span>
-    <span class="n">resolved</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">resolved</span> <span class="o">=</span> <span class="n">resolve_torch_device</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">resolved</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;mps&quot;</span><span class="p">:</span>
         <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
             <span class="s2">&quot;IRLS robreg does not support MPS due to lack of float64; falling back to CPU. &quot;</span>
@@ -377,7 +378,7 @@
         <span class="n">src_affine</span><span class="p">:</span> <span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">trg_affine</span><span class="p">:</span> <span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">initial_transform</span><span class="p">:</span> <span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">centroid_init</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">init_type</span><span class="p">:</span> <span class="n">InitType</span> <span class="o">=</span> <span class="s2">&quot;centroid&quot;</span><span class="p">,</span>
         <span class="n">min_voxels</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span>
         <span class="n">max_voxels</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">nmax</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
@@ -407,10 +408,10 @@
 <span class="sd">        Voxel-to-RAS affines. Required when ``isotropic=True``.</span>
 <span class="sd">    initial_transform : Tensor, optional</span>
 <span class="sd">        Initial voxel-to-voxel transform. If provided, it takes precedence over</span>
-<span class="sd">        centroid initialization.</span>
-<span class="sd">    centroid_init : bool, default=True</span>
-<span class="sd">        Whether to initialize with centroid alignment when no explicit initial</span>
-<span class="sd">        transform is supplied.</span>
+<span class="sd">        the requested initialization mode.</span>
+<span class="sd">    init_type : {&quot;header&quot;, &quot;centroid&quot;, &quot;image_center&quot;}, default=&quot;centroid&quot;</span>
+<span class="sd">        Explicit initialization mode used when ``initial_transform`` is not</span>
+<span class="sd">        provided. ``&quot;image_center&quot;`` matches FreeSurfer&#39;s cras0-style center start.</span>
 <span class="sd">    min_voxels : int, default=16</span>
 <span class="sd">        Minimum size constraint passed to the shared pyramid builder.</span>
 <span class="sd">    max_voxels : int, optional</span>
@@ -467,6 +468,8 @@
         <span class="k">if</span> <span class="n">initial_transform</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">initial_transform</span> <span class="o">=</span> <span class="n">initial_transform</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
 
+    <span class="n">resolved_init_type</span> <span class="o">=</span> <span class="n">resolve_init_type</span><span class="p">(</span><span class="n">init_type</span><span class="o">=</span><span class="n">init_type</span><span class="p">,</span> <span class="n">default_init_type</span><span class="o">=</span><span class="s2">&quot;centroid&quot;</span><span class="p">)</span>
+
     <span class="k">if</span> <span class="n">isotropic</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">src_affine</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">trg_affine</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;src_affine and trg_affine required when isotropic=True&quot;</span><span class="p">)</span>
@@ -495,24 +498,27 @@
                 <span class="o">@</span> <span class="n">move_tensor</span><span class="p">(</span><span class="n">initial_transform</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
                 <span class="o">@</span> <span class="n">torch</span><span class="o">.</span><span class="n">inverse</span><span class="p">(</span><span class="n">move_tensor</span><span class="p">(</span><span class="n">Rsrc</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">dtype</span><span class="p">))</span>
             <span class="p">)</span>
-        <span class="k">elif</span> <span class="n">centroid_init</span><span class="p">:</span>
+        <span class="k">else</span><span class="p">:</span>
             <span class="n">T_iso</span> <span class="o">=</span> <span class="n">move_tensor</span><span class="p">(</span>
-                <span class="n">get_ixform_centroids</span><span class="p">(</span><span class="n">src_iso</span><span class="o">.</span><span class="n">float</span><span class="p">(),</span> <span class="n">trg_iso</span><span class="o">.</span><span class="n">float</span><span class="p">()),</span>
+                <span class="n">get_init_vox2vox</span><span class="p">(</span>
+                    <span class="n">src_iso</span><span class="o">.</span><span class="n">float</span><span class="p">(),</span>
+                    <span class="n">trg_iso</span><span class="o">.</span><span class="n">float</span><span class="p">(),</span>
+                    <span class="n">saffine</span><span class="o">=</span><span class="n">src_iso_aff</span><span class="p">,</span>
+                    <span class="n">taffine</span><span class="o">=</span><span class="n">trg_iso_aff</span><span class="p">,</span>
+                    <span class="n">init_type</span><span class="o">=</span><span class="n">resolved_init_type</span><span class="p">,</span>
+                <span class="p">),</span>
                 <span class="n">device</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
                 <span class="n">dtype</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
                 <span class="n">t</span> <span class="o">=</span> <span class="n">T_iso</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                    <span class="s2">&quot;Centroid initialization (isotropic space): [</span><span class="si">%.6f</span><span class="s2">, </span><span class="si">%.6f</span><span class="s2">, </span><span class="si">%.6f</span><span class="s2">]&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> initialization (isotropic space): [</span><span class="si">%.6f</span><span class="s2">, </span><span class="si">%.6f</span><span class="s2">, </span><span class="si">%.6f</span><span class="s2">]&quot;</span><span class="p">,</span>
+                    <span class="n">resolved_init_type</span><span class="p">,</span>
                     <span class="n">t</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
                     <span class="n">t</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
                     <span class="n">t</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>
                 <span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">T_iso</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Centroid initialization disabled; starting from identity in isotropic space&quot;</span><span class="p">)</span>
 
         <span class="n">shared_limits</span> <span class="o">=</span> <span class="n">get_pyramid_limits</span><span class="p">(</span><span class="n">src_iso</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">trg_iso</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">minsize</span><span class="o">=</span><span class="n">min_voxels</span><span class="p">,</span> <span class="n">maxsize</span><span class="o">=</span><span class="n">max_voxels</span><span class="p">)</span>
         <span class="n">pyramid_src</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">build_gaussian_pyramid</span><span class="p">(</span><span class="n">src_iso</span><span class="p">,</span> <span class="n">src_iso_aff</span><span class="p">,</span> <span class="n">limits</span><span class="o">=</span><span class="n">shared_limits</span><span class="p">)</span>
@@ -530,19 +536,21 @@
         <span class="n">pyramid_trg</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">build_gaussian_pyramid</span><span class="p">(</span><span class="n">trg</span><span class="p">,</span> <span class="n">trg_affine_for_pyramid</span><span class="p">,</span> <span class="n">limits</span><span class="o">=</span><span class="n">shared_limits</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">initial_transform</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">T_iso</span> <span class="o">=</span> <span class="n">move_tensor</span><span class="p">(</span><span class="n">initial_transform</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="n">centroid_init</span><span class="p">:</span>
+        <span class="k">else</span><span class="p">:</span>
             <span class="n">T_iso</span> <span class="o">=</span> <span class="n">move_tensor</span><span class="p">(</span>
-                <span class="n">get_ixform_centroids</span><span class="p">(</span><span class="n">src</span><span class="o">.</span><span class="n">float</span><span class="p">(),</span> <span class="n">trg</span><span class="o">.</span><span class="n">float</span><span class="p">()),</span>
+                <span class="n">get_init_vox2vox</span><span class="p">(</span>
+                    <span class="n">src</span><span class="o">.</span><span class="n">float</span><span class="p">(),</span>
+                    <span class="n">trg</span><span class="o">.</span><span class="n">float</span><span class="p">(),</span>
+                    <span class="n">saffine</span><span class="o">=</span><span class="n">src_affine_for_pyramid</span><span class="p">,</span>
+                    <span class="n">taffine</span><span class="o">=</span><span class="n">trg_affine_for_pyramid</span><span class="p">,</span>
+                    <span class="n">init_type</span><span class="o">=</span><span class="n">resolved_init_type</span><span class="p">,</span>
+                <span class="p">),</span>
                 <span class="n">device</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
                 <span class="n">dtype</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
                 <span class="n">t</span> <span class="o">=</span> <span class="n">T_iso</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Centroid initialization: [</span><span class="si">%.6f</span><span class="s2">, </span><span class="si">%.6f</span><span class="s2">, </span><span class="si">%.6f</span><span class="s2">]&quot;</span><span class="p">,</span> <span class="n">t</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">t</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">t</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">T_iso</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Centroid initialization disabled; starting from identity&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> initialization: [</span><span class="si">%.6f</span><span class="s2">, </span><span class="si">%.6f</span><span class="s2">, </span><span class="si">%.6f</span><span class="s2">]&quot;</span><span class="p">,</span> <span class="n">resolved_init_type</span><span class="p">,</span> <span class="n">t</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">t</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">t</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
         <span class="n">Rsrc</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
         <span class="n">Rtrg</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
         <span class="n">iso_affine</span> <span class="o">=</span> <span class="n">trg_affine</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span> <span class="k">if</span> <span class="n">trg_affine</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
@@ -608,7 +616,7 @@
         <span class="n">src_affine</span><span class="p">:</span> <span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">trg_affine</span><span class="p">:</span> <span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">return_v2v</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-        <span class="n">centroid_init</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">init_type</span><span class="p">:</span> <span class="n">InitType</span> <span class="o">=</span> <span class="s2">&quot;centroid&quot;</span><span class="p">,</span>
         <span class="n">dof</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span>
         <span class="n">nmax</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
         <span class="n">sat</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">6.0</span><span class="p">,</span>
@@ -636,8 +644,9 @@
 <span class="sd">    return_v2v : bool, default=False</span>
 <span class="sd">        If ``True``, return the estimated transform in voxel coordinates. If</span>
 <span class="sd">        ``False``, return the corresponding RAS-to-RAS transform.</span>
-<span class="sd">    centroid_init : bool, default=True</span>
-<span class="sd">        Whether to initialize the registration with centroid alignment.</span>
+<span class="sd">    init_type : {&quot;header&quot;, &quot;centroid&quot;, &quot;image_center&quot;}, default=&quot;centroid&quot;</span>
+<span class="sd">        Explicit initialization mode used when no ``initial_transform`` is</span>
+<span class="sd">        supplied. ``&quot;image_center&quot;`` matches FreeSurfer&#39;s cras0-style center start.</span>
 <span class="sd">    dof : int, default=6</span>
 <span class="sd">        Degrees of freedom. The public IRLS path currently supports rigid</span>
 <span class="sd">        registration only, so this must remain ``6``.</span>
@@ -690,7 +699,7 @@
         <span class="n">trg</span><span class="o">=</span><span class="n">trg_data</span><span class="p">,</span>
         <span class="n">src_affine</span><span class="o">=</span><span class="n">src_aff</span><span class="p">,</span>
         <span class="n">trg_affine</span><span class="o">=</span><span class="n">trg_aff</span><span class="p">,</span>
-        <span class="n">centroid_init</span><span class="o">=</span><span class="n">centroid_init</span><span class="p">,</span>
+        <span class="n">init_type</span><span class="o">=</span><span class="n">init_type</span><span class="p">,</span>
         <span class="n">nmax</span><span class="o">=</span><span class="n">nmax</span><span class="p">,</span>
         <span class="n">sat</span><span class="o">=</span><span class="n">sat</span><span class="p">,</span>
         <span class="n">symmetric</span><span class="o">=</span><span class="n">symmetric</span><span class="p">,</span>

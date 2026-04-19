@@ -298,10 +298,27 @@
         <span class="n">default</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">SUPPRESS</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Disable symmetric halfway-space registration and run directed registration.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--noinit&quot;</span><span class="p">,</span>
-        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Skip centroid-based initialization and start from identity (matches FreeSurfer --noinit).&quot;</span><span class="p">,</span>
+    <span class="n">init_group</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">add_mutually_exclusive_group</span><span class="p">()</span>
+    <span class="n">init_group</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--init-header&quot;</span><span class="p">,</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;init_type&quot;</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_const&quot;</span><span class="p">,</span>
+        <span class="n">const</span><span class="o">=</span><span class="s2">&quot;header&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Use header alignment only.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">init_group</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--init-centroid&quot;</span><span class="p">,</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;init_type&quot;</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_const&quot;</span><span class="p">,</span>
+        <span class="n">const</span><span class="o">=</span><span class="s2">&quot;centroid&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Initialize by aligning intensity centroids in RAS.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">init_group</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--init-center&quot;</span><span class="p">,</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;init_type&quot;</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_const&quot;</span><span class="p">,</span>
+        <span class="n">const</span><span class="o">=</span><span class="s2">&quot;image_center&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Initialize by aligning geometric image centers in RAS (FreeSurfer cras0-style).&quot;</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="c1"># ── output options ──────────────────────────────────────────────────────</span>
@@ -361,11 +378,8 @@
 
     <span class="c1"># ── register ────────────────────────────────────────────────────────────</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting IRLS registration (dof=</span><span class="si">%d</span><span class="s2">, symmetric=</span><span class="si">%s</span><span class="s2">) …&quot;</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">dof</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">symmetric</span><span class="p">)</span>
-    <span class="n">Mr2r</span> <span class="o">=</span> <span class="n">robreg</span><span class="p">(</span>
-        <span class="n">mov_img</span><span class="p">,</span>
-        <span class="n">ref_img</span><span class="p">,</span>
+    <span class="n">kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
         <span class="n">return_v2v</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-        <span class="n">centroid_init</span><span class="o">=</span><span class="ow">not</span> <span class="n">ns</span><span class="o">.</span><span class="n">noinit</span><span class="p">,</span>
         <span class="n">dof</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">dof</span><span class="p">,</span>
         <span class="n">nmax</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">nmax</span><span class="p">,</span>
         <span class="n">sat</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">sat</span><span class="p">,</span>
@@ -373,6 +387,13 @@
         <span class="n">isotropic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">outliers_name</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">outliers</span><span class="p">,</span>
         <span class="n">verbose</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">verbose</span> <span class="ow">or</span> <span class="n">ns</span><span class="o">.</span><span class="n">debug</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">init_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;init_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ns</span><span class="o">.</span><span class="n">init_type</span>
+    <span class="n">Mr2r</span> <span class="o">=</span> <span class="n">robreg</span><span class="p">(</span>
+        <span class="n">mov_img</span><span class="p">,</span>
+        <span class="n">ref_img</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">Mr2r_cpu</span> <span class="o">=</span> <span class="n">Mr2r</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span>
 
@@ -422,7 +443,6 @@
 
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
     <span class="n">main</span><span class="p">()</span>
-
 </pre></div>
         </article>
       </div>

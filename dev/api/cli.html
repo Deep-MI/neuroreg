@@ -257,8 +257,9 @@ Uses Iteratively Reweighted Least Squares with Tukey biweights,
 closely matching FreeSurfer’s mri_robust_register algorithm.</p>
 </p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">robreg</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">mov</span> <span class="n">FILE</span> <span class="o">--</span><span class="n">ref</span> <span class="n">FILE</span> <span class="o">--</span><span class="n">out</span> <span class="n">LTA</span> <span class="p">[</span><span class="o">--</span><span class="n">dof</span> <span class="p">{</span><span class="mi">6</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">nmax</span> <span class="n">N</span><span class="p">]</span>
-              <span class="p">[</span><span class="o">--</span><span class="n">sat</span> <span class="n">FLOAT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">nosym</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">noinit</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">mapped</span> <span class="n">FILE</span><span class="p">]</span>
-              <span class="p">[</span><span class="o">--</span><span class="n">outliers</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
+              <span class="p">[</span><span class="o">--</span><span class="n">sat</span> <span class="n">FLOAT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">nosym</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">header</span> <span class="o">|</span> <span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">centroid</span> <span class="o">|</span>
+              <span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">center</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">mapped</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">outliers</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span>
+              <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
 </pre></div>
 </div>
 <section id="neuroreg.cli.robreg-_build_parser-named-arguments">
@@ -289,9 +290,14 @@ closely matching FreeSurfer’s mri_robust_register algorithm.</p>
 <dt><kbd>--nosym</kbd></dt>
 <dd><p>Disable symmetric halfway-space registration and run directed registration.</p>
 </dd>
-<dt><kbd>--noinit</kbd></dt>
-<dd><p>Skip centroid-based initialization and start from identity (matches FreeSurfer –noinit).</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+<dt><kbd>--init-header</kbd></dt>
+<dd><p>Use header alignment only.</p>
+</dd>
+<dt><kbd>--init-centroid</kbd></dt>
+<dd><p>Initialize by aligning intensity centroids in RAS.</p>
+</dd>
+<dt><kbd>--init-center</kbd></dt>
+<dd><p>Initialize by aligning geometric image centers in RAS (FreeSurfer cras0-style).</p>
 </dd>
 <dt><kbd>--mapped</kbd></dt>
 <dd><p>Save warped moving image to this file (MGZ format).</p>
@@ -327,13 +333,19 @@ closely matching FreeSurfer’s mri_robust_register algorithm.</p>
 </section>
 <section id="coreg">
 <h2><code class="docutils literal notranslate"><span class="pre">coreg</span></code><a class="headerlink" href="#coreg" title="Link to this heading">¶</a></h2>
-<p><p>Gradient-descent 3-D image-to-image registration using PyTorch optimisation.
-This is the main image-based cross-modal registration path.</p>
+<p><p>3-D image-to-image registration.
+Defaults to the MRI_coreg-style Powell path; use –method gd for the legacy PyTorch gradient-descent path.</p>
 </p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">coreg</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">mov</span> <span class="n">FILE</span> <span class="o">--</span><span class="n">ref</span> <span class="n">FILE</span> <span class="o">--</span><span class="n">out</span> <span class="n">LTA</span> <span class="p">[</span><span class="o">--</span><span class="n">dof</span> <span class="p">{</span><span class="mi">3</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">9</span><span class="p">,</span><span class="mi">12</span><span class="p">}]</span>
-             <span class="p">[</span><span class="o">--</span><span class="n">n_iters</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">level</span><span class="o">-</span><span class="n">iters</span> <span class="n">LEVEL_ITERS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">lr</span> <span class="n">LR</span><span class="p">]</span>
-             <span class="p">[</span><span class="o">--</span><span class="nb">min</span><span class="o">-</span><span class="n">voxels</span> <span class="n">MIN_VOXELS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="nb">max</span><span class="o">-</span><span class="n">voxels</span> <span class="n">MAX_VOXELS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">nosym</span><span class="p">]</span>
-             <span class="p">[</span><span class="o">--</span><span class="n">noinit</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">isotropic</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">device</span> <span class="n">DEVICE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
+             <span class="p">[</span><span class="o">--</span><span class="n">method</span> <span class="p">{</span><span class="n">powell</span><span class="p">,</span><span class="n">gd</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">n_iters</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">level</span><span class="o">-</span><span class="n">iters</span> <span class="n">LEVEL_ITERS</span><span class="p">]</span>
+             <span class="p">[</span><span class="o">--</span><span class="n">lr</span> <span class="n">LR</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="nb">min</span><span class="o">-</span><span class="n">voxels</span> <span class="n">MIN_VOXELS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="nb">max</span><span class="o">-</span><span class="n">voxels</span> <span class="n">MAX_VOXELS</span><span class="p">]</span>
+             <span class="p">[</span><span class="o">--</span><span class="n">nosym</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">header</span> <span class="o">|</span> <span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">centroid</span> <span class="o">|</span> <span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">center</span><span class="p">]</span>
+             <span class="p">[</span><span class="o">--</span><span class="n">isotropic</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">device</span> <span class="n">DEVICE</span><span class="p">]</span>
+             <span class="p">[</span><span class="o">--</span><span class="n">powell</span><span class="o">-</span><span class="n">brute</span><span class="o">-</span><span class="n">limit</span> <span class="n">POWELL_BRUTE_LIMIT</span><span class="p">]</span>
+             <span class="p">[</span><span class="o">--</span><span class="n">powell</span><span class="o">-</span><span class="n">brute</span><span class="o">-</span><span class="n">iters</span> <span class="n">POWELL_BRUTE_ITERS</span><span class="p">]</span>
+             <span class="p">[</span><span class="o">--</span><span class="n">powell</span><span class="o">-</span><span class="n">brute</span><span class="o">-</span><span class="n">samples</span> <span class="n">POWELL_BRUTE_SAMPLES</span><span class="p">]</span>
+             <span class="p">[</span><span class="o">--</span><span class="n">powell</span><span class="o">-</span><span class="n">maxiter</span> <span class="n">POWELL_MAXITER</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">powell</span><span class="o">-</span><span class="n">sep</span> <span class="n">POWELL_SEP</span><span class="p">]</span>
+             <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
 </pre></div>
 </div>
 <section id="neuroreg.cli.coreg-_build_parser-named-arguments">
@@ -352,6 +364,11 @@ This is the main image-based cross-modal registration path.</p>
 <dd><p>Possible choices: 3, 6, 9, 12</p>
 <p>Degrees of freedom: 3=translation, 6=rigid, 9=rigid+scale, 12=affine.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">6</span></code></p>
+</dd>
+<dt><kbd>--method</kbd></dt>
+<dd><p>Possible choices: powell, gd</p>
+<p>Registration backend: Powell or legacy gradient descent (‘gd’).</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">'powell'</span></code></p>
 </dd>
 <dt><kbd>--n_iters</kbd></dt>
 <dd><p>Uniform number of optimisation iterations per pyramid level.</p>
@@ -372,17 +389,42 @@ This is the main image-based cross-modal registration path.</p>
 <dt><kbd>--nosym</kbd></dt>
 <dd><p>Disable symmetric halfway-space registration and run directed registration.</p>
 </dd>
-<dt><kbd>--noinit</kbd></dt>
-<dd><p>Skip centroid-based initialization and start from identity (matches FreeSurfer –noinit).</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+<dt><kbd>--init-header</kbd></dt>
+<dd><p>Use header alignment only.</p>
+</dd>
+<dt><kbd>--init-centroid</kbd></dt>
+<dd><p>Initialize by aligning intensity centroids in RAS.</p>
+</dd>
+<dt><kbd>--init-center</kbd></dt>
+<dd><p>Initialize by aligning geometric image centers in RAS (FreeSurfer cras0-style).</p>
 </dd>
 <dt><kbd>--isotropic</kbd></dt>
 <dd><p>Enable shared isotropic preprocessing before building the pyramid.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
 </dd>
 <dt><kbd>--device</kbd></dt>
-<dd><p>PyTorch device, e.g. ‘cpu’ or ‘cuda’.</p>
+<dd><p>Torch device string, e.g. ‘cpu’, ‘cuda’, ‘mps’, or ‘gpu’. The Powell backend currently falls back to CPU.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">'cpu'</span></code></p>
+</dd>
+<dt><kbd>--powell-brute-limit</kbd></dt>
+<dd><p>Initial search half-width for the Powell-style brute-force stage.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">30.0</span></code></p>
+</dd>
+<dt><kbd>--powell-brute-iters</kbd></dt>
+<dd><p>Number of coarse-to-fine passes in the Powell-style brute-force stage.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">1</span></code></p>
+</dd>
+<dt><kbd>--powell-brute-samples</kbd></dt>
+<dd><p>Number of samples per dimension in the Powell-style brute-force stage.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">30</span></code></p>
+</dd>
+<dt><kbd>--powell-maxiter</kbd></dt>
+<dd><p>Maximum Powell iterations in the Powell-style refinement stage.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">4</span></code></p>
+</dd>
+<dt><kbd>--powell-sep</kbd></dt>
+<dd><p>Sampling spacing for the Powell-style MRI_coreg evaluator.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">4</span></code></p>
 </dd>
 <dt><kbd>--verbose</kbd></dt>
 <dd><p>Enable INFO-level logging.</p>
@@ -401,12 +443,11 @@ This is the main image-based cross-modal registration path.</p>
 <dt class="sig sig-object py" id="neuroreg.cli.coreg.main">
 <span class="sig-prename descclassname"><span class="pre">neuroreg.cli.coreg.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/cli/coreg.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.cli.coreg.main" title="Link to this definition">¶</a></dt>
 <dd><p>Entry point for the <code class="docutils literal notranslate"><span class="pre">coreg</span></code> command-line interface.</p>
-<p>This wrapper exposes the image-based gradient-descent registration path used
-for cross-modal alignment when only images are available. It provides a
-small set of practical knobs: transform DOF, pyramid iteration schedule,
-optional centroid initialization, symmetric vs directed mode, and optional
-isotropic preprocessing. The written output LTA is a voxel-to-voxel
-transform in public <code class="docutils literal notranslate"><span class="pre">moving</span> <span class="pre">-&gt;</span> <span class="pre">reference</span></code> direction.</p>
+<p>This wrapper exposes public image-based registration for cross-modal
+alignment when only images are available. It defaults to the FreeSurfer-
+style brute-force plus Powell path and keeps the legacy gradient-descent
+backend available via <code class="docutils literal notranslate"><span class="pre">--method</span> <span class="pre">gd</span></code>. The written output LTA is a
+voxel-to-voxel transform in public <code class="docutils literal notranslate"><span class="pre">moving</span> <span class="pre">-&gt;</span> <span class="pre">reference</span></code> direction.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>None</p>
@@ -516,7 +557,7 @@ surface files needed)</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
 </dd>
 <dt><kbd>--device</kbd></dt>
-<dd><p>PyTorch device, e.g. ‘cpu’ or ‘cuda’.</p>
+<dd><p>Torch device string, e.g. ‘cpu’, ‘cuda’, ‘mps’, or ‘gpu’.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">'cpu'</span></code></p>
 </dd>
 <dt><kbd>--verbose</kbd></dt>

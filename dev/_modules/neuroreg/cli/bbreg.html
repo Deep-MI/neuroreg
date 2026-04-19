@@ -377,7 +377,12 @@
         <span class="p">),</span>
     <span class="p">)</span>
 
-    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--device&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;DEVICE&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;PyTorch device, e.g. &#39;cpu&#39; or &#39;cuda&#39;.&quot;</span><span class="p">)</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--device&quot;</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;DEVICE&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Torch device string, e.g. &#39;cpu&#39;, &#39;cuda&#39;, &#39;mps&#39;, or &#39;gpu&#39;.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
     <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--verbose&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Enable INFO-level logging.&quot;</span><span class="p">)</span>
     <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--debug&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Enable DEBUG-level logging.&quot;</span><span class="p">)</span>
 
@@ -476,9 +481,7 @@
     <span class="n">ref_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">ref_img</span><span class="o">.</span><span class="n">get_fdata</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
     <span class="n">mask_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mask_img</span><span class="o">.</span><span class="n">get_fdata</span><span class="p">())</span> <span class="o">&gt;</span> <span class="mi">0</span>
     <span class="k">if</span> <span class="n">mask_data</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">ref_data</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;Prealignment mask shape </span><span class="si">{</span><span class="n">mask_data</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> does not match reference shape </span><span class="si">{</span><span class="n">ref_data</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">.&quot;</span>
-        <span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Prealignment mask shape </span><span class="si">{</span><span class="n">mask_data</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> does not match reference shape </span><span class="si">{</span><span class="n">ref_data</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
 
     <span class="n">masked</span> <span class="o">=</span> <span class="n">ref_data</span> <span class="o">*</span> <span class="n">mask_data</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">nib</span><span class="o">.</span><span class="n">Nifti1Image</span><span class="p">(</span><span class="n">masked</span><span class="p">,</span> <span class="n">ref_img</span><span class="o">.</span><span class="n">affine</span><span class="p">)</span>
@@ -493,31 +496,28 @@
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Run the default coarse image-based prealignment for ``bbreg``.</span>
 
-<span class="sd">    This uses the default image-based coregistration path with an NMI loss and</span>
-<span class="sd">    a short two-level pyramid. The returned transform is always a RAS-to-RAS</span>
-<span class="sd">    matrix in public ``moving/source -&gt; target/reference`` direction so it can</span>
-<span class="sd">    be passed directly to :func:`neuroreg.bbreg.register.register_surface` as</span>
+<span class="sd">    This uses the Powell-based image-registration path with the standard</span>
+<span class="sd">    MRI_coreg-style NMI evaluator and an image-center initialization. The</span>
+<span class="sd">    returned transform is always a RAS-to-RAS matrix in public</span>
+<span class="sd">    ``moving/source -&gt; target/reference`` direction so it can be passed</span>
+<span class="sd">    directly to :func:`neuroreg.bbreg.register.register_surface` as</span>
 <span class="sd">    ``init_ras``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">neuroreg.imreg.coreg</span><span class="w"> </span><span class="kn">import</span> <span class="n">coreg</span>
 
     <span class="n">prealign_ref</span> <span class="o">=</span> <span class="n">_mask_reference_image</span><span class="p">(</span><span class="n">ref_img</span><span class="p">,</span> <span class="n">mask_img</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-        <span class="s2">&quot;Running default coarse NMI prealignment (header start, min_voxels=32, max_voxels=64, level_iters=[30, 10])</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Running default Powell NMI prealignment (image-center start, sep=4)</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
         <span class="s2">&quot; with aparc+aseg/aseg mask&quot;</span> <span class="k">if</span> <span class="n">mask_img</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">Mr2r</span> <span class="o">=</span> <span class="n">coreg</span><span class="p">(</span>
         <span class="n">mov_img</span><span class="p">,</span>
         <span class="n">prealign_ref</span><span class="p">,</span>
         <span class="n">return_v2v</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-        <span class="n">centroid_init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-        <span class="n">symmetric</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">method</span><span class="o">=</span><span class="s2">&quot;powell&quot;</span><span class="p">,</span>
+        <span class="n">init_type</span><span class="o">=</span><span class="s2">&quot;image_center&quot;</span><span class="p">,</span>
         <span class="n">dof</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
-        <span class="n">level_iters</span><span class="o">=</span><span class="p">[</span><span class="mi">30</span><span class="p">,</span> <span class="mi">10</span><span class="p">],</span>
-        <span class="n">loss_name</span><span class="o">=</span><span class="s2">&quot;nmi&quot;</span><span class="p">,</span>
-        <span class="n">min_voxels</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>
-        <span class="n">max_voxels</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span>
-        <span class="n">isotropic</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">powell_sep</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
         <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">Mr2r_np</span> <span class="o">=</span> <span class="n">Mr2r</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
@@ -609,6 +609,7 @@
         <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Output: </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
 
 
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
