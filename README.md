@@ -412,7 +412,7 @@ or `bbreg` when a segmentation or surfaces are available.
 
 ## API Documentation
 
-The API Documentation can be found at https://deep-mi.org/neuroreg .
+The API Documentation can be found at [https://deep-mi.org/neuroreg](https://deep-mi.org/neuroreg).
 
 ## References
 
@@ -421,23 +421,23 @@ If you use this software for a publication please cite:
 - Reuter, Rosas, Fischl (2010).
   Highly accurate inverse consistent registration: a robust approach.
   NeuroImage 53(4):1181-1196.
-  https://doi.org/10.1016/j.neuroimage.2010.07.040
+  [https://doi.org/10.1016/j.neuroimage.2010.07.040](https://doi.org/10.1016/j.neuroimage.2010.07.040)
 
 - Reuter, Schmansky, Rosas, Fischl (2012).
   Within-subject template estimation for unbiased longitudinal image analysis.
   NeuroImage 61(4):1402-1418.
-  https://doi.org/10.1016/j.neuroimage.2012.02.084
+  [https://doi.org/10.1016/j.neuroimage.2012.02.084](https://doi.org/10.1016/j.neuroimage.2012.02.084)
 
 - Reuter, Fischl (2011).
   Avoiding asymmetry-induced bias in longitudinal image processing.
   NeuroImage 57(1):19-21.
-  https://doi.org/10.1016/j.neuroimage.2011.02.076
+  [https://doi.org/10.1016/j.neuroimage.2011.02.076](https://doi.org/10.1016/j.neuroimage.2011.02.076)
 
 If you use `bbreg` specifically, please also cite:
 
 - Greve, Fischl (2009).
   Accurate and robust brain image alignment using boundary-based registration.
   NeuroImage 48(1):63-72.
-  https://doi.org/10.1016/j.neuroimage.2009.06.060
+  [https://doi.org/10.1016/j.neuroimage.2009.06.060](https://doi.org/10.1016/j.neuroimage.2009.06.060)
 
-We invite you to check out our lab webpage at https://deep-mi.org
+We invite you to check out our lab webpage at [https://deep-mi.org](https://deep-mi.org)
