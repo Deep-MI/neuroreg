@@ -62,7 +62,7 @@ class TestBbregCli:
         ])
 
         assert captured_prealign_kwargs["loss_name"] == "nmi"
-        assert captured_prealign_kwargs["centroid_init"] is False
+        assert captured_prealign_kwargs["init_type"] == "image_center"
         assert captured_prealign_kwargs["min_voxels"] == 32
         assert captured_prealign_kwargs["max_voxels"] == 64
         assert captured_prealign_kwargs["level_iters"] == [30, 10]

@@ -24,6 +24,10 @@ class RegModel(nn.Module):
         source_shape: Any | None = None,
         target_shape: Any | None = None,
         device: str = "cpu",
+        translation_weight_scale: float = 1.0,
+        rotation_weight_scale: float = 1.0,
+        scale_weight_scale: float = 1.0,
+        shear_weight_scale: float = 1.0,
     ) -> None:
         """
         Initialize the registration model with degrees of freedom and optional parameters.
@@ -41,9 +45,9 @@ class RegModel(nn.Module):
             The shape of the source object. Only used if `v2v_init` is provided. Defaults to None.
         target_shape : Optional, optional
             The shape of the target object. Only used if `v2v_init` is provided. Defaults to None.
-        device : str, optional
-            The device where the parameters will be stored. Can be 'cpu' or 'cuda'. Defaults to
-            'cpu'.
+        device : str or torch.device, optional
+            The device where the parameters will be stored. Accepts torch device strings such as
+            'cpu', 'cuda', 'mps', or the generic alias 'gpu'. Defaults to 'cpu'.
 
         Attributes
         ----------
@@ -74,6 +78,10 @@ class RegModel(nn.Module):
         """
         super().__init__()
         self.weights = nn.Parameter(self.init_weights(dof=dof, device=device))
+        self.translation_weight_scale = float(translation_weight_scale)
+        self.rotation_weight_scale = float(rotation_weight_scale)
+        self.scale_weight_scale = float(scale_weight_scale)
+        self.shear_weight_scale = float(shear_weight_scale)
         # Store shapes for rotation-space correction (see get_torch_transform_from_weights)
         self.source_shape: tuple[int, int, int] | None = source_shape
         self.target_shape: tuple[int, int, int] | None = target_shape if target_shape is not None else source_shape
@@ -83,6 +91,7 @@ class RegModel(nn.Module):
             self.set_ixform(v2v_init, source_shape, target_shape, device=device)
         else:
             self.ixform = None
+            self.v2v_init = None
 
     def init_weights(self, dof: int = 6, device: str | torch.device = "cpu") -> Tensor:
         """
@@ -96,10 +105,10 @@ class RegModel(nn.Module):
             - 6: Rigid (default)
             - 9: Rigid and scaling
             - 12: Full affine
-        device : Union[str, torch.device], optional
+        device : str or torch.device, optional
             The device on which to store the initialized weights.
-            This can be a string ('cpu', 'cuda') or a torch.device object.
-            Defaults to 'cpu'.
+            This can be a torch device string such as 'cpu', 'cuda', 'mps', or 'gpu',
+            or a torch.device object. Defaults to 'cpu'.
 
         Returns
         -------
@@ -109,10 +118,8 @@ class RegModel(nn.Module):
         w = torch.zeros(dof, device=device)
         # if 3 < dof < 12:
         #    w[3:6] = 0.0001
-        if 6 < dof < 12:
+        if 6 < dof <= 12:
             w[6:9] = 1.0
-        if dof == 12:
-            w[0], w[5], w[10] = 1.0, 1.0, 1.0
         return w
 
     def reset(self, dof: int = None) -> None:
@@ -179,110 +186,64 @@ class RegModel(nn.Module):
         -------
         None
         """
-        self.ixform = trans.convert_v2v_to_torch(v2v_init, source_shape, target_shape).type(torch.float32).to(device)
+        self.v2v_init = v2v_init.type(torch.float32).to(device)
+        self.ixform = (
+            trans.convert_v2v_to_torch(self.v2v_init, source_shape, target_shape).type(torch.float32).to(device)
+        )
+
+    def _build_torch_affine_from_weights(self, weights: Tensor) -> torch.Tensor:
+        translation = weights[0:3] * self.translation_weight_scale
+        affine = torch.cat(
+            (
+                torch.eye(3, device=weights.device, dtype=weights.dtype),
+                translation.unsqueeze(dim=1),
+            ),
+            dim=1,
+        )
+        if weights.size(0) > 3:
+            rotation = weights[3:6] * self.rotation_weight_scale
+            linear_v2v = trans.get_rotation_euler(rotation)[:3, :3]
+            if weights.size(0) > 6:
+                scale = 1.0 + (weights[6:9] - 1.0) * self.scale_weight_scale
+                linear_v2v = linear_v2v @ torch.diag(scale)
+            if weights.size(0) > 9:
+                shear = torch.eye(3, device=weights.device, dtype=weights.dtype)
+                shear[0, 1] = weights[9] * self.shear_weight_scale
+                shear[0, 2] = weights[10] * self.shear_weight_scale
+                shear[1, 2] = weights[11] * self.shear_weight_scale
+                linear_v2v = linear_v2v @ shear
+            if self.source_shape is not None and self.target_shape is not None:
+                ss = weights.new_tensor([self.source_shape[2], self.source_shape[1], self.source_shape[0]]) / 2.0
+                st = weights.new_tensor([self.target_shape[2], self.target_shape[1], self.target_shape[0]]) / 2.0
+                affine[:3, :3] = torch.diag(1.0 / ss) @ linear_v2v.mT @ torch.diag(st)
+            else:
+                affine[:3, :3] = linear_v2v
+        return affine
 
     def get_torch_transform_from_weights(self) -> torch.Tensor:
-        """
-        Construct a transformation matrix from the weights tensor.
+        """Construct a transformation matrix from the weights tensor."""
+        affine = self._build_torch_affine_from_weights(self.weights)
+        if self.v2v_init is None:
+            return affine
 
-        Depending on the number of weights in the `self.weights` tensor,
-        the function generates a transformation matrix that includes translation,
-        rotation, and optional scaling. If the weights contain 12 values, the function
-        assumes a fully affine transformation (3x4 matrix). Additionally, if an initial
-        transformation (`self.ixform`) is provided, it will be applied.
+        if self.source_shape is None or self.target_shape is None:
+            raise ValueError("Source and target shapes must be provided if v2v_init is provided.")
 
-        Returns
-        -------
-        torch.Tensor
-            A 3x4 or 4x4 transformation matrix constructed from the weights tensor.
+        current_torch = torch.eye(4, device=self.weights.device, dtype=affine.dtype)
+        current_torch[:3, :4] = affine
+        base_weights = self.init_weights(
+            dof=int(self.weights.size(0)),
+            device=self.weights.device,
+        ).to(dtype=self.weights.dtype)
+        base_affine = self._build_torch_affine_from_weights(base_weights)
+        base_torch = torch.eye(4, device=self.weights.device, dtype=base_affine.dtype)
+        base_torch[:3, :4] = base_affine
 
-        Functionality
-        -------------
-        - If `weights.size(0) == 12`:
-            Assumes the weights are the entries of a fully affine transformation matrix
-            (3x4), which is directly reshaped.
-        - If `weights.size(0) > 3`:
-            Treats weights as parameters for translation, rotation, and optional scaling:
-            - The first 3 weights (0:3) correspond to translation in the fourth column.
-            - The next 3 weights (3:6) define rotation as an axis-angle representation
-              and are converted to a rotation matrix using `get_rotation_euler`.
-            - The next 3 weights (6:9) are a diagonal matrix representing scaling factors,
-              which are applied multiplicatively.
-        - If `weights.size(0) <= 3`:
-            Assumes the weights are only translation parameters.
-        - If `self.ixform` is not `None`:
-            Multiplies the generated affine matrix with the initial transformation matrix (`ixform`).
-
-        Raises
-        ------
-        ValueError
-            If the weights tensor is in an unsupported format or dimension that does not meet the conditions.
-
-        Example
-        -------
-        >>> weights = torch.tensor([2.0, 3.0, 4.0])  # Translation only
-        >>> self.weights = weights
-        >>> transform = self.get_torch_transform_from_weights()
-        >>> print(transform)
-        tensor([[1.0, 0.0, 0.0, 2.0],
-                [0.0, 1.0, 0.0, 3.0],
-                [0.0, 0.0, 1.0, 4.0]])
-
-        Notes
-        -----
-        - The resulting transformation matrix is a 3x4 matrix by default.
-        - Scaling is only applied if the weight size is greater than 6.
-        - Fully affine transformations are handled as a direct reshaping of the weights.
-
-        """
-        # trans = torch.cat((torch.eye(3,device=self.weights.device), self.weights[0:3].unsqueeze(dim=1)), dim=1)
-        # trans = torch.eye(4, device=self.weights.device, dtype=self.weights.dtype)
-        # trans[:3, 3] = self.weights
-        if self.weights.size(0) == 12:
-            # Fully affine: optimize 12 matrix entries as 3x4
-            affine = self.weights.view((3, 4))
-        else:
-            # For translation, use three weights as translation entries in 4th column
-            affine = torch.cat((torch.eye(3, device=self.weights.device), self.weights[0:3].unsqueeze(dim=1)), dim=1)
-            if self.weights.size(0) > 3:
-                # Build Euler rotation that is orthogonal in *voxel* space, not in PyTorch's
-                # normalized [-1, 1] space.
-                #
-                # PyTorch normalises axis i by shape[i]/2, so scale factors along (W, H, D)
-                # are S = [W/2, H/2, D/2].  For a non-cubic image these differ, so inserting
-                # R_euler directly into M_torch produces a shear when converted back to vox.
-                #
-                # The backward-sampling chain gives:
-                #   M_torch = norm_src @ inv(v2v_xyz) @ denorm_trg
-                # For the rotation part, choosing
-                #   M_torch_rot = diag(1/S_src) @ R_euler^T @ diag(S_trg)
-                # makes convert_torch_to_v2v recover v2v_rot = R_euler (orthogonal). ✓
-                R_euler = trans.get_rotation_euler(self.weights[3:6])[:3, :3]
-                if self.source_shape is not None and self.target_shape is not None:
-                    # Scale factors in PyTorch (W, H, D) = reversed(D, H, W) order
-                    ss = self.weights.new_tensor([
-                        self.source_shape[2], self.source_shape[1], self.source_shape[0]
-                    ]) / 2.0
-                    st = self.weights.new_tensor([
-                        self.target_shape[2], self.target_shape[1], self.target_shape[0]
-                    ]) / 2.0
-                    affine[:3, :3] = torch.diag(1.0 / ss) @ R_euler.mT @ torch.diag(st)
-                else:
-                    affine[:3, :3] = R_euler
-            if self.weights.size(0) > 6:
-                # For rigid and scaling multiply with scaling diagonal matrix
-                affine.mul_(self.weights[6:9].view(-1, 1))
-        if self.ixform is not None:
-            # Compose affine (delta) with ixform (prior transform).
-            # Save R_delta BEFORE updating [:3,:3] so the translation uses the
-            # correct (un-composed) delta rotation:
-            #   t_result = R_delta @ t_ixform + t_delta    (not R_composed @ t_ixform)
-            R_delta = affine[:3, :3].clone().type(self.ixform.dtype)
-            affine[:3, :3] = R_delta @ self.ixform[:3, :3]
-            affine[:3, 3] = (R_delta @ self.ixform[:3, 3]
-                             + affine[:3, 3].type(self.ixform.dtype))
-
-        return affine
+        current_v2v = trans.convert_torch_to_v2v(current_torch, self.source_shape, self.target_shape)
+        base_v2v = trans.convert_torch_to_v2v(base_torch, self.source_shape, self.target_shape)
+        relative_v2v = current_v2v @ torch.inverse(base_v2v)
+        composed_v2v = relative_v2v.to(dtype=self.v2v_init.dtype, device=self.v2v_init.device) @ self.v2v_init
+        return trans.convert_v2v_to_torch(composed_v2v, self.source_shape, self.target_shape).to(affine.dtype)
 
     def get_v2v_from_weights(self, sshape: tuple[int, int, int], tshape: tuple[int, int, int] | None = None) -> Tensor:
         """

@@ -1,9 +1,10 @@
+
 """Tests for IRLS rigid registration (neuroreg.imreg.irls)."""
 
 import pytest
 import torch
 
-from neuroreg.imreg.init import get_ixform_centroids
+from neuroreg.imreg.init import get_init_vox2vox, get_ixform_centroids
 from neuroreg.imreg.irls import (
     _sqrt_tukey,
     compute_partials,
@@ -245,13 +246,32 @@ class TestRegisterIrlsPyramid:
         T, _ = register_irls_pyramid(
             img,
             shifted,
-            centroid_init=False,
+            init_type="header",
             min_voxels=8,
             max_voxels=16,
             nmax=0,
             isotropic=False,
         )
         assert torch.allclose(T, torch.eye(4), atol=1e-6)
+
+    def test_noinit_uses_header_alignment_when_affines_differ(self):
+        img = torch.rand(20, 20, 20)
+        src_aff = torch.eye(4)
+        trg_aff = torch.eye(4)
+        trg_aff[0, 3] = 5.0
+        T, _ = register_irls_pyramid(
+            img,
+            img.clone(),
+            src_affine=src_aff,
+            trg_affine=trg_aff,
+            init_type="header",
+            min_voxels=8,
+            max_voxels=16,
+            nmax=0,
+            isotropic=False,
+        )
+        expected = torch.inverse(trg_aff) @ src_aff
+        assert torch.allclose(T, expected)
 
     def test_explicit_initial_transform_takes_precedence(self):
         img = torch.rand(20, 20, 20)
@@ -262,7 +282,7 @@ class TestRegisterIrlsPyramid:
             img,
             shifted,
             initial_transform=init,
-            centroid_init=True,
+            init_type="centroid",
             min_voxels=8,
             max_voxels=16,
             nmax=0,
@@ -288,3 +308,30 @@ class TestRegisterIrlsPyramid:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestInitHelpers:
+    def test_centroid_init_respects_affines(self):
+        img = torch.ones(10, 10, 10)
+        src_aff = torch.eye(4)
+        trg_aff = torch.diag(torch.tensor([2.0, 1.0, 1.0, 1.0]))
+
+        v2v = get_ixform_centroids(img, img, src_aff, trg_aff)
+
+        expected = torch.diag(torch.tensor([0.5, 1.0, 1.0, 1.0]))
+        expected[0, 3] = 2.25
+        assert torch.allclose(v2v, expected)
+
+    def test_image_center_aligns_image_centers_not_intensity_centroids(self):
+        src = torch.zeros(9, 9, 9)
+        trg = torch.zeros(9, 9, 9)
+        src[1, 1, 1] = 1.0
+        trg[3, 1, 1] = 1.0
+
+        centroid_v2v = get_ixform_centroids(src, trg)
+        image_center_v2v = get_init_vox2vox(src, trg, init_type="image_center")
+
+        expected_centroid = torch.eye(4)
+        expected_centroid[0, 3] = 2.0
+        assert torch.allclose(centroid_v2v, expected_centroid)
+        assert torch.allclose(image_center_v2v, torch.eye(4))
