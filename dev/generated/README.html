@@ -250,22 +250,22 @@
 <h1>NeuroReg<a class="headerlink" href="#neuroreg" title="Link to this heading">¶</a></h1>
 <p>NeuroReg is a package for the robust registration of 3D neuroimaging data (e.g. MRI).
 It supports both image-to-image (within and cross modal) as well as image to
-landmark (WM-surface) or segmentation. It uses PyTorch’s automatic differentiation
-for gradient-based optimisations and can run efficiently on a GPU.</p>
+landmark (WM-surface) or segmentation-based registration, with a focus on high accuracy
+and speed.</p>
 <p>The main user-facing tools are:</p>
 <ul class="simple">
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">robreg</span></code></strong> – Highly accurate and robust same modality image-to-image registration
 (IRLS based, analogous to FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">mri_robust_register</span></code>)</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">coreg</span></code></strong> – Image-to-image cross-modal registration
-(gradient-descent with normalized mutual information NMI, cf. <code class="docutils literal notranslate"><span class="pre">mri_coreg</span></code>)</p></li>
+(Powell-based by default, analogous to FreeSurfer/SPM <code class="docutils literal notranslate"><span class="pre">mri_coreg</span></code>)</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">bbreg</span></code></strong> – boundary-based registration using cortical WM surfaces or segmentations
-(analogous to FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">bbregister</span></code> / <code class="docutils literal notranslate"><span class="pre">mri_segreg</span></code>)</p></li>
+(extending FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">bbregister</span></code>)</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">lta</span></code></strong> – transform comparison / inversion / concatenation utilities</p></li>
 </ul>
 <p>This project is a work-in-progress in an early development stage. It is developed by
 the creator of FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">mri_robust_register</span></code> as an efficient pure Python
 replacement (with GPU support) and cross-modal extensions to support all your medical
-imaging registration needs, with a focus on high accuracy and speed. If you find it
+imaging registration needs. If you find it
 useful for a publication, please cite the relevant papers (see <a class="reference internal" href="#references"><span class="std std-ref">References</span></a>).</p>
 <section id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h2>
@@ -375,9 +375,10 @@ to lack of double precision support on MPS.</p>
 <h3><code class="docutils literal notranslate"><span class="pre">coreg</span></code> — image-based cross-modal registration<a class="headerlink" href="#coreg-image-based-cross-modal-registration" title="Link to this heading">¶</a></h3>
 <p>This is the package’s image-to-image registration path for
 <strong>cross-sequence / cross-modal</strong> alignment when no surfaces or segmentation
-are available. By default it runs the MRI_coreg-style Powell pipeline
-(coarse brute-force search plus Powell refinement); the older PyTorch
-gradient-descent path remains available via <code class="docutils literal notranslate"><span class="pre">--method</span> <span class="pre">gd</span></code>.</p>
+are available. By default it runs a Powell-based MRI_coreg-style pipeline
+(coarse brute-force search plus Powell refinement), similar in spirit to
+FreeSurfer/SPM <code class="docutils literal notranslate"><span class="pre">mri_coreg</span></code>; the older PyTorch gradient-descent path remains
+available via <code class="docutils literal notranslate"><span class="pre">--method</span> <span class="pre">gd</span></code>.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">coreg</span> <span class="o">--</span><span class="n">mov</span> <span class="o">&lt;</span><span class="n">moving</span><span class="o">.</span><span class="n">nii</span><span class="o">.</span><span class="n">gz</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">ref</span> <span class="o">&lt;</span><span class="n">reference</span><span class="o">.</span><span class="n">nii</span><span class="o">.</span><span class="n">gz</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">out</span> <span class="o">&lt;</span><span class="n">output</span><span class="o">.</span><span class="n">lta</span><span class="o">&gt;</span> <span class="p">[</span><span class="n">options</span><span class="p">]</span>
 </pre></div>
 </div>
@@ -808,8 +809,9 @@ known bug in the C++ single-transform corner metric, which is fixed here).</p></
 <span class="n">transform_robreg_loaded</span> <span class="o">=</span> <span class="n">robreg</span><span class="p">(</span><span class="n">mov_img</span><span class="p">,</span> <span class="n">ref_img</span><span class="p">)</span>
 
 <span class="c1"># Image-based cross-modal registration path for cases where no</span>
-<span class="c1"># white-matter surface or segmentation is available.</span>
-<span class="n">transform_coreg</span> <span class="o">=</span> <span class="n">coreg</span><span class="p">(</span><span class="s2">&quot;T2.nii.gz&quot;</span><span class="p">,</span> <span class="s2">&quot;T1.mgz&quot;</span><span class="p">,</span> <span class="n">loss_name</span><span class="o">=</span><span class="s2">&quot;nmi&quot;</span><span class="p">)</span>
+<span class="c1"># white-matter surface or segmentation is available. By default this</span>
+<span class="c1"># uses the Powell-based MRI_coreg-style path.</span>
+<span class="n">transform_coreg</span> <span class="o">=</span> <span class="n">coreg</span><span class="p">(</span><span class="s2">&quot;T2.nii.gz&quot;</span><span class="p">,</span> <span class="s2">&quot;T1.mgz&quot;</span><span class="p">)</span>
 
 <span class="c1"># Surface-based (BBR) registration — Mode A: subject directory</span>
 <span class="n">transform_bbreg</span> <span class="o">=</span> <span class="n">bbreg</span><span class="p">(</span>
@@ -874,8 +876,8 @@ known bug in the C++ single-transform corner metric, which is fixed here).</p></
 the current IRLS implementation.</p>
 <p>Also note that the current public <code class="docutils literal notranslate"><span class="pre">robreg</span></code> path is aimed at same-/similar-contrast
 registration. For cross-sequence alignment such as T2→T1, the current options are
-<code class="docutils literal notranslate"><span class="pre">coreg</span></code> (image-based GD) or <code class="docutils literal notranslate"><span class="pre">bbreg</span></code> when a segmentation or surfaces are
-available.</p>
+<code class="docutils literal notranslate"><span class="pre">coreg</span></code> (Powell-based by default, with legacy GD still available via <code class="docutils literal notranslate"><span class="pre">method=&quot;gd&quot;</span></code>)
+or <code class="docutils literal notranslate"><span class="pre">bbreg</span></code> when a segmentation or surfaces are available.</p>
 </section>
 <section id="api-documentation">
 <h2>API Documentation<a class="headerlink" href="#api-documentation" title="Link to this heading">¶</a></h2>

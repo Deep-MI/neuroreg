@@ -4,23 +4,23 @@
 
 NeuroReg is a package for the robust registration of 3D neuroimaging data (e.g. MRI).
 It supports both image-to-image (within and cross modal) as well as image to
-landmark (WM-surface) or segmentation. It uses PyTorch's automatic differentiation
-for gradient-based optimisations and can run efficiently on a GPU.
+landmark (WM-surface) or segmentation-based registration, with a focus on high accuracy
+and speed.
 
 The main user-facing tools are:
 
 - **`robreg`** – Highly accurate and robust same modality image-to-image registration
   (IRLS based, analogous to FreeSurfer's `mri_robust_register`)
 - **`coreg`** – Image-to-image cross-modal registration
-  (gradient-descent with normalized mutual information NMI, cf. `mri_coreg`)
+  (Powell-based by default, analogous to FreeSurfer/SPM `mri_coreg`)
 - **`bbreg`** – boundary-based registration using cortical WM surfaces or segmentations
-  (analogous to FreeSurfer's `bbregister` / `mri_segreg`)
+  (extending FreeSurfer's `bbregister`)
 - **`lta`** – transform comparison / inversion / concatenation utilities
 
 This project is a work-in-progress in an early development stage. It is developed by
 the creator of FreeSurfer's `mri_robust_register` as an efficient pure Python
 replacement (with GPU support) and cross-modal extensions to support all your medical
-imaging registration needs, with a focus on high accuracy and speed. If you find it
+imaging registration needs. If you find it
 useful for a publication, please cite the relevant papers (see [References](#References)).
 
 ## Installation
@@ -83,9 +83,10 @@ robreg --mov T1_repeat.nii.gz --ref T1_baseline.mgz --out T1_repeat_to_T1_baseli
 
 This is the package's image-to-image registration path for
 **cross-sequence / cross-modal** alignment when no surfaces or segmentation
-are available. By default it runs the MRI_coreg-style Powell pipeline
-(coarse brute-force search plus Powell refinement); the older PyTorch
-gradient-descent path remains available via `--method gd`.
+are available. By default it runs a Powell-based MRI_coreg-style pipeline
+(coarse brute-force search plus Powell refinement), similar in spirit to
+FreeSurfer/SPM `mri_coreg`; the older PyTorch gradient-descent path remains
+available via `--method gd`.
 
 ```
 coreg --mov <moving.nii.gz> --ref <reference.nii.gz> --out <output.lta> [options]
@@ -352,8 +353,9 @@ ref_img = nib.load("T1_baseline.mgz")
 transform_robreg_loaded = robreg(mov_img, ref_img)
 
 # Image-based cross-modal registration path for cases where no
-# white-matter surface or segmentation is available.
-transform_coreg = coreg("T2.nii.gz", "T1.mgz", loss_name="nmi")
+# white-matter surface or segmentation is available. By default this
+# uses the Powell-based MRI_coreg-style path.
+transform_coreg = coreg("T2.nii.gz", "T1.mgz")
 
 # Surface-based (BBR) registration — Mode A: subject directory
 transform_bbreg = bbreg(
@@ -405,8 +407,8 @@ the current IRLS implementation.
 
 Also note that the current public `robreg` path is aimed at same-/similar-contrast
 registration. For cross-sequence alignment such as T2→T1, the current options are
-`coreg` (image-based GD) or `bbreg` when a segmentation or surfaces are
-available.
+`coreg` (Powell-based by default, with legacy GD still available via `method="gd"`)
+or `bbreg` when a segmentation or surfaces are available.
 
 ## API Documentation
 
