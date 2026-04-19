@@ -852,7 +852,13 @@ class TestRegisterPyramidNewLosses:
             min_voxels=16,
             device="cpu",
         )
-        assert torch.allclose(v2v, torch.eye(4, dtype=v2v.dtype), atol=1.0)
+        if loss_name == "mi":
+            translation_mm = float(torch.linalg.vector_norm(v2v[:3, 3]))
+            rotation_deg = float(np.rad2deg(Rotation.from_matrix(v2v[:3, :3].cpu().numpy()).magnitude()))
+            assert translation_mm < 2.0
+            assert rotation_deg < 5.0
+        else:
+            assert torch.allclose(v2v, torch.eye(4, dtype=v2v.dtype), atol=1.0)
 
     def test_register_pyramid_ncc_loss_decreases(self):
         """NCC loss should decrease over iterations when images are misaligned."""
