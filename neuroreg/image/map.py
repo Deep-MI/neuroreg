@@ -1,5 +1,7 @@
 """Utilities for mapping (resampling) 3-D images via affine transforms."""
 
+from typing import Any
+
 import nibabel as nib
 import numpy as np
 import torch
@@ -8,12 +10,21 @@ import torch.nn as nn
 import neuroreg.transforms.matrices as trans
 
 
+def _normalize_interpolation_mode(mode: str) -> str:
+    """Map public interpolation names to the backend names used by PyTorch."""
+    if mode == "linear":
+        return "bilinear"
+    if mode in ("bilinear", "nearest"):
+        return mode
+    raise ValueError(f"mode must be 'linear', 'bilinear', or 'nearest', got '{mode}'.")
+
+
 def map(
         image: torch.Tensor,
         transform: torch.Tensor,
         is_torch_mat: bool = True,
         target_shape: tuple[int, int, int] | None = None,
-        mode: str = "bilinear",
+        mode: str = "linear",
         padding_mode: str = "zeros",
 ) -> torch.Tensor:
     """Map an input image to another space using the inverse transformation matrix.
@@ -31,9 +42,11 @@ def map(
     target_shape : tuple[int, int, int], optional
         Shape of the output grid ``(D, H, W)``.  Only used when
         ``is_torch_mat=False``.  Defaults to the shape of *image*.
-    mode : {'bilinear', 'nearest'}, optional
+    mode : {'linear', 'nearest'}, optional
         Interpolation mode passed to :func:`torch.nn.functional.grid_sample`.
-        Default is ``'bilinear'``.
+        ``'linear'`` is translated internally to PyTorch's ``'bilinear'`` name.
+        The backend-specific ``'bilinear'`` spelling is also accepted for
+        compatibility. Default is ``'linear'``.
     padding_mode : {'zeros', 'border', 'reflection'}, optional
         Padding strategy for out-of-bounds coordinates, passed directly to
         :func:`torch.nn.functional.grid_sample`.  Default is ``'zeros'``.
@@ -47,11 +60,11 @@ def map(
     Raises
     ------
     ValueError
-        If *mode* is not ``'bilinear'`` or ``'nearest'``, or if *padding_mode*
-        is not one of ``'zeros'``, ``'border'``, or ``'reflection'``.
+        If *mode* is not ``'linear'``, ``'bilinear'``, or ``'nearest'``, or if
+        *padding_mode* is not one of ``'zeros'``, ``'border'``, or
+        ``'reflection'``.
     """
-    if mode not in ("bilinear", "nearest"):
-        raise ValueError(f"mode must be 'bilinear' or 'nearest', got '{mode}'.")
+    torch_mode = _normalize_interpolation_mode(mode)
     if padding_mode not in ("zeros", "border", "reflection"):
         raise ValueError(f"padding_mode must be 'zeros', 'border', or 'reflection', got '{padding_mode}'.")
     if not is_torch_mat:
@@ -63,7 +76,7 @@ def map(
     grid_size = (1, 1) + tuple(out_shape)
     grid = nn.functional.affine_grid(torch_transform.unsqueeze(0).float(), grid_size, align_corners=False)
     return nn.functional.grid_sample(
-        image.unsqueeze(0).unsqueeze(0), grid, mode=mode, padding_mode=padding_mode, align_corners=False
+        image.unsqueeze(0).unsqueeze(0), grid, mode=torch_mode, padding_mode=padding_mode, align_corners=False
     ).squeeze()
 
 
@@ -73,7 +86,7 @@ def map_r2r(
         source_affine: torch.Tensor,
         target_affine: torch.Tensor,
         target_shape: tuple[int, int, int] | None = None,
-        mode: str = "bilinear",
+        mode: str = "linear",
         padding_mode: str = "zeros",
 ) -> torch.Tensor:
     """Map an image using a RAS-to-RAS transform without a v2v intermediate.
@@ -100,8 +113,9 @@ def map_r2r(
         4 × 4 voxel-to-RAS affine of the target image.
     target_shape : tuple[int, int, int], optional
         Output shape ``(D, H, W)``.  Defaults to the shape of *image*.
-    mode : {'bilinear', 'nearest'}, optional
-        Interpolation mode.  Default is ``'bilinear'``.
+    mode : {'linear', 'nearest'}, optional
+        Interpolation mode. ``'linear'`` is translated internally to PyTorch's
+        ``'bilinear'`` name. Default is ``'linear'``.
     padding_mode : {'zeros', 'border', 'reflection'}, optional
         Out-of-bounds padding.  Default is ``'zeros'``.
 
@@ -120,7 +134,7 @@ def resample_isotropic(
         img: nib.Nifti1Image,
         iso: float,
         out_shape: tuple[int, int, int] | None = None,
-        mode: str = "bilinear",
+        mode: str = "linear",
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Resample a NIfTI image to an isotropic grid.
 
@@ -142,8 +156,9 @@ def resample_isotropic(
         Output image shape ``(D, H, W)``.  If ``None``, the output shape is
         computed automatically to cover the entire field of view of the
         original image at the specified isotropic resolution.
-    mode : {'bilinear', 'nearest'}, optional
-        Interpolation mode.  Default is ``'bilinear'``.
+    mode : {'linear', 'nearest'}, optional
+        Interpolation mode. ``'linear'`` is translated internally to PyTorch's
+        ``'bilinear'`` name. Default is ``'linear'``.
 
     Returns
     -------
@@ -206,7 +221,7 @@ def resample_isotropic_tensor(
         affine: np.ndarray,
         iso: float,
         out_shape: tuple[int, int, int] | None = None,
-        mode: str = "bilinear",
+        mode: str = "linear",
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Resample a torch tensor to an isotropic grid.
 
@@ -222,8 +237,9 @@ def resample_isotropic_tensor(
         Target isotropic voxel size in millimeters.
     out_shape : tuple[int, int, int], optional
         Output image shape (D, H, W). If None, computed automatically.
-    mode : {'bilinear', 'nearest'}, optional
-        Interpolation mode. Default is 'bilinear'.
+    mode : {'linear', 'nearest'}, optional
+        Interpolation mode. Default is 'linear'. The backend-specific
+        spelling 'bilinear' is also accepted as an alias.
 
     Returns
     -------
@@ -265,3 +281,106 @@ def resample_isotropic_tensor(
     Rvox = torch.inverse(orig_affine) @ iso_affine
 
     return resampled, iso_affine.float(), Rvox.float()
+
+
+def create_image_like(template_img: Any, data: Any, affine: np.ndarray) -> Any:
+    """Create a new image instance matching a template image class.
+
+    Parameters
+    ----------
+    template_img : Any
+        Nibabel-like image instance whose class and header template should be
+        reused for the output image.
+    data : Any
+        Image payload to store in the output image. This may be a NumPy array
+        or a nibabel array proxy when voxel samples should stay lazily loaded.
+    affine : np.ndarray
+        Output voxel-to-RAS affine.
+
+    Returns
+    -------
+    Any
+        New image instance of the same class as ``template_img``.
+    """
+    header = template_img.header.copy()
+    if hasattr(header, "set_data_dtype"):
+        data_dtype = np.dtype(getattr(data, "dtype", template_img.get_data_dtype()))
+        header.set_data_dtype(data_dtype)
+    return template_img.__class__(data, affine, header)
+
+
+def header_map_image(image: Any, r2r: torch.Tensor | np.ndarray) -> Any:
+    """Return a header-only mapped image using a RAS-to-RAS transform.
+
+    This helper preserves the voxel samples exactly and updates only the output
+    affine so the image occupies the transformed pose in RAS space.
+
+    Parameters
+    ----------
+    image : Any
+        Nibabel-like image object exposing ``dataobj``, ``affine``, and
+        ``header``.
+    r2r : torch.Tensor or np.ndarray, shape (4, 4)
+        Source-to-target RAS transform.
+
+    Returns
+    -------
+    Any
+        New image instance with unchanged voxel samples and updated affine.
+    """
+    r2r_np = r2r.detach().cpu().numpy() if hasattr(r2r, "detach") else np.asarray(r2r, dtype=np.float64)
+    affine = r2r_np @ np.asarray(image.affine, dtype=np.float64)
+    return create_image_like(image, image.dataobj, affine)
+
+
+def reslice_r2r_image(
+        image: Any,
+        r2r: torch.Tensor | np.ndarray,
+        *,
+        target_affine: np.ndarray,
+        target_shape: tuple[int, int, int],
+        mode: str = "linear",
+        padding_mode: str = "zeros",
+) -> Any:
+    """Reslice an image with a RAS-to-RAS transform into a target geometry.
+
+    Parameters
+    ----------
+    image : Any
+        Nibabel-like image object exposing ``get_fdata()``, ``affine``, and
+        ``header``.
+    r2r : torch.Tensor or np.ndarray, shape (4, 4)
+        Source-to-target RAS transform.
+    target_affine : np.ndarray, shape (4, 4)
+        Voxel-to-RAS affine of the output grid.
+    target_shape : tuple of int
+        Spatial shape of the output grid.
+    mode : {'linear', 'nearest'}, default='linear'
+        Interpolation mode forwarded to :func:`map_r2r`. ``'linear'`` is
+        translated internally to PyTorch's ``'bilinear'`` backend name.
+    padding_mode : {'zeros', 'border', 'reflection'}, default='zeros'
+        Out-of-bounds padding mode.
+
+    Returns
+    -------
+    Any
+        Resampled image in the requested target geometry.
+    """
+    image_data = np.asarray(image.get_fdata(), dtype=np.float32)
+    r2r_t = torch.from_numpy(np.asarray(r2r, dtype=np.float64)).float() if not hasattr(r2r, "detach") else r2r.float()
+    mapped = map_r2r(
+        torch.from_numpy(image_data),
+        r2r_t,
+        source_affine=torch.from_numpy(np.asarray(image.affine, dtype=np.float64)).float(),
+        target_affine=torch.from_numpy(np.asarray(target_affine, dtype=np.float64)).float(),
+        target_shape=target_shape,
+        mode=mode,
+        padding_mode=padding_mode,
+    ).detach()
+    mapped_np = mapped.cpu().numpy()
+    source_dtype = np.dtype(image.get_data_dtype())
+    if mode == "nearest" and np.issubdtype(source_dtype, np.integer):
+        mapped_np = np.rint(mapped_np).astype(source_dtype)
+    else:
+        mapped_np = mapped_np.astype(np.float32, copy=False)
+    return create_image_like(image, mapped_np, np.asarray(target_affine, dtype=np.float64))

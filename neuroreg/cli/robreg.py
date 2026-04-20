@@ -108,6 +108,7 @@ def main(args=None) -> None:
     """Entry point for the ``robreg`` command."""
     import nibabel as nib
 
+    from neuroreg.image import reslice_r2r_image
     from neuroreg.imreg.robreg import robreg
     from neuroreg.transforms import LTA
 
@@ -157,35 +158,25 @@ def main(args=None) -> None:
     # ── write LTA ───────────────────────────────────────────────────────────
     LTA.from_matrix(
         Mr2r_cpu.numpy(),
-        ns.mov, mov_img,
-        ns.ref, ref_img,
-        lta_type=1,  # RAS-to-RAS
+        ns.mov,
+        mov_img,
+        ns.ref,
+        ref_img,
+        lta_type=1,
     ).write(ns.out)
     logger.info("Wrote LTA: %s", ns.out)
     print(f"Transform: {ns.out}")
 
     # ── write mapped image if requested ─────────────────────────────────────
     if ns.mapped:
-        import torch
-
-        from neuroreg.image.map import map_r2r
-
-        mov_data = torch.from_numpy(mov_img.get_fdata()).float()
-        mov_affine = torch.from_numpy(mov_img.affine).float()
-        ref_affine = torch.from_numpy(ref_img.affine).float()
-
         target_shape = cast(tuple[int, int, int], tuple(int(v) for v in ref_img.shape[:3]))
-
-        mapped_data = map_r2r(
-            mov_data,
-            Mr2r_cpu.float(),
-            source_affine=mov_affine,
-            target_affine=ref_affine,
+        mapped_img = reslice_r2r_image(
+            mov_img,
+            Mr2r_cpu.numpy(),
+            target_affine=ref_img.affine,
             target_shape=target_shape,
-            mode='bilinear'
-        ).detach().numpy()
-        
-        mapped_img = nib.MGHImage(mapped_data, ref_img.affine, ref_img.header)
+            mode="linear",
+        )
         mapped_img.to_filename(ns.mapped)
         logger.info("Wrote mapped image: %s", ns.mapped)
         print(f"Mapped:    {ns.mapped}")

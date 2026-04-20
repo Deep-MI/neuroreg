@@ -11,4 +11,5 @@ the modules that back the command-line tools.
    public
    imreg
    bbreg
+   segreg
    transforms

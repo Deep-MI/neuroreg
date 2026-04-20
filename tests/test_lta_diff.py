@@ -219,6 +219,18 @@ class TestLTAClass:
         assert lta2.type == 0
         assert lta2.r2r() == pytest.approx(lta.r2r(), rel=1e-10)
 
+    def test_invalid_dst_geometry_roundtrip_and_v2v_failure(self, tmp_path):
+        M = _rotation_z(5.0) @ _translation(2.0, 1.0)
+        lta = LTA.from_matrix(M, "src.mgz", _GEOM, "unknown.json", None, lta_type=1)
+        lta.write(tmp_path / "out_invalid_dst.lta")
+        reloaded = LTA.read(tmp_path / "out_invalid_dst.lta")
+
+        assert reloaded.r2r() == pytest.approx(M, rel=1e-10)
+        assert reloaded.dst["valid"] == 0
+        assert reloaded.dst["filename"] == "unknown.json"
+        with pytest.raises(ValueError, match="valid = 0"):
+            reloaded.v2v()
+
     def test_corner_dist_method_translation(self, tmp_path):
         p = _write_lta(tmp_path / "t.lta", _translation(3.0, 4.0))
         assert LTA.read(p).corner_dist() == pytest.approx(5.0, rel=1e-5)

@@ -59,12 +59,17 @@ def ensure_pandoc_installed(_: object) -> None:
     os.environ.setdefault("SSL_CERT_FILE", certifi.where())
     os.environ.setdefault("REQUESTS_CA_BUNDLE", certifi.where())
 
-    pandoc_dir = str(DOCS_BIN)
+    pandoc_dir = DOCS_BIN
+    pandoc_path = pandoc_dir / "pandoc"
     current_path = os.environ.get("PATH", "")
     path_entries = current_path.split(os.pathsep) if current_path else []
-    if pandoc_dir not in path_entries:
-        os.environ["PATH"] = os.pathsep.join([*path_entries, pandoc_dir]) if path_entries else pandoc_dir
-    pypandoc.ensure_pandoc_installed(targetfolder=pandoc_dir, delete_installer=True)
+    if str(pandoc_dir) not in path_entries:
+        os.environ["PATH"] = os.pathsep.join([*path_entries, str(pandoc_dir)]) if path_entries else str(pandoc_dir)
+
+    if not pandoc_path.exists():
+        pypandoc.ensure_pandoc_installed(targetfolder=str(pandoc_dir), delete_installer=True)
+
+    os.environ["PYPANDOC_PANDOC"] = str(pandoc_path)
 
 
 _stage_docs_assets()

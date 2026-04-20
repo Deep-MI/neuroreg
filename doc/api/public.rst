@@ -8,3 +8,5 @@ Top-level functions exposed from :mod:`neuroreg`.
 .. autofunction:: neuroreg.coreg
 
 .. autofunction:: neuroreg.bbreg
+
+.. autofunction:: neuroreg.segreg

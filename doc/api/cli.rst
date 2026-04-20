@@ -47,6 +47,20 @@ Python module
 .. automodule:: neuroreg.cli.bbreg
    :members: main
 
+``segreg``
+----------
+
+.. argparse::
+   :module: neuroreg.cli.segreg
+   :func: _build_parser
+   :prog: segreg
+
+Python module
+~~~~~~~~~~~~~
+
+.. automodule:: neuroreg.cli.segreg
+   :members: main
+
 ``lta``
 -------
 

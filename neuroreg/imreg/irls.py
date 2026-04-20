@@ -499,7 +499,7 @@ def register_irls(
                 src_n, mh_warp,
                 is_torch_mat=False,
                 target_shape=src_shape,
-                mode='bilinear',
+                mode='linear',
                 padding_mode='zeros',
             ).float()
 
@@ -507,7 +507,7 @@ def register_irls(
                 trg_n, mhi_warp,
                 is_torch_mat=False,
                 target_shape=src_shape,
-                mode='bilinear',
+                mode='linear',
                 padding_mode='zeros',
             ).float()
 
@@ -519,7 +519,7 @@ def register_irls(
                 src_n, T.to(device=src.device, dtype=src.dtype),
                 is_torch_mat=False,
                 target_shape=trg_shape,
-                mode='bilinear',
+                mode='linear',
                 padding_mode='zeros',
             ).float()
 
