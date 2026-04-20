@@ -237,8 +237,9 @@ def resample_isotropic_tensor(
         Target isotropic voxel size in millimeters.
     out_shape : tuple[int, int, int], optional
         Output image shape (D, H, W). If None, computed automatically.
-    mode : {'bilinear', 'nearest'}, optional
-        Interpolation mode. Default is 'bilinear'.
+    mode : {'linear', 'nearest'}, optional
+        Interpolation mode. Default is 'linear'. The backend-specific
+        spelling 'bilinear' is also accepted as an alias.
 
     Returns
     -------

@@ -45,12 +45,12 @@ def load_fsaverage_data() -> tuple[npt.NDArray[np.float64], AtlasHeaderDict]:
         data = json.load(f)
 
     affine = np.asarray(data["affine"], dtype=np.float64)
-    header = AtlasHeaderDict(
-        dims=[int(v) for v in data["header"]["dims"]],
-        delta=[float(v) for v in data["header"]["delta"]],
-        Mdc=np.asarray(data["header"]["Mdc"], dtype=np.float64),
-        Pxyz_c=np.asarray(data["header"]["Pxyz_c"], dtype=np.float64),
-    )
+    header: AtlasHeaderDict = {
+        "dims": [int(v) for v in data["header"]["dims"]],
+        "delta": [float(v) for v in data["header"]["delta"]],
+        "Mdc": np.asarray(data["header"]["Mdc"], dtype=np.float64),
+        "Pxyz_c": np.asarray(data["header"]["Pxyz_c"], dtype=np.float64),
+    }
     return affine, header
 
 

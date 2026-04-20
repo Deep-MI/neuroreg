@@ -215,7 +215,7 @@ def main(args=None) -> None:
             mov_img=mapped_source_img,
             ref_img=ref_geom_img,
         )
-        source_dtype = np.asarray(mapped_source_img.dataobj).dtype
+        source_dtype = np.dtype(mapped_source_img.get_data_dtype())
         interp_mode = "nearest" if np.issubdtype(source_dtype, np.integer) else "linear"
         mapped_img = reslice_r2r_image(
             mapped_source_img,
