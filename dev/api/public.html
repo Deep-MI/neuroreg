@@ -199,6 +199,7 @@
 <li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Public entry points</a></li>
 <li class="toctree-l2"><a class="reference internal" href="imreg.html">Image registration API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="bbreg.html">Boundary-based registration API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="segreg.html">Segmentation registration API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="transforms.html">Transform API</a></li>
 </ul>
 </li>
@@ -545,6 +546,80 @@ inspection.</p>
 </dl>
 </dd></dl>
 
+<dl class="py function">
+<dt class="sig sig-object py" id="neuroreg.segreg">
+<span class="sig-prename descclassname"><span class="pre">neuroreg.</span></span><span class="sig-name descname"><span class="pre">segreg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mov</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ref</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ref_centroids</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ref_geom</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">atlas</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dof</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label_set</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_common_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flipped</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">midslice</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/segreg/register.html#segreg"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.segreg" title="Link to this definition">¶</a></dt>
+<dd><p>Register a moving segmentation to another segmentation, an atlas, or its LR-flipped self.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>mov</strong><span class="classifier">ImageLike</span></dt><dd><p>Moving segmentation image. This may be a path or a nibabel-like image.</p>
+</dd>
+<dt><strong>ref</strong><span class="classifier">ImageLike or None, optional</span></dt><dd><p>Reference segmentation image for segmentation-to-segmentation
+registration.</p>
+</dd>
+<dt><strong>ref_centroids</strong><span class="classifier">str or Path or None, optional</span></dt><dd><p>Path to a centroid JSON file used as the registration target.</p>
+</dd>
+<dt><strong>ref_geom</strong><span class="classifier">ImageLike or None, optional</span></dt><dd><p>Optional geometry image paired with <code class="docutils literal notranslate"><span class="pre">ref_centroids</span></code>. This lets callers
+use centroid JSON for fitting while still defining a concrete output
+grid for mapped images or LTAs.</p>
+</dd>
+<dt><strong>atlas</strong><span class="classifier">str or None, optional</span></dt><dd><p>Name of a bundled atlas resource such as <code class="docutils literal notranslate"><span class="pre">&quot;fsaverage&quot;</span></code>.</p>
+</dd>
+<dt><strong>dof</strong><span class="classifier">{6, 12}, default=6</span></dt><dd><p>Degrees of freedom for the closed-form fit. <code class="docutils literal notranslate"><span class="pre">6</span></code> selects rigid
+registration and <code class="docutils literal notranslate"><span class="pre">12</span></code> selects affine registration.</p>
+</dd>
+<dt><strong>labels</strong><span class="classifier">list[int] or None, optional</span></dt><dd><p>Explicit label subset override.</p>
+</dd>
+<dt><strong>label_set</strong><span class="classifier">{‘all_shared’, ‘fsaverage_centroids’, ‘cortex_lr_pairs’} or None, optional</span></dt><dd><p>Named label preset. Mode-specific defaults are used when omitted.</p>
+</dd>
+<dt><strong>min_common_labels</strong><span class="classifier">int or None, optional</span></dt><dd><p>Minimum number of matched labels required to proceed. When omitted, the
+default is <code class="docutils literal notranslate"><span class="pre">3</span></code> for rigid and <code class="docutils literal notranslate"><span class="pre">4</span></code> for affine registration.</p>
+</dd>
+<dt><strong>flipped</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, ignore external targets and register the moving
+segmentation to a left-right flipped self target for upright/midspace
+use cases.</p>
+</dd>
+<dt><strong>midslice</strong><span class="classifier">float or None, optional</span></dt><dd><p>Explicit sagittal mid-slice used only with <code class="docutils literal notranslate"><span class="pre">flipped=True</span></code>. When
+omitted, the geometric center of the moving image is used.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>RegistrationResult</dt><dd><p>Result object containing the recovered RAS transform, participating
+labels, and target geometry metadata.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>ValueError</dt><dd><p>If the arguments define no valid target, define multiple targets, or do
+not provide enough matched labels for the requested fit.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>mov</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>Any</em>)</p></li>
+<li><p><strong>ref</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>Any</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>ref_centroids</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>ref_geom</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>Any</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>atlas</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>dof</strong> (<em>int</em>)</p></li>
+<li><p><strong>labels</strong> (<em>list</em><em>[</em><em>int</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>label_set</strong> (<em>Literal</em><em>[</em><em>'all_shared'</em><em>, </em><em>'fsaverage_centroids'</em><em>, </em><em>'cortex_lr_pairs'</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>min_common_labels</strong> (<em>int</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>flipped</strong> (<em>bool</em>)</p></li>
+<li><p><strong>midslice</strong> (<em>float</em><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="segreg.html#neuroreg.segreg.register.RegistrationResult" title="neuroreg.segreg.register.RegistrationResult"><em>RegistrationResult</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
 </section>
 
         </article>
@@ -606,6 +681,7 @@ inspection.</p>
 <li><a class="reference internal" href="#neuroreg.robreg"><code class="docutils literal notranslate"><span class="pre">robreg()</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.coreg"><code class="docutils literal notranslate"><span class="pre">coreg()</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.bbreg"><code class="docutils literal notranslate"><span class="pre">bbreg()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.segreg"><code class="docutils literal notranslate"><span class="pre">segreg()</span></code></a></li>
 </ul>
 </li>
 </ul>

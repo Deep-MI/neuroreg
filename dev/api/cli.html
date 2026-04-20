@@ -199,6 +199,7 @@
 <li class="toctree-l2"><a class="reference internal" href="public.html">Public entry points</a></li>
 <li class="toctree-l2"><a class="reference internal" href="imreg.html">Image registration API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="bbreg.html">Boundary-based registration API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="segreg.html">Segmentation registration API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="transforms.html">Transform API</a></li>
 </ul>
 </li>
@@ -639,6 +640,104 @@ transform direction.</p>
 
 </section>
 </section>
+<section id="segreg">
+<h2><code class="docutils literal notranslate"><span class="pre">segreg</span></code><a class="headerlink" href="#segreg" title="Link to this heading">¶</a></h2>
+<p><p>Segmentation-based registration via label centroids.
+Supports rigid or affine centroid alignment between segmentations, to bundled atlas centroids, or to a left-right flipped self target for uprighting.</p>
+</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">segreg</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">mov</span> <span class="n">FILE</span> <span class="p">(</span><span class="o">--</span><span class="n">ref</span> <span class="n">FILE</span> <span class="o">|</span> <span class="o">--</span><span class="n">ref</span><span class="o">-</span><span class="n">centroids</span> <span class="n">FILE</span> <span class="o">|</span>
+              <span class="o">--</span><span class="n">atlas</span> <span class="p">{</span><span class="n">fsaverage</span><span class="p">}</span> <span class="o">|</span> <span class="o">--</span><span class="n">flipped</span><span class="p">)</span> <span class="p">[</span><span class="o">--</span><span class="n">movimg</span> <span class="n">FILE</span><span class="p">]</span>
+              <span class="p">[</span><span class="o">--</span><span class="n">ref</span><span class="o">-</span><span class="n">geom</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">lta</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">mapmov</span> <span class="n">FILE</span><span class="p">]</span>
+              <span class="p">[</span><span class="o">--</span><span class="n">mapmovhdr</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">write</span><span class="o">-</span><span class="n">mov</span><span class="o">-</span><span class="n">centroids</span> <span class="n">FILE</span><span class="p">]</span>
+              <span class="p">[</span><span class="o">--</span><span class="n">write</span><span class="o">-</span><span class="n">ref</span><span class="o">-</span><span class="n">centroids</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">dof</span> <span class="p">{</span><span class="mi">6</span><span class="p">,</span><span class="mi">12</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">affine</span><span class="p">]</span>
+              <span class="p">[</span><span class="o">--</span><span class="n">labels</span> <span class="n">LABELS</span><span class="p">]</span>
+              <span class="p">[</span><span class="o">--</span><span class="n">label</span><span class="o">-</span><span class="nb">set</span> <span class="p">{</span><span class="n">all_shared</span><span class="p">,</span><span class="n">fsaverage_centroids</span><span class="p">,</span><span class="n">cortex_lr_pairs</span><span class="p">}]</span>
+              <span class="p">[</span><span class="o">--</span><span class="nb">min</span><span class="o">-</span><span class="n">common</span><span class="o">-</span><span class="n">labels</span> <span class="n">MIN_COMMON_LABELS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">midslice</span> <span class="n">MIDSLICE</span><span class="p">]</span>
+              <span class="p">[</span><span class="o">--</span><span class="n">keep</span><span class="o">-</span><span class="n">geom</span> <span class="p">{</span><span class="n">mov</span><span class="p">,</span><span class="n">ref</span><span class="p">,</span><span class="n">atlas</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
+</pre></div>
+</div>
+<section id="neuroreg.cli.segreg-_build_parser-named-arguments">
+<h3>Named Arguments<a class="headerlink" href="#neuroreg.cli.segreg-_build_parser-named-arguments" title="Link to this heading">¶</a></h3>
+<dl class="option-list">
+<dt><kbd>--mov</kbd></dt>
+<dd><p>Moving segmentation image (NIfTI or MGZ).</p>
+</dd>
+<dt><kbd>--ref</kbd></dt>
+<dd><p>Reference segmentation image (NIfTI or MGZ).</p>
+</dd>
+<dt><kbd>--ref-centroids</kbd></dt>
+<dd><p>Reference centroid JSON file.</p>
+</dd>
+<dt><kbd>--atlas</kbd></dt>
+<dd><p>Possible choices: fsaverage</p>
+<p>Bundled atlas centroid target.</p>
+</dd>
+<dt><kbd>--flipped</kbd></dt>
+<dd><p>Register to a left-right flipped self target.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--movimg</kbd></dt>
+<dd><p>Optional moving intensity image to map with –mapmov/–mapmovhdr. If omitted, those outputs map the moving segmentation itself.</p>
+</dd>
+<dt><kbd>--ref-geom</kbd></dt>
+<dd><p>Optional reference geometry image when using –ref-centroids.</p>
+</dd>
+<dt><kbd>--lta</kbd></dt>
+<dd><p>Output LTA transform.</p>
+</dd>
+<dt><kbd>--mapmov</kbd></dt>
+<dd><p>Write a resliced mapped image. Uses –movimg when provided; otherwise the moving segmentation itself is resliced.</p>
+</dd>
+<dt><kbd>--mapmovhdr</kbd></dt>
+<dd><p>Write a header-mapped image with no interpolation. Uses –movimg when provided; otherwise the moving segmentation itself is remapped.</p>
+</dd>
+<dt><kbd>--write-mov-centroids</kbd></dt>
+<dd><p>Export moving centroids as JSON.</p>
+</dd>
+<dt><kbd>--write-ref-centroids</kbd></dt>
+<dd><p>Export target centroids as JSON.</p>
+</dd>
+<dt><kbd>--dof</kbd></dt>
+<dd><p>Possible choices: 6, 12</p>
+<p>6=rigid, 12=affine.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">6</span></code></p>
+</dd>
+<dt><kbd>--affine</kbd></dt>
+<dd><p>Convenience alias for –dof 12.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--labels</kbd></dt>
+<dd><p>Comma-separated label subset override.</p>
+</dd>
+<dt><kbd>--label-set</kbd></dt>
+<dd><p>Possible choices: all_shared, fsaverage_centroids, cortex_lr_pairs</p>
+<p>Named label preset. Defaults depend on the chosen target mode.</p>
+</dd>
+<dt><kbd>--min-common-labels</kbd></dt>
+<dd><p>Minimum number of matched labels required.</p>
+</dd>
+<dt><kbd>--midslice</kbd></dt>
+<dd><p>Mid-sagittal x position for –flipped mode.</p>
+</dd>
+<dt><kbd>--keep-geom</kbd></dt>
+<dd><p>Possible choices: mov, ref, atlas</p>
+<p>Geometry used by –mapmov. Defaults to ref for –ref, atlas for –atlas, otherwise mov.</p>
+</dd>
+<dt><kbd>--verbose</kbd></dt>
+<dd><p>Enable INFO-level logging.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--debug</kbd></dt>
+<dd><p>Enable DEBUG-level logging.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+</dl>
+</section>
+<section id="id3">
+<h3>Python module<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
+<p id="module-neuroreg.cli.segreg">Command-line interface for segmentation-based centroid registration.</p>
+</section>
+</section>
 <section id="lta">
 <h2><code class="docutils literal notranslate"><span class="pre">lta</span></code><a class="headerlink" href="#lta" title="Link to this heading">¶</a></h2>
 <p><p>LTA transform manipulation utilities.</p>
@@ -898,8 +997,8 @@ src geometry is taken from LTA1; dst geometry from LTA2.</p>
 </dl>
 </section>
 </section>
-<section id="id3">
-<h3>Python module<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
+<section id="id4">
+<h3>Python module<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h3>
 <p id="module-neuroreg.cli.lta">Unified LTA transform manipulation CLI.</p>
 <p>Available subcommands are <code class="docutils literal notranslate"><span class="pre">diff</span></code> to compare transforms, <code class="docutils literal notranslate"><span class="pre">invert</span></code> to invert
 an LTA, and <code class="docutils literal notranslate"><span class="pre">concat</span></code> to chain two LTAs. Run <code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">--help</span></code> or
@@ -933,8 +1032,8 @@ an LTA, and <code class="docutils literal notranslate"><span class="pre">concat<
 </dd>
 </dl>
 </section>
-<section id="id4">
-<h3>Python module<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h3>
+<section id="id5">
+<h3>Python module<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h3>
 <span class="target" id="module-neuroreg.cli.sys_info"></span><dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.cli.sys_info.main">
 <span class="sig-prename descclassname"><span class="pre">neuroreg.cli.sys_info.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/cli/sys_info.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.cli.sys_info.main" title="Link to this definition">¶</a></dt>
@@ -1044,6 +1143,11 @@ an LTA, and <code class="docutils literal notranslate"><span class="pre">concat<
 </li>
 </ul>
 </li>
+<li><a class="reference internal" href="#segreg"><code class="docutils literal notranslate"><span class="pre">segreg</span></code></a><ul>
+<li><a class="reference internal" href="#neuroreg.cli.segreg-_build_parser-named-arguments">Named Arguments</a></li>
+<li><a class="reference internal" href="#id3">Python module</a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#lta"><code class="docutils literal notranslate"><span class="pre">lta</span></code></a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.lta-_build_parser-positional-arguments">Positional Arguments</a></li>
 <li><a class="reference internal" href="#Sub-commands">Sub-commands</a><ul>
@@ -1075,7 +1179,7 @@ an LTA, and <code class="docutils literal notranslate"><span class="pre">concat<
 <li><a class="reference internal" href="#neuroreg.cli.lta-_build_parser-positional-arguments">Positional Arguments</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#id3">Python module</a><ul>
+<li><a class="reference internal" href="#id4">Python module</a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.lta.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 </ul>
 </li>
@@ -1083,7 +1187,7 @@ an LTA, and <code class="docutils literal notranslate"><span class="pre">concat<
 </li>
 <li><a class="reference internal" href="#neuroreg-sys-info"><code class="docutils literal notranslate"><span class="pre">neuroreg-sys_info</span></code></a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.sys_info-_build_parser-named-arguments">Named Arguments</a></li>
-<li><a class="reference internal" href="#id4">Python module</a><ul>
+<li><a class="reference internal" href="#id5">Python module</a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.sys_info.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.cli.sys_info.run"><code class="docutils literal notranslate"><span class="pre">run()</span></code></a></li>
 </ul>

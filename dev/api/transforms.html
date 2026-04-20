@@ -3,7 +3,7 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Notebooks" href="../notebooks.html"><link rel="prev" title="Boundary-based registration API" href="bbreg.html">
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Notebooks" href="../notebooks.html"><link rel="prev" title="Segmentation registration API" href="segreg.html">
 
     <!-- Generated with Sphinx 7.4.7 and Furo 2025.12.19 -->
         <title>Transform API - neuroreg</title>
@@ -199,6 +199,7 @@
 <li class="toctree-l2"><a class="reference internal" href="public.html">Public entry points</a></li>
 <li class="toctree-l2"><a class="reference internal" href="imreg.html">Image registration API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="bbreg.html">Boundary-based registration API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="segreg.html">Segmentation registration API</a></li>
 <li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Transform API</a></li>
 </ul>
 </li>
@@ -316,7 +317,8 @@ geometry, mirroring the <code class="docutils literal notranslate"><span class="
 </dd>
 <dt><strong>dst_fname</strong><span class="classifier">str</span></dt><dd><p>Destination filename stored as metadata.</p>
 </dd>
-<dt><strong>dst_img</strong><span class="classifier">path, nibabel header/image, or dict</span></dt><dd><p>Destination image geometry.</p>
+<dt><strong>dst_img</strong><span class="classifier">path, nibabel header/image, dict, or None</span></dt><dd><p>Destination image geometry. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the destination volume info
+is written with <code class="docutils literal notranslate"><span class="pre">valid</span> <span class="pre">=</span> <span class="pre">0</span></code> to indicate unknown geometry.</p>
 </dd>
 <dt><strong>lta_type</strong><span class="classifier">{0, 1}</span></dt><dd><p>0 = LINEAR_VOX_TO_VOX, 1 = LINEAR_RAS_TO_RAS (default).</p>
 </dd>
@@ -328,7 +330,7 @@ geometry, mirroring the <code class="docutils literal notranslate"><span class="
 <li><p><strong>src_fname</strong> (<em>str</em>)</p></li>
 <li><p><strong>src_img</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>Nifti1Header</em><em> | </em><em>MGHHeader</em><em> | </em><em>Nifti1Image</em><em> | </em><em>MGHImage</em><em> | </em><em>dict</em>)</p></li>
 <li><p><strong>dst_fname</strong> (<em>str</em>)</p></li>
-<li><p><strong>dst_img</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>Nifti1Header</em><em> | </em><em>MGHHeader</em><em> | </em><em>Nifti1Image</em><em> | </em><em>MGHImage</em><em> | </em><em>dict</em>)</p></li>
+<li><p><strong>dst_img</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>Nifti1Header</em><em> | </em><em>MGHHeader</em><em> | </em><em>Nifti1Image</em><em> | </em><em>MGHImage</em><em> | </em><em>dict</em><em> | </em><em>None</em>)</p></li>
 <li><p><strong>lta_type</strong> (<em>int</em>)</p></li>
 </ul>
 </dd>
@@ -911,14 +913,14 @@ is returned.</p>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="bbreg.html">
+          <a class="prev-page" href="segreg.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Boundary-based registration API</div>
+                <div class="title">Segmentation registration API</div>
                 
               </div>
             </a>

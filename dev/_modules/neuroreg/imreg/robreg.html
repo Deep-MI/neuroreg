@@ -198,6 +198,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../api/public.html">Public entry points</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../api/imreg.html">Image registration API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../api/bbreg.html">Boundary-based registration API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/segreg.html">Segmentation registration API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../api/transforms.html">Transform API</a></li>
 </ul>
 </li>
@@ -483,8 +484,8 @@
         <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Isotropic resampling: isosize=</span><span class="si">%.4f</span><span class="s2"> mm&quot;</span><span class="p">,</span> <span class="n">isosize</span><span class="p">)</span>
 
-        <span class="n">src_iso</span><span class="p">,</span> <span class="n">src_iso_aff</span><span class="p">,</span> <span class="n">Rsrc</span> <span class="o">=</span> <span class="n">resample_isotropic_tensor</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">src_affine_np</span><span class="p">,</span> <span class="n">isosize</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;bilinear&quot;</span><span class="p">)</span>
-        <span class="n">trg_iso</span><span class="p">,</span> <span class="n">trg_iso_aff</span><span class="p">,</span> <span class="n">Rtrg</span> <span class="o">=</span> <span class="n">resample_isotropic_tensor</span><span class="p">(</span><span class="n">trg</span><span class="p">,</span> <span class="n">trg_affine_np</span><span class="p">,</span> <span class="n">isosize</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;bilinear&quot;</span><span class="p">)</span>
+        <span class="n">src_iso</span><span class="p">,</span> <span class="n">src_iso_aff</span><span class="p">,</span> <span class="n">Rsrc</span> <span class="o">=</span> <span class="n">resample_isotropic_tensor</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">src_affine_np</span><span class="p">,</span> <span class="n">isosize</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;linear&quot;</span><span class="p">)</span>
+        <span class="n">trg_iso</span><span class="p">,</span> <span class="n">trg_iso_aff</span><span class="p">,</span> <span class="n">Rtrg</span> <span class="o">=</span> <span class="n">resample_isotropic_tensor</span><span class="p">(</span><span class="n">trg</span><span class="p">,</span> <span class="n">trg_affine_np</span><span class="p">,</span> <span class="n">isosize</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;linear&quot;</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  Src resampled: </span><span class="si">%s</span><span class="s2"> → </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">src</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">src_iso</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>

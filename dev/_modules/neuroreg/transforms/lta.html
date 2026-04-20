@@ -198,6 +198,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../api/public.html">Public entry points</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../api/imreg.html">Image registration API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../api/bbreg.html">Boundary-based registration API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/segreg.html">Segmentation registration API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../api/transforms.html">Transform API</a></li>
 </ul>
 </li>
@@ -263,14 +264,15 @@
 <span class="c1"># ── type alias ─────────────────────────────────────────────────────────────</span>
 
 <span class="n">_AnyHeader</span><span class="p">:</span> <span class="n">TypeAlias</span> <span class="o">=</span> <span class="p">(</span>
-    <span class="nb">str</span>
-    <span class="o">|</span> <span class="n">Path</span>
-    <span class="o">|</span> <span class="n">nib</span><span class="o">.</span><span class="n">nifti1</span><span class="o">.</span><span class="n">Nifti1Header</span>
-    <span class="o">|</span> <span class="n">nib</span><span class="o">.</span><span class="n">freesurfer</span><span class="o">.</span><span class="n">mghformat</span><span class="o">.</span><span class="n">MGHHeader</span>
-    <span class="o">|</span> <span class="n">nib</span><span class="o">.</span><span class="n">nifti1</span><span class="o">.</span><span class="n">Nifti1Image</span>
-    <span class="o">|</span> <span class="n">nib</span><span class="o">.</span><span class="n">MGHImage</span>
-    <span class="o">|</span> <span class="nb">dict</span>
+        <span class="nb">str</span>
+        <span class="o">|</span> <span class="n">Path</span>
+        <span class="o">|</span> <span class="n">nib</span><span class="o">.</span><span class="n">nifti1</span><span class="o">.</span><span class="n">Nifti1Header</span>
+        <span class="o">|</span> <span class="n">nib</span><span class="o">.</span><span class="n">freesurfer</span><span class="o">.</span><span class="n">mghformat</span><span class="o">.</span><span class="n">MGHHeader</span>
+        <span class="o">|</span> <span class="n">nib</span><span class="o">.</span><span class="n">nifti1</span><span class="o">.</span><span class="n">Nifti1Image</span>
+        <span class="o">|</span> <span class="n">nib</span><span class="o">.</span><span class="n">MGHImage</span>
+        <span class="o">|</span> <span class="nb">dict</span>
 <span class="p">)</span>
+
 
 <span class="c1"># ── private helpers ────────────────────────────────────────────────────────</span>
 
@@ -298,7 +300,7 @@
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">src</span>
 
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">)):</span>
         <span class="n">src</span> <span class="o">=</span> <span class="n">nib</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">src</span><span class="p">)</span><span class="o">.</span><span class="n">header</span>
 
     <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="s2">&quot;affine&quot;</span><span class="p">):</span>
@@ -319,6 +321,20 @@
     <span class="p">}</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_invalid_vol_info</span><span class="p">(</span><span class="n">fname</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a placeholder LTA volume-info block with ``valid = 0``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;valid&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;filename&quot;</span><span class="p">:</span> <span class="n">fname</span><span class="p">,</span>
+        <span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+        <span class="s2">&quot;voxelsize&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
+        <span class="s2">&quot;xras&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+        <span class="s2">&quot;yras&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+        <span class="s2">&quot;zras&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
+        <span class="s2">&quot;cras&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+    <span class="p">}</span>
+
+
 <span class="k">def</span><span class="w"> </span><span class="nf">_affine_from_info</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Reconstruct a 4×4 voxel-to-RAS affine from an LTA volume-info dict.</span>
 
@@ -326,6 +342,8 @@
 <span class="sd">    ``volume``.  These are the fields written by :meth:`LTA.write` and parsed</span>
 <span class="sd">    by :meth:`LTA.read`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;valid&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;LTA volume info is marked invalid (valid = 0); geometry-dependent conversion is unavailable.&quot;</span><span class="p">)</span>
     <span class="n">required</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;xras&quot;</span><span class="p">,</span> <span class="s2">&quot;yras&quot;</span><span class="p">,</span> <span class="s2">&quot;zras&quot;</span><span class="p">,</span> <span class="s2">&quot;cras&quot;</span><span class="p">,</span> <span class="s2">&quot;voxelsize&quot;</span><span class="p">,</span> <span class="s2">&quot;volume&quot;</span><span class="p">)</span>
     <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">required</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">info</span><span class="p">]</span>
     <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
@@ -361,8 +379,6 @@
     <span class="p">}</span>
 
 
-
-
 <span class="c1"># ── LTA class ──────────────────────────────────────────────────────────────</span>
 
 
@@ -383,11 +399,11 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">matrix</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span>
-        <span class="n">lta_type</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-        <span class="n">src</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
-        <span class="n">dst</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">matrix</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span>
+            <span class="n">lta_type</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+            <span class="n">src</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+            <span class="n">dst</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Parameters</span>
@@ -460,7 +476,7 @@
         <span class="n">mat</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">lines</span><span class="p">):</span>
             <span class="k">if</span> <span class="s2">&quot;1 4 4&quot;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
-                <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span> <span class="p">:</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">5</span><span class="p">]:</span>
+                <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">5</span><span class="p">]:</span>
                     <span class="n">mat</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">row</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()])</span>
                 <span class="k">break</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">mat</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">4</span><span class="p">:</span>
@@ -541,13 +557,13 @@
 <a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.LTA.from_matrix">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">from_matrix</span><span class="p">(</span>
-        <span class="bp">cls</span><span class="p">,</span>
-        <span class="n">matrix</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span>
-        <span class="n">src_fname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-        <span class="n">src_img</span><span class="p">:</span> <span class="n">_AnyHeader</span><span class="p">,</span>
-        <span class="n">dst_fname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-        <span class="n">dst_img</span><span class="p">:</span> <span class="n">_AnyHeader</span><span class="p">,</span>
-        <span class="n">lta_type</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="bp">cls</span><span class="p">,</span>
+            <span class="n">matrix</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span>
+            <span class="n">src_fname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+            <span class="n">src_img</span><span class="p">:</span> <span class="n">_AnyHeader</span><span class="p">,</span>
+            <span class="n">dst_fname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+            <span class="n">dst_img</span><span class="p">:</span> <span class="n">_AnyHeader</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">lta_type</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">LTA</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Create an LTA from a matrix and image geometry.</span>
 
@@ -561,8 +577,9 @@
 <span class="sd">            Source image geometry.</span>
 <span class="sd">        dst_fname : str</span>
 <span class="sd">            Destination filename stored as metadata.</span>
-<span class="sd">        dst_img : path, nibabel header/image, or dict</span>
-<span class="sd">            Destination image geometry.</span>
+<span class="sd">        dst_img : path, nibabel header/image, dict, or None</span>
+<span class="sd">            Destination image geometry. If ``None``, the destination volume info</span>
+<span class="sd">            is written with ``valid = 0`` to indicate unknown geometry.</span>
 <span class="sd">        lta_type : {0, 1}</span>
 <span class="sd">            0 = LINEAR_VOX_TO_VOX, 1 = LINEAR_RAS_TO_RAS (default).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -570,7 +587,7 @@
             <span class="n">matrix</span> <span class="o">=</span> <span class="n">matrix</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
         <span class="n">M</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">matrix</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
         <span class="n">src</span> <span class="o">=</span> <span class="n">_header_to_vol_info</span><span class="p">(</span><span class="n">_header_info</span><span class="p">(</span><span class="n">src_img</span><span class="p">),</span> <span class="n">src_fname</span><span class="p">)</span>
-        <span class="n">dst</span> <span class="o">=</span> <span class="n">_header_to_vol_info</span><span class="p">(</span><span class="n">_header_info</span><span class="p">(</span><span class="n">dst_img</span><span class="p">),</span> <span class="n">dst_fname</span><span class="p">)</span>
+        <span class="n">dst</span> <span class="o">=</span> <span class="n">_invalid_vol_info</span><span class="p">(</span><span class="n">dst_fname</span><span class="p">)</span> <span class="k">if</span> <span class="n">dst_img</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">_header_to_vol_info</span><span class="p">(</span><span class="n">_header_info</span><span class="p">(</span><span class="n">dst_img</span><span class="p">),</span> <span class="n">dst_fname</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">lta_type</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">)</span></div>
 
 
@@ -799,6 +816,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">sphere_dist</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">r2r</span><span class="p">(),</span> <span class="n">other</span><span class="o">.</span><span class="n">r2r</span><span class="p">()</span> <span class="k">if</span> <span class="n">other</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">radius</span><span class="p">)</span></div>
 </div>
+
 
 </pre></div>
         </article>

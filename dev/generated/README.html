@@ -199,6 +199,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../api/public.html">Public entry points</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/imreg.html">Image registration API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/bbreg.html">Boundary-based registration API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/segreg.html">Segmentation registration API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../api/transforms.html">Transform API</a></li>
 </ul>
 </li>
@@ -260,6 +261,8 @@ and speed.</p>
 (Powell-based by default, analogous to FreeSurfer/SPM <code class="docutils literal notranslate"><span class="pre">mri_coreg</span></code>)</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">bbreg</span></code></strong> – boundary-based registration using cortical WM surfaces or segmentations
 (extending FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">bbregister</span></code>)</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">segreg</span></code></strong> – segmentation-based registration via label centroids
+(rigid/affine, including atlas-centroid and upright/self-flip modes)</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">lta</span></code></strong> – transform comparison / inversion / concatenation utilities</p></li>
 </ul>
 <p>This project is a work-in-progress in an early development stage. It is developed by
@@ -652,6 +655,46 @@ bbreg<span class="w"> </span>--mov<span class="w"> </span>fMRI.nii.gz<span class
 <p>Run <code class="docutils literal notranslate"><span class="pre">bbreg</span> <span class="pre">-h</span></code> for a full argument summary with defaults.</p>
 </section>
 <hr class="docutils" />
+<section id="segreg-segmentation-based-registration">
+<h3><code class="docutils literal notranslate"><span class="pre">segreg</span></code> — segmentation-based registration<a class="headerlink" href="#segreg-segmentation-based-registration" title="Link to this heading">¶</a></h3>
+<p>Registers a moving segmentation by aligning label centroids to another
+segmentation, to bundled atlas centroids such as <code class="docutils literal notranslate"><span class="pre">fsaverage</span></code>, or to a
+left-right flipped self target for upright/midspace workflows.</p>
+<p><code class="docutils literal notranslate"><span class="pre">segreg</span></code> can also write mapped outputs while the package does not yet have a
+separate transform-application CLI. If <code class="docutils literal notranslate"><span class="pre">--movimg</span></code> is provided, <code class="docutils literal notranslate"><span class="pre">--mapmov</span></code> and
+<code class="docutils literal notranslate"><span class="pre">--mapmovhdr</span></code> map that intensity image with the recovered transform; otherwise
+those outputs map the moving segmentation itself.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">segreg</span> <span class="o">--</span><span class="n">mov</span> <span class="o">&lt;</span><span class="n">moving_seg</span><span class="o">.</span><span class="n">mgz</span><span class="o">&gt;</span> <span class="p">(</span><span class="o">--</span><span class="n">ref</span> <span class="o">&lt;</span><span class="n">ref_seg</span><span class="o">.</span><span class="n">mgz</span><span class="o">&gt;</span> <span class="o">|</span> <span class="o">--</span><span class="n">ref</span><span class="o">-</span><span class="n">centroids</span> <span class="o">&lt;</span><span class="n">centroids</span><span class="o">.</span><span class="n">json</span><span class="o">&gt;</span> <span class="o">|</span> <span class="o">--</span><span class="n">atlas</span> <span class="n">fsaverage</span> <span class="o">|</span> <span class="o">--</span><span class="n">flipped</span><span class="p">)</span> <span class="p">[</span><span class="n">options</span><span class="p">]</span>
+</pre></div>
+</div>
+<p><strong>Common outputs</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--lta</span> <span class="pre">FILE</span></code> writes the recovered transform as an LTA.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--movimg</span> <span class="pre">FILE</span></code> provides a separate intensity image for <code class="docutils literal notranslate"><span class="pre">--mapmov</span></code> or <code class="docutils literal notranslate"><span class="pre">--mapmovhdr</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--mapmov</span> <span class="pre">FILE</span></code> writes a resliced mapped output. It maps <code class="docutils literal notranslate"><span class="pre">--movimg</span></code> when provided; otherwise it reslices the moving segmentation itself.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--mapmovhdr</span> <span class="pre">FILE</span></code> writes a header-only mapped output. It maps <code class="docutils literal notranslate"><span class="pre">--movimg</span></code> when provided; otherwise it remaps the moving segmentation itself.</p></li>
+</ul>
+<p><strong>Examples</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Register a subject segmentation to another segmentation</span>
+segreg<span class="w"> </span>--mov<span class="w"> </span>sub-01/aparc+aseg.mgz<span class="w"> </span>--ref<span class="w"> </span>sub-02/aparc+aseg.mgz<span class="w"> </span><span class="se">\</span>
+<span class="w">       </span>--lta<span class="w"> </span>sub01_to_sub02.lta
+
+<span class="c1"># Register a segmentation, then map a separate intensity image with the same transform</span>
+segreg<span class="w"> </span>--mov<span class="w"> </span>subj/mri/aparc+aseg.mgz<span class="w"> </span>--movimg<span class="w"> </span>subj/mri/orig.mgz<span class="w"> </span>--atlas<span class="w"> </span>fsaverage<span class="w"> </span><span class="se">\</span>
+<span class="w">       </span>--lta<span class="w"> </span>subj_to_fsaverage.lta<span class="w"> </span>--mapmov<span class="w"> </span>orig_in_fsaverage_space.mgz
+
+<span class="c1"># If --movimg is omitted, --mapmov maps the segmentation itself</span>
+segreg<span class="w"> </span>--mov<span class="w"> </span>subj/mri/aparc+aseg.mgz<span class="w"> </span>--atlas<span class="w"> </span>fsaverage<span class="w"> </span><span class="se">\</span>
+<span class="w">       </span>--mapmov<span class="w"> </span>aparc_aseg_in_fsaverage_space.mgz
+
+<span class="c1"># Export centroid JSON only</span>
+segreg<span class="w"> </span>--mov<span class="w"> </span>subj/mri/aparc+aseg.mgz<span class="w"> </span>--atlas<span class="w"> </span>fsaverage<span class="w"> </span><span class="se">\</span>
+<span class="w">       </span>--write-mov-centroids<span class="w"> </span>subj_centroids.json<span class="w"> </span>--write-ref-centroids<span class="w"> </span>fsaverage_centroids.json
+</pre></div>
+</div>
+<p>Run <code class="docutils literal notranslate"><span class="pre">segreg</span> <span class="pre">-h</span></code> for a full argument summary with defaults.</p>
+</section>
+<hr class="docutils" />
 <section id="lta-lta-transform-utilities">
 <h3><code class="docutils literal notranslate"><span class="pre">lta</span></code> — LTA transform utilities<a class="headerlink" href="#lta-lta-transform-utilities" title="Link to this heading">¶</a></h3>
 <p>Unified command for manipulating FreeSurfer LTA transform files with three
@@ -954,6 +997,7 @@ NeuroImage 48(1):63-72.
 <li><a class="reference internal" href="#robreg-image-to-image-registration"><code class="docutils literal notranslate"><span class="pre">robreg</span></code> — image-to-image registration</a></li>
 <li><a class="reference internal" href="#coreg-image-based-cross-modal-registration"><code class="docutils literal notranslate"><span class="pre">coreg</span></code> — image-based cross-modal registration</a></li>
 <li><a class="reference internal" href="#bbreg-boundary-based-registration"><code class="docutils literal notranslate"><span class="pre">bbreg</span></code> — boundary-based registration</a></li>
+<li><a class="reference internal" href="#segreg-segmentation-based-registration"><code class="docutils literal notranslate"><span class="pre">segreg</span></code> — segmentation-based registration</a></li>
 <li><a class="reference internal" href="#lta-lta-transform-utilities"><code class="docutils literal notranslate"><span class="pre">lta</span></code> — LTA transform utilities</a><ul>
 <li><a class="reference internal" href="#lta-diff-compare-transforms"><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">diff</span></code> — Compare transforms</a></li>
 <li><a class="reference internal" href="#lta-invert-invert-a-transform"><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">invert</span></code> — Invert a transform</a></li>

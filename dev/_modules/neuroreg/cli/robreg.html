@@ -198,6 +198,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../api/public.html">Public entry points</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../api/imreg.html">Image registration API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../api/bbreg.html">Boundary-based registration API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/segreg.html">Segmentation registration API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../api/transforms.html">Transform API</a></li>
 </ul>
 </li>
@@ -351,6 +352,7 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Entry point for the ``robreg`` command.&quot;&quot;&quot;</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">nibabel</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nib</span>
 
+    <span class="kn">from</span><span class="w"> </span><span class="nn">neuroreg.image</span><span class="w"> </span><span class="kn">import</span> <span class="n">reslice_r2r_image</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">neuroreg.imreg.robreg</span><span class="w"> </span><span class="kn">import</span> <span class="n">robreg</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">neuroreg.transforms</span><span class="w"> </span><span class="kn">import</span> <span class="n">LTA</span>
 
@@ -400,35 +402,25 @@
     <span class="c1"># ── write LTA ───────────────────────────────────────────────────────────</span>
     <span class="n">LTA</span><span class="o">.</span><span class="n">from_matrix</span><span class="p">(</span>
         <span class="n">Mr2r_cpu</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span>
-        <span class="n">ns</span><span class="o">.</span><span class="n">mov</span><span class="p">,</span> <span class="n">mov_img</span><span class="p">,</span>
-        <span class="n">ns</span><span class="o">.</span><span class="n">ref</span><span class="p">,</span> <span class="n">ref_img</span><span class="p">,</span>
-        <span class="n">lta_type</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>  <span class="c1"># RAS-to-RAS</span>
+        <span class="n">ns</span><span class="o">.</span><span class="n">mov</span><span class="p">,</span>
+        <span class="n">mov_img</span><span class="p">,</span>
+        <span class="n">ns</span><span class="o">.</span><span class="n">ref</span><span class="p">,</span>
+        <span class="n">ref_img</span><span class="p">,</span>
+        <span class="n">lta_type</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
     <span class="p">)</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Wrote LTA: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Transform: </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
     <span class="c1"># ── write mapped image if requested ─────────────────────────────────────</span>
     <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">mapped</span><span class="p">:</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
-
-        <span class="kn">from</span><span class="w"> </span><span class="nn">neuroreg.image.map</span><span class="w"> </span><span class="kn">import</span> <span class="n">map_r2r</span>
-
-        <span class="n">mov_data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">mov_img</span><span class="o">.</span><span class="n">get_fdata</span><span class="p">())</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
-        <span class="n">mov_affine</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">mov_img</span><span class="o">.</span><span class="n">affine</span><span class="p">)</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
-        <span class="n">ref_affine</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">ref_img</span><span class="o">.</span><span class="n">affine</span><span class="p">)</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
-
         <span class="n">target_shape</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ref_img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">3</span><span class="p">]))</span>
-
-        <span class="n">mapped_data</span> <span class="o">=</span> <span class="n">map_r2r</span><span class="p">(</span>
-            <span class="n">mov_data</span><span class="p">,</span>
-            <span class="n">Mr2r_cpu</span><span class="o">.</span><span class="n">float</span><span class="p">(),</span>
-            <span class="n">source_affine</span><span class="o">=</span><span class="n">mov_affine</span><span class="p">,</span>
-            <span class="n">target_affine</span><span class="o">=</span><span class="n">ref_affine</span><span class="p">,</span>
+        <span class="n">mapped_img</span> <span class="o">=</span> <span class="n">reslice_r2r_image</span><span class="p">(</span>
+            <span class="n">mov_img</span><span class="p">,</span>
+            <span class="n">Mr2r_cpu</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span>
+            <span class="n">target_affine</span><span class="o">=</span><span class="n">ref_img</span><span class="o">.</span><span class="n">affine</span><span class="p">,</span>
             <span class="n">target_shape</span><span class="o">=</span><span class="n">target_shape</span><span class="p">,</span>
-            <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;bilinear&#39;</span>
-        <span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
-        
-        <span class="n">mapped_img</span> <span class="o">=</span> <span class="n">nib</span><span class="o">.</span><span class="n">MGHImage</span><span class="p">(</span><span class="n">mapped_data</span><span class="p">,</span> <span class="n">ref_img</span><span class="o">.</span><span class="n">affine</span><span class="p">,</span> <span class="n">ref_img</span><span class="o">.</span><span class="n">header</span><span class="p">)</span>
+            <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
         <span class="n">mapped_img</span><span class="o">.</span><span class="n">to_filename</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">mapped</span><span class="p">)</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Wrote mapped image: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">mapped</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Mapped:    </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">mapped</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
