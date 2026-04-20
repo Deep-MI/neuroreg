@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from ..image import build_gaussian_pyramid
+from ..image import build_gaussian_pyramid, reslice_r2r_image
 from ..image.pyramid import _PYRAMID_FILTER, _smooth3d, get_pyramid_limits
 from ..transforms import LTA
 from ..transforms.matrices import matrix_sqrt_schur
@@ -284,11 +284,11 @@ def register_gd_pyramid(
                 int(max(s_dim[2], t_dim[2])),
             )
             logger.info("Isotropic grid: src_dim=%s  trg_dim=%s  mid_dim=%s", s_dim, t_dim, mid_dim)
-            sdata, src_iso_aff, Rsrc = resample_isotropic(src, isosize, out_shape=mid_dim, mode="bilinear")
-            tdata, trg_iso_aff, Rtrg = resample_isotropic(trg, isosize, out_shape=mid_dim, mode="bilinear")
+            sdata, src_iso_aff, Rsrc = resample_isotropic(src, isosize, out_shape=mid_dim, mode="linear")
+            tdata, trg_iso_aff, Rtrg = resample_isotropic(trg, isosize, out_shape=mid_dim, mode="linear")
         else:
-            sdata, src_iso_aff, Rsrc = resample_isotropic(src, isosize, mode="bilinear")
-            tdata, trg_iso_aff, Rtrg = resample_isotropic(trg, isosize, mode="bilinear")
+            sdata, src_iso_aff, Rsrc = resample_isotropic(src, isosize, mode="linear")
+            tdata, trg_iso_aff, Rtrg = resample_isotropic(trg, isosize, mode="linear")
             logger.info("  Src resampled: %s -> %s", src.shape[:3], sdata.shape)
             logger.info("  Trg resampled: %s -> %s", trg.shape[:3], tdata.shape)
 
@@ -522,20 +522,13 @@ def register_gd_pyramid(
         LTA.from_matrix(Mr2r.numpy(), src.get_filename(), src, trg.get_filename(), trg).write(lta_name)
     if mapped_name is not None:
         logger.info("Writing mapped image: %s", mapped_name)
-        from ..image.map import map_r2r as _map_r2r
-
-        sdata_full = torch.from_numpy(src.get_fdata()).float()
-        mapped = _map_r2r(
-            sdata_full,
-            Mr2r.float(),
-            source_affine=src_affine_t.float(),
-            target_affine=trg_affine_t.float(),
+        mapped_img = reslice_r2r_image(
+            src,
+            Mr2r.numpy(),
+            target_affine=trg.affine,
             target_shape=_shape3(trg.shape),
-            mode="bilinear",
-        ).detach()
-        header = trg.header.copy()
-        header.set_data_dtype(np.float32)
-        mapped_img = nib.MGHImage(mapped.squeeze().numpy().astype(np.float32), trg.affine, header)
+            mode="linear",
+        )
         mapped_img.to_filename(mapped_name)
 
     logger.info("register_gd_pyramid total time: %.2f s", time.perf_counter() - start)

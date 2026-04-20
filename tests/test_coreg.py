@@ -78,11 +78,11 @@ class TestRegisterPyramidSynthetic:
             dtype=torch.float32,
         )
 
-        def fake_resample_isotropic(_img, _isosize, mode="bilinear"):
+        def fake_resample_isotropic(_img, _isosize, mode="linear"):
             return (
                 torch.ones((16, 16, 16), dtype=torch.float32),
                 torch.eye(4, dtype=torch.float32),
-                rsrc if mode == "bilinear" and _img is img else rtrg,
+                rsrc if mode in {"linear", "bilinear"} and _img is img else rtrg,
             )
 
         def fake_register_level(simg, timg, **kwargs):

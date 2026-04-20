@@ -93,6 +93,7 @@ tracker = 'https://github.com/Deep-MI/neuroreg/issues'
 robreg          = "neuroreg.cli.robreg:main"
 coreg           = "neuroreg.cli.coreg:main"
 bbreg           = "neuroreg.cli.bbreg:main"
+segreg          = "neuroreg.cli.segreg:main"
 lta             = "neuroreg.cli.lta:main"
 neuroreg-sys_info  = "neuroreg.cli.sys_info:run"
 
@@ -102,6 +103,9 @@ include-package-data = false
 [tool.setuptools.packages.find]
 include = ['neuroreg*']
 exclude = ['neuroreg*tests']
+
+[tool.setuptools.package-data]
+"neuroreg.segreg" = ["data/*.json"]
 
 [tool.pydocstyle]
 convention = 'numpy'

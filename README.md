@@ -15,6 +15,8 @@ The main user-facing tools are:
   (Powell-based by default, analogous to FreeSurfer/SPM `mri_coreg`)
 - **`bbreg`** – boundary-based registration using cortical WM surfaces or segmentations
   (extending FreeSurfer's `bbregister`)
+- **`segreg`** – segmentation-based registration via label centroids
+  (rigid/affine, including atlas-centroid and upright/self-flip modes)
 - **`lta`** – transform comparison / inversion / concatenation utilities
 
 This project is a work-in-progress in an early development stage. It is developed by
@@ -219,6 +221,52 @@ bbreg --mov fMRI.nii.gz --seg /data/subjects/sub-01/mri/aparc+aseg.mgz \
 ```
 
 Run `bbreg -h` for a full argument summary with defaults.
+
+---
+
+### `segreg` — segmentation-based registration
+
+Registers a moving segmentation by aligning label centroids to another
+segmentation, to bundled atlas centroids such as `fsaverage`, or to a
+left-right flipped self target for upright/midspace workflows.
+
+`segreg` can also write mapped outputs while the package does not yet have a
+separate transform-application CLI. If `--movimg` is provided, `--mapmov` and
+`--mapmovhdr` map that intensity image with the recovered transform; otherwise
+those outputs map the moving segmentation itself.
+
+```
+segreg --mov <moving_seg.mgz> (--ref <ref_seg.mgz> | --ref-centroids <centroids.json> | --atlas fsaverage | --flipped) [options]
+```
+
+**Common outputs**
+
+- `--lta FILE` writes the recovered transform as an LTA.
+- `--movimg FILE` provides a separate intensity image for `--mapmov` or `--mapmovhdr`.
+- `--mapmov FILE` writes a resliced mapped output. It maps `--movimg` when provided; otherwise it reslices the moving segmentation itself.
+- `--mapmovhdr FILE` writes a header-only mapped output. It maps `--movimg` when provided; otherwise it remaps the moving segmentation itself.
+
+**Examples**
+
+```bash
+# Register a subject segmentation to another segmentation
+segreg --mov sub-01/aparc+aseg.mgz --ref sub-02/aparc+aseg.mgz \
+       --lta sub01_to_sub02.lta
+
+# Register a segmentation, then map a separate intensity image with the same transform
+segreg --mov subj/mri/aparc+aseg.mgz --movimg subj/mri/orig.mgz --atlas fsaverage \
+       --lta subj_to_fsaverage.lta --mapmov orig_in_fsaverage_space.mgz
+
+# If --movimg is omitted, --mapmov maps the segmentation itself
+segreg --mov subj/mri/aparc+aseg.mgz --atlas fsaverage \
+       --mapmov aparc_aseg_in_fsaverage_space.mgz
+
+# Export centroid JSON only
+segreg --mov subj/mri/aparc+aseg.mgz --atlas fsaverage \
+       --write-mov-centroids subj_centroids.json --write-ref-centroids fsaverage_centroids.json
+```
+
+Run `segreg -h` for a full argument summary with defaults.
 
 ---
 

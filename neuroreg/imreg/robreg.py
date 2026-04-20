@@ -240,8 +240,8 @@ def register_irls_pyramid(
         if verbose:
             logger.info("Isotropic resampling: isosize=%.4f mm", isosize)
 
-        src_iso, src_iso_aff, Rsrc = resample_isotropic_tensor(src, src_affine_np, isosize, mode="bilinear")
-        trg_iso, trg_iso_aff, Rtrg = resample_isotropic_tensor(trg, trg_affine_np, isosize, mode="bilinear")
+        src_iso, src_iso_aff, Rsrc = resample_isotropic_tensor(src, src_affine_np, isosize, mode="linear")
+        trg_iso, trg_iso_aff, Rtrg = resample_isotropic_tensor(trg, trg_affine_np, isosize, mode="linear")
 
         if verbose:
             logger.info("  Src resampled: %s → %s", src.shape, src_iso.shape)

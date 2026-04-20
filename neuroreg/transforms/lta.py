@@ -22,14 +22,15 @@ logger = logging.getLogger(__name__)
 # ── type alias ─────────────────────────────────────────────────────────────
 
 _AnyHeader: TypeAlias = (
-    str
-    | Path
-    | nib.nifti1.Nifti1Header
-    | nib.freesurfer.mghformat.MGHHeader
-    | nib.nifti1.Nifti1Image
-    | nib.MGHImage
-    | dict
+        str
+        | Path
+        | nib.nifti1.Nifti1Header
+        | nib.freesurfer.mghformat.MGHHeader
+        | nib.nifti1.Nifti1Image
+        | nib.MGHImage
+        | dict
 )
+
 
 # ── private helpers ────────────────────────────────────────────────────────
 
@@ -120,8 +121,6 @@ def _header_to_vol_info(hdr: dict, fname: str = "") -> dict:
     }
 
 
-
-
 # ── LTA class ──────────────────────────────────────────────────────────────
 
 
@@ -140,11 +139,11 @@ class LTA:
     """
 
     def __init__(
-        self,
-        matrix: npt.ArrayLike,
-        lta_type: int,
-        src: dict,
-        dst: dict,
+            self,
+            matrix: npt.ArrayLike,
+            lta_type: int,
+            src: dict,
+            dst: dict,
     ) -> None:
         """
         Parameters
@@ -215,7 +214,7 @@ class LTA:
         mat: list[list[float]] = []
         for i, line in enumerate(lines):
             if "1 4 4" in line:
-                for row in lines[i + 1 : i + 5]:
+                for row in lines[i + 1: i + 5]:
                     mat.append([float(v) for v in row.strip().split()])
                 break
         if len(mat) != 4:
@@ -293,13 +292,13 @@ class LTA:
 
     @classmethod
     def from_matrix(
-        cls,
-        matrix: npt.ArrayLike,
-        src_fname: str,
-        src_img: _AnyHeader,
-        dst_fname: str,
-        dst_img: _AnyHeader,
-        lta_type: int = 1,
+            cls,
+            matrix: npt.ArrayLike,
+            src_fname: str,
+            src_img: _AnyHeader,
+            dst_fname: str,
+            dst_img: _AnyHeader,
+            lta_type: int = 1,
     ) -> LTA:
         """Create an LTA from a matrix and image geometry.
 
@@ -520,3 +519,4 @@ class LTA:
         the transform, not source/dst geometry.  Delegates to :func:`sphere_dist`.
         """
         return sphere_dist(self.r2r(), other.r2r() if other is not None else None, radius=radius)
+
