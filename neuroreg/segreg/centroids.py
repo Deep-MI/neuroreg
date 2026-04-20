@@ -16,7 +16,7 @@ ImageLike = str | Path | Any
 
 def load_spatial_image(image: ImageLike) -> Any:
     """Load a nibabel-compatible image or return an already-loaded image."""
-    if isinstance(image, str | Path):
+    if isinstance(image, (str, Path)):
         return nib.load(str(image))
     return image
 

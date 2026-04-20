@@ -35,7 +35,8 @@ def available_atlases() -> tuple[str, ...]:
 
 def load_fsaverage_centroids() -> CentroidDict:
     """Load the bundled fsaverage centroid resource."""
-    return read_centroids_json(_resource("fsaverage_centroids.json"))
+    with resources.as_file(_resource("fsaverage_centroids.json")) as path:
+        return read_centroids_json(path)
 
 
 def load_fsaverage_data() -> tuple[npt.NDArray[np.float64], AtlasHeaderDict]:

@@ -58,7 +58,7 @@ def _header_info(src: _AnyHeader) -> dict:
     if isinstance(src, dict):
         return src
 
-    if isinstance(src, str | Path):
+    if isinstance(src, (str, Path)):
         src = nib.load(src).header
 
     if hasattr(src, "affine"):
@@ -79,6 +79,20 @@ def _header_info(src: _AnyHeader) -> dict:
     }
 
 
+def _invalid_vol_info(fname: str = "") -> dict:
+    """Return a placeholder LTA volume-info block with ``valid = 0``."""
+    return {
+        "valid": 0,
+        "filename": fname,
+        "volume": [0, 0, 0],
+        "voxelsize": [1.0, 1.0, 1.0],
+        "xras": [1.0, 0.0, 0.0],
+        "yras": [0.0, 1.0, 0.0],
+        "zras": [0.0, 0.0, 1.0],
+        "cras": [0.0, 0.0, 0.0],
+    }
+
+
 def _affine_from_info(info: dict) -> np.ndarray:
     """Reconstruct a 4×4 voxel-to-RAS affine from an LTA volume-info dict.
 
@@ -86,6 +100,8 @@ def _affine_from_info(info: dict) -> np.ndarray:
     ``volume``.  These are the fields written by :meth:`LTA.write` and parsed
     by :meth:`LTA.read`.
     """
+    if info.get("valid", 1) == 0:
+        raise ValueError("LTA volume info is marked invalid (valid = 0); geometry-dependent conversion is unavailable.")
     required = ("xras", "yras", "zras", "cras", "voxelsize", "volume")
     missing = [k for k in required if k not in info]
     if missing:
@@ -297,7 +313,7 @@ class LTA:
             src_fname: str,
             src_img: _AnyHeader,
             dst_fname: str,
-            dst_img: _AnyHeader,
+            dst_img: _AnyHeader | None,
             lta_type: int = 1,
     ) -> LTA:
         """Create an LTA from a matrix and image geometry.
@@ -312,8 +328,9 @@ class LTA:
             Source image geometry.
         dst_fname : str
             Destination filename stored as metadata.
-        dst_img : path, nibabel header/image, or dict
-            Destination image geometry.
+        dst_img : path, nibabel header/image, dict, or None
+            Destination image geometry. If ``None``, the destination volume info
+            is written with ``valid = 0`` to indicate unknown geometry.
         lta_type : {0, 1}
             0 = LINEAR_VOX_TO_VOX, 1 = LINEAR_RAS_TO_RAS (default).
         """
@@ -321,7 +338,7 @@ class LTA:
             matrix = matrix.detach().cpu().numpy()
         M = np.asarray(matrix, dtype=float).reshape(4, 4)
         src = _header_to_vol_info(_header_info(src_img), src_fname)
-        dst = _header_to_vol_info(_header_info(dst_img), dst_fname)
+        dst = _invalid_vol_info(dst_fname) if dst_img is None else _header_to_vol_info(_header_info(dst_img), dst_fname)
         return cls(M, lta_type, src, dst)
 
     def write(self, filename: str | Path, lta_type: int | None = None) -> None:

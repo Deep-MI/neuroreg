@@ -282,7 +282,7 @@ def resample_isotropic_tensor(
     return resampled, iso_affine.float(), Rvox.float()
 
 
-def create_image_like(template_img: Any, data: np.ndarray, affine: np.ndarray) -> Any:
+def create_image_like(template_img: Any, data: Any, affine: np.ndarray) -> Any:
     """Create a new image instance matching a template image class.
 
     Parameters
@@ -290,8 +290,9 @@ def create_image_like(template_img: Any, data: np.ndarray, affine: np.ndarray) -
     template_img : Any
         Nibabel-like image instance whose class and header template should be
         reused for the output image.
-    data : np.ndarray
-        Image data to store in the output image.
+    data : Any
+        Image payload to store in the output image. This may be a NumPy array
+        or a nibabel array proxy when voxel samples should stay lazily loaded.
     affine : np.ndarray
         Output voxel-to-RAS affine.
 
@@ -302,7 +303,8 @@ def create_image_like(template_img: Any, data: np.ndarray, affine: np.ndarray) -
     """
     header = template_img.header.copy()
     if hasattr(header, "set_data_dtype"):
-        header.set_data_dtype(data.dtype)
+        data_dtype = np.dtype(getattr(data, "dtype", template_img.get_data_dtype()))
+        header.set_data_dtype(data_dtype)
     return template_img.__class__(data, affine, header)
 
 
@@ -326,9 +328,8 @@ def header_map_image(image: Any, r2r: torch.Tensor | np.ndarray) -> Any:
         New image instance with unchanged voxel samples and updated affine.
     """
     r2r_np = r2r.detach().cpu().numpy() if hasattr(r2r, "detach") else np.asarray(r2r, dtype=np.float64)
-    data = np.asarray(image.dataobj)
     affine = r2r_np @ np.asarray(image.affine, dtype=np.float64)
-    return create_image_like(image, data, affine)
+    return create_image_like(image, image.dataobj, affine)
 
 
 def reslice_r2r_image(
@@ -376,7 +377,7 @@ def reslice_r2r_image(
         padding_mode=padding_mode,
     ).detach()
     mapped_np = mapped.cpu().numpy()
-    source_dtype = np.asarray(image.dataobj).dtype
+    source_dtype = np.dtype(image.get_data_dtype())
     if mode == "nearest" and np.issubdtype(source_dtype, np.integer):
         mapped_np = np.rint(mapped_np).astype(source_dtype)
     else:

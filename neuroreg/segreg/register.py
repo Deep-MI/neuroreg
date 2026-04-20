@@ -38,9 +38,10 @@ class RegistrationResult:
     target_name : str
         Human-readable identifier for the target geometry written into output
         LTAs.
-    target_geometry : Any
-        Geometry object describing the target space. This may be a nibabel image
-        or a header-like dictionary for atlas resources.
+    target_geometry : Any or None
+        Geometry object describing the target space. This may be a nibabel image,
+        a header-like dictionary for atlas resources, or ``None`` when the
+        target geometry is unknown.
     target_affine : np.ndarray or None
         Target voxel-to-RAS affine when explicit target geometry is available.
     target_shape : tuple[int, int, int] or None
@@ -60,9 +61,9 @@ class _GeometryInfo:
     """Internal representation of a target geometry."""
 
     name: str
-    geometry: Any
-    affine: np.ndarray
-    shape: tuple[int, int, int]
+    geometry: Any | None
+    affine: np.ndarray | None
+    shape: tuple[int, int, int] | None
 
 
 def _default_min_common_labels(dof: int) -> int:
@@ -246,7 +247,7 @@ def segreg(
         not provide enough matched labels for the requested fit.
     """
     mov_img = load_spatial_image(mov)
-    mov_name = mov_img.get_filename() or (str(mov) if isinstance(mov, str | Path) else "moving.mgz")
+    mov_name = mov_img.get_filename() or (str(mov) if isinstance(mov, (str, Path)) else "moving.mgz")
     mov_affine = np.asarray(mov_img.affine, dtype=np.float64)
 
     if dof not in {6, 12}:
@@ -304,9 +305,9 @@ def segreg(
     if geometry is None:
         geometry = _GeometryInfo(
             name=str(ref_centroids),
-            geometry=mov_img,
-            affine=mov_affine,
-            shape=tuple(int(v) for v in mov_img.shape[:3]),
+            geometry=None,
+            affine=None,
+            shape=None,
         )
 
     return RegistrationResult(

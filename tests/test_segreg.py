@@ -3,12 +3,15 @@ from pathlib import Path
 import nibabel as nib
 import numpy as np
 import pytest
+from nibabel.arrayproxy import ArrayProxy
 
 from neuroreg.cli.segreg import main as segreg_main
+from neuroreg.image import header_map_image
 from neuroreg.segreg.atlas import load_fsaverage_centroids, load_fsaverage_data
 from neuroreg.segreg.centroids import build_flipped_centroid_targets
 from neuroreg.segreg.points import find_affine, find_rigid
 from neuroreg.segreg.register import segreg
+from neuroreg.transforms import LTA
 
 
 def _label_volume() -> np.ndarray:
@@ -228,6 +231,21 @@ def test_cli_writes_header_only_mapmovhdr(tmp_path: Path):
     assert mapped_img.affine == pytest.approx(ref_affine)
 
 
+def test_header_map_image_preserves_lazy_proxy(tmp_path: Path):
+    image_path = tmp_path / "proxy_img.nii.gz"
+    affine = np.eye(4)
+    _write_float_image(image_path, affine=affine)
+
+    loaded = nib.load(str(image_path))
+    mapped = header_map_image(loaded, np.array(
+        [[1.0, 0.0, 0.0, 5.0], [0.0, 1.0, 0.0, -3.0], [0.0, 0.0, 1.0, 2.0], [0.0, 0.0, 0.0, 1.0]]))
+
+    assert isinstance(loaded.dataobj, ArrayProxy)
+    assert isinstance(mapped.dataobj, ArrayProxy)
+    assert mapped.affine == pytest.approx(
+        np.array([[1.0, 0.0, 0.0, 5.0], [0.0, 1.0, 0.0, -3.0], [0.0, 0.0, 1.0, 2.0], [0.0, 0.0, 0.0, 1.0]]))
+
+
 def test_cli_atlas_mode_can_export_target_centroids(tmp_path: Path):
     mov_seg = tmp_path / "mov_seg.nii.gz"
     out_json = tmp_path / "atlas_centroids.json"
@@ -247,3 +265,28 @@ def test_cli_atlas_mode_can_export_target_centroids(tmp_path: Path):
     with out_json.open() as f:
         saved = {int(k): np.asarray(v) for k, v in __import__("json").load(f).items()}
     assert set(saved) == set(exported)
+
+
+def test_cli_ref_centroids_without_ref_geom_writes_invalid_dst_lta(tmp_path: Path):
+    mov_seg = tmp_path / "mov_seg.nii.gz"
+    ref_centroids = tmp_path / "ref_centroids.json"
+    out_lta = tmp_path / "out_invalid_dst.lta"
+
+    _write_seg(mov_seg, affine=np.eye(4))
+    ref_centroids.write_text(
+        '{"1": [1.0, 1.0, 1.0], "2": [1.0, 5.0, 2.0], "3": [5.0, 2.0, 6.0], "4": [6.0, 6.0, 4.0]}\n')
+
+    segreg_main([
+        "--mov",
+        str(mov_seg),
+        "--ref-centroids",
+        str(ref_centroids),
+        "--lta",
+        str(out_lta),
+    ])
+
+    lta = LTA.read(out_lta)
+    assert lta.dst["valid"] == 0
+    assert lta.dst["filename"] == str(ref_centroids)
+    with pytest.raises(ValueError, match="valid = 0"):
+        lta.v2v()
