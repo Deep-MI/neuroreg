@@ -1,6 +1,8 @@
 """Transform utilities: matrices, LTA file I/O, and transform metrics."""
 
 from .lta import LTA
+from .regdat import RegisterDat
+from .xfm import XFM
 from .matrices import (
     LINEAR_RAS_TO_RAS,
     LINEAR_VOX_TO_VOX,
@@ -28,6 +30,8 @@ from .metrics import (
 __all__ = [
     # lta
     "LTA",
+    "RegisterDat",
+    "XFM",
     "affine_dist",
     "corner_dist",
     "decompose_transform",

@@ -96,6 +96,15 @@ Python module
    :prog: lta concat
    :path: concat
 
+``lta convert``
+~~~~~~~~~~~~~~~
+
+.. argparse::
+   :module: neuroreg.cli.lta
+   :func: _build_parser
+   :prog: lta convert
+   :path: convert
+
 Python module
 ~~~~~~~~~~~~~
 

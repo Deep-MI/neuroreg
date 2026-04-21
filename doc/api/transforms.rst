@@ -7,6 +7,18 @@ Transform API
 .. autoclass:: neuroreg.transforms.LTA
    :members:
 
+``neuroreg.transforms.XFM``
+---------------------------
+
+.. autoclass:: neuroreg.transforms.XFM
+   :members:
+
+``neuroreg.transforms.RegisterDat``
+-----------------------------------
+
+.. autoclass:: neuroreg.transforms.RegisterDat
+   :members:
+
 Selected transform helpers
 --------------------------
 

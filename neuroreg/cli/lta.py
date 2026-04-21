@@ -2,16 +2,18 @@
 """Unified LTA transform manipulation CLI.
 
 Available subcommands are ``diff`` to compare transforms, ``invert`` to invert
-an LTA, and ``concat`` to chain two LTAs. Run ``lta --help`` or
+an LTA, ``concat`` to chain two LTAs, and ``convert`` to translate between
+LTA, XFM, and tkregister ``register.dat`` transforms. Run ``lta --help`` or
 ``lta <subcommand> --help`` for the full command syntax.
 """
 
 import argparse
-import sys
-
 import numpy as np
+import sys
+from pathlib import Path
 
-from neuroreg.transforms import LTA, decompose_transform
+from neuroreg.transforms import LTA, RegisterDat, XFM, decompose_transform
+
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -31,10 +33,10 @@ _VOL_FIELDS = ("xras", "yras", "zras", "cras", "voxelsize", "volume")
 
 
 def _check_vol_info(
-    parser: argparse.ArgumentParser,
-    lta: LTA,
-    label: str,
-    blocks: tuple[str, ...] = ("src", "dst"),
+        parser: argparse.ArgumentParser,
+        lta: LTA,
+        label: str,
+        blocks: tuple[str, ...] = ("src", "dst"),
 ) -> None:
     """Emit a parser.error if any required volume-info field is absent."""
     for block in blocks:
@@ -52,6 +54,47 @@ def _needs_vol_info(lta: LTA, dist: int) -> bool:
     both src and dst volume info.
     """
     return dist == 3 or lta.type == 0
+
+
+def _infer_transform_format(path: str) -> str:
+    suffix = Path(path).suffix.lower()
+    if suffix == ".lta":
+        return "lta"
+    if suffix == ".xfm":
+        return "xfm"
+    if suffix in {".dat", ".reg"}:
+        return "regdat"
+    raise ValueError(f"Unsupported transform format for {path!r}; expected .lta, .xfm, .dat, or .reg")
+
+
+def _read_transform_as_lta(path: str, src_img: str | None = None, dst_img: str | None = None) -> LTA:
+    fmt = _infer_transform_format(path)
+    if fmt == "lta":
+        return LTA.read(path)
+    if fmt == "xfm":
+        return XFM.read(path).to_lta(src_fname=src_img, src_img=src_img, dst_fname=dst_img, dst_img=dst_img)
+    if src_img is None or dst_img is None:
+        raise ValueError("register.dat conversion requires both --src-img and --dst-img")
+    return RegisterDat.read(path).to_lta(src_fname=src_img, src_img=src_img, dst_fname=dst_img, dst_img=dst_img)
+
+
+def _write_lta_as_transform(
+        lta: LTA,
+        output: str,
+        *,
+        out_type: str | None = None,
+        subject: str | None = None,
+        fscale: float | None = None,
+        float2int: str = "round",
+) -> None:
+    fmt = _infer_transform_format(output)
+    if fmt == "lta":
+        lta_type = None if out_type is None else {"vox2vox": 0, "ras2ras": 1}[out_type]
+        lta.write(output, lta_type=lta_type)
+    elif fmt == "xfm":
+        XFM.from_lta(lta).write(output)
+    else:
+        RegisterDat.from_lta(lta, subject=subject, intensity=fscale, float2int=float2int).write(output)
 
 
 def _run_dist(ns: argparse.Namespace, lta1: LTA, lta2: LTA | None) -> None:
@@ -200,6 +243,45 @@ def _build_parser() -> argparse.ArgumentParser:
     cat_p.add_argument("lta2", metavar="LTA2", help="Second transform (B → C).")
     cat_p.add_argument("output", metavar="OUTPUT", help="Output LTA file  (A → C).")
 
+    # ── convert ───────────────────────────────────────────────────────────────
+    conv_p = sub.add_parser(
+        "convert",
+        help="Convert between LTA, XFM, and tkregister register.dat transforms.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=(
+            "Convert between FreeSurfer-adjacent linear transform formats.\n"
+            "\n"
+            "Supported formats are inferred from file suffixes:\n"
+            "  .lta  FreeSurfer Linear Transform Array\n"
+            "  .xfm  MNI/MINC linear transform\n"
+            "  .dat/.reg  tkregister volumetric register.dat format\n"
+            "\n"
+            "register.dat conversion requires both --src-img and --dst-img because\n"
+            "the stored matrix is defined in tkregister RAS coordinates, not scanner RAS."
+        ),
+    )
+    conv_p.add_argument("input", metavar="INPUT", help="Input transform file.")
+    conv_p.add_argument("output", metavar="OUTPUT", help="Output transform file.")
+    conv_p.add_argument("--src-img", help="Moving/source image geometry for conversion when needed.")
+    conv_p.add_argument("--dst-img", help="Reference/target image geometry for conversion when needed.")
+    conv_p.add_argument(
+        "--out-type",
+        choices=["ras2ras", "vox2vox"],
+        help="Output LTA storage type when OUTPUT ends in .lta (default: keep RAS-to-RAS).",
+    )
+    conv_p.add_argument("--subject", help="Subject metadata to store when writing register.dat.")
+    conv_p.add_argument(
+        "--fscale",
+        type=float,
+        help="Intensity/fscale metadata to store when writing register.dat.",
+    )
+    conv_p.add_argument(
+        "--float2int",
+        choices=["tkregister", "round", "floor"],
+        default="round",
+        help="Float-to-int footer when writing register.dat (default: round).",
+    )
+
     return p
 
 
@@ -275,6 +357,27 @@ def _main_concat(ns: argparse.Namespace) -> None:
         sys.exit(1)
 
 
+def _main_convert(ns: argparse.Namespace) -> None:
+    try:
+        lta = _read_transform_as_lta(ns.input, src_img=ns.src_img, dst_img=ns.dst_img)
+    except Exception as e:
+        print(f"ERROR: cannot read {ns.input}: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        _write_lta_as_transform(
+            lta,
+            ns.output,
+            out_type=ns.out_type,
+            subject=ns.subject,
+            fscale=ns.fscale,
+            float2int=ns.float2int,
+        )
+    except Exception as e:
+        print(f"ERROR: cannot write {ns.output}: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
 # ── entry point ───────────────────────────────────────────────────────────────
 
 
@@ -289,6 +392,9 @@ def main(args=None) -> None:
         _main_invert(ns)
     elif ns.command == "concat":
         _main_concat(ns)
+    elif ns.command == "convert":
+        _main_convert(ns)
+
 
 if __name__ == "__main__":
     main()

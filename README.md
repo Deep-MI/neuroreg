@@ -17,7 +17,7 @@ The main user-facing tools are:
   (extending FreeSurfer's `bbregister`)
 - **`segreg`** – segmentation-based registration via label centroids
   (rigid/affine, including atlas-centroid and upright/self-flip modes)
-- **`lta`** – transform comparison / inversion / concatenation utilities
+- **`lta`** – transform comparison, inversion, concatenation, and conversion utilities
 
 This project is a work-in-progress in an early development stage. It is developed by
 the creator of FreeSurfer's `mri_robust_register` as an efficient pure Python
@@ -270,15 +270,16 @@ Run `segreg -h` for a full argument summary with defaults.
 
 ---
 
-### `lta` — LTA transform utilities
+### `lta` — LTA and linear-transform utilities
 
-Unified command for manipulating FreeSurfer LTA transform files with three
-subcommands: `diff`, `invert`, and `concat`.
+Unified command for manipulating FreeSurfer-adjacent linear transforms with four
+subcommands: `diff`, `invert`, `concat`, and `convert`.
 
 ```
-lta diff    LTA1 [LTA2] [options]     # Compare transforms
-lta invert  INPUT OUTPUT              # Invert a transform
-lta concat  LTA1 LTA2 OUTPUT          # Concatenate two transforms
+lta diff    LTA1 [LTA2] [options]                   # Compare transforms
+lta invert  INPUT OUTPUT                            # Invert a transform
+lta concat  LTA1 LTA2 OUTPUT                        # Concatenate two transforms
+lta convert INPUT OUTPUT [--src-img SRC --dst-img DST]  # Convert formats
 ```
 
 ---
@@ -376,7 +377,55 @@ lta concat fMRI_to_T1.lta T1_to_MNI.lta fMRI_to_MNI.lta
 lta concat moving_to_intermediate.lta intermediate_to_fixed.lta moving_to_fixed.lta
 ```
 
+---
+
+#### `lta convert` — Convert between transform formats
+
+Converts between `.lta`, `.xfm`, and volumetric tkregister `.dat`/`.reg`
+transforms by normalizing through an internal RAS-to-RAS `LTA`.
+
+**Usage**
+
+```
+lta convert INPUT OUTPUT [--src-img SRC] [--dst-img DST]
+                         [--out-type {ras2ras,vox2vox}]
+                         [--subject SUBJECT] [--fscale FSCALE]
+                         [--float2int {tkregister,round,floor}]
+```
+
+**Supported formats**
+
+- `.lta` — FreeSurfer Linear Transform Array
+- `.xfm` — MNI/MINC linear transform
+- `.dat` / `.reg` — tkregister volumetric `register.dat` format
+
 **Notes**
+
+- Reading `register.dat` requires both `--src-img` and `--dst-img`, because the
+  stored matrix is defined in tkregister coordinates rather than scanner RAS.
+- Reading `.xfm` without images still preserves the transform matrix, but the
+  resulting LTA geometry blocks stay marked as `valid=0` unless you provide
+  `--src-img` and `--dst-img`.
+- `--subject`, `--fscale`, and `--float2int` apply when writing `register.dat`.
+- `--out-type` applies when writing `.lta` output.
+
+**Examples**
+
+```bash
+# XFM -> LTA with explicit image geometry
+lta convert talairach.xfm talairach.lta --src-img mov.mgz --dst-img ref.mgz
+
+# LTA -> XFM
+lta convert sub01_to_mni.lta sub01_to_mni.xfm
+
+# LTA -> tkregister register.dat
+lta convert bold_to_orig.lta bold_to_orig.dat --subject sub-01 --fscale 0.1
+
+# tkregister register.dat -> LTA
+lta convert bold_to_orig.dat bold_to_orig.lta --src-img bold.nii.gz --dst-img orig.mgz
+```
+
+**General notes**
 
 - All metrics are numerically matched to FreeSurfer's `lta_diff` (except for a
   known bug in the C++ single-transform corner metric, which is fixed here).

@@ -37,13 +37,15 @@ Example::
 lta
 ---
 
-Utilities for comparing, concatenating, and inverting FreeSurfer LTA files.
+Utilities for comparing, concatenating, inverting, and converting
+FreeSurfer-adjacent linear transform files.
 
 Examples::
 
    lta diff reg1.lta reg2.lta
    lta invert in.lta out.lta
    lta concat a_to_b.lta b_to_c.lta a_to_c.lta
+   lta convert talairach.xfm talairach.lta --src-img mov.mgz --dst-img ref.mgz
 
 neuroreg-sys_info
 -----------------

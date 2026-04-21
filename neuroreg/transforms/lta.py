@@ -160,6 +160,8 @@ class LTA:
             lta_type: int,
             src: dict,
             dst: dict,
+            subject: str | None = None,
+            fscale: float | None = None,
     ) -> None:
         """
         Parameters
@@ -171,6 +173,10 @@ class LTA:
             Source volume info (keys: volume, voxelsize, xras, yras, zras, cras).
         dst : dict
             Destination volume info (same keys).
+        subject : str, optional
+            Optional top-level FreeSurfer subject metadata.
+        fscale : float, optional
+            Optional top-level FreeSurfer intensity scaling metadata.
         """
         if lta_type not in (0, 1):
             raise ValueError(f"lta_type must be 0 (LINEAR_VOX_TO_VOX) or 1 (LINEAR_RAS_TO_RAS), got {lta_type!r}")
@@ -178,6 +184,8 @@ class LTA:
         self.type = lta_type
         self.src = src
         self.dst = dst
+        self.subject = subject
+        self.fscale = fscale
 
     # ── construction ────────────────────────────────────────────────────────
 
@@ -288,7 +296,19 @@ class LTA:
                     role,
                 )
 
-        lta = cls(np.array(mat), stored_type, src, dst)
+        subject: str | None = None
+        fscale: float | None = None
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith("subject "):
+                parts = stripped.split(None, 1)
+                if len(parts) == 2:
+                    subject = parts[1].strip()
+            elif stripped.startswith("fscale"):
+                value = stripped.split("=", 1)[1].strip() if "=" in stripped else stripped.split(None, 1)[1].strip()
+                fscale = float(value)
+
+        lta = cls(np.array(mat), stored_type, src, dst, subject=subject, fscale=fscale)
 
         if lta_type is not None and lta_type != stored_type:
             lta = cls(
@@ -403,6 +423,10 @@ class LTA:
                 f.write(f"yras   = {_fmt(info['yras'])}\n")
                 f.write(f"zras   = {_fmt(info['zras'])}\n")
                 f.write(f"cras   = {_fmt(info['cras'])}\n")
+            if self.subject:
+                f.write(f"subject {self.subject}\n")
+            if self.fscale is not None:
+                f.write(f"fscale {float(self.fscale):.6f}\n")
 
         logger.debug("Wrote LTA (%s): %s", type_name, filename)
 
@@ -442,7 +466,7 @@ class LTA:
 
     def invert(self) -> LTA:
         """Return an inverted copy with src/dst swapped, stored as R2R."""
-        return LTA(np.linalg.inv(self.r2r()), 1, self.dst, self.src)
+        return LTA(np.linalg.inv(self.r2r()), 1, self.dst, self.src, subject=self.subject, fscale=self.fscale)
 
     def concat(self, other: LTA) -> LTA:
         """Concatenate two transforms: ``self`` (A→B) followed by ``other`` (B→C).
@@ -465,7 +489,7 @@ class LTA:
             New LTA whose matrix is ``other.r2r() @ self.r2r()``,
             with ``src`` from ``self`` and ``dst`` from ``other``.
         """
-        return LTA(other.r2r() @ self.r2r(), 1, self.src, other.dst)
+        return LTA(other.r2r() @ self.r2r(), 1, self.src, other.dst, subject=self.subject, fscale=self.fscale)
 
     # ── single-transform analysis ────────────────────────────────────────────
 
