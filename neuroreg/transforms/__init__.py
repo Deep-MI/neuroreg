@@ -1,5 +1,6 @@
 """Transform utilities: matrices, LTA file I/O, and transform metrics."""
 
+from .fsl import FSLMat
 from .lta import LTA
 from .regdat import RegisterDat
 from .xfm import XFM
@@ -29,6 +30,7 @@ from .metrics import (
 
 __all__ = [
     # lta
+    "FSLMat",
     "LTA",
     "RegisterDat",
     "XFM",

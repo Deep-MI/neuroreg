@@ -19,6 +19,12 @@ Transform API
 .. autoclass:: neuroreg.transforms.RegisterDat
    :members:
 
+``neuroreg.transforms.FSLMat``
+------------------------------
+
+.. autoclass:: neuroreg.transforms.FSLMat
+   :members:
+
 Selected transform helpers
 --------------------------
 

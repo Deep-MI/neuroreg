@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
+import nibabel as nib
+import numpy as np
+import pytest
 import subprocess
 import sys
 from pathlib import Path
 
-import nibabel as nib
-import numpy as np
-import pytest
-
 from neuroreg.cli.lta import main
 from neuroreg.transforms import (
+    FSLMat,
     LTA,
     RegisterDat,
     XFM,
@@ -331,6 +331,24 @@ class TestRegisterDat:
         assert restored.fscale == pytest.approx(0.1)
 
 
+class TestFSLMat:
+    def test_read_write_roundtrip(self, tmp_path: Path):
+        fsl = FSLMat(np.eye(4))
+        path = tmp_path / "xfm.mat"
+        fsl.write(path)
+        reread = FSLMat.read(path)
+        assert reread.matrix == pytest.approx(np.eye(4), rel=1e-10)
+
+    def test_lta_roundtrip_with_positive_det_nifti(self, tmp_path: Path):
+        src_img = _make_image(tmp_path / "mov.nii.gz", affine=np.eye(4))
+        dst_img = _make_image(tmp_path / "ref.nii.gz", affine=np.eye(4))
+        M = _rotation_z(5.0) @ _translation(2.0, 1.0, -0.5)
+        lta = LTA.from_matrix(M, src_img, src_img, dst_img, dst_img, lta_type=1)
+        fsl = FSLMat.from_lta(lta)
+        restored = fsl.to_lta(src_fname=src_img, src_img=src_img, dst_fname=dst_img, dst_img=dst_img)
+        assert restored.r2r() == pytest.approx(M, rel=1e-6, abs=1e-6)
+
+
 # ---------------------------------------------------------------------------
 # CLI (end-to-end)
 # ---------------------------------------------------------------------------
@@ -509,8 +527,30 @@ class TestConvertCLI:
         reread = LTA.read(roundtrip_lta)
         assert reread.r2r() == pytest.approx(M, rel=1e-6, abs=1e-6)
 
+    def test_convert_lta_to_fsl_and_back(self, tmp_path: Path):
+        src_img = _make_image(tmp_path / "mov.nii.gz", affine=np.eye(4))
+        dst_img = _make_image(tmp_path / "ref.nii.gz", affine=np.eye(4))
+        M = _rotation_z(5.0) @ _translation(2.0, 1.0, -0.5)
+        lta = LTA.from_matrix(M, src_img, src_img, dst_img, dst_img, lta_type=1)
+        lta_path = tmp_path / "input.lta"
+        lta.write(lta_path)
+        fsl_path = tmp_path / "output.mat"
+        roundtrip_lta = tmp_path / "roundtrip_fsl.lta"
+
+        main(["convert", str(lta_path), str(fsl_path)])
+        main(["convert", str(fsl_path), str(roundtrip_lta), "--src-img", src_img, "--dst-img", dst_img])
+
+        reread = LTA.read(roundtrip_lta)
+        assert reread.r2r() == pytest.approx(M, rel=1e-6, abs=1e-6)
+
     def test_registerdat_requires_geometry(self, tmp_path: Path):
         reg = tmp_path / "input.dat"
         RegisterDat(np.eye(4)).write(reg)
         with pytest.raises(SystemExit):
             main(["convert", str(reg), str(tmp_path / "out.lta")])
+
+    def test_fsl_requires_geometry(self, tmp_path: Path):
+        fsl = tmp_path / "input.mat"
+        FSLMat(np.eye(4)).write(fsl)
+        with pytest.raises(SystemExit):
+            main(["convert", str(fsl), str(tmp_path / "out.lta")])

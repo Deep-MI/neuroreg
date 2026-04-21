@@ -3,7 +3,7 @@
 
 Available subcommands are ``diff`` to compare transforms, ``invert`` to invert
 an LTA, ``concat`` to chain two LTAs, and ``convert`` to translate between
-LTA, XFM, and tkregister ``register.dat`` transforms. Run ``lta --help`` or
+LTA, XFM, FSL, and tkregister ``register.dat`` transforms. Run ``lta --help`` or
 ``lta <subcommand> --help`` for the full command syntax.
 """
 
@@ -12,7 +12,7 @@ import numpy as np
 import sys
 from pathlib import Path
 
-from neuroreg.transforms import LTA, RegisterDat, XFM, decompose_transform
+from neuroreg.transforms import FSLMat, LTA, RegisterDat, XFM, decompose_transform
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -62,9 +62,11 @@ def _infer_transform_format(path: str) -> str:
         return "lta"
     if suffix == ".xfm":
         return "xfm"
+    if suffix in {".mat", ".fslmat"}:
+        return "fsl"
     if suffix in {".dat", ".reg"}:
         return "regdat"
-    raise ValueError(f"Unsupported transform format for {path!r}; expected .lta, .xfm, .dat, or .reg")
+    raise ValueError(f"Unsupported transform format for {path!r}; expected .lta, .xfm, .mat, .fslmat, .dat, or .reg")
 
 
 def _read_transform_as_lta(path: str, src_img: str | None = None, dst_img: str | None = None) -> LTA:
@@ -74,7 +76,10 @@ def _read_transform_as_lta(path: str, src_img: str | None = None, dst_img: str |
     if fmt == "xfm":
         return XFM.read(path).to_lta(src_fname=src_img, src_img=src_img, dst_fname=dst_img, dst_img=dst_img)
     if src_img is None or dst_img is None:
-        raise ValueError("register.dat conversion requires both --src-img and --dst-img")
+        kind = "FSL" if fmt == "fsl" else "register.dat"
+        raise ValueError(f"{kind} conversion requires both --src-img and --dst-img")
+    if fmt == "fsl":
+        return FSLMat.read(path).to_lta(src_fname=src_img, src_img=src_img, dst_fname=dst_img, dst_img=dst_img)
     return RegisterDat.read(path).to_lta(src_fname=src_img, src_img=src_img, dst_fname=dst_img, dst_img=dst_img)
 
 
@@ -93,6 +98,8 @@ def _write_lta_as_transform(
         lta.write(output, lta_type=lta_type)
     elif fmt == "xfm":
         XFM.from_lta(lta).write(output)
+    elif fmt == "fsl":
+        FSLMat.from_lta(lta).write(output)
     else:
         RegisterDat.from_lta(lta, subject=subject, intensity=fscale, float2int=float2int).write(output)
 
@@ -246,7 +253,7 @@ def _build_parser() -> argparse.ArgumentParser:
     # ── convert ───────────────────────────────────────────────────────────────
     conv_p = sub.add_parser(
         "convert",
-        help="Convert between LTA, XFM, and tkregister register.dat transforms.",
+        help="Convert between LTA, XFM, FSL, and tkregister register.dat transforms.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=(
             "Convert between FreeSurfer-adjacent linear transform formats.\n"
@@ -254,10 +261,12 @@ def _build_parser() -> argparse.ArgumentParser:
             "Supported formats are inferred from file suffixes:\n"
             "  .lta  FreeSurfer Linear Transform Array\n"
             "  .xfm  MNI/MINC linear transform\n"
+            "  .mat/.fslmat  FSL FLIRT affine matrix\n"
             "  .dat/.reg  tkregister volumetric register.dat format\n"
             "\n"
-            "register.dat conversion requires both --src-img and --dst-img because\n"
-            "the stored matrix is defined in tkregister RAS coordinates, not scanner RAS."
+            "FSL and register.dat conversion require both --src-img and --dst-img\n"
+            "because the stored matrices depend on image geometry rather than being\n"
+            "plain scanner-RAS affines."
         ),
     )
     conv_p.add_argument("input", metavar="INPUT", help="Input transform file.")

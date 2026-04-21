@@ -398,11 +398,15 @@ lta convert INPUT OUTPUT [--src-img SRC] [--dst-img DST]
 - `.lta` — FreeSurfer Linear Transform Array
 - `.xfm` — MNI/MINC linear transform
 - `.dat` / `.reg` — tkregister volumetric `register.dat` format
+- `.mat` / `.fslmat` — FSL FLIRT affine matrix
 
 **Notes**
 
 - Reading `register.dat` requires both `--src-img` and `--dst-img`, because the
   stored matrix is defined in tkregister coordinates rather than scanner RAS.
+- Reading FSL `.mat` / `.fslmat` also requires both `--src-img` and `--dst-img`,
+  because the stored matrix is defined in FSL voxel conventions rather than
+  scanner RAS.
 - Reading `.xfm` without images still preserves the transform matrix, but the
   resulting LTA geometry blocks stay marked as `valid=0` unless you provide
   `--src-img` and `--dst-img`.
@@ -423,6 +427,12 @@ lta convert bold_to_orig.lta bold_to_orig.dat --subject sub-01 --fscale 0.1
 
 # tkregister register.dat -> LTA
 lta convert bold_to_orig.dat bold_to_orig.lta --src-img bold.nii.gz --dst-img orig.mgz
+
+# LTA -> FSL FLIRT matrix
+lta convert bold_to_orig.lta bold_to_orig.mat
+
+# FSL FLIRT matrix -> LTA
+lta convert bold_to_orig.mat bold_to_orig_from_fsl.lta --src-img bold.nii.gz --dst-img orig.mgz
 ```
 
 **General notes**
