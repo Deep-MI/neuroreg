@@ -381,13 +381,14 @@ lta concat moving_to_intermediate.lta intermediate_to_fixed.lta moving_to_fixed.
 
 #### `lta convert` — Convert between transform formats
 
-Converts between `.lta`, `.xfm`, and volumetric tkregister `.dat`/`.reg`
-transforms by normalizing through an internal RAS-to-RAS `LTA`.
+Converts between `.lta`, `.xfm`, volumetric tkregister `.dat`/`.reg`, FSL `.mat`/`.fslmat`, and ITK/ANTs 3D affine text transforms by normalizing through an internal RAS-to-RAS `LTA`.
 
 **Usage**
 
 ```
-lta convert INPUT OUTPUT [--src-img SRC] [--dst-img DST]
+lta convert INPUT OUTPUT [--in-format {lta,xfm,fsl,regdat,itk}]
+                         [--out-format {lta,xfm,fsl,regdat,itk}]
+                         [--src-img SRC] [--dst-img DST]
                          [--out-type {ras2ras,vox2vox}]
                          [--subject SUBJECT] [--fscale FSCALE]
                          [--float2int {tkregister,round,floor}]
@@ -399,6 +400,7 @@ lta convert INPUT OUTPUT [--src-img SRC] [--dst-img DST]
 - `.xfm` — MNI/MINC linear transform
 - `.dat` / `.reg` — tkregister volumetric `register.dat` format
 - `.mat` / `.fslmat` — FSL FLIRT affine matrix
+- `.tfm` — ITK/ANTs 3D affine text transform
 
 **Notes**
 
@@ -407,9 +409,12 @@ lta convert INPUT OUTPUT [--src-img SRC] [--dst-img DST]
 - Reading FSL `.mat` / `.fslmat` also requires both `--src-img` and `--dst-img`,
   because the stored matrix is defined in FSL voxel conventions rather than
   scanner RAS.
-- Reading `.xfm` without images still preserves the transform matrix, but the
-  resulting LTA geometry blocks stay marked as `valid=0` unless you provide
-  `--src-img` and `--dst-img`.
+- Reading `.xfm` or ITK/ANTs text affines without images still preserves the
+  transform matrix, but the resulting LTA geometry blocks stay marked as `valid=0`
+  unless you provide `--src-img` and `--dst-img`.
+- Use `--in-format` / `--out-format` for ambiguous text filenames such as `.txt`.
+- ITK/ANTs support currently targets 3D affine text transforms only, not binary or
+  composite transform files.
 - `--subject`, `--fscale`, and `--float2int` apply when writing `register.dat`.
 - `--out-type` applies when writing `.lta` output.
 
@@ -433,6 +438,12 @@ lta convert bold_to_orig.lta bold_to_orig.mat
 
 # FSL FLIRT matrix -> LTA
 lta convert bold_to_orig.mat bold_to_orig_from_fsl.lta --src-img bold.nii.gz --dst-img orig.mgz
+
+# LTA -> ITK/ANTs text affine
+lta convert bold_to_orig.lta bold_to_orig.tfm
+
+# ITK/ANTs text affine (.txt requires explicit format override)
+lta convert bold_to_orig.txt bold_to_orig_from_itk.lta --in-format itk --src-img bold.nii.gz --dst-img orig.mgz
 ```
 
 **General notes**

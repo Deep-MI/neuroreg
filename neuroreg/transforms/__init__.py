@@ -1,9 +1,8 @@
 """Transform utilities: matrices, LTA file I/O, and transform metrics."""
 
 from .fsl import FSLMat
+from .itk import ITKTransform
 from .lta import LTA
-from .regdat import RegisterDat
-from .xfm import XFM
 from .matrices import (
     LINEAR_RAS_TO_RAS,
     LINEAR_VOX_TO_VOX,
@@ -27,10 +26,13 @@ from .metrics import (
     rigid_dist,
     sphere_dist,
 )
+from .regdat import RegisterDat
+from .xfm import XFM
 
 __all__ = [
     # lta
     "FSLMat",
+    "ITKTransform",
     "LTA",
     "RegisterDat",
     "XFM",

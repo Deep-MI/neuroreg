@@ -25,6 +25,12 @@ Transform API
 .. autoclass:: neuroreg.transforms.FSLMat
    :members:
 
+``neuroreg.transforms.ITKTransform``
+------------------------------------
+
+.. autoclass:: neuroreg.transforms.ITKTransform
+   :members:
+
 Selected transform helpers
 --------------------------
 
