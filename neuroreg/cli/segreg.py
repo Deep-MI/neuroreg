@@ -34,7 +34,8 @@ def _build_parser() -> argparse.ArgumentParser:
         description=(
             "Segmentation-based registration via label centroids.\n"
             "Supports rigid or affine centroid alignment between segmentations, to bundled atlas centroids, "
-            "or to a left-right flipped self target for uprighting."
+            "or to a left-right flipped self target for uprighting. Rigid fits can optionally use robust "
+            "fixed-correspondence reweighting."
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -96,6 +97,29 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--midslice", type=float, default=None, help="Mid-sagittal x position for --flipped mode.")
     parser.add_argument(
+        "--robust",
+        action="store_true",
+        help="Enable robust rigid centroid fitting for fixed-correspondence label pairs.",
+    )
+    parser.add_argument(
+        "--robust-estimator",
+        choices=["tukey", "huber", "cauchy"],
+        default="tukey",
+        help="Robust weighting rule used with --robust.",
+    )
+    parser.add_argument(
+        "--robust-max-iters",
+        type=int,
+        default=20,
+        help="Maximum number of robust reweighting iterations used with --robust.",
+    )
+    parser.add_argument(
+        "--robust-bound-scale",
+        type=float,
+        default=0.5,
+        help="Base scaling applied to the median residual distance before estimator saturation in robust mode.",
+    )
+    parser.add_argument(
         "--keep-geom",
         choices=["mov", "ref", "atlas"],
         default=None,
@@ -128,6 +152,12 @@ def _validate_args(ns: argparse.Namespace, parser: argparse.ArgumentParser) -> N
 
     if ns.flipped and ns.ref_geom is not None:
         parser.error("--ref-geom is not valid with --flipped.")
+    if ns.robust and ns.dof != 6:
+        parser.error("--robust currently supports rigid registration only (--dof 6).")
+    if ns.robust_max_iters < 1:
+        parser.error("--robust-max-iters must be >= 1.")
+    if ns.robust_bound_scale <= 0.0:
+        parser.error("--robust-bound-scale must be > 0.")
 
     keep_geom = _default_keep_geom(ns)
     if ns.flipped and keep_geom != "mov":
@@ -184,6 +214,10 @@ def main(args=None) -> None:
         min_common_labels=ns.min_common_labels,
         flipped=ns.flipped,
         midslice=ns.midslice,
+        robust=ns.robust,
+        robust_estimator=ns.robust_estimator,
+        robust_max_iters=ns.robust_max_iters,
+        robust_bound_scale=ns.robust_bound_scale,
     )
 
     mov_seg_img = nib.load(ns.mov)

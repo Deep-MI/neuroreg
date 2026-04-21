@@ -235,6 +235,20 @@ separate transform-application CLI. If `--movimg` is provided, `--mapmov` and
 `--mapmovhdr` map that intensity image with the recovered transform; otherwise
 those outputs map the moving segmentation itself.
 
+Rigid centroid fits can optionally use robust fixed-correspondence reweighting
+with `--robust`. This adapts the robust fitting idea used in
+`head-motion-tools` for labeled point pairs, without switching `segreg` into an
+unlabeled ICP workflow. The implementation traces back to Bergstrom and Edlund's
+robust IRLS point-set registration and refined ICP work, and to the
+head-motion application described by Pollak et al. Robust mode currently
+supports rigid (`--dof 6`) fits only.
+
+Relevant references:
+
+- Bergstrom, P. and Edlund, O. (2014). Robust registration of point sets using iteratively reweighted least squares. Computational Optimization and Applications, 58(3), 543-561.
+- Bergstrom, P. and Edlund, O. (2017). Robust registration of surfaces using a refined iterative closest point algorithm with a trust region approach. Numerical Algorithms.
+- Pollak, C., Kugler, D., Breteler, M.M. and Reuter, M. (2023). Quantifying MR head motion in the Rhineland Study: A robust method for population cohorts. NeuroImage, 275, 120176.
+
 ```
 segreg --mov <moving_seg.mgz> (--ref <ref_seg.mgz> | --ref-centroids <centroids.json> | --atlas fsaverage | --flipped) [options]
 ```
@@ -256,6 +270,10 @@ segreg --mov sub-01/aparc+aseg.mgz --ref sub-02/aparc+aseg.mgz \
 # Register a segmentation, then map a separate intensity image with the same transform
 segreg --mov subj/mri/aparc+aseg.mgz --movimg subj/mri/orig.mgz --atlas fsaverage \
        --lta subj_to_fsaverage.lta --mapmov orig_in_fsaverage_space.mgz
+
+# Use robust rigid centroid fitting when a few labels may be unreliable
+segreg --mov sub-01/aparc+aseg.mgz --ref sub-02/aparc+aseg.mgz \
+       --robust --robust-estimator tukey --lta sub01_to_sub02_robust.lta
 
 # If --movimg is omitted, --mapmov maps the segmentation itself
 segreg --mov subj/mri/aparc+aseg.mgz --atlas fsaverage \

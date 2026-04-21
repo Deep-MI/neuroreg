@@ -21,7 +21,7 @@ from .centroids import (
 )
 from .io import CentroidDict, read_centroids_json, write_centroids_json
 from .labels import LabelSetName, get_cortex_lr_labels, get_cortex_lr_pairs
-from .points import register_points
+from .points import RobustEstimatorName, RobustPointRegistrationInfo, register_points, register_points_robust
 
 
 @dataclass(frozen=True)
@@ -46,6 +46,9 @@ class RegistrationResult:
         Target voxel-to-RAS affine when explicit target geometry is available.
     target_shape : tuple[int, int, int] or None
         Target spatial shape when explicit target geometry is available.
+    robust_info : RobustPointRegistrationInfo or None
+        Final robust-fitting diagnostics when robust rigid point registration was
+        enabled. ``None`` for the legacy closed-form path.
     """
 
     r2r: np.ndarray
@@ -54,6 +57,7 @@ class RegistrationResult:
     target_geometry: Any
     target_affine: np.ndarray | None
     target_shape: tuple[int, int, int] | None
+    robust_info: RobustPointRegistrationInfo | None = None
 
 
 @dataclass(frozen=True)
@@ -185,6 +189,31 @@ def _resolve_target_centroids_and_geometry(
     return "atlas", load_atlas_centroids(atlas), _geometry_from_atlas(atlas)
 
 
+def _register_matched_points(
+    mov_points: np.ndarray,
+    target_points: np.ndarray,
+    *,
+    dof: int,
+    robust: bool,
+    robust_estimator: RobustEstimatorName,
+    robust_max_iters: int,
+    robust_bound_scale: float,
+) -> tuple[np.ndarray, RobustPointRegistrationInfo | None]:
+    if not robust:
+        return register_points(mov_points, target_points, dof=dof), None
+
+    if dof != 6:
+        raise ValueError("Robust point registration currently supports rigid registration only (dof=6).")
+
+    return register_points_robust(
+        mov_points,
+        target_points,
+        estimator=robust_estimator,
+        robust_max_iters=robust_max_iters,
+        robust_bound_scale=robust_bound_scale,
+    )
+
+
 def segreg(
     mov: ImageLike,
     ref: ImageLike | None = None,
@@ -198,6 +227,10 @@ def segreg(
     min_common_labels: int | None = None,
     flipped: bool = False,
     midslice: float | None = None,
+    robust: bool = False,
+    robust_estimator: RobustEstimatorName = "tukey",
+    robust_max_iters: int = 20,
+    robust_bound_scale: float = 0.5,
 ) -> RegistrationResult:
     """Register a moving segmentation to another segmentation, an atlas, or its LR-flipped self.
 
@@ -233,6 +266,16 @@ def segreg(
     midslice : float or None, optional
         Explicit sagittal mid-slice used only with ``flipped=True``. When
         omitted, the geometric center of the moving image is used.
+    robust : bool, default=False
+        Enable robust rigid centroid fitting for fixed-correspondence label
+        pairs. This is currently supported only with ``dof=6``.
+    robust_estimator : {'tukey', 'huber', 'cauchy'}, default='tukey'
+        Robust weighting rule used when ``robust=True``.
+    robust_max_iters : int, default=20
+        Maximum number of IRLS-style reweighting iterations in robust mode.
+    robust_bound_scale : float, default=0.5
+        Base scaling applied to the median residual distance before converting
+        it to an estimator-specific saturation threshold in robust mode.
 
     Returns
     -------
@@ -252,6 +295,8 @@ def segreg(
 
     if dof not in {6, 12}:
         raise ValueError(f"Unsupported dof={dof}. Segmentation registration supports only rigid (6) or affine (12).")
+    if robust and dof != 6:
+        raise ValueError("Robust point registration currently supports rigid registration only (dof=6).")
 
     if min_common_labels is None:
         min_common_labels = _default_min_common_labels(dof)
@@ -270,7 +315,15 @@ def segreg(
             mid_slice=resolved_midslice,
             min_common_labels=min_common_labels,
         )
-        flip_vox = register_points(mov_points, target_points, dof=6)
+        flip_vox, robust_info = _register_matched_points(
+            mov_points,
+            target_points,
+            dof=6,
+            robust=robust,
+            robust_estimator=robust_estimator,
+            robust_max_iters=robust_max_iters,
+            robust_bound_scale=robust_bound_scale,
+        )
         flip_half, _ = matrix_sqrt_schur(torch.from_numpy(flip_vox).double())
         r2r = mov_affine @ flip_half.detach().cpu().numpy() @ np.linalg.inv(mov_affine)
         return RegistrationResult(
@@ -280,6 +333,7 @@ def segreg(
             target_geometry=mov_img,
             target_affine=mov_affine,
             target_shape=tuple(int(v) for v in mov_img.shape[:3]),
+            robust_info=robust_info,
         )
 
     mode, target_centroids, geometry = _resolve_target_centroids_and_geometry(
@@ -300,7 +354,15 @@ def segreg(
         target_centroids,
         min_common_labels=min_common_labels,
     )
-    r2r = register_points(mov_points, target_points, dof=dof)
+    r2r, robust_info = _register_matched_points(
+        mov_points,
+        target_points,
+        dof=dof,
+        robust=robust,
+        robust_estimator=robust_estimator,
+        robust_max_iters=robust_max_iters,
+        robust_bound_scale=robust_bound_scale,
+    )
 
     if geometry is None:
         geometry = _GeometryInfo(
@@ -317,6 +379,7 @@ def segreg(
         target_geometry=geometry.geometry,
         target_affine=geometry.affine,
         target_shape=geometry.shape,
+        robust_info=robust_info,
     )
 
 
