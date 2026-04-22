@@ -1,11 +1,10 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
-import re
 
 import numpy as np
-import numpy.typing as npt
 
 from .lta import LTA, _AnyHeader, _header_info, _header_to_vol_info, _invalid_vol_info
 
@@ -64,7 +63,7 @@ class XFM:
                 self.dst_path = inferred_dst
 
     @classmethod
-    def read(cls, filename: str | Path) -> "XFM":
+    def read(cls, filename: str | Path) -> XFM:
         """Read an XFM file."""
         path = Path(filename)
         lines = path.read_text().splitlines()
@@ -103,7 +102,7 @@ class XFM:
         return cls(matrix=matrix, comments=comments)
 
     @classmethod
-    def from_lta(cls, lta: LTA, comments: list[str] | None = None) -> "XFM":
+    def from_lta(cls, lta: LTA, comments: list[str] | None = None) -> XFM:
         """Create an XFM wrapper from any LTA."""
         src = lta.src.get("filename", "")
         dst = lta.dst.get("filename", "")

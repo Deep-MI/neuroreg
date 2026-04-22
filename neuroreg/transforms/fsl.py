@@ -5,7 +5,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .lta import LTA, _AnyHeader, _affine_from_info, _header_info, _header_to_vol_info
+from .lta import LTA, _affine_from_info, _AnyHeader, _header_info, _header_to_vol_info
 from .regdat import RegisterDat, _vox2tkr_from_info
 
 
@@ -23,7 +23,12 @@ def _diag_spacing(info: dict) -> np.ndarray:
     return mat
 
 
-def _apply_fsl_nifti_convention(ref: dict, mov: dict, d_ref: np.ndarray, d_mov: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+def _apply_fsl_nifti_convention(
+    ref: dict,
+    mov: dict,
+    d_ref: np.ndarray,
+    d_mov: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
     ref_aff = _affine_from_info(ref)
     mov_aff = _affine_from_info(mov)
 
@@ -78,7 +83,7 @@ class FSLMat:
         self.matrix = np.asarray(self.matrix, dtype=float).reshape(4, 4)
 
     @classmethod
-    def read(cls, filename: str | Path) -> 'FSLMat':
+    def read(cls, filename: str | Path) -> FSLMat:
         path = Path(filename)
         rows = []
         for line in path.read_text().splitlines():
@@ -94,7 +99,7 @@ class FSLMat:
         return cls(np.asarray(rows, dtype=float))
 
     @classmethod
-    def from_lta(cls, lta: LTA) -> 'FSLMat':
+    def from_lta(cls, lta: LTA) -> FSLMat:
         reg = RegisterDat.from_lta(lta)
         return cls(_tkreg_to_fsl(lta.dst, lta.src, reg.matrix))
 
@@ -109,7 +114,12 @@ class FSLMat:
         src = _header_to_vol_info(_header_info(src_img), src_fname)
         dst = _header_to_vol_info(_header_info(dst_img), dst_fname)
         reg_matrix = _fsl_to_tkreg(dst, src, self.matrix)
-        return RegisterDat(reg_matrix).to_lta(src_fname=src_fname, src_img=src_img, dst_fname=dst_fname, dst_img=dst_img)
+        return RegisterDat(reg_matrix).to_lta(
+            src_fname=src_fname,
+            src_img=src_img,
+            dst_fname=dst_fname,
+            dst_img=dst_img,
+        )
 
     def write(self, filename: str | Path) -> None:
         path = Path(filename)

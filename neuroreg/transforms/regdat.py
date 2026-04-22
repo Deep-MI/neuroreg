@@ -5,7 +5,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .lta import LTA, _AnyHeader, _affine_from_info, _header_info, _header_to_vol_info
+from .lta import LTA, _affine_from_info, _AnyHeader, _header_info, _header_to_vol_info
 
 _VALID_FLOAT2INT = {"tkregister", "round", "floor"}
 
@@ -42,7 +42,7 @@ class RegisterDat:
             raise ValueError(f"float2int must be one of {_VALID_FLOAT2INT}, got {self.float2int!r}")
 
     @classmethod
-    def read(cls, filename: str | Path) -> "RegisterDat":
+    def read(cls, filename: str | Path) -> RegisterDat:
         """Read a register.dat/tkregister transform file."""
         path = Path(filename)
         lines = [line.strip() for line in path.read_text().splitlines() if line.strip()]
@@ -72,7 +72,7 @@ class RegisterDat:
         subject: str | None = None,
         intensity: float | None = None,
         float2int: str = "round",
-    ) -> "RegisterDat":
+    ) -> RegisterDat:
         """Create a register.dat transform from an LTA."""
         src_affine = _affine_from_info(lta.src)
         dst_affine = _affine_from_info(lta.dst)
