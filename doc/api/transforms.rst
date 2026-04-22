@@ -31,6 +31,12 @@ Transform API
 .. autoclass:: neuroreg.transforms.ITKTransform
    :members:
 
+``neuroreg.transforms.NiftyRegTransform``
+-----------------------------------------
+
+.. autoclass:: neuroreg.transforms.NiftyRegTransform
+   :members:
+
 Selected transform helpers
 --------------------------
 

@@ -26,6 +26,7 @@ from .metrics import (
     rigid_dist,
     sphere_dist,
 )
+from .niftyreg import NiftyRegTransform
 from .regdat import RegisterDat
 from .xfm import XFM
 
@@ -34,6 +35,7 @@ __all__ = [
     "FSLMat",
     "ITKTransform",
     "LTA",
+    "NiftyRegTransform",
     "RegisterDat",
     "XFM",
     "affine_dist",

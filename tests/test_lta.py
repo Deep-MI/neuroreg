@@ -1,12 +1,13 @@
 """Tests for the LTA API, CLI, and adjacent transform formats."""
 from __future__ import annotations
 
-import nibabel as nib
-import numpy as np
-import pytest
 import subprocess
 import sys
 from pathlib import Path
+
+import nibabel as nib
+import numpy as np
+import pytest
 
 from neuroreg.cli.lta import main
 from neuroreg.transforms import (
@@ -14,6 +15,7 @@ from neuroreg.transforms import (
     XFM,
     FSLMat,
     ITKTransform,
+    NiftyRegTransform,
     RegisterDat,
     affine_dist,
     corner_dist,
@@ -392,6 +394,32 @@ class TestITKTransform:
         assert restored.dst["valid"] == 0
 
 
+class TestNiftyRegTransform:
+    def test_read_write_roundtrip(self, tmp_path: Path):
+        niftyreg = NiftyRegTransform(np.eye(4))
+        path = tmp_path / "affine.niftyreg.txt"
+        niftyreg.write(path)
+        reread = NiftyRegTransform.read(path)
+        assert reread.matrix == pytest.approx(np.eye(4), rel=1e-10)
+
+    def test_lta_roundtrip_with_images(self, tmp_path: Path):
+        src_img = _make_image(tmp_path / "mov.nii.gz")
+        dst_img = _make_image(tmp_path / "ref.nii.gz")
+        M = _rotation_z(5.0) @ _translation(2.0, 1.0, -0.5)
+        lta = LTA.from_matrix(M, src_img, src_img, dst_img, dst_img, lta_type=1)
+        niftyreg = NiftyRegTransform.from_lta(lta)
+        restored = niftyreg.to_lta(src_fname=src_img, src_img=src_img, dst_fname=dst_img, dst_img=dst_img)
+        assert restored.r2r() == pytest.approx(M, rel=1e-6, abs=1e-6)
+
+    def test_to_lta_without_geometry_marks_invalid(self):
+        M = _rotation_z(5.0) @ _translation(2.0, 1.0, -0.5)
+        lta = LTA.from_matrix(M, "mov.nii.gz", _GEOM, "ref.nii.gz", _GEOM, lta_type=1)
+        restored = NiftyRegTransform.from_lta(lta).to_lta(src_fname="mov.nii.gz", dst_fname="ref.nii.gz")
+        assert restored.r2r() == pytest.approx(M, rel=1e-6, abs=1e-6)
+        assert restored.src["valid"] == 0
+        assert restored.dst["valid"] == 0
+
+
 # ---------------------------------------------------------------------------
 # CLI (end-to-end)
 # ---------------------------------------------------------------------------
@@ -624,6 +652,24 @@ class TestConvertCLI:
         main(["convert", str(itk_path), str(out), "--in-format", "itk"])
 
         reread = LTA.read(out)
+        assert reread.r2r() == pytest.approx(M, rel=1e-6, abs=1e-6)
+        assert reread.src["valid"] == 0
+        assert reread.dst["valid"] == 0
+
+    def test_convert_lta_to_niftyreg_and_back(self, tmp_path: Path):
+        src_img = _make_image(tmp_path / "mov.nii.gz")
+        dst_img = _make_image(tmp_path / "ref.nii.gz")
+        M = _rotation_z(5.0) @ _translation(2.0, 1.0, -0.5)
+        lta = LTA.from_matrix(M, src_img, src_img, dst_img, dst_img, lta_type=1)
+        lta_path = tmp_path / "input.lta"
+        lta.write(lta_path)
+        niftyreg_path = tmp_path / "output.txt"
+        roundtrip_lta = tmp_path / "roundtrip_niftyreg.lta"
+
+        main(["convert", str(lta_path), str(niftyreg_path), "--out-format", "niftyreg"])
+        main(["convert", str(niftyreg_path), str(roundtrip_lta), "--in-format", "niftyreg"])
+
+        reread = LTA.read(roundtrip_lta)
         assert reread.r2r() == pytest.approx(M, rel=1e-6, abs=1e-6)
         assert reread.src["valid"] == 0
         assert reread.dst["valid"] == 0
