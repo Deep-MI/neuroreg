@@ -13,6 +13,8 @@ from neuroreg.cli.lta import main
 from neuroreg.transforms import (
     LTA,
     XFM,
+    AFNIAffine,
+    ANTsMatTransform,
     FSLMat,
     ITKTransform,
     NiftyRegTransform,
@@ -420,6 +422,58 @@ class TestNiftyRegTransform:
         assert restored.dst["valid"] == 0
 
 
+class TestANTsMatTransform:
+    def test_read_write_roundtrip(self, tmp_path: Path):
+        antsmat = ANTsMatTransform(np.eye(4))
+        path = tmp_path / "output0GenericAffine.mat"
+        antsmat.write(path)
+        reread = ANTsMatTransform.read(path)
+        assert reread.matrix == pytest.approx(np.eye(4), rel=1e-10)
+
+    def test_lta_roundtrip_with_images(self, tmp_path: Path):
+        src_img = _make_image(tmp_path / "mov.nii.gz")
+        dst_img = _make_image(tmp_path / "ref.nii.gz")
+        M = _rotation_z(5.0) @ _translation(2.0, 1.0, -0.5)
+        lta = LTA.from_matrix(M, src_img, src_img, dst_img, dst_img, lta_type=1)
+        antsmat = ANTsMatTransform.from_lta(lta)
+        restored = antsmat.to_lta(src_fname=src_img, src_img=src_img, dst_fname=dst_img, dst_img=dst_img)
+        assert restored.r2r() == pytest.approx(M, rel=1e-6, abs=1e-6)
+
+    def test_to_lta_without_geometry_marks_invalid(self):
+        M = _rotation_z(5.0) @ _translation(2.0, 1.0, -0.5)
+        lta = LTA.from_matrix(M, "mov.nii.gz", _GEOM, "ref.nii.gz", _GEOM, lta_type=1)
+        restored = ANTsMatTransform.from_lta(lta).to_lta(src_fname="mov.nii.gz", dst_fname="ref.nii.gz")
+        assert restored.r2r() == pytest.approx(M, rel=1e-6, abs=1e-6)
+        assert restored.src["valid"] == 0
+        assert restored.dst["valid"] == 0
+
+
+class TestAFNIAffine:
+    def test_read_write_roundtrip_aff12(self, tmp_path: Path):
+        afni = AFNIAffine(np.eye(4))
+        path = tmp_path / "affine.aff12.1D"
+        afni.write(path)
+        reread = AFNIAffine.read(path)
+        assert reread.matrix == pytest.approx(np.eye(4), rel=1e-10)
+
+    def test_lta_roundtrip_with_images(self, tmp_path: Path):
+        src_img = _make_image(tmp_path / "mov.nii.gz")
+        dst_img = _make_image(tmp_path / "ref.nii.gz")
+        M = _rotation_z(5.0) @ _translation(2.0, 1.0, -0.5)
+        lta = LTA.from_matrix(M, src_img, src_img, dst_img, dst_img, lta_type=1)
+        afni = AFNIAffine.from_lta(lta)
+        restored = afni.to_lta(src_fname=src_img, src_img=src_img, dst_fname=dst_img, dst_img=dst_img)
+        assert restored.r2r() == pytest.approx(M, rel=1e-6, abs=1e-6)
+
+    def test_to_lta_without_geometry_marks_invalid(self):
+        M = _rotation_z(5.0) @ _translation(2.0, 1.0, -0.5)
+        lta = LTA.from_matrix(M, "mov.nii.gz", _GEOM, "ref.nii.gz", _GEOM, lta_type=1)
+        restored = AFNIAffine.from_lta(lta).to_lta(src_fname="mov.nii.gz", dst_fname="ref.nii.gz")
+        assert restored.r2r() == pytest.approx(M, rel=1e-6, abs=1e-6)
+        assert restored.src["valid"] == 0
+        assert restored.dst["valid"] == 0
+
+
 # ---------------------------------------------------------------------------
 # CLI (end-to-end)
 # ---------------------------------------------------------------------------
@@ -673,6 +727,56 @@ class TestConvertCLI:
         assert reread.r2r() == pytest.approx(M, rel=1e-6, abs=1e-6)
         assert reread.src["valid"] == 0
         assert reread.dst["valid"] == 0
+
+    def test_convert_lta_to_antsmat_and_back(self, tmp_path: Path):
+        src_img = _make_image(tmp_path / "mov.nii.gz")
+        dst_img = _make_image(tmp_path / "ref.nii.gz")
+        M = _rotation_z(5.0) @ _translation(2.0, 1.0, -0.5)
+        lta = LTA.from_matrix(M, src_img, src_img, dst_img, dst_img, lta_type=1)
+        lta_path = tmp_path / "input.lta"
+        lta.write(lta_path)
+        antsmat_path = tmp_path / "output0GenericAffine.mat"
+        roundtrip_lta = tmp_path / "roundtrip_antsmat.lta"
+
+        main(["convert", str(lta_path), str(antsmat_path)])
+        main(["convert", str(antsmat_path), str(roundtrip_lta)])
+
+        reread = LTA.read(roundtrip_lta)
+        assert reread.r2r() == pytest.approx(M, rel=1e-6, abs=1e-6)
+        assert reread.src["valid"] == 0
+        assert reread.dst["valid"] == 0
+
+    def test_convert_lta_to_afni_and_back(self, tmp_path: Path):
+        src_img = _make_image(tmp_path / "mov.nii.gz")
+        dst_img = _make_image(tmp_path / "ref.nii.gz")
+        M = _rotation_z(5.0) @ _translation(2.0, 1.0, -0.5)
+        lta = LTA.from_matrix(M, src_img, src_img, dst_img, dst_img, lta_type=1)
+        lta_path = tmp_path / "input.lta"
+        lta.write(lta_path)
+        afni_path = tmp_path / "output.aff12.1D"
+        roundtrip_lta = tmp_path / "roundtrip_afni.lta"
+
+        main(["convert", str(lta_path), str(afni_path)])
+        main(["convert", str(afni_path), str(roundtrip_lta)])
+
+        reread = LTA.read(roundtrip_lta)
+        assert reread.r2r() == pytest.approx(M, rel=1e-6, abs=1e-6)
+        assert reread.src["valid"] == 0
+        assert reread.dst["valid"] == 0
+
+    def test_generic_mat_needs_explicit_antsmat_format(self, tmp_path: Path):
+        M = _rotation_z(5.0) @ _translation(2.0, 1.0, -0.5)
+        lta = LTA.from_matrix(M, "mov.nii.gz", _GEOM, "ref.nii.gz", _GEOM, lta_type=1)
+        antsmat_path = tmp_path / "input.mat"
+        ANTsMatTransform.from_lta(lta).write(antsmat_path)
+        out = tmp_path / "out.lta"
+
+        with pytest.raises(SystemExit):
+            main(["convert", str(antsmat_path), str(out)])
+
+        main(["convert", str(antsmat_path), str(out), "--in-format", "antsmat"])
+        reread = LTA.read(out)
+        assert reread.r2r() == pytest.approx(M, rel=1e-6, abs=1e-6)
 
     def test_registerdat_requires_geometry(self, tmp_path: Path):
         reg = tmp_path / "input.dat"

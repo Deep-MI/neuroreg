@@ -381,13 +381,13 @@ lta concat moving_to_intermediate.lta intermediate_to_fixed.lta moving_to_fixed.
 
 #### `lta convert` — Convert between transform formats
 
-Converts between `.lta`, `.xfm`, volumetric tkregister `.dat`/`.reg`, FSL `.mat`/`.fslmat`, ITK/ANTs 3D affine text transforms, and NiftyReg affine text matrices by normalizing through an internal RAS-to-RAS `LTA`.
+Converts between `.lta`, `.xfm`, volumetric tkregister `.dat`/`.reg`, FSL `.mat`/`.fslmat`, ITK/ANTs 3D affine text transforms, experimental ANTs Matlab-format affine transforms, experimental AFNI affine text transforms, and NiftyReg affine text matrices by normalizing through an internal RAS-to-RAS `LTA`.
 
 **Usage**
 
 ```
-lta convert INPUT OUTPUT [--in-format {lta,xfm,fsl,regdat,itk,niftyreg}]
-                         [--out-format {lta,xfm,fsl,regdat,itk,niftyreg}]
+lta convert INPUT OUTPUT [--in-format {lta,xfm,fsl,regdat,itk,antsmat,afni,niftyreg}]
+                         [--out-format {lta,xfm,fsl,regdat,itk,antsmat,afni,niftyreg}]
                          [--src-img SRC] [--dst-img DST]
                          [--out-type {ras2ras,vox2vox}]
                          [--subject SUBJECT] [--fscale FSCALE]
@@ -401,6 +401,8 @@ lta convert INPUT OUTPUT [--in-format {lta,xfm,fsl,regdat,itk,niftyreg}]
 - `.dat` — old tkregister volumetric `register.dat` format
 - `.mat` / `.fslmat` — FSL FLIRT affine matrix
 - `.tfm` — ITK/ANTs 3D affine text transform
+- `*GenericAffine.mat` — experimental ANTs / ITK Matlab-format affine transform
+- `.aff12.1D` — experimental AFNI affine text matrix
 - `.niftyreg.txt` — NiftyReg 3D affine text matrix
 
 **Notes**
@@ -410,12 +412,15 @@ lta convert INPUT OUTPUT [--in-format {lta,xfm,fsl,regdat,itk,niftyreg}]
 - Reading FSL `.mat` / `.fslmat` also requires both `--src-img` and `--dst-img`,
   because the stored matrix is defined in FSL voxel conventions rather than
   scanner RAS.
-- Reading `.xfm`, ITK/ANTs text affines, or NiftyReg text matrices without
-  images still preserves the transform matrix, but the resulting LTA geometry
-  blocks stay marked as `valid=0` unless you provide `--src-img` and `--dst-img`.
-- Use `--in-format` / `--out-format` for ambiguous text filenames such as `.txt`.
-- ITK/ANTs support currently targets 3D affine text transforms only, not binary or
+- Reading `.xfm`, ITK/ANTs text affines, experimental ANTs `.mat`, experimental
+  AFNI affine text, or NiftyReg text matrices without images still preserves the
+  transform matrix, but the resulting LTA geometry blocks stay marked as `valid=0`
+  unless you provide `--src-img` and `--dst-img`.
+- Use `--in-format` / `--out-format` for ambiguous filenames such as `.txt`, `.1D`, or `.mat`.
+- ITK/ANTs text support currently targets 3D affine transforms only, not binary or
   composite transform files.
+- Experimental ANTs `.mat` support is implemented via SciPy using ITK Matlab IO semantics.
+- Experimental AFNI support targets affine text matrices in AFNI's DICOM/LPS convention.
 - NiftyReg stores the inverse target-to-source RAS matrix in the file, matching
   FreeSurfer's `lta_convert` handling.
 - `--subject`, `--fscale`, and `--float2int` apply when writing `register.dat`.
@@ -447,6 +452,19 @@ lta convert bold_to_orig.lta bold_to_orig.tfm
 
 # ITK/ANTs text affine (.txt requires explicit format override)
 lta convert bold_to_orig.txt bold_to_orig_from_itk.lta --in-format itk --src-img bold.nii.gz --dst-img orig.mgz
+
+# LTA -> experimental ANTs GenericAffine .mat
+lta convert bold_to_orig.lta bold_to_orig0GenericAffine.mat
+
+# Experimental ANTs GenericAffine .mat -> LTA (.mat is otherwise assumed FSL)
+lta convert bold_to_orig0GenericAffine.mat bold_to_orig_from_antsmat.lta
+lta convert some_affine.mat bold_to_orig_from_antsmat.lta --in-format antsmat
+
+# LTA -> experimental AFNI affine text
+lta convert bold_to_orig.lta bold_to_orig.aff12.1D
+
+# Experimental AFNI affine text -> LTA (.1D may need explicit format override)
+lta convert bold_to_orig.aff12.1D bold_to_orig_from_afni.lta
 
 # LTA -> NiftyReg affine text matrix (.txt requires explicit format override)
 lta convert bold_to_orig.lta bold_to_orig.txt --out-format niftyreg

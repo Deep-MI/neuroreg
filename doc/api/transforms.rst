@@ -31,6 +31,18 @@ Transform API
 .. autoclass:: neuroreg.transforms.ITKTransform
    :members:
 
+``neuroreg.transforms.ANTsMatTransform``
+----------------------------------------
+
+.. autoclass:: neuroreg.transforms.ANTsMatTransform
+   :members:
+
+``neuroreg.transforms.AFNIAffine``
+----------------------------------
+
+.. autoclass:: neuroreg.transforms.AFNIAffine
+   :members:
+
 ``neuroreg.transforms.NiftyRegTransform``
 -----------------------------------------
 

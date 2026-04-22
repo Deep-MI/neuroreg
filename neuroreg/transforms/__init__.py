@@ -1,5 +1,7 @@
 """Transform utilities: matrices, LTA file I/O, and transform metrics."""
 
+from .afni import AFNIAffine
+from .antsmat import ANTsMatTransform
 from .fsl import FSLMat
 from .itk import ITKTransform
 from .lta import LTA
@@ -32,6 +34,8 @@ from .xfm import XFM
 
 __all__ = [
     # lta
+    "AFNIAffine",
+    "ANTsMatTransform",
     "FSLMat",
     "ITKTransform",
     "LTA",

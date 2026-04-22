@@ -3,7 +3,8 @@
 
 Available subcommands are ``diff`` to compare transforms, ``invert`` to invert
 an LTA, ``concat`` to chain two LTAs, and ``convert`` to translate between
-LTA, XFM, FSL, ITK/ANTs text affine, NiftyReg affine text matrices, and
+LTA, XFM, FSL, ITK/ANTs text affine, experimental ANTs Matlab affine,
+experimental AFNI affine text, NiftyReg affine text matrices, and
 tkregister ``register.dat`` transforms. Run ``lta --help`` or
 ``lta <subcommand> --help`` for the full command syntax.
 """
@@ -17,6 +18,8 @@ import numpy as np
 from neuroreg.transforms import (
     LTA,
     XFM,
+    AFNIAffine,
+    ANTsMatTransform,
     FSLMat,
     ITKTransform,
     NiftyRegTransform,
@@ -65,7 +68,7 @@ def _needs_vol_info(lta: LTA, dist: int) -> bool:
     return dist == 3 or lta.type == 0
 
 
-_FORMATS = ("lta", "xfm", "fsl", "regdat", "itk", "niftyreg")
+_FORMATS = ("lta", "xfm", "fsl", "regdat", "itk", "antsmat", "afni", "niftyreg")
 
 
 def _infer_transform_format(path: str, explicit: str | None = None) -> str:
@@ -78,18 +81,22 @@ def _infer_transform_format(path: str, explicit: str | None = None) -> str:
         return "lta"
     if suffix == ".xfm":
         return "xfm"
+    if lower.endswith("genericaffine.mat"):
+        return "antsmat"
     if suffix in {".mat", ".fslmat"}:
         return "fsl"
     if suffix in {".dat", ".reg"}:
         return "regdat"
     if suffix == ".tfm" or lower.endswith(".itk.txt") or lower.endswith(".ants.txt"):
         return "itk"
+    if lower.endswith(".aff12.1d"):
+        return "afni"
     if lower.endswith(".niftyreg.txt"):
         return "niftyreg"
     raise ValueError(
         f"Unsupported transform format for {path!r}; expected .lta, .xfm, .mat, .fslmat, "
-        ".dat, .reg, .tfm, or .niftyreg.txt. "
-        "Use --in-format/--out-format for ambiguous text formats such as .txt"
+        ".dat, .reg, .tfm, .aff12.1D, *GenericAffine.mat, or .niftyreg.txt. "
+        "Use --in-format/--out-format for ambiguous text formats such as .txt, .1D, or .mat"
     )
 
 
@@ -106,6 +113,12 @@ def _read_transform_as_lta(
         return XFM.read(path).to_lta(src_fname=src_img, src_img=src_img, dst_fname=dst_img, dst_img=dst_img)
     if fmt == "itk":
         return ITKTransform.read(path).to_lta(src_fname=src_img, src_img=src_img, dst_fname=dst_img, dst_img=dst_img)
+    if fmt == "antsmat":
+        return ANTsMatTransform.read(path).to_lta(
+            src_fname=src_img, src_img=src_img, dst_fname=dst_img, dst_img=dst_img
+        )
+    if fmt == "afni":
+        return AFNIAffine.read(path).to_lta(src_fname=src_img, src_img=src_img, dst_fname=dst_img, dst_img=dst_img)
     if fmt == "niftyreg":
         return NiftyRegTransform.read(path).to_lta(
             src_fname=src_img, src_img=src_img, dst_fname=dst_img, dst_img=dst_img
@@ -138,6 +151,10 @@ def _write_lta_as_transform(
         FSLMat.from_lta(lta).write(output)
     elif fmt == "itk":
         ITKTransform.from_lta(lta).write(output)
+    elif fmt == "antsmat":
+        ANTsMatTransform.from_lta(lta).write(output)
+    elif fmt == "afni":
+        AFNIAffine.from_lta(lta).write(output)
     elif fmt == "niftyreg":
         NiftyRegTransform.from_lta(lta).write(output)
     else:
@@ -293,7 +310,7 @@ def _build_parser() -> argparse.ArgumentParser:
     # ── convert ───────────────────────────────────────────────────────────────
     conv_p = sub.add_parser(
         "convert",
-        help="Convert between LTA, XFM, FSL, ITK/ANTs, NiftyReg, and tkregister register.dat transforms.",
+        help="Convert between LTA, XFM, FSL, ITK/ANTs, ANTs .mat, AFNI, NiftyReg, and register.dat transforms.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=(
             "Convert between FreeSurfer-adjacent linear transform formats.\n"
@@ -304,16 +321,22 @@ def _build_parser() -> argparse.ArgumentParser:
             "  .mat/.fslmat  FSL FLIRT affine matrix\n"
             "  .dat/.reg  tkregister volumetric register.dat format\n"
             "  .tfm  ITK/ANTs 3D affine text transform\n"
+            "  *GenericAffine.mat  experimental ANTs / ITK Matlab affine\n"
+            "  .aff12.1D  experimental AFNI affine text matrix\n"
             "  .niftyreg.txt  NiftyReg 3D affine text matrix\n"
             "\n"
-            "Use --in-format/--out-format for ambiguous text outputs such as .txt.\n"
+            "Use --in-format/--out-format for ambiguous text outputs such as .txt, .1D, or .mat.\n"
             "FSL and register.dat conversion require both --src-img and --dst-img\n"
             "because the stored matrices depend on image geometry rather than being\n"
-            "plain scanner-RAS affines. ITK/ANTs text affines are scanner-space and\n"
-            "can be read without images, though --src-img/--dst-img still enrich the\n"
-            "resulting LTA geometry blocks. NiftyReg affine text matrices likewise\n"
-            "store scanner-space transforms directly, with the file convention being\n"
-            "the inverse target-to-source RAS matrix."
+            "plain scanner-RAS affines. ITK/ANTs text affines, experimental ANTs .mat,\n"
+            "experimental AFNI affine text, and NiftyReg affine text matrices are\n"
+            "scanner-space transforms and can be read without images, though\n"
+            "--src-img/--dst-img still enrich the resulting LTA geometry blocks.\n"
+            "ANTs .mat support is currently based on SciPy + ITK Matlab IO semantics\n"
+            "and should be considered experimental until validated on real files.\n"
+            "AFNI support currently targets affine text matrices in DICOM/LPS\n"
+            "coordinates and should likewise be considered experimental.\n"
+            "NiftyReg affine text matrices store the inverse target-to-source RAS matrix."
         ),
     )
     conv_p.add_argument("input", metavar="INPUT", help="Input transform file.")
