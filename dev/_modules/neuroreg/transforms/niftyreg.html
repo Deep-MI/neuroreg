@@ -266,8 +266,27 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
 
+<div class="viewcode-block" id="NiftyRegTransform.read">
+<a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.NiftyRegTransform.read">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NiftyRegTransform</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Read a NiftyReg affine text matrix from disk.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        filename : str or Path</span>
+<span class="sd">            Path to a NiftyReg affine text file.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        NiftyRegTransform</span>
+<span class="sd">            Parsed NiftyReg transform wrapper.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            If the file does not contain exactly four rows of four values.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
         <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">raw_line</span> <span class="ow">in</span> <span class="n">path</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span><span class="o">.</span><span class="n">splitlines</span><span class="p">():</span>
@@ -280,12 +299,30 @@
             <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">4</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">: expected 4 rows in NiftyReg affine matrix&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">))</span></div>
 
+
+<div class="viewcode-block" id="NiftyRegTransform.from_lta">
+<a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.NiftyRegTransform.from_lta">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">from_lta</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">lta</span><span class="p">:</span> <span class="n">LTA</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NiftyRegTransform</span><span class="p">:</span>
-        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">lta</span><span class="o">.</span><span class="n">r2r</span><span class="p">()))</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a NiftyReg transform wrapper from a canonical LTA.</span>
 
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        lta : LTA</span>
+<span class="sd">            Canonical scanner-RAS transform mapping moving to reference space.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        NiftyRegTransform</span>
+<span class="sd">            Wrapper containing the equivalent NiftyReg file-space matrix.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">lta</span><span class="o">.</span><span class="n">r2r</span><span class="p">()))</span></div>
+
+
+<div class="viewcode-block" id="NiftyRegTransform.to_lta">
+<a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.NiftyRegTransform.to_lta">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">to_lta</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">src_fname</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -293,17 +330,48 @@
         <span class="n">dst_fname</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">dst_img</span><span class="p">:</span> <span class="n">_AnyHeader</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">LTA</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert the NiftyReg matrix to canonical scanner-RAS LTA form.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        src_fname, dst_fname : str or None, optional</span>
+<span class="sd">            Optional filenames to store in the output LTA metadata.</span>
+<span class="sd">        src_img, dst_img : header-like or None, optional</span>
+<span class="sd">            Optional source and destination image headers used to populate LTA</span>
+<span class="sd">            volume information.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        LTA</span>
+<span class="sd">            Canonical RAS-to-RAS transform wrapper.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">src_fname</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span> <span class="k">if</span> <span class="n">src_fname</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">src_fname</span>
         <span class="n">dst_fname</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span> <span class="k">if</span> <span class="n">dst_fname</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">dst_fname</span>
         <span class="n">src</span> <span class="o">=</span> <span class="n">_invalid_vol_info</span><span class="p">(</span><span class="n">src_fname</span><span class="p">)</span> <span class="k">if</span> <span class="n">src_img</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">_header_to_vol_info</span><span class="p">(</span><span class="n">_header_info</span><span class="p">(</span><span class="n">src_img</span><span class="p">),</span> <span class="n">src_fname</span><span class="p">)</span>
         <span class="n">dst</span> <span class="o">=</span> <span class="n">_invalid_vol_info</span><span class="p">(</span><span class="n">dst_fname</span><span class="p">)</span> <span class="k">if</span> <span class="n">dst_img</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">_header_to_vol_info</span><span class="p">(</span><span class="n">_header_info</span><span class="p">(</span><span class="n">dst_img</span><span class="p">),</span> <span class="n">dst_fname</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">LTA</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">LTA</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">)</span></div>
 
+
+<div class="viewcode-block" id="NiftyRegTransform.write">
+<a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.NiftyRegTransform.write">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Write the matrix in NiftyReg text format.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        filename : str or Path</span>
+<span class="sd">            Output transform path.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+<span class="sd">            Writes the transform to ``filename``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
         <span class="k">with</span> <span class="n">path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">:</span>
                 <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span><span class="si">:</span><span class="s2">.7g</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">row</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span></div>
+</div>
 
 </pre></div>
         </article>

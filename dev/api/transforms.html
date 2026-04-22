@@ -569,13 +569,32 @@ stores useful provenance there.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="neuroreg.transforms.XFM.read">
 <em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/xfm.html#XFM.read"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.XFM.read" title="Link to this definition">¶</a></dt>
-<dd><p>Read an XFM file.</p>
+<dd><p>Read an MNI/MINC XFM file from disk.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>filename</strong> (<em>str</em><em> | </em><em>Path</em>)</p>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>filename</strong><span class="classifier">str or Path</span></dt><dd><p>Path to a linear <code class="docutils literal notranslate"><span class="pre">.xfm</span></code> transform file.</p>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference internal" href="#neuroreg.transforms.XFM" title="neuroreg.transforms.xfm.XFM"><em>XFM</em></a></p>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>XFM</dt><dd><p>Parsed XFM wrapper with preserved comment lines.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>ValueError</dt><dd><p>If the file header is invalid or the linear transform block cannot
+be parsed.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>filename</strong> (<em>str</em><em> | </em><em>Path</em>)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#neuroreg.transforms.XFM" title="neuroreg.transforms.xfm.XFM"><em>XFM</em></a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -583,8 +602,24 @@ stores useful provenance there.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="neuroreg.transforms.XFM.from_lta">
 <em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_lta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comments</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/xfm.html#XFM.from_lta"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.XFM.from_lta" title="Link to this definition">¶</a></dt>
-<dd><p>Create an XFM wrapper from any LTA.</p>
+<dd><p>Create an XFM wrapper from a canonical LTA.</p>
 <dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>lta</strong><span class="classifier">LTA</span></dt><dd><p>Canonical scanner-RAS transform mapping moving to reference space.</p>
+</dd>
+<dt><strong>comments</strong><span class="classifier">list[str] or None, optional</span></dt><dd><p>Comment lines to preserve in the output wrapper. When omitted, a
+simple provenance comment is generated.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>XFM</dt><dd><p>Wrapper containing the same RAS-to-RAS matrix and inferred source /
+destination paths.</p>
+</dd>
+</dl>
+</dd>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>lta</strong> (<a class="reference internal" href="#neuroreg.transforms.LTA" title="neuroreg.transforms.lta.LTA"><em>LTA</em></a>)</p></li>
@@ -600,8 +635,24 @@ stores useful provenance there.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="neuroreg.transforms.XFM.to_lta">
 <span class="sig-name descname"><span class="pre">to_lta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src_fname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src_img</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dst_fname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dst_img</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/xfm.html#XFM.to_lta"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.XFM.to_lta" title="Link to this definition">¶</a></dt>
-<dd><p>Convert to a canonical RAS-to-RAS LTA.</p>
+<dd><p>Convert the XFM wrapper to canonical scanner-RAS LTA form.</p>
 <dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>src_fname, dst_fname</strong><span class="classifier">str or None, optional</span></dt><dd><p>Optional filenames to store in the output LTA metadata. When not
+provided, inferred paths from XFM comments are used if available.</p>
+</dd>
+<dt><strong>src_img, dst_img</strong><span class="classifier">header-like or None, optional</span></dt><dd><p>Optional source and destination image headers used to populate LTA
+volume information.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>LTA</dt><dd><p>Canonical RAS-to-RAS transform wrapper.</p>
+</dd>
+</dl>
+</dd>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>src_fname</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
@@ -619,8 +670,20 @@ stores useful provenance there.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="neuroreg.transforms.XFM.write">
 <span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/xfm.html#XFM.write"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.XFM.write" title="Link to this definition">¶</a></dt>
-<dd><p>Write the XFM file.</p>
+<dd><p>Write the transform in MNI/MINC XFM text format.</p>
 <dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>filename</strong><span class="classifier">str or Path</span></dt><dd><p>Output transform path.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>None</dt><dd><p>Writes the transform to <code class="docutils literal notranslate"><span class="pre">filename</span></code>.</p>
+</dd>
+</dl>
+</dd>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>filename</strong> (<em>str</em><em> | </em><em>Path</em>)</p>
 </dd>
@@ -654,13 +717,31 @@ stores useful provenance there.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="neuroreg.transforms.RegisterDat.read">
 <em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/regdat.html#RegisterDat.read"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.RegisterDat.read" title="Link to this definition">¶</a></dt>
-<dd><p>Read a register.dat/tkregister transform file.</p>
+<dd><p>Read a FreeSurfer <code class="docutils literal notranslate"><span class="pre">register.dat</span></code> / tkregister transform file.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>filename</strong> (<em>str</em><em> | </em><em>Path</em>)</p>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>filename</strong><span class="classifier">str or Path</span></dt><dd><p>Path to a <code class="docutils literal notranslate"><span class="pre">register.dat</span></code> file.</p>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference internal" href="#neuroreg.transforms.RegisterDat" title="neuroreg.transforms.regdat.RegisterDat"><em>RegisterDat</em></a></p>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>RegisterDat</dt><dd><p>Parsed register.dat wrapper.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>ValueError</dt><dd><p>If the file is shorter than the required header-plus-matrix layout.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>filename</strong> (<em>str</em><em> | </em><em>Path</em>)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#neuroreg.transforms.RegisterDat" title="neuroreg.transforms.regdat.RegisterDat"><em>RegisterDat</em></a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -668,8 +749,28 @@ stores useful provenance there.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="neuroreg.transforms.RegisterDat.from_lta">
 <em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_lta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lta</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subject</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">intensity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">float2int</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'round'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/regdat.html#RegisterDat.from_lta"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.RegisterDat.from_lta" title="Link to this definition">¶</a></dt>
-<dd><p>Create a register.dat transform from an LTA.</p>
+<dd><p>Create a register.dat transform from a canonical LTA.</p>
 <dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>lta</strong><span class="classifier">LTA</span></dt><dd><p>Canonical scanner-RAS transform mapping moving to reference space.</p>
+</dd>
+<dt><strong>subject</strong><span class="classifier">str or None, optional</span></dt><dd><p>Subject name to store in the output file. When omitted, the subject
+metadata from <code class="docutils literal notranslate"><span class="pre">lta</span></code> is used when available.</p>
+</dd>
+<dt><strong>intensity</strong><span class="classifier">float or None, optional</span></dt><dd><p>Intensity scale to store in the output file. When omitted, <code class="docutils literal notranslate"><span class="pre">lta</span></code>
+metadata is used when available.</p>
+</dd>
+<dt><strong>float2int</strong><span class="classifier">{‘tkregister’, ‘round’, ‘floor’}, default=’round’</span></dt><dd><p>Float-to-int conversion mode written to the output file.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>RegisterDat</dt><dd><p>Wrapper containing the equivalent tkregister transform.</p>
+</dd>
+</dl>
+</dd>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>lta</strong> (<a class="reference internal" href="#neuroreg.transforms.LTA" title="neuroreg.transforms.lta.LTA"><em>LTA</em></a>)</p></li>
@@ -688,8 +789,22 @@ stores useful provenance there.</p>
 <dt class="sig sig-object py" id="neuroreg.transforms.RegisterDat.to_lta">
 <span class="sig-name descname"><span class="pre">to_lta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src_fname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src_img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dst_fname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dst_img</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/regdat.html#RegisterDat.to_lta"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.RegisterDat.to_lta" title="Link to this definition">¶</a></dt>
 <dd><p>Convert the tkregister transform to canonical RAS-to-RAS LTA.</p>
-<p><code class="docutils literal notranslate"><span class="pre">src</span></code> is the moving/input volume. <code class="docutils literal notranslate"><span class="pre">dst</span></code> is the reference/target volume.</p>
 <dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>src_fname, dst_fname</strong><span class="classifier">str</span></dt><dd><p>Source and destination filenames stored in the output LTA metadata.</p>
+</dd>
+<dt><strong>src_img, dst_img</strong><span class="classifier">header-like</span></dt><dd><p>Source and destination image headers used to recover tkregister
+geometry.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>LTA</dt><dd><p>Canonical scanner-RAS transform wrapper.</p>
+</dd>
+</dl>
+</dd>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>src_fname</strong> (<em>str</em>)</p></li>
@@ -702,13 +817,28 @@ stores useful provenance there.</p>
 <dd class="field-even"><p><a class="reference internal" href="#neuroreg.transforms.LTA" title="neuroreg.transforms.lta.LTA"><em>LTA</em></a></p>
 </dd>
 </dl>
+<p class="rubric">Notes</p>
+<p><code class="docutils literal notranslate"><span class="pre">src</span></code> is the moving/input volume and <code class="docutils literal notranslate"><span class="pre">dst</span></code> is the reference/target
+volume.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="neuroreg.transforms.RegisterDat.write">
 <span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/regdat.html#RegisterDat.write"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.RegisterDat.write" title="Link to this definition">¶</a></dt>
-<dd><p>Write the register.dat file.</p>
+<dd><p>Write the transform in <code class="docutils literal notranslate"><span class="pre">register.dat</span></code> format.</p>
 <dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>filename</strong><span class="classifier">str or Path</span></dt><dd><p>Output transform path.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>None</dt><dd><p>Writes the transform to <code class="docutils literal notranslate"><span class="pre">filename</span></code>.</p>
+</dd>
+</dl>
+</dd>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>filename</strong> (<em>str</em><em> | </em><em>Path</em>)</p>
 </dd>
@@ -735,6 +865,124 @@ reference image geometry.</p>
 <dd class="field-odd"><p><strong>matrix</strong> (<em>ndarray</em>)</p>
 </dd>
 </dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.FSLMat.read">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/fsl.html#FSLMat.read"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.FSLMat.read" title="Link to this definition">¶</a></dt>
+<dd><p>Read an FSL FLIRT matrix file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>filename</strong><span class="classifier">str or Path</span></dt><dd><p>Path to a text <code class="docutils literal notranslate"><span class="pre">.mat</span></code> file containing a 4x4 FLIRT affine.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>FSLMat</dt><dd><p>Parsed FSL matrix wrapper.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>ValueError</dt><dd><p>If the file does not contain exactly four rows of four values.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>filename</strong> (<em>str</em><em> | </em><em>Path</em>)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#neuroreg.transforms.FSLMat" title="neuroreg.transforms.fsl.FSLMat"><em>FSLMat</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.FSLMat.from_lta">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_lta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lta</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/fsl.html#FSLMat.from_lta"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.FSLMat.from_lta" title="Link to this definition">¶</a></dt>
+<dd><p>Create an FSL matrix wrapper from a canonical LTA.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>lta</strong><span class="classifier">LTA</span></dt><dd><p>Canonical scanner-RAS transform mapping moving to reference space.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>FSLMat</dt><dd><p>Wrapper containing the equivalent FLIRT voxel-space affine.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>lta</strong> (<a class="reference internal" href="#neuroreg.transforms.LTA" title="neuroreg.transforms.lta.LTA"><em>LTA</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#neuroreg.transforms.FSLMat" title="neuroreg.transforms.fsl.FSLMat"><em>FSLMat</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.FSLMat.to_lta">
+<span class="sig-name descname"><span class="pre">to_lta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src_fname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src_img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dst_fname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dst_img</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/fsl.html#FSLMat.to_lta"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.FSLMat.to_lta" title="Link to this definition">¶</a></dt>
+<dd><p>Convert the FSL matrix to canonical scanner-RAS LTA form.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>src_fname, dst_fname</strong><span class="classifier">str</span></dt><dd><p>Source and destination filenames stored in the output LTA metadata.</p>
+</dd>
+<dt><strong>src_img, dst_img</strong><span class="classifier">header-like</span></dt><dd><p>Source and destination image headers used to resolve the FSL voxel
+conventions.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>LTA</dt><dd><p>Canonical RAS-to-RAS transform wrapper.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>src_fname</strong> (<em>str</em>)</p></li>
+<li><p><strong>src_img</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>Nifti1Header</em><em> | </em><em>MGHHeader</em><em> | </em><em>Nifti1Image</em><em> | </em><em>MGHImage</em><em> | </em><em>dict</em>)</p></li>
+<li><p><strong>dst_fname</strong> (<em>str</em>)</p></li>
+<li><p><strong>dst_img</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>Nifti1Header</em><em> | </em><em>MGHHeader</em><em> | </em><em>Nifti1Image</em><em> | </em><em>MGHImage</em><em> | </em><em>dict</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#neuroreg.transforms.LTA" title="neuroreg.transforms.lta.LTA"><em>LTA</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.FSLMat.write">
+<span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/fsl.html#FSLMat.write"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.FSLMat.write" title="Link to this definition">¶</a></dt>
+<dd><p>Write the matrix in FSL text format.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>filename</strong><span class="classifier">str or Path</span></dt><dd><p>Output transform path.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>None</dt><dd><p>Writes the transform to <code class="docutils literal notranslate"><span class="pre">filename</span></code>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filename</strong> (<em>str</em><em> | </em><em>Path</em>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
 </dd></dl>
 
 </section>
@@ -755,6 +1003,125 @@ converts LPS to RAS and inverts the matrix.</p>
 </ul>
 </dd>
 </dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.ITKTransform.read">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/itk.html#ITKTransform.read"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.ITKTransform.read" title="Link to this definition">¶</a></dt>
+<dd><p>Read an ITK affine text transform from disk.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>filename</strong><span class="classifier">str or Path</span></dt><dd><p>Path to an ITK <code class="docutils literal notranslate"><span class="pre">.tfm</span></code>-style affine transform file.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>ITKTransform</dt><dd><p>Parsed transform wrapper.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>ValueError</dt><dd><p>If the file is malformed or does not contain a supported 3-D affine
+transform.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>filename</strong> (<em>str</em><em> | </em><em>Path</em>)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#neuroreg.transforms.ITKTransform" title="neuroreg.transforms.itk.ITKTransform"><em>ITKTransform</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.ITKTransform.from_lta">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_lta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lta</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/itk.html#ITKTransform.from_lta"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.ITKTransform.from_lta" title="Link to this definition">¶</a></dt>
+<dd><p>Create an ITK transform wrapper from a canonical LTA.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>lta</strong><span class="classifier">LTA</span></dt><dd><p>Canonical scanner-RAS transform mapping moving to reference space.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>ITKTransform</dt><dd><p>Wrapper containing the equivalent ITK/ANTs file-space affine.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>lta</strong> (<a class="reference internal" href="#neuroreg.transforms.LTA" title="neuroreg.transforms.lta.LTA"><em>LTA</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#neuroreg.transforms.ITKTransform" title="neuroreg.transforms.itk.ITKTransform"><em>ITKTransform</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.ITKTransform.to_lta">
+<span class="sig-name descname"><span class="pre">to_lta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src_fname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src_img</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dst_fname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dst_img</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/itk.html#ITKTransform.to_lta"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.ITKTransform.to_lta" title="Link to this definition">¶</a></dt>
+<dd><p>Convert the ITK transform to canonical scanner-RAS LTA form.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>src_fname, dst_fname</strong><span class="classifier">str or None, optional</span></dt><dd><p>Optional filenames to store in the output LTA metadata.</p>
+</dd>
+<dt><strong>src_img, dst_img</strong><span class="classifier">header-like or None, optional</span></dt><dd><p>Optional source and destination image headers used to populate LTA
+volume information.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>LTA</dt><dd><p>Canonical RAS-to-RAS transform wrapper.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>src_fname</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>src_img</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>Nifti1Header</em><em> | </em><em>MGHHeader</em><em> | </em><em>Nifti1Image</em><em> | </em><em>MGHImage</em><em> | </em><em>dict</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>dst_fname</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>dst_img</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>Nifti1Header</em><em> | </em><em>MGHHeader</em><em> | </em><em>Nifti1Image</em><em> | </em><em>MGHImage</em><em> | </em><em>dict</em><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#neuroreg.transforms.LTA" title="neuroreg.transforms.lta.LTA"><em>LTA</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.ITKTransform.write">
+<span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/itk.html#ITKTransform.write"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.ITKTransform.write" title="Link to this definition">¶</a></dt>
+<dd><p>Write the transform in ITK text format.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>filename</strong><span class="classifier">str or Path</span></dt><dd><p>Output transform path.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>None</dt><dd><p>Writes the transform to <code class="docutils literal notranslate"><span class="pre">filename</span></code>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filename</strong> (<em>str</em><em> | </em><em>Path</em>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
 </dd></dl>
 
 </section>
@@ -778,6 +1145,125 @@ the legacy text format.</p>
 </ul>
 </dd>
 </dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.ANTsMatTransform.read">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/antsmat.html#ANTsMatTransform.read"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.ANTsMatTransform.read" title="Link to this definition">¶</a></dt>
+<dd><p>Read an ANTs Matlab-format affine transform from disk.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>filename</strong><span class="classifier">str or Path</span></dt><dd><p>Path to an ANTs <code class="docutils literal notranslate"><span class="pre">0GenericAffine.mat</span></code>-style transform file.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>ANTsMatTransform</dt><dd><p>Parsed ANTs Matlab transform wrapper.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>ValueError</dt><dd><p>If the file does not contain exactly one supported affine transform
+payload.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>filename</strong> (<em>str</em><em> | </em><em>Path</em>)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#neuroreg.transforms.ANTsMatTransform" title="neuroreg.transforms.antsmat.ANTsMatTransform"><em>ANTsMatTransform</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.ANTsMatTransform.from_lta">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_lta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lta</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/antsmat.html#ANTsMatTransform.from_lta"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.ANTsMatTransform.from_lta" title="Link to this definition">¶</a></dt>
+<dd><p>Create an ANTs Matlab transform wrapper from a canonical LTA.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>lta</strong><span class="classifier">LTA</span></dt><dd><p>Canonical scanner-RAS transform mapping moving to reference space.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>ANTsMatTransform</dt><dd><p>Wrapper containing the equivalent ANTs/ITK file-space affine.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>lta</strong> (<a class="reference internal" href="#neuroreg.transforms.LTA" title="neuroreg.transforms.lta.LTA"><em>LTA</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#neuroreg.transforms.ANTsMatTransform" title="neuroreg.transforms.antsmat.ANTsMatTransform"><em>ANTsMatTransform</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.ANTsMatTransform.to_lta">
+<span class="sig-name descname"><span class="pre">to_lta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src_fname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src_img</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dst_fname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dst_img</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/antsmat.html#ANTsMatTransform.to_lta"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.ANTsMatTransform.to_lta" title="Link to this definition">¶</a></dt>
+<dd><p>Convert the ANTs Matlab transform to canonical LTA form.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>src_fname, dst_fname</strong><span class="classifier">str or None, optional</span></dt><dd><p>Optional filenames to store in the output LTA metadata.</p>
+</dd>
+<dt><strong>src_img, dst_img</strong><span class="classifier">header-like or None, optional</span></dt><dd><p>Optional source and destination image headers used to populate LTA
+volume information.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>LTA</dt><dd><p>Canonical RAS-to-RAS transform wrapper.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>src_fname</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>src_img</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>Nifti1Header</em><em> | </em><em>MGHHeader</em><em> | </em><em>Nifti1Image</em><em> | </em><em>MGHImage</em><em> | </em><em>dict</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>dst_fname</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>dst_img</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>Nifti1Header</em><em> | </em><em>MGHHeader</em><em> | </em><em>Nifti1Image</em><em> | </em><em>MGHImage</em><em> | </em><em>dict</em><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#neuroreg.transforms.LTA" title="neuroreg.transforms.lta.LTA"><em>LTA</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.ANTsMatTransform.write">
+<span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/antsmat.html#ANTsMatTransform.write"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.ANTsMatTransform.write" title="Link to this definition">¶</a></dt>
+<dd><p>Write the transform in ANTs Matlab <code class="docutils literal notranslate"><span class="pre">.mat</span></code> format.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>filename</strong><span class="classifier">str or Path</span></dt><dd><p>Output transform path.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>None</dt><dd><p>Writes the transform to <code class="docutils literal notranslate"><span class="pre">filename</span></code>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filename</strong> (<em>str</em><em> | </em><em>Path</em>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
 </dd></dl>
 
 </section>
@@ -787,7 +1273,7 @@ the legacy text format.</p>
 <dt class="sig sig-object py" id="neuroreg.transforms.AFNIAffine">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">neuroreg.transforms.</span></span><span class="sig-name descname"><span class="pre">AFNIAffine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matrix</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/afni.html#AFNIAffine"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.AFNIAffine" title="Link to this definition">¶</a></dt>
 <dd><p>AFNI affine text transform.</p>
-<p>Supports the common ASCII 3D affine encodings used by AFNI tools such as
+<p>Supports the common ASCII 3x4 affine encodings used by AFNI tools such as
 <code class="docutils literal notranslate"><span class="pre">3dAllineate</span></code> and <code class="docutils literal notranslate"><span class="pre">cat_matvec</span></code>: 3x4 text, augmented 4x4 text, or a
 single row of 12 values as in <code class="docutils literal notranslate"><span class="pre">.aff12.1D</span></code> files.</p>
 <p>This implementation interprets the stored matrix in AFNI’s DICOM/LPS
@@ -798,6 +1284,125 @@ for <code class="docutils literal notranslate"><span class="pre">LTA</span></cod
 <dd class="field-odd"><p><strong>matrix</strong> (<em>ndarray</em>)</p>
 </dd>
 </dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.AFNIAffine.read">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/afni.html#AFNIAffine.read"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.AFNIAffine.read" title="Link to this definition">¶</a></dt>
+<dd><p>Read an AFNI affine text transform from disk.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>filename</strong><span class="classifier">str or Path</span></dt><dd><p>Path to an AFNI affine text file, including <code class="docutils literal notranslate"><span class="pre">.aff12.1D</span></code> files.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>AFNIAffine</dt><dd><p>Parsed AFNI affine wrapper.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>ValueError</dt><dd><p>If the file cannot be interpreted as a supported AFNI affine text
+encoding.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>filename</strong> (<em>str</em><em> | </em><em>Path</em>)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#neuroreg.transforms.AFNIAffine" title="neuroreg.transforms.afni.AFNIAffine"><em>AFNIAffine</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.AFNIAffine.from_lta">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_lta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lta</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/afni.html#AFNIAffine.from_lta"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.AFNIAffine.from_lta" title="Link to this definition">¶</a></dt>
+<dd><p>Create an AFNI affine wrapper from a canonical LTA.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>lta</strong><span class="classifier">LTA</span></dt><dd><p>Canonical scanner-RAS transform mapping moving to reference space.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>AFNIAffine</dt><dd><p>Wrapper containing the equivalent AFNI/DICOM-LPS affine.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>lta</strong> (<a class="reference internal" href="#neuroreg.transforms.LTA" title="neuroreg.transforms.lta.LTA"><em>LTA</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#neuroreg.transforms.AFNIAffine" title="neuroreg.transforms.afni.AFNIAffine"><em>AFNIAffine</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.AFNIAffine.to_lta">
+<span class="sig-name descname"><span class="pre">to_lta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src_fname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src_img</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dst_fname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dst_img</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/afni.html#AFNIAffine.to_lta"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.AFNIAffine.to_lta" title="Link to this definition">¶</a></dt>
+<dd><p>Convert the AFNI affine to canonical scanner-RAS LTA form.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>src_fname, dst_fname</strong><span class="classifier">str or None, optional</span></dt><dd><p>Optional filenames to store in the output LTA metadata.</p>
+</dd>
+<dt><strong>src_img, dst_img</strong><span class="classifier">header-like or None, optional</span></dt><dd><p>Optional source and destination image headers used to populate LTA
+volume information.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>LTA</dt><dd><p>Canonical RAS-to-RAS transform wrapper.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>src_fname</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>src_img</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>Nifti1Header</em><em> | </em><em>MGHHeader</em><em> | </em><em>Nifti1Image</em><em> | </em><em>MGHImage</em><em> | </em><em>dict</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>dst_fname</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>dst_img</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>Nifti1Header</em><em> | </em><em>MGHHeader</em><em> | </em><em>Nifti1Image</em><em> | </em><em>MGHImage</em><em> | </em><em>dict</em><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#neuroreg.transforms.LTA" title="neuroreg.transforms.lta.LTA"><em>LTA</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.AFNIAffine.write">
+<span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/afni.html#AFNIAffine.write"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.AFNIAffine.write" title="Link to this definition">¶</a></dt>
+<dd><p>Write the affine in AFNI text format.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>filename</strong><span class="classifier">str or Path</span></dt><dd><p>Output transform path.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>None</dt><dd><p>Writes the transform to <code class="docutils literal notranslate"><span class="pre">filename</span></code>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filename</strong> (<em>str</em><em> | </em><em>Path</em>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
 </dd></dl>
 
 </section>
@@ -815,6 +1420,124 @@ source/moving RAS.</p>
 <dd class="field-odd"><p><strong>matrix</strong> (<em>ndarray</em>)</p>
 </dd>
 </dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.NiftyRegTransform.read">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/niftyreg.html#NiftyRegTransform.read"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.NiftyRegTransform.read" title="Link to this definition">¶</a></dt>
+<dd><p>Read a NiftyReg affine text matrix from disk.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>filename</strong><span class="classifier">str or Path</span></dt><dd><p>Path to a NiftyReg affine text file.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>NiftyRegTransform</dt><dd><p>Parsed NiftyReg transform wrapper.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>ValueError</dt><dd><p>If the file does not contain exactly four rows of four values.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>filename</strong> (<em>str</em><em> | </em><em>Path</em>)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#neuroreg.transforms.NiftyRegTransform" title="neuroreg.transforms.niftyreg.NiftyRegTransform"><em>NiftyRegTransform</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.NiftyRegTransform.from_lta">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_lta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lta</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/niftyreg.html#NiftyRegTransform.from_lta"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.NiftyRegTransform.from_lta" title="Link to this definition">¶</a></dt>
+<dd><p>Create a NiftyReg transform wrapper from a canonical LTA.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>lta</strong><span class="classifier">LTA</span></dt><dd><p>Canonical scanner-RAS transform mapping moving to reference space.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>NiftyRegTransform</dt><dd><p>Wrapper containing the equivalent NiftyReg file-space matrix.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>lta</strong> (<a class="reference internal" href="#neuroreg.transforms.LTA" title="neuroreg.transforms.lta.LTA"><em>LTA</em></a>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#neuroreg.transforms.NiftyRegTransform" title="neuroreg.transforms.niftyreg.NiftyRegTransform"><em>NiftyRegTransform</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.NiftyRegTransform.to_lta">
+<span class="sig-name descname"><span class="pre">to_lta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src_fname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src_img</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dst_fname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dst_img</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/niftyreg.html#NiftyRegTransform.to_lta"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.NiftyRegTransform.to_lta" title="Link to this definition">¶</a></dt>
+<dd><p>Convert the NiftyReg matrix to canonical scanner-RAS LTA form.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>src_fname, dst_fname</strong><span class="classifier">str or None, optional</span></dt><dd><p>Optional filenames to store in the output LTA metadata.</p>
+</dd>
+<dt><strong>src_img, dst_img</strong><span class="classifier">header-like or None, optional</span></dt><dd><p>Optional source and destination image headers used to populate LTA
+volume information.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>LTA</dt><dd><p>Canonical RAS-to-RAS transform wrapper.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>src_fname</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>src_img</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>Nifti1Header</em><em> | </em><em>MGHHeader</em><em> | </em><em>Nifti1Image</em><em> | </em><em>MGHImage</em><em> | </em><em>dict</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>dst_fname</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>dst_img</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>Nifti1Header</em><em> | </em><em>MGHHeader</em><em> | </em><em>Nifti1Image</em><em> | </em><em>MGHImage</em><em> | </em><em>dict</em><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#neuroreg.transforms.LTA" title="neuroreg.transforms.lta.LTA"><em>LTA</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.NiftyRegTransform.write">
+<span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/niftyreg.html#NiftyRegTransform.write"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.NiftyRegTransform.write" title="Link to this definition">¶</a></dt>
+<dd><p>Write the matrix in NiftyReg text format.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>filename</strong><span class="classifier">str or Path</span></dt><dd><p>Output transform path.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>None</dt><dd><p>Writes the transform to <code class="docutils literal notranslate"><span class="pre">filename</span></code>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filename</strong> (<em>str</em><em> | </em><em>Path</em>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
 </dd></dl>
 
 </section>
@@ -1268,23 +1991,53 @@ is returned.</p>
 </ul>
 </li>
 <li><a class="reference internal" href="#neuroreg-transforms-fslmat"><code class="docutils literal notranslate"><span class="pre">neuroreg.transforms.FSLMat</span></code></a><ul>
-<li><a class="reference internal" href="#neuroreg.transforms.FSLMat"><code class="docutils literal notranslate"><span class="pre">FSLMat</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.FSLMat"><code class="docutils literal notranslate"><span class="pre">FSLMat</span></code></a><ul>
+<li><a class="reference internal" href="#neuroreg.transforms.FSLMat.read"><code class="docutils literal notranslate"><span class="pre">FSLMat.read()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.FSLMat.from_lta"><code class="docutils literal notranslate"><span class="pre">FSLMat.from_lta()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.FSLMat.to_lta"><code class="docutils literal notranslate"><span class="pre">FSLMat.to_lta()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.FSLMat.write"><code class="docutils literal notranslate"><span class="pre">FSLMat.write()</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a class="reference internal" href="#neuroreg-transforms-itktransform"><code class="docutils literal notranslate"><span class="pre">neuroreg.transforms.ITKTransform</span></code></a><ul>
-<li><a class="reference internal" href="#neuroreg.transforms.ITKTransform"><code class="docutils literal notranslate"><span class="pre">ITKTransform</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.ITKTransform"><code class="docutils literal notranslate"><span class="pre">ITKTransform</span></code></a><ul>
+<li><a class="reference internal" href="#neuroreg.transforms.ITKTransform.read"><code class="docutils literal notranslate"><span class="pre">ITKTransform.read()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.ITKTransform.from_lta"><code class="docutils literal notranslate"><span class="pre">ITKTransform.from_lta()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.ITKTransform.to_lta"><code class="docutils literal notranslate"><span class="pre">ITKTransform.to_lta()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.ITKTransform.write"><code class="docutils literal notranslate"><span class="pre">ITKTransform.write()</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a class="reference internal" href="#neuroreg-transforms-antsmattransform"><code class="docutils literal notranslate"><span class="pre">neuroreg.transforms.ANTsMatTransform</span></code></a><ul>
-<li><a class="reference internal" href="#neuroreg.transforms.ANTsMatTransform"><code class="docutils literal notranslate"><span class="pre">ANTsMatTransform</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.ANTsMatTransform"><code class="docutils literal notranslate"><span class="pre">ANTsMatTransform</span></code></a><ul>
+<li><a class="reference internal" href="#neuroreg.transforms.ANTsMatTransform.read"><code class="docutils literal notranslate"><span class="pre">ANTsMatTransform.read()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.ANTsMatTransform.from_lta"><code class="docutils literal notranslate"><span class="pre">ANTsMatTransform.from_lta()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.ANTsMatTransform.to_lta"><code class="docutils literal notranslate"><span class="pre">ANTsMatTransform.to_lta()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.ANTsMatTransform.write"><code class="docutils literal notranslate"><span class="pre">ANTsMatTransform.write()</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a class="reference internal" href="#neuroreg-transforms-afniaffine"><code class="docutils literal notranslate"><span class="pre">neuroreg.transforms.AFNIAffine</span></code></a><ul>
-<li><a class="reference internal" href="#neuroreg.transforms.AFNIAffine"><code class="docutils literal notranslate"><span class="pre">AFNIAffine</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.AFNIAffine"><code class="docutils literal notranslate"><span class="pre">AFNIAffine</span></code></a><ul>
+<li><a class="reference internal" href="#neuroreg.transforms.AFNIAffine.read"><code class="docutils literal notranslate"><span class="pre">AFNIAffine.read()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.AFNIAffine.from_lta"><code class="docutils literal notranslate"><span class="pre">AFNIAffine.from_lta()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.AFNIAffine.to_lta"><code class="docutils literal notranslate"><span class="pre">AFNIAffine.to_lta()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.AFNIAffine.write"><code class="docutils literal notranslate"><span class="pre">AFNIAffine.write()</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a class="reference internal" href="#neuroreg-transforms-niftyregtransform"><code class="docutils literal notranslate"><span class="pre">neuroreg.transforms.NiftyRegTransform</span></code></a><ul>
-<li><a class="reference internal" href="#neuroreg.transforms.NiftyRegTransform"><code class="docutils literal notranslate"><span class="pre">NiftyRegTransform</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.NiftyRegTransform"><code class="docutils literal notranslate"><span class="pre">NiftyRegTransform</span></code></a><ul>
+<li><a class="reference internal" href="#neuroreg.transforms.NiftyRegTransform.read"><code class="docutils literal notranslate"><span class="pre">NiftyRegTransform.read()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.NiftyRegTransform.from_lta"><code class="docutils literal notranslate"><span class="pre">NiftyRegTransform.from_lta()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.NiftyRegTransform.to_lta"><code class="docutils literal notranslate"><span class="pre">NiftyRegTransform.to_lta()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.NiftyRegTransform.write"><code class="docutils literal notranslate"><span class="pre">NiftyRegTransform.write()</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a class="reference internal" href="#selected-transform-helpers">Selected transform helpers</a><ul>

@@ -257,7 +257,7 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">AFNIAffine</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;AFNI affine text transform.</span>
 
-<span class="sd">    Supports the common ASCII 3D affine encodings used by AFNI tools such as</span>
+<span class="sd">    Supports the common ASCII 3x4 affine encodings used by AFNI tools such as</span>
 <span class="sd">    ``3dAllineate`` and ``cat_matvec``: 3x4 text, augmented 4x4 text, or a</span>
 <span class="sd">    single row of 12 values as in ``.aff12.1D`` files.</span>
 
@@ -271,8 +271,28 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
 
+<div class="viewcode-block" id="AFNIAffine.read">
+<a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.AFNIAffine.read">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AFNIAffine</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Read an AFNI affine text transform from disk.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        filename : str or Path</span>
+<span class="sd">            Path to an AFNI affine text file, including ``.aff12.1D`` files.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        AFNIAffine</span>
+<span class="sd">            Parsed AFNI affine wrapper.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            If the file cannot be interpreted as a supported AFNI affine text</span>
+<span class="sd">            encoding.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
         <span class="n">rows</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">flat_rows</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
@@ -306,12 +326,30 @@
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">==</span> <span class="mi">9</span><span class="p">:</span>
             <span class="n">matrix</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">rows</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
             <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">matrix</span><span class="p">)</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">: could not parse AFNI affine text transform&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">: could not parse AFNI affine text transform&quot;</span><span class="p">)</span></div>
 
+
+<div class="viewcode-block" id="AFNIAffine.from_lta">
+<a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.AFNIAffine.from_lta">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">from_lta</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">lta</span><span class="p">:</span> <span class="n">LTA</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AFNIAffine</span><span class="p">:</span>
-        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">_lps_to_ras</span><span class="p">(</span><span class="n">lta</span><span class="o">.</span><span class="n">r2r</span><span class="p">()))</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create an AFNI affine wrapper from a canonical LTA.</span>
 
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        lta : LTA</span>
+<span class="sd">            Canonical scanner-RAS transform mapping moving to reference space.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        AFNIAffine</span>
+<span class="sd">            Wrapper containing the equivalent AFNI/DICOM-LPS affine.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">_lps_to_ras</span><span class="p">(</span><span class="n">lta</span><span class="o">.</span><span class="n">r2r</span><span class="p">()))</span></div>
+
+
+<div class="viewcode-block" id="AFNIAffine.to_lta">
+<a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.AFNIAffine.to_lta">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">to_lta</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">src_fname</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -319,13 +357,43 @@
         <span class="n">dst_fname</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">dst_img</span><span class="p">:</span> <span class="n">_AnyHeader</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">LTA</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert the AFNI affine to canonical scanner-RAS LTA form.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        src_fname, dst_fname : str or None, optional</span>
+<span class="sd">            Optional filenames to store in the output LTA metadata.</span>
+<span class="sd">        src_img, dst_img : header-like or None, optional</span>
+<span class="sd">            Optional source and destination image headers used to populate LTA</span>
+<span class="sd">            volume information.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        LTA</span>
+<span class="sd">            Canonical RAS-to-RAS transform wrapper.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">src_fname</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span> <span class="k">if</span> <span class="n">src_fname</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">src_fname</span>
         <span class="n">dst_fname</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span> <span class="k">if</span> <span class="n">dst_fname</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">dst_fname</span>
         <span class="n">src</span> <span class="o">=</span> <span class="n">_invalid_vol_info</span><span class="p">(</span><span class="n">src_fname</span><span class="p">)</span> <span class="k">if</span> <span class="n">src_img</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">_header_to_vol_info</span><span class="p">(</span><span class="n">_header_info</span><span class="p">(</span><span class="n">src_img</span><span class="p">),</span> <span class="n">src_fname</span><span class="p">)</span>
         <span class="n">dst</span> <span class="o">=</span> <span class="n">_invalid_vol_info</span><span class="p">(</span><span class="n">dst_fname</span><span class="p">)</span> <span class="k">if</span> <span class="n">dst_img</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">_header_to_vol_info</span><span class="p">(</span><span class="n">_header_info</span><span class="p">(</span><span class="n">dst_img</span><span class="p">),</span> <span class="n">dst_fname</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">LTA</span><span class="p">(</span><span class="n">_lps_to_ras</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">LTA</span><span class="p">(</span><span class="n">_lps_to_ras</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">)</span></div>
 
+
+<div class="viewcode-block" id="AFNIAffine.write">
+<a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.AFNIAffine.write">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Write the affine in AFNI text format.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        filename : str or Path</span>
+<span class="sd">            Output transform path.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+<span class="sd">            Writes the transform to ``filename``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
         <span class="n">matrix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">4</span><span class="p">]</span>
         <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.aff12.1d&quot;</span><span class="p">):</span>
@@ -335,6 +403,7 @@
         <span class="k">with</span> <span class="n">path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">matrix</span><span class="p">:</span>
                 <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span><span class="si">:</span><span class="s2">.9g</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">row</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span></div>
+</div>
 
 </pre></div>
         </article>

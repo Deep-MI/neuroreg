@@ -252,11 +252,37 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_normalize_comment</span><span class="p">(</span><span class="n">line</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Normalize a comment line to MINC/XFM comment syntax.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    line : str</span>
+<span class="sd">        Raw comment text.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str</span>
+<span class="sd">        Comment line guaranteed to start with ``%`` and to omit the trailing</span>
+<span class="sd">        newline.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">line</span> <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;%&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;%</span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="s2">&quot;</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_infer_paths</span><span class="p">(</span><span class="n">comments</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Infer source and destination paths from preserved XFM comments.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    comments : list[str]</span>
+<span class="sd">        Comment lines stored alongside the transform.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple[str or None, str or None]</span>
+<span class="sd">        Inferred ``(src_path, dst_path)`` pair. Missing values are returned as</span>
+<span class="sd">        ``None``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">src</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">dst</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">joined</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">comments</span><span class="p">)</span>
@@ -310,7 +336,24 @@
 <a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.XFM.read">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">XFM</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Read an XFM file.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Read an MNI/MINC XFM file from disk.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        filename : str or Path</span>
+<span class="sd">            Path to a linear ``.xfm`` transform file.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        XFM</span>
+<span class="sd">            Parsed XFM wrapper with preserved comment lines.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            If the file header is invalid or the linear transform block cannot</span>
+<span class="sd">            be parsed.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
         <span class="n">lines</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">lines</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;MNI Transform File&quot;</span><span class="p">):</span>
@@ -352,7 +395,22 @@
 <a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.XFM.from_lta">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">from_lta</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">lta</span><span class="p">:</span> <span class="n">LTA</span><span class="p">,</span> <span class="n">comments</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">XFM</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create an XFM wrapper from any LTA.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create an XFM wrapper from a canonical LTA.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        lta : LTA</span>
+<span class="sd">            Canonical scanner-RAS transform mapping moving to reference space.</span>
+<span class="sd">        comments : list[str] or None, optional</span>
+<span class="sd">            Comment lines to preserve in the output wrapper. When omitted, a</span>
+<span class="sd">            simple provenance comment is generated.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        XFM</span>
+<span class="sd">            Wrapper containing the same RAS-to-RAS matrix and inferred source /</span>
+<span class="sd">            destination paths.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">src</span> <span class="o">=</span> <span class="n">lta</span><span class="o">.</span><span class="n">src</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;filename&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
         <span class="n">dst</span> <span class="o">=</span> <span class="n">lta</span><span class="o">.</span><span class="n">dst</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;filename&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">comments</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -369,7 +427,22 @@
         <span class="n">dst_fname</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">dst_img</span><span class="p">:</span> <span class="n">_AnyHeader</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">LTA</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert to a canonical RAS-to-RAS LTA.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert the XFM wrapper to canonical scanner-RAS LTA form.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        src_fname, dst_fname : str or None, optional</span>
+<span class="sd">            Optional filenames to store in the output LTA metadata. When not</span>
+<span class="sd">            provided, inferred paths from XFM comments are used if available.</span>
+<span class="sd">        src_img, dst_img : header-like or None, optional</span>
+<span class="sd">            Optional source and destination image headers used to populate LTA</span>
+<span class="sd">            volume information.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        LTA</span>
+<span class="sd">            Canonical RAS-to-RAS transform wrapper.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">src_fname</span> <span class="o">=</span> <span class="n">src_fname</span> <span class="k">if</span> <span class="n">src_fname</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">src_path</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
         <span class="n">dst_fname</span> <span class="o">=</span> <span class="n">dst_fname</span> <span class="k">if</span> <span class="n">dst_fname</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dst_path</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
         <span class="n">src</span> <span class="o">=</span> <span class="n">_invalid_vol_info</span><span class="p">(</span><span class="n">src_fname</span><span class="p">)</span> <span class="k">if</span> <span class="n">src_img</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">_header_to_vol_info</span><span class="p">(</span><span class="n">_header_info</span><span class="p">(</span><span class="n">src_img</span><span class="p">),</span> <span class="n">src_fname</span><span class="p">)</span>
@@ -380,7 +453,18 @@
 <div class="viewcode-block" id="XFM.write">
 <a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.XFM.write">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Write the XFM file.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Write the transform in MNI/MINC XFM text format.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        filename : str or Path</span>
+<span class="sd">            Output transform path.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+<span class="sd">            Writes the transform to ``filename``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
         <span class="n">comments</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">comments</span> <span class="ow">or</span> <span class="p">[</span>
             <span class="n">_normalize_comment</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Generated by neuroreg src </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">src_path</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="si">}</span><span class="s2"> dst </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dst_path</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>

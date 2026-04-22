@@ -240,7 +240,12 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for neuroreg.segreg.register</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;High-level segmentation-based registration APIs.&quot;&quot;&quot;</span>
+<span></span><span class="sd">&quot;&quot;&quot;High-level segmentation-based registration APIs.</span>
+
+<span class="sd">This layer ties together centroid extraction, atlas resources, label presets,</span>
+<span class="sd">and point-set solvers to expose one public ``segreg`` workflow that returns a</span>
+<span class="sd">transform plus the metadata needed for downstream mapping and LTA export.</span>
+<span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -312,16 +317,29 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_default_min_common_labels</span><span class="p">(</span><span class="n">dof</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the minimum number of matched labels required for a given DoF.&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="mi">4</span> <span class="k">if</span> <span class="n">dof</span> <span class="o">==</span> <span class="mi">12</span> <span class="k">else</span> <span class="mi">3</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the default correspondence count for a given transform family.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dof : int</span>
+<span class="sd">        Requested registration degrees of freedom.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    int</span>
+<span class="sd">        Minimum number of matched labels required for the default solver setup.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">dof</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="mi">4</span> <span class="k">if</span> <span class="n">dof</span> <span class="ow">in</span> <span class="p">{</span><span class="mi">9</span><span class="p">,</span> <span class="mi">12</span><span class="p">}</span> <span class="k">else</span> <span class="mi">3</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_infer_label_ids</span><span class="p">(</span>
-    <span class="o">*</span><span class="p">,</span>
-    <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-    <span class="n">explicit_labels</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">label_set</span><span class="p">:</span> <span class="n">LabelSetName</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">target_centroids</span><span class="p">:</span> <span class="n">CentroidDict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">explicit_labels</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">label_set</span><span class="p">:</span> <span class="n">LabelSetName</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">target_centroids</span><span class="p">:</span> <span class="n">CentroidDict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve the label IDs to evaluate for the selected registration mode.</span>
 
@@ -357,7 +375,22 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_geometry_from_image</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">fallback_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_GeometryInfo</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build an internal geometry descriptor from a nibabel-like image.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build an internal geometry descriptor from an image object.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    image : Any</span>
+<span class="sd">        Nibabel-like image exposing ``get_filename()``, ``affine``, and</span>
+<span class="sd">        ``shape``.</span>
+<span class="sd">    fallback_name : str</span>
+<span class="sd">        Name to use when the image object does not report a filename.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    _GeometryInfo</span>
+<span class="sd">        Geometry wrapper containing the image object, its affine, and its</span>
+<span class="sd">        spatial shape.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">_GeometryInfo</span><span class="p">(</span>
         <span class="n">name</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">get_filename</span><span class="p">()</span> <span class="ow">or</span> <span class="n">fallback_name</span><span class="p">,</span>
         <span class="n">geometry</span><span class="o">=</span><span class="n">image</span><span class="p">,</span>
@@ -367,7 +400,19 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_geometry_from_atlas</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_GeometryInfo</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build an internal geometry descriptor from a bundled atlas resource.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build an internal geometry descriptor from bundled atlas metadata.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    name : str</span>
+<span class="sd">        Bundled atlas name.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    _GeometryInfo</span>
+<span class="sd">        Geometry wrapper containing the atlas header metadata, affine, and</span>
+<span class="sd">        spatial shape.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">atlas_affine</span><span class="p">,</span> <span class="n">atlas_header</span> <span class="o">=</span> <span class="n">load_atlas_data</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">_GeometryInfo</span><span class="p">(</span>
         <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
@@ -378,11 +423,11 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_target_centroids_and_geometry</span><span class="p">(</span>
-    <span class="o">*</span><span class="p">,</span>
-    <span class="n">ref</span><span class="p">:</span> <span class="n">ImageLike</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">ref_centroids</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">ref_geom</span><span class="p">:</span> <span class="n">ImageLike</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">atlas</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">ref</span><span class="p">:</span> <span class="n">ImageLike</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">ref_centroids</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">ref_geom</span><span class="p">:</span> <span class="n">ImageLike</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">atlas</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">CentroidDict</span><span class="p">,</span> <span class="n">_GeometryInfo</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve target centroids and optional target geometry for registration.</span>
 
@@ -433,18 +478,18 @@
 <div class="viewcode-block" id="segreg">
 <a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">segreg</span><span class="p">(</span>
-    <span class="n">mov</span><span class="p">:</span> <span class="n">ImageLike</span><span class="p">,</span>
-    <span class="n">ref</span><span class="p">:</span> <span class="n">ImageLike</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="o">*</span><span class="p">,</span>
-    <span class="n">ref_centroids</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">ref_geom</span><span class="p">:</span> <span class="n">ImageLike</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">atlas</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">dof</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span>
-    <span class="n">labels</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">label_set</span><span class="p">:</span> <span class="n">LabelSetName</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">min_common_labels</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">flipped</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-    <span class="n">midslice</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">mov</span><span class="p">:</span> <span class="n">ImageLike</span><span class="p">,</span>
+        <span class="n">ref</span><span class="p">:</span> <span class="n">ImageLike</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">ref_centroids</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">ref_geom</span><span class="p">:</span> <span class="n">ImageLike</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">atlas</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">dof</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span>
+        <span class="n">labels</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">label_set</span><span class="p">:</span> <span class="n">LabelSetName</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">min_common_labels</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">flipped</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">midslice</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RegistrationResult</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Register a moving segmentation to another segmentation, an atlas, or its LR-flipped self.</span>
 
@@ -463,16 +508,19 @@
 <span class="sd">        grid for mapped images or LTAs.</span>
 <span class="sd">    atlas : str or None, optional</span>
 <span class="sd">        Name of a bundled atlas resource such as ``&quot;fsaverage&quot;``.</span>
-<span class="sd">    dof : {6, 12}, default=6</span>
-<span class="sd">        Degrees of freedom for the closed-form fit. ``6`` selects rigid</span>
-<span class="sd">        registration and ``12`` selects affine registration.</span>
+<span class="sd">    dof : {3, 6, 7, 9, 12}, default=6</span>
+<span class="sd">        Degrees of freedom for the closed-form fit. ``3`` selects</span>
+<span class="sd">        translation-only, ``6`` rigid, ``7`` rigid plus global scale, ``9``</span>
+<span class="sd">        rigid plus anisotropic scaling without shear, and ``12`` affine</span>
+<span class="sd">        registration.</span>
 <span class="sd">    labels : list[int] or None, optional</span>
 <span class="sd">        Explicit label subset override.</span>
 <span class="sd">    label_set : {&#39;all_shared&#39;, &#39;fsaverage_centroids&#39;, &#39;cortex_lr_pairs&#39;} or None, optional</span>
 <span class="sd">        Named label preset. Mode-specific defaults are used when omitted.</span>
 <span class="sd">    min_common_labels : int or None, optional</span>
 <span class="sd">        Minimum number of matched labels required to proceed. When omitted, the</span>
-<span class="sd">        default is ``3`` for rigid and ``4`` for affine registration.</span>
+<span class="sd">        default is ``1`` for translation-only, ``3`` for rigid/similarity, and</span>
+<span class="sd">        ``4`` for anisotropic-scale or affine registration.</span>
 <span class="sd">    flipped : bool, default=False</span>
 <span class="sd">        If ``True``, ignore external targets and register the moving</span>
 <span class="sd">        segmentation to a left-right flipped self target for upright/midspace</span>
@@ -497,8 +545,12 @@
     <span class="n">mov_name</span> <span class="o">=</span> <span class="n">mov_img</span><span class="o">.</span><span class="n">get_filename</span><span class="p">()</span> <span class="ow">or</span> <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">mov</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">mov</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">))</span> <span class="k">else</span> <span class="s2">&quot;moving.mgz&quot;</span><span class="p">)</span>
     <span class="n">mov_affine</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mov_img</span><span class="o">.</span><span class="n">affine</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
 
-    <span class="k">if</span> <span class="n">dof</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="mi">6</span><span class="p">,</span> <span class="mi">12</span><span class="p">}:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported dof=</span><span class="si">{</span><span class="n">dof</span><span class="si">}</span><span class="s2">. Segmentation registration supports only rigid (6) or affine (12).&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">dof</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">12</span><span class="p">}:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Unsupported dof=</span><span class="si">{</span><span class="n">dof</span><span class="si">}</span><span class="s2">. Segmentation registration supports &quot;</span>
+            <span class="s2">&quot;3 (translation-only), 6 (rigid), 7 (similarity), &quot;</span>
+            <span class="s2">&quot;9 (anisotropic scale without shear), or 12 (affine).&quot;</span>
+        <span class="p">)</span>
 
     <span class="k">if</span> <span class="n">min_common_labels</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">min_common_labels</span> <span class="o">=</span> <span class="n">_default_min_common_labels</span><span class="p">(</span><span class="n">dof</span><span class="p">)</span>
@@ -582,6 +634,11 @@
 <span class="sd">    labels : list[int] or None, optional</span>
 <span class="sd">        Optional label subset to export. When omitted, all non-zero labels are</span>
 <span class="sd">        written.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    None</span>
+<span class="sd">        Writes the selected scanner-RAS centroids to ``out_path``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">centroids</span> <span class="o">=</span> <span class="n">compute_ras_centroids_from_seg</span><span class="p">(</span><span class="n">seg</span><span class="p">,</span> <span class="n">label_ids</span><span class="o">=</span><span class="n">labels</span><span class="p">)</span>
     <span class="n">write_centroids_json</span><span class="p">(</span><span class="n">out_path</span><span class="p">,</span> <span class="n">centroids</span><span class="p">)</span></div>
@@ -591,11 +648,11 @@
 <div class="viewcode-block" id="resolve_output_geometry">
 <a class="viewcode-back" href="../../../api/segreg.html#neuroreg.resolve_output_geometry">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">resolve_output_geometry</span><span class="p">(</span>
-    <span class="n">result</span><span class="p">:</span> <span class="n">RegistrationResult</span><span class="p">,</span>
-    <span class="o">*</span><span class="p">,</span>
-    <span class="n">keep_geom</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-    <span class="n">mov_img</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
-    <span class="n">ref_img</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">result</span><span class="p">:</span> <span class="n">RegistrationResult</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">keep_geom</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">mov_img</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">ref_img</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve the geometry used for a resliced mapped output.</span>
 

@@ -240,7 +240,12 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for neuroreg.segreg.points</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Closed-form point-set registration helpers.&quot;&quot;&quot;</span>
+<span></span><span class="sd">&quot;&quot;&quot;Closed-form point-set registration helpers.</span>
+
+<span class="sd">This module implements the small family of transform models used by</span>
+<span class="sd">``segreg``: translation-only, rigid, similarity, anisotropic no-shear, and</span>
+<span class="sd">full affine fits between paired 3-D point sets.</span>
+<span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -251,6 +256,26 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_as_points</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PointArray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Coerce an array-like object into an ``(N, 3)`` point array.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    points : array-like</span>
+<span class="sd">        Candidate point coordinates.</span>
+<span class="sd">    name : str</span>
+<span class="sd">        Argument name used in validation errors.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    np.ndarray</span>
+<span class="sd">        Float64 array with shape ``(N, 3)``.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If ``points`` cannot be interpreted as a two-dimensional array with</span>
+<span class="sd">        three columns.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">points_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">points_array</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span> <span class="ow">or</span> <span class="n">points_array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> must have shape (N, 3), got </span><span class="si">{</span><span class="n">points_array</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
@@ -258,6 +283,23 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_validate_pairwise_points</span><span class="p">(</span><span class="n">p_mov</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span> <span class="n">p_dst</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">PointArray</span><span class="p">,</span> <span class="n">PointArray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate paired moving and destination point arrays.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    p_mov, p_dst : array-like</span>
+<span class="sd">        Candidate moving and destination point arrays.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple[np.ndarray, np.ndarray]</span>
+<span class="sd">        Validated float64 arrays with identical ``(N, 3)`` shape.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If either array has the wrong shape or if the shapes do not match.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">mov</span> <span class="o">=</span> <span class="n">_as_points</span><span class="p">(</span><span class="n">p_mov</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;p_mov&quot;</span><span class="p">)</span>
     <span class="n">dst</span> <span class="o">=</span> <span class="n">_as_points</span><span class="p">(</span><span class="n">p_dst</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;p_dst&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">mov</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">dst</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
@@ -268,7 +310,23 @@
 <div class="viewcode-block" id="find_rotation">
 <a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.points.find_rotation">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">find_rotation</span><span class="p">(</span><span class="n">p_mov</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span> <span class="n">p_dst</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PointArray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the rotation matrix that best aligns two centered point sets.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Estimate the best-fit proper rotation between centered point sets.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    p_mov, p_dst : array-like</span>
+<span class="sd">        Mean-centered moving and destination point arrays with matching shape.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    np.ndarray</span>
+<span class="sd">        ``(3, 3)`` proper rotation matrix minimizing the least-squares error.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    The solution uses the Kabsch SVD update and flips the final singular vector</span>
+<span class="sd">    when necessary to enforce a positive determinant.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">mov</span><span class="p">,</span> <span class="n">dst</span> <span class="o">=</span> <span class="n">_validate_pairwise_points</span><span class="p">(</span><span class="n">p_mov</span><span class="p">,</span> <span class="n">p_dst</span><span class="p">)</span>
     <span class="n">h</span> <span class="o">=</span> <span class="n">mov</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">dst</span>
     <span class="n">u</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">vt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">svd</span><span class="p">(</span><span class="n">h</span><span class="p">)</span>
@@ -280,24 +338,96 @@
 
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_center_pairwise_points</span><span class="p">(</span>
+    <span class="n">p_mov</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span>
+    <span class="n">p_dst</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">PointArray</span><span class="p">,</span> <span class="n">PointArray</span><span class="p">,</span> <span class="n">PointArray</span><span class="p">,</span> <span class="n">PointArray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return paired point sets together with mean-centered coordinates.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    p_mov, p_dst : array-like</span>
+<span class="sd">        Moving and destination point arrays.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    mov : np.ndarray</span>
+<span class="sd">        Original moving points.</span>
+<span class="sd">    dst : np.ndarray</span>
+<span class="sd">        Original destination points.</span>
+<span class="sd">    mov_centered : np.ndarray</span>
+<span class="sd">        Moving points with the centroid removed.</span>
+<span class="sd">    dst_centered : np.ndarray</span>
+<span class="sd">        Destination points with the centroid removed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mov</span><span class="p">,</span> <span class="n">dst</span> <span class="o">=</span> <span class="n">_validate_pairwise_points</span><span class="p">(</span><span class="n">p_mov</span><span class="p">,</span> <span class="n">p_dst</span><span class="p">)</span>
+    <span class="n">centroid_mov</span> <span class="o">=</span> <span class="n">mov</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">centroid_dst</span> <span class="o">=</span> <span class="n">dst</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">mov</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span class="n">mov</span> <span class="o">-</span> <span class="n">centroid_mov</span><span class="p">,</span> <span class="n">dst</span> <span class="o">-</span> <span class="n">centroid_dst</span>
+
+
+<div class="viewcode-block" id="find_translation">
+<a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.points.find_translation">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">find_translation</span><span class="p">(</span><span class="n">p_mov</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span> <span class="n">p_dst</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PointArray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fit a translation-only transform between paired 3-D point sets.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    p_mov, p_dst : array-like</span>
+<span class="sd">        Paired moving and destination points with shape ``(N, 3)``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    np.ndarray</span>
+<span class="sd">        ``(4, 4)`` homogeneous transform with identity linear part and a</span>
+<span class="sd">        translation equal to the centroid offset between the point sets.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If no point correspondences are provided.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mov</span><span class="p">,</span> <span class="n">dst</span> <span class="o">=</span> <span class="n">_validate_pairwise_points</span><span class="p">(</span><span class="n">p_mov</span><span class="p">,</span> <span class="n">p_dst</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">mov</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Translation registration requires at least 1 point correspondence.&quot;</span><span class="p">)</span>
+
+    <span class="n">transform</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">transform</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">dst</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="n">mov</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">transform</span></div>
+
+
+
 <div class="viewcode-block" id="find_rigid">
 <a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.points.find_rigid">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">find_rigid</span><span class="p">(</span><span class="n">p_mov</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span> <span class="n">p_dst</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PointArray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the rigid homogeneous transform that best aligns two point sets.&quot;&quot;&quot;</span>
-    <span class="n">mov</span><span class="p">,</span> <span class="n">dst</span> <span class="o">=</span> <span class="n">_validate_pairwise_points</span><span class="p">(</span><span class="n">p_mov</span><span class="p">,</span> <span class="n">p_dst</span><span class="p">)</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fit a rigid transform between paired 3-D point sets.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    p_mov, p_dst : array-like</span>
+<span class="sd">        Paired moving and destination points with shape ``(N, 3)``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    np.ndarray</span>
+<span class="sd">        ``(4, 4)`` homogeneous rigid transform mapping moving points to</span>
+<span class="sd">        destination points.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If fewer than three correspondences are provided or if the points are</span>
+<span class="sd">        degenerate/collinear.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mov</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span class="n">mov_centered</span><span class="p">,</span> <span class="n">dst_centered</span> <span class="o">=</span> <span class="n">_center_pairwise_points</span><span class="p">(</span><span class="n">p_mov</span><span class="p">,</span> <span class="n">p_dst</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">mov</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Rigid registration requires at least 3 point correspondences.&quot;</span><span class="p">)</span>
-
-    <span class="n">centroid_mov</span> <span class="o">=</span> <span class="n">mov</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-    <span class="n">centroid_dst</span> <span class="o">=</span> <span class="n">dst</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-    <span class="n">mov_centered</span> <span class="o">=</span> <span class="n">mov</span> <span class="o">-</span> <span class="n">centroid_mov</span>
-    <span class="n">dst_centered</span> <span class="o">=</span> <span class="n">dst</span> <span class="o">-</span> <span class="n">centroid_dst</span>
 
     <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">matrix_rank</span><span class="p">(</span><span class="n">mov_centered</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">matrix_rank</span><span class="p">(</span><span class="n">dst_centered</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Rigid registration requires non-collinear point correspondences.&quot;</span><span class="p">)</span>
 
     <span class="n">rotation</span> <span class="o">=</span> <span class="n">find_rotation</span><span class="p">(</span><span class="n">mov_centered</span><span class="p">,</span> <span class="n">dst_centered</span><span class="p">)</span>
-    <span class="n">translation</span> <span class="o">=</span> <span class="n">centroid_dst</span> <span class="o">-</span> <span class="n">rotation</span> <span class="o">@</span> <span class="n">centroid_mov</span>
+    <span class="n">translation</span> <span class="o">=</span> <span class="n">dst</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="n">rotation</span> <span class="o">@</span> <span class="n">mov</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
 
     <span class="n">transform</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
     <span class="n">transform</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">rotation</span>
@@ -306,10 +436,149 @@
 
 
 
+<div class="viewcode-block" id="find_similarity">
+<a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.points.find_similarity">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">find_similarity</span><span class="p">(</span><span class="n">p_mov</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span> <span class="n">p_dst</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PointArray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fit a similarity transform with one global scale factor.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    p_mov, p_dst : array-like</span>
+<span class="sd">        Paired moving and destination points with shape ``(N, 3)``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    np.ndarray</span>
+<span class="sd">        ``(4, 4)`` homogeneous similarity transform.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If the correspondences are insufficient, degenerate, or imply a</span>
+<span class="sd">        non-positive isotropic scale.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mov</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span class="n">mov_centered</span><span class="p">,</span> <span class="n">dst_centered</span> <span class="o">=</span> <span class="n">_center_pairwise_points</span><span class="p">(</span><span class="n">p_mov</span><span class="p">,</span> <span class="n">p_dst</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">mov</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Similarity registration requires at least 3 point correspondences.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">matrix_rank</span><span class="p">(</span><span class="n">mov_centered</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">matrix_rank</span><span class="p">(</span><span class="n">dst_centered</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Similarity registration requires non-collinear point correspondences.&quot;</span><span class="p">)</span>
+
+    <span class="n">rotation</span> <span class="o">=</span> <span class="n">find_rotation</span><span class="p">(</span><span class="n">mov_centered</span><span class="p">,</span> <span class="n">dst_centered</span><span class="p">)</span>
+    <span class="n">numerator</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">mov_centered</span> <span class="o">@</span> <span class="n">rotation</span><span class="o">.</span><span class="n">T</span><span class="p">)</span> <span class="o">*</span> <span class="n">dst_centered</span><span class="p">))</span>
+    <span class="n">denominator</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mov_centered</span> <span class="o">*</span> <span class="n">mov_centered</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">denominator</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Similarity registration requires non-degenerate point correspondences.&quot;</span><span class="p">)</span>
+    <span class="n">scale</span> <span class="o">=</span> <span class="n">numerator</span> <span class="o">/</span> <span class="n">denominator</span>
+    <span class="k">if</span> <span class="n">scale</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Similarity registration requires a positive isotropic scale.&quot;</span><span class="p">)</span>
+
+    <span class="n">linear</span> <span class="o">=</span> <span class="n">scale</span> <span class="o">*</span> <span class="n">rotation</span>
+    <span class="n">translation</span> <span class="o">=</span> <span class="n">dst</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="n">linear</span> <span class="o">@</span> <span class="n">mov</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="n">transform</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">transform</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">linear</span>
+    <span class="n">transform</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">translation</span>
+    <span class="k">return</span> <span class="n">transform</span></div>
+
+
+
+<div class="viewcode-block" id="find_rigid_anisotropic_scale">
+<a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.points.find_rigid_anisotropic_scale">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">find_rigid_anisotropic_scale</span><span class="p">(</span>
+    <span class="n">p_mov</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span>
+    <span class="n">p_dst</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">max_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span>
+    <span class="n">tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-10</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PointArray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fit a rotation-plus-anisotropic-scale transform without shear.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    p_mov, p_dst : array-like</span>
+<span class="sd">        Paired moving and destination points with shape ``(N, 3)``.</span>
+<span class="sd">    max_iter : int, default=64</span>
+<span class="sd">        Maximum number of alternating updates for the rotation and scale terms.</span>
+<span class="sd">    tol : float, default=1e-10</span>
+<span class="sd">        Convergence tolerance on the change in axis scales.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    np.ndarray</span>
+<span class="sd">        ``(4, 4)`` homogeneous transform whose linear part is constrained to</span>
+<span class="sd">        ``R @ diag(s)``.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If fewer than four correspondences are provided, if the points do not</span>
+<span class="sd">        span 3-D space, or if the fitted axis scales become non-positive.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    The solver alternates exact updates for ``R`` and ``diag(s)`` while always</span>
+<span class="sd">    rebuilding one constrained linear transform instead of composing</span>
+<span class="sd">    incremental updates that would accumulate shear.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mov</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span class="n">mov_centered</span><span class="p">,</span> <span class="n">dst_centered</span> <span class="o">=</span> <span class="n">_center_pairwise_points</span><span class="p">(</span><span class="n">p_mov</span><span class="p">,</span> <span class="n">p_dst</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">mov</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Anisotropic-scale registration requires at least 4 point correspondences.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">matrix_rank</span><span class="p">(</span><span class="n">mov_centered</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">matrix_rank</span><span class="p">(</span><span class="n">dst_centered</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Anisotropic-scale registration requires point correspondences that span 3-D space.&quot;</span><span class="p">)</span>
+
+    <span class="n">scales</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">rotation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">min_scale</span> <span class="o">=</span> <span class="mf">1e-12</span>
+
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_iter</span><span class="p">):</span>
+        <span class="n">prev_scales</span> <span class="o">=</span> <span class="n">scales</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="n">scaled_mov</span> <span class="o">=</span> <span class="n">mov_centered</span> <span class="o">*</span> <span class="n">scales</span>
+        <span class="n">rotation</span> <span class="o">=</span> <span class="n">find_rotation</span><span class="p">(</span><span class="n">scaled_mov</span><span class="p">,</span> <span class="n">dst_centered</span><span class="p">)</span>
+
+        <span class="n">aligned_dst</span> <span class="o">=</span> <span class="n">dst_centered</span> <span class="o">@</span> <span class="n">rotation</span>
+        <span class="n">denominator</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mov_centered</span> <span class="o">*</span> <span class="n">mov_centered</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">denominator</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Anisotropic-scale registration requires non-degenerate point correspondences.&quot;</span><span class="p">)</span>
+        <span class="n">scales</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mov_centered</span> <span class="o">*</span> <span class="n">aligned_dst</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="n">denominator</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">scales</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Anisotropic-scale registration requires positive axis scales.&quot;</span><span class="p">)</span>
+        <span class="n">scales</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">scales</span><span class="p">,</span> <span class="n">min_scale</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">scales</span> <span class="o">-</span> <span class="n">prev_scales</span><span class="p">))</span> <span class="o">&lt;=</span> <span class="n">tol</span><span class="p">:</span>
+            <span class="k">break</span>
+
+    <span class="n">linear</span> <span class="o">=</span> <span class="n">rotation</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">scales</span><span class="p">)</span>
+    <span class="n">translation</span> <span class="o">=</span> <span class="n">dst</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="n">linear</span> <span class="o">@</span> <span class="n">mov</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="n">transform</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">transform</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">linear</span>
+    <span class="n">transform</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">translation</span>
+    <span class="k">return</span> <span class="n">transform</span></div>
+
+
+
 <div class="viewcode-block" id="find_affine">
 <a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.points.find_affine">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">find_affine</span><span class="p">(</span><span class="n">p_mov</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span> <span class="n">p_dst</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PointArray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the affine homogeneous transform that best aligns two point sets.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fit a full affine transform between paired 3-D point sets.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    p_mov, p_dst : array-like</span>
+<span class="sd">        Paired moving and destination points with shape ``(N, 3)``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    np.ndarray</span>
+<span class="sd">        ``(4, 4)`` least-squares affine transform.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If fewer than four correspondences are provided or if the points do not</span>
+<span class="sd">        span affine 3-D space.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">mov</span><span class="p">,</span> <span class="n">dst</span> <span class="o">=</span> <span class="n">_validate_pairwise_points</span><span class="p">(</span><span class="n">p_mov</span><span class="p">,</span> <span class="n">p_dst</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">mov</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Affine registration requires at least 4 point correspondences.&quot;</span><span class="p">)</span>
@@ -327,12 +596,38 @@
 <div class="viewcode-block" id="register_points">
 <a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.points.register_points">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">register_points</span><span class="p">(</span><span class="n">p_mov</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span> <span class="n">p_dst</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span> <span class="n">dof</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PointArray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Register two point sets with a rigid or affine closed-form fit.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Dispatch to the closed-form point-set solver for a requested DoF.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    p_mov, p_dst : array-like</span>
+<span class="sd">        Paired moving and destination points with shape ``(N, 3)``.</span>
+<span class="sd">    dof : {3, 6, 7, 9, 12}, default=6</span>
+<span class="sd">        Requested transform family.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    np.ndarray</span>
+<span class="sd">        ``(4, 4)`` homogeneous transform returned by the selected solver.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If ``dof`` is not one of the supported closed-form solvers.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">dof</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">find_translation</span><span class="p">(</span><span class="n">p_mov</span><span class="p">,</span> <span class="n">p_dst</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">dof</span> <span class="o">==</span> <span class="mi">6</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">find_rigid</span><span class="p">(</span><span class="n">p_mov</span><span class="p">,</span> <span class="n">p_dst</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">dof</span> <span class="o">==</span> <span class="mi">7</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">find_similarity</span><span class="p">(</span><span class="n">p_mov</span><span class="p">,</span> <span class="n">p_dst</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">dof</span> <span class="o">==</span> <span class="mi">9</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">find_rigid_anisotropic_scale</span><span class="p">(</span><span class="n">p_mov</span><span class="p">,</span> <span class="n">p_dst</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">dof</span> <span class="o">==</span> <span class="mi">12</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">find_affine</span><span class="p">(</span><span class="n">p_mov</span><span class="p">,</span> <span class="n">p_dst</span><span class="p">)</span>
-    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported dof=</span><span class="si">{</span><span class="n">dof</span><span class="si">}</span><span class="s2">. Closed-form point registration supports only 6 or 12 DoF.&quot;</span><span class="p">)</span></div>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;Unsupported dof=</span><span class="si">{</span><span class="n">dof</span><span class="si">}</span><span class="s2">. Closed-form point registration supports only 3, 6, 7, 9, or 12 DoF.&quot;</span>
+    <span class="p">)</span></div>
 
 </pre></div>
         </article>

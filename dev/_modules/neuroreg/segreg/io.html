@@ -240,7 +240,12 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for neuroreg.segreg.io</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;JSON I/O helpers for centroid-based registration.&quot;&quot;&quot;</span>
+<span></span><span class="sd">&quot;&quot;&quot;JSON I/O helpers for centroid-based registration.</span>
+
+<span class="sd">The centroid JSON format is intentionally simple: label IDs map to 3-vector</span>
+<span class="sd">coordinates. These helpers normalize NumPy-heavy in-memory objects to that</span>
+<span class="sd">portable representation and back.</span>
+<span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -257,7 +262,19 @@
 <div class="viewcode-block" id="convert_numpy_to_json_serializable">
 <a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.io.convert_numpy_to_json_serializable">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">convert_numpy_to_json_serializable</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">object</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert numpy objects into JSON-serializable Python values.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert nested NumPy-backed objects into JSON-safe Python values.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    obj : object</span>
+<span class="sd">        Object tree that may contain dictionaries, lists, tuples, NumPy arrays,</span>
+<span class="sd">        or NumPy scalar types.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    object</span>
+<span class="sd">        Equivalent structure composed only of JSON-serializable Python values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
         <span class="k">return</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">convert_numpy_to_json_serializable</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">obj</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
@@ -275,7 +292,18 @@
 <div class="viewcode-block" id="read_centroids_json">
 <a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.io.read_centroids_json">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">read_centroids_json</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CentroidDict</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Read label centroids from a JSON file.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Read centroid coordinates from JSON.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    path : str or Path</span>
+<span class="sd">        Path to a centroid JSON file.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict[int, np.ndarray]</span>
+<span class="sd">        Label-to-centroid mapping with float64 NumPy arrays.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">centroid_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
     <span class="k">with</span> <span class="n">centroid_path</span><span class="o">.</span><span class="n">open</span><span class="p">()</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
         <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
@@ -286,7 +314,20 @@
 <div class="viewcode-block" id="write_centroids_json">
 <a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.io.write_centroids_json">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">write_centroids_json</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span> <span class="n">centroids</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span> <span class="o">|</span> <span class="kc">None</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Write label centroids to a JSON file, skipping labels with missing points.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Write centroid coordinates to JSON.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    path : str or Path</span>
+<span class="sd">        Output JSON path.</span>
+<span class="sd">    centroids : dict[int, array-like or None]</span>
+<span class="sd">        Label-to-centroid mapping. Entries with value ``None`` are skipped.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    None</span>
+<span class="sd">        Writes the centroid payload to ``path``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">payload</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">point</span> <span class="ow">in</span> <span class="n">centroids</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
         <span class="k">if</span> <span class="n">point</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>

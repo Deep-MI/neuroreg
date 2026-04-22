@@ -240,7 +240,12 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for neuroreg.segreg.labels</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Label presets for segmentation-based registration.&quot;&quot;&quot;</span>
+<span></span><span class="sd">&quot;&quot;&quot;Label presets and left/right cortical pairing tables for segreg.</span>
+
+<span class="sd">The helpers in this module provide stable label subsets for centroid-based</span>
+<span class="sd">registration modes, especially the left/right pairing used by upright/self-flip</span>
+<span class="sd">registration.</span>
+<span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -323,7 +328,13 @@
 <div class="viewcode-block" id="get_cortex_lr_pairs">
 <a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.labels.get_cortex_lr_pairs">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_cortex_lr_pairs</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="o">...</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the FastSurfer cortical left/right label pairs used for upright mode.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return cortical left/right label pairs used for upright registration.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple[tuple[int, int], ...]</span>
+<span class="sd">        Paired FastSurfer cortical labels ordered as ``(left, right)``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">CORTEX_LR_PAIRS</span></div>
 
 
@@ -331,7 +342,13 @@
 <div class="viewcode-block" id="get_cortex_lr_labels">
 <a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.labels.get_cortex_lr_labels">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_cortex_lr_labels</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the flattened cortical label list used by the upright mode.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the flattened cortical label list used by upright mode.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list[int]</span>
+<span class="sd">        Left-hemisphere labels followed by the matching right-hemisphere labels.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">CORTEX_LR_LABELS</span><span class="p">)</span></div>
 
 </pre></div>

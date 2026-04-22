@@ -566,15 +566,18 @@ grid for mapped images or LTAs.</p>
 </dd>
 <dt><strong>atlas</strong><span class="classifier">str or None, optional</span></dt><dd><p>Name of a bundled atlas resource such as <code class="docutils literal notranslate"><span class="pre">&quot;fsaverage&quot;</span></code>.</p>
 </dd>
-<dt><strong>dof</strong><span class="classifier">{6, 12}, default=6</span></dt><dd><p>Degrees of freedom for the closed-form fit. <code class="docutils literal notranslate"><span class="pre">6</span></code> selects rigid
-registration and <code class="docutils literal notranslate"><span class="pre">12</span></code> selects affine registration.</p>
+<dt><strong>dof</strong><span class="classifier">{3, 6, 7, 9, 12}, default=6</span></dt><dd><p>Degrees of freedom for the closed-form fit. <code class="docutils literal notranslate"><span class="pre">3</span></code> selects
+translation-only, <code class="docutils literal notranslate"><span class="pre">6</span></code> rigid, <code class="docutils literal notranslate"><span class="pre">7</span></code> rigid plus global scale, <code class="docutils literal notranslate"><span class="pre">9</span></code>
+rigid plus anisotropic scaling without shear, and <code class="docutils literal notranslate"><span class="pre">12</span></code> affine
+registration.</p>
 </dd>
 <dt><strong>labels</strong><span class="classifier">list[int] or None, optional</span></dt><dd><p>Explicit label subset override.</p>
 </dd>
 <dt><strong>label_set</strong><span class="classifier">{‘all_shared’, ‘fsaverage_centroids’, ‘cortex_lr_pairs’} or None, optional</span></dt><dd><p>Named label preset. Mode-specific defaults are used when omitted.</p>
 </dd>
 <dt><strong>min_common_labels</strong><span class="classifier">int or None, optional</span></dt><dd><p>Minimum number of matched labels required to proceed. When omitted, the
-default is <code class="docutils literal notranslate"><span class="pre">3</span></code> for rigid and <code class="docutils literal notranslate"><span class="pre">4</span></code> for affine registration.</p>
+default is <code class="docutils literal notranslate"><span class="pre">1</span></code> for translation-only, <code class="docutils literal notranslate"><span class="pre">3</span></code> for rigid/similarity, and
+<code class="docutils literal notranslate"><span class="pre">4</span></code> for anisotropic-scale or affine registration.</p>
 </dd>
 <dt><strong>flipped</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, ignore external targets and register the moving
 segmentation to a left-right flipped self target for upright/midspace

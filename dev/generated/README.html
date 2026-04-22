@@ -659,7 +659,10 @@ bbreg<span class="w"> </span>--mov<span class="w"> </span>fMRI.nii.gz<span class
 <h3><code class="docutils literal notranslate"><span class="pre">segreg</span></code> — segmentation-based registration<a class="headerlink" href="#segreg-segmentation-based-registration" title="Link to this heading">¶</a></h3>
 <p>Registers a moving segmentation by aligning label centroids to another
 segmentation, to bundled atlas centroids such as <code class="docutils literal notranslate"><span class="pre">fsaverage</span></code>, or to a
-left-right flipped self target for upright/midspace workflows.</p>
+left-right flipped self target for upright/midspace workflows. The centroid
+fit now supports translation-only (<code class="docutils literal notranslate"><span class="pre">3</span></code>), rigid (<code class="docutils literal notranslate"><span class="pre">6</span></code>), similarity /
+global-scale (<code class="docutils literal notranslate"><span class="pre">7</span></code>), anisotropic no-shear scaling (<code class="docutils literal notranslate"><span class="pre">9</span></code>), or full affine
+(<code class="docutils literal notranslate"><span class="pre">12</span></code>) transforms.</p>
 <p><code class="docutils literal notranslate"><span class="pre">segreg</span></code> can also write mapped outputs while the package does not yet have a
 separate transform-application CLI. If <code class="docutils literal notranslate"><span class="pre">--movimg</span></code> is provided, <code class="docutils literal notranslate"><span class="pre">--mapmov</span></code> and
 <code class="docutils literal notranslate"><span class="pre">--mapmovhdr</span></code> map that intensity image with the recovered transform; otherwise
@@ -1005,7 +1008,7 @@ known bug in the C++ single-transform corner metric, which is fixed here).</p></
 <td><p><code class="docutils literal notranslate"><span class="pre">6</span></code>, <code class="docutils literal notranslate"><span class="pre">9</span></code>, <code class="docutils literal notranslate"><span class="pre">12</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">segreg</span></code> / public <code class="docutils literal notranslate"><span class="pre">segreg()</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">6</span></code>, <code class="docutils literal notranslate"><span class="pre">12</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">3</span></code>, <code class="docutils literal notranslate"><span class="pre">6</span></code>, <code class="docutils literal notranslate"><span class="pre">7</span></code>, <code class="docutils literal notranslate"><span class="pre">9</span></code>, <code class="docutils literal notranslate"><span class="pre">12</span></code></p></td>
 </tr>
 </tbody>
 </table>

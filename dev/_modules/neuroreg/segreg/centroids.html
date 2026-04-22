@@ -240,7 +240,12 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for neuroreg.segreg.centroids</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Centroid extraction helpers for label images.&quot;&quot;&quot;</span>
+<span></span><span class="sd">&quot;&quot;&quot;Centroid extraction and matching helpers for label images.</span>
+
+<span class="sd">These utilities keep image loading, centroid computation, and shared-label</span>
+<span class="sd">assembly in one place so higher-level registration code can focus on transform</span>
+<span class="sd">estimation rather than segmentation bookkeeping.</span>
+<span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -259,7 +264,18 @@
 <div class="viewcode-block" id="load_spatial_image">
 <a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.centroids.load_spatial_image">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_spatial_image</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="n">ImageLike</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load a nibabel-compatible image or return an already-loaded image.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load a nibabel-compatible image or pass through an in-memory object.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    image : ImageLike</span>
+<span class="sd">        Path to an image on disk or an already-loaded nibabel-like image.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Any</span>
+<span class="sd">        Loaded image object exposing at least ``dataobj`` and ``affine``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">)):</span>
         <span class="k">return</span> <span class="n">nib</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">image</span><span class="p">))</span>
     <span class="k">return</span> <span class="n">image</span></div>
@@ -267,6 +283,21 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_label_ids</span><span class="p">(</span><span class="n">seg_data</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">],</span> <span class="n">label_ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve the segmentation labels that should be processed.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    seg_data : np.ndarray</span>
+<span class="sd">        Segmentation array containing integer label IDs.</span>
+<span class="sd">    label_ids : list[int] or None</span>
+<span class="sd">        Explicit label subset. When ``None``, all unique non-zero labels in</span>
+<span class="sd">        ``seg_data`` are returned.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list[int]</span>
+<span class="sd">        Label IDs to include in centroid extraction.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">label_ids</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">seg_data</span><span class="p">)</span>
         <span class="n">labels</span> <span class="o">=</span> <span class="n">labels</span><span class="p">[</span><span class="n">labels</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
@@ -280,7 +311,22 @@
     <span class="n">seg_img</span><span class="p">:</span> <span class="n">ImageLike</span><span class="p">,</span>
     <span class="n">label_ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute voxel-space centroids for segmentation labels.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute voxel-space centroids for labels in a segmentation image.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    seg_img : ImageLike</span>
+<span class="sd">        Segmentation image or path.</span>
+<span class="sd">    label_ids : list[int] or None, optional</span>
+<span class="sd">        Explicit label subset to evaluate. When omitted, all non-zero labels in</span>
+<span class="sd">        the segmentation are used.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict[int, np.ndarray or None]</span>
+<span class="sd">        Mapping from label ID to centroid in voxel coordinates. Labels with no</span>
+<span class="sd">        matching voxels are assigned ``None``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">image</span> <span class="o">=</span> <span class="n">load_spatial_image</span><span class="p">(</span><span class="n">seg_img</span><span class="p">)</span>
     <span class="n">seg_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">dataobj</span><span class="p">)</span>
     <span class="n">labels</span> <span class="o">=</span> <span class="n">_resolve_label_ids</span><span class="p">(</span><span class="n">seg_data</span><span class="p">,</span> <span class="n">label_ids</span><span class="p">)</span>
@@ -299,7 +345,22 @@
     <span class="n">seg_img</span><span class="p">:</span> <span class="n">ImageLike</span><span class="p">,</span>
     <span class="n">label_ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute RAS-space centroids for segmentation labels.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute scanner-RAS centroids for labels in a segmentation image.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    seg_img : ImageLike</span>
+<span class="sd">        Segmentation image or path.</span>
+<span class="sd">    label_ids : list[int] or None, optional</span>
+<span class="sd">        Explicit label subset to evaluate. When omitted, all non-zero labels in</span>
+<span class="sd">        the segmentation are used.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict[int, np.ndarray or None]</span>
+<span class="sd">        Mapping from label ID to centroid in scanner-RAS coordinates. Labels</span>
+<span class="sd">        with no matching voxels are assigned ``None``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">image</span> <span class="o">=</span> <span class="n">load_spatial_image</span><span class="p">(</span><span class="n">seg_img</span><span class="p">)</span>
     <span class="n">voxel_centroids</span> <span class="o">=</span> <span class="n">compute_voxel_centroids_from_seg</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">label_ids</span><span class="o">=</span><span class="n">label_ids</span><span class="p">)</span>
     <span class="n">affine</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">affine</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
@@ -323,7 +384,31 @@
     <span class="o">*</span><span class="p">,</span>
     <span class="n">min_common_labels</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">],</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Collect matched centroid arrays and their shared label IDs.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Collect matched centroid arrays for labels present in both inputs.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mov_centroids : dict[int, np.ndarray or None]</span>
+<span class="sd">        Moving-image centroid mapping.</span>
+<span class="sd">    ref_centroids : dict[int, np.ndarray or None]</span>
+<span class="sd">        Reference or atlas centroid mapping.</span>
+<span class="sd">    min_common_labels : int</span>
+<span class="sd">        Minimum number of shared labels required to continue.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    mov_points : np.ndarray</span>
+<span class="sd">        ``(N, 3)`` moving centroid array.</span>
+<span class="sd">    ref_points : np.ndarray</span>
+<span class="sd">        ``(N, 3)`` reference centroid array.</span>
+<span class="sd">    labels : list[int]</span>
+<span class="sd">        Sorted shared labels used to build the paired arrays.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If fewer than ``min_common_labels`` valid correspondences are found.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span>
         <span class="n">label</span>
         <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">mov_point</span> <span class="ow">in</span> <span class="n">mov_centroids</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
@@ -351,7 +436,33 @@
     <span class="n">mid_slice</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
     <span class="n">min_common_labels</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">],</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build source/target voxel centroids for left-right flipped self-registration.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build paired voxel centroids for left-right flipped self-registration.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    voxel_centroids : dict[int, np.ndarray or None]</span>
+<span class="sd">        Moving-image centroid mapping in voxel coordinates.</span>
+<span class="sd">    lr_pairs : tuple[tuple[int, int], ...]</span>
+<span class="sd">        Left/right label pairs defining the mirrored correspondences.</span>
+<span class="sd">    mid_slice : float</span>
+<span class="sd">        Sagittal mid-slice about which the x coordinate is mirrored.</span>
+<span class="sd">    min_common_labels : int</span>
+<span class="sd">        Minimum number of participating labels required to continue.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    source_points : np.ndarray</span>
+<span class="sd">        ``(N, 3)`` source centroid array in voxel coordinates.</span>
+<span class="sd">    target_points : np.ndarray</span>
+<span class="sd">        ``(N, 3)`` mirrored target centroid array in voxel coordinates.</span>
+<span class="sd">    labels : list[int]</span>
+<span class="sd">        Flattened label list matching the returned point order.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If fewer than ``min_common_labels`` mirrored correspondences are found.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">source_points</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">target_points</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">labels</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
