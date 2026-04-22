@@ -13,7 +13,7 @@ from .lta import LTA, _AnyHeader, _header_info, _header_to_vol_info, _invalid_vo
 class AFNIAffine:
     """AFNI affine text transform.
 
-    Supports the common ASCII 3D affine encodings used by AFNI tools such as
+    Supports the common ASCII 3x4 affine encodings used by AFNI tools such as
     ``3dAllineate`` and ``cat_matvec``: 3x4 text, augmented 4x4 text, or a
     single row of 12 values as in ``.aff12.1D`` files.
 
@@ -29,6 +29,24 @@ class AFNIAffine:
 
     @classmethod
     def read(cls, filename: str | Path) -> AFNIAffine:
+        """Read an AFNI affine text transform from disk.
+
+        Parameters
+        ----------
+        filename : str or Path
+            Path to an AFNI affine text file, including ``.aff12.1D`` files.
+
+        Returns
+        -------
+        AFNIAffine
+            Parsed AFNI affine wrapper.
+
+        Raises
+        ------
+        ValueError
+            If the file cannot be interpreted as a supported AFNI affine text
+            encoding.
+        """
         path = Path(filename)
         rows: list[list[float]] = []
         flat_rows: list[list[float]] = []
@@ -66,6 +84,18 @@ class AFNIAffine:
 
     @classmethod
     def from_lta(cls, lta: LTA) -> AFNIAffine:
+        """Create an AFNI affine wrapper from a canonical LTA.
+
+        Parameters
+        ----------
+        lta : LTA
+            Canonical scanner-RAS transform mapping moving to reference space.
+
+        Returns
+        -------
+        AFNIAffine
+            Wrapper containing the equivalent AFNI/DICOM-LPS affine.
+        """
         return cls(_lps_to_ras(lta.r2r()))
 
     def to_lta(
@@ -75,6 +105,21 @@ class AFNIAffine:
         dst_fname: str | None = None,
         dst_img: _AnyHeader | None = None,
     ) -> LTA:
+        """Convert the AFNI affine to canonical scanner-RAS LTA form.
+
+        Parameters
+        ----------
+        src_fname, dst_fname : str or None, optional
+            Optional filenames to store in the output LTA metadata.
+        src_img, dst_img : header-like or None, optional
+            Optional source and destination image headers used to populate LTA
+            volume information.
+
+        Returns
+        -------
+        LTA
+            Canonical RAS-to-RAS transform wrapper.
+        """
         src_fname = "" if src_fname is None else src_fname
         dst_fname = "" if dst_fname is None else dst_fname
         src = _invalid_vol_info(src_fname) if src_img is None else _header_to_vol_info(_header_info(src_img), src_fname)
@@ -82,6 +127,18 @@ class AFNIAffine:
         return LTA(_lps_to_ras(self.matrix), 1, src, dst)
 
     def write(self, filename: str | Path) -> None:
+        """Write the affine in AFNI text format.
+
+        Parameters
+        ----------
+        filename : str or Path
+            Output transform path.
+
+        Returns
+        -------
+        None
+            Writes the transform to ``filename``.
+        """
         path = Path(filename)
         matrix = self.matrix[:3, :4]
         if str(path).lower().endswith(".aff12.1d"):

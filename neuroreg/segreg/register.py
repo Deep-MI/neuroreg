@@ -1,4 +1,9 @@
-"""High-level segmentation-based registration APIs."""
+"""High-level segmentation-based registration APIs.
+
+This layer ties together centroid extraction, atlas resources, label presets,
+and point-set solvers to expose one public ``segreg`` workflow that returns a
+transform plus the metadata needed for downstream mapping and LTA export.
+"""
 
 from __future__ import annotations
 
@@ -67,16 +72,29 @@ class _GeometryInfo:
 
 
 def _default_min_common_labels(dof: int) -> int:
-    """Return the minimum number of matched labels required for a given DoF."""
-    return 4 if dof == 12 else 3
+    """Return the default correspondence count for a given transform family.
+
+    Parameters
+    ----------
+    dof : int
+        Requested registration degrees of freedom.
+
+    Returns
+    -------
+    int
+        Minimum number of matched labels required for the default solver setup.
+    """
+    if dof == 3:
+        return 1
+    return 4 if dof in {9, 12} else 3
 
 
 def _infer_label_ids(
-    *,
-    mode: str,
-    explicit_labels: list[int] | None,
-    label_set: LabelSetName | None,
-    target_centroids: CentroidDict | None,
+        *,
+        mode: str,
+        explicit_labels: list[int] | None,
+        label_set: LabelSetName | None,
+        target_centroids: CentroidDict | None,
 ) -> list[int] | None:
     """Resolve the label IDs to evaluate for the selected registration mode.
 
@@ -112,7 +130,22 @@ def _infer_label_ids(
 
 
 def _geometry_from_image(image: Any, *, fallback_name: str) -> _GeometryInfo:
-    """Build an internal geometry descriptor from a nibabel-like image."""
+    """Build an internal geometry descriptor from an image object.
+
+    Parameters
+    ----------
+    image : Any
+        Nibabel-like image exposing ``get_filename()``, ``affine``, and
+        ``shape``.
+    fallback_name : str
+        Name to use when the image object does not report a filename.
+
+    Returns
+    -------
+    _GeometryInfo
+        Geometry wrapper containing the image object, its affine, and its
+        spatial shape.
+    """
     return _GeometryInfo(
         name=image.get_filename() or fallback_name,
         geometry=image,
@@ -122,7 +155,19 @@ def _geometry_from_image(image: Any, *, fallback_name: str) -> _GeometryInfo:
 
 
 def _geometry_from_atlas(name: str) -> _GeometryInfo:
-    """Build an internal geometry descriptor from a bundled atlas resource."""
+    """Build an internal geometry descriptor from bundled atlas metadata.
+
+    Parameters
+    ----------
+    name : str
+        Bundled atlas name.
+
+    Returns
+    -------
+    _GeometryInfo
+        Geometry wrapper containing the atlas header metadata, affine, and
+        spatial shape.
+    """
     atlas_affine, atlas_header = load_atlas_data(name)
     return _GeometryInfo(
         name=name,
@@ -133,11 +178,11 @@ def _geometry_from_atlas(name: str) -> _GeometryInfo:
 
 
 def _resolve_target_centroids_and_geometry(
-    *,
-    ref: ImageLike | None,
-    ref_centroids: str | Path | None,
-    ref_geom: ImageLike | None,
-    atlas: str | None,
+        *,
+        ref: ImageLike | None,
+        ref_centroids: str | Path | None,
+        ref_geom: ImageLike | None,
+        atlas: str | None,
 ) -> tuple[str, CentroidDict, _GeometryInfo | None]:
     """Resolve target centroids and optional target geometry for registration.
 
@@ -186,18 +231,18 @@ def _resolve_target_centroids_and_geometry(
 
 
 def segreg(
-    mov: ImageLike,
-    ref: ImageLike | None = None,
-    *,
-    ref_centroids: str | Path | None = None,
-    ref_geom: ImageLike | None = None,
-    atlas: str | None = None,
-    dof: int = 6,
-    labels: list[int] | None = None,
-    label_set: LabelSetName | None = None,
-    min_common_labels: int | None = None,
-    flipped: bool = False,
-    midslice: float | None = None,
+        mov: ImageLike,
+        ref: ImageLike | None = None,
+        *,
+        ref_centroids: str | Path | None = None,
+        ref_geom: ImageLike | None = None,
+        atlas: str | None = None,
+        dof: int = 6,
+        labels: list[int] | None = None,
+        label_set: LabelSetName | None = None,
+        min_common_labels: int | None = None,
+        flipped: bool = False,
+        midslice: float | None = None,
 ) -> RegistrationResult:
     """Register a moving segmentation to another segmentation, an atlas, or its LR-flipped self.
 
@@ -216,16 +261,19 @@ def segreg(
         grid for mapped images or LTAs.
     atlas : str or None, optional
         Name of a bundled atlas resource such as ``"fsaverage"``.
-    dof : {6, 12}, default=6
-        Degrees of freedom for the closed-form fit. ``6`` selects rigid
-        registration and ``12`` selects affine registration.
+    dof : {3, 6, 7, 9, 12}, default=6
+        Degrees of freedom for the closed-form fit. ``3`` selects
+        translation-only, ``6`` rigid, ``7`` rigid plus global scale, ``9``
+        rigid plus anisotropic scaling without shear, and ``12`` affine
+        registration.
     labels : list[int] or None, optional
         Explicit label subset override.
     label_set : {'all_shared', 'fsaverage_centroids', 'cortex_lr_pairs'} or None, optional
         Named label preset. Mode-specific defaults are used when omitted.
     min_common_labels : int or None, optional
         Minimum number of matched labels required to proceed. When omitted, the
-        default is ``3`` for rigid and ``4`` for affine registration.
+        default is ``1`` for translation-only, ``3`` for rigid/similarity, and
+        ``4`` for anisotropic-scale or affine registration.
     flipped : bool, default=False
         If ``True``, ignore external targets and register the moving
         segmentation to a left-right flipped self target for upright/midspace
@@ -250,8 +298,12 @@ def segreg(
     mov_name = mov_img.get_filename() or (str(mov) if isinstance(mov, (str, Path)) else "moving.mgz")
     mov_affine = np.asarray(mov_img.affine, dtype=np.float64)
 
-    if dof not in {6, 12}:
-        raise ValueError(f"Unsupported dof={dof}. Segmentation registration supports only rigid (6) or affine (12).")
+    if dof not in {3, 6, 7, 9, 12}:
+        raise ValueError(
+            f"Unsupported dof={dof}. Segmentation registration supports "
+            "3 (translation-only), 6 (rigid), 7 (similarity), "
+            "9 (anisotropic scale without shear), or 12 (affine)."
+        )
 
     if min_common_labels is None:
         min_common_labels = _default_min_common_labels(dof)
@@ -332,17 +384,22 @@ def export_segmentation_centroids(seg: ImageLike, out_path: str | Path, *, label
     labels : list[int] or None, optional
         Optional label subset to export. When omitted, all non-zero labels are
         written.
+
+    Returns
+    -------
+    None
+        Writes the selected scanner-RAS centroids to ``out_path``.
     """
     centroids = compute_ras_centroids_from_seg(seg, label_ids=labels)
     write_centroids_json(out_path, centroids)
 
 
 def resolve_output_geometry(
-    result: RegistrationResult,
-    *,
-    keep_geom: str,
-    mov_img: Any,
-    ref_img: Any | None,
+        result: RegistrationResult,
+        *,
+        keep_geom: str,
+        mov_img: Any,
+        ref_img: Any | None,
 ) -> tuple[np.ndarray, tuple[int, int, int]]:
     """Resolve the geometry used for a resliced mapped output.
 

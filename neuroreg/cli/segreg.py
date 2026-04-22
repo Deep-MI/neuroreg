@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Command-line interface for segmentation-based centroid registration."""
+"""Command-line interface for segmentation-based centroid registration.
+
+The CLI wraps :func:`neuroreg.segreg.segreg` and optional mapped-image output
+helpers so users can fit centroid-based transforms and immediately export LTAs,
+resliced images, header-only mappings, or centroid JSON files.
+"""
 
 from __future__ import annotations
 
@@ -19,6 +24,7 @@ from neuroreg.transforms import LTA
 
 
 def _parse_int_csv(value: str) -> list[int]:
+    """Parse a comma-separated CLI list of integer label IDs."""
     items = [part.strip() for part in value.split(",") if part.strip()]
     if not items:
         raise argparse.ArgumentTypeError("Expected a comma-separated list of integers")
@@ -29,12 +35,14 @@ def _parse_int_csv(value: str) -> list[int]:
 
 
 def _build_parser() -> argparse.ArgumentParser:
+    """Build the ``segreg`` argument parser."""
     parser = argparse.ArgumentParser(
         prog="segreg",
         description=(
             "Segmentation-based registration via label centroids.\n"
-            "Supports rigid or affine centroid alignment between segmentations, to bundled atlas centroids, "
-            "or to a left-right flipped self target for uprighting."
+            "Supports translation-only, rigid, similarity, no-shear anisotropic-scale, or affine centroid "
+            "alignment between segmentations, to bundled atlas centroids, or to a left-right flipped self "
+            "target for uprighting."
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -79,8 +87,17 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--write-mov-centroids", metavar="FILE", help="Export moving centroids as JSON.")
     parser.add_argument("--write-ref-centroids", metavar="FILE", help="Export target centroids as JSON.")
 
-    parser.add_argument("--dof", type=int, default=6, choices=[6, 12], metavar="{6,12}", help="6=rigid, 12=affine.")
-    parser.add_argument("--affine", action="store_true", help="Convenience alias for --dof 12.")
+    parser.add_argument(
+        "--dof",
+        type=int,
+        default=6,
+        choices=[3, 6, 7, 9, 12],
+        metavar="{3,6,7,9,12}",
+        help=(
+            "3=translation only, 6=rigid, 7=rigid+global scale, "
+            "9=rigid+anisotropic scale (no shear), 12=affine."
+        ),
+    )
     parser.add_argument("--labels", type=_parse_int_csv, default=None, help="Comma-separated label subset override.")
     parser.add_argument(
         "--label-set",
@@ -107,6 +124,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _default_keep_geom(ns: argparse.Namespace) -> str:
+    """Return the implicit output-geometry policy for mapped images."""
     if ns.keep_geom is not None:
         return ns.keep_geom
     if ns.atlas is not None:
@@ -117,9 +135,7 @@ def _default_keep_geom(ns: argparse.Namespace) -> str:
 
 
 def _validate_args(ns: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
-    if ns.affine:
-        ns.dof = 12
-
+    """Validate cross-argument constraints after parsing."""
     if not any((ns.lta, ns.mapmov, ns.mapmovhdr, ns.write_mov_centroids, ns.write_ref_centroids)):
         parser.error(
             "At least one output is required: --lta, --mapmov, --mapmovhdr, "
@@ -128,6 +144,8 @@ def _validate_args(ns: argparse.Namespace, parser: argparse.ArgumentParser) -> N
 
     if ns.flipped and ns.ref_geom is not None:
         parser.error("--ref-geom is not valid with --flipped.")
+    if ns.flipped and ns.dof != 6:
+        parser.error("--flipped currently supports only --dof 6.")
 
     keep_geom = _default_keep_geom(ns)
     if ns.flipped and keep_geom != "mov":
@@ -137,6 +155,7 @@ def _validate_args(ns: argparse.Namespace, parser: argparse.ArgumentParser) -> N
 
 
 def _write_ref_centroids(ns: argparse.Namespace) -> None:
+    """Export the selected target centroids to JSON when requested."""
     if ns.write_ref_centroids is None:
         return
     if ns.ref is not None:
@@ -152,6 +171,7 @@ def _write_ref_centroids(ns: argparse.Namespace) -> None:
 
 
 def main(args=None) -> None:
+    """Run the ``segreg`` command-line entry point."""
     parser = _build_parser()
     ns = parser.parse_args(args)
     _validate_args(ns, parser)

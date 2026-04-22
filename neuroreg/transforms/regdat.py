@@ -11,6 +11,19 @@ _VALID_FLOAT2INT = {"tkregister", "round", "floor"}
 
 
 def _vox2tkr_from_info(info: dict) -> np.ndarray:
+    """Construct the tkregister voxel-to-tkRAS matrix from volume metadata.
+
+    Parameters
+    ----------
+    info : dict
+        FreeSurfer-style volume-info dictionary containing ``volume`` and
+        ``voxelsize``.
+
+    Returns
+    -------
+    np.ndarray
+        ``(4, 4)`` voxel-to-tkRAS matrix.
+    """
     dims = np.asarray(info["volume"], dtype=float)
     delta = np.asarray(info["voxelsize"], dtype=float)
     mat = np.array(
@@ -43,7 +56,23 @@ class RegisterDat:
 
     @classmethod
     def read(cls, filename: str | Path) -> RegisterDat:
-        """Read a register.dat/tkregister transform file."""
+        """Read a FreeSurfer ``register.dat`` / tkregister transform file.
+
+        Parameters
+        ----------
+        filename : str or Path
+            Path to a ``register.dat`` file.
+
+        Returns
+        -------
+        RegisterDat
+            Parsed register.dat wrapper.
+
+        Raises
+        ------
+        ValueError
+            If the file is shorter than the required header-plus-matrix layout.
+        """
         path = Path(filename)
         lines = [line.strip() for line in path.read_text().splitlines() if line.strip()]
         if len(lines) < 8:
@@ -73,7 +102,26 @@ class RegisterDat:
         intensity: float | None = None,
         float2int: str = "round",
     ) -> RegisterDat:
-        """Create a register.dat transform from an LTA."""
+        """Create a register.dat transform from a canonical LTA.
+
+        Parameters
+        ----------
+        lta : LTA
+            Canonical scanner-RAS transform mapping moving to reference space.
+        subject : str or None, optional
+            Subject name to store in the output file. When omitted, the subject
+            metadata from ``lta`` is used when available.
+        intensity : float or None, optional
+            Intensity scale to store in the output file. When omitted, ``lta``
+            metadata is used when available.
+        float2int : {'tkregister', 'round', 'floor'}, default='round'
+            Float-to-int conversion mode written to the output file.
+
+        Returns
+        -------
+        RegisterDat
+            Wrapper containing the equivalent tkregister transform.
+        """
         src_affine = _affine_from_info(lta.src)
         dst_affine = _affine_from_info(lta.dst)
         src_vox2tkr = _vox2tkr_from_info(lta.src)
@@ -102,7 +150,23 @@ class RegisterDat:
     ) -> LTA:
         """Convert the tkregister transform to canonical RAS-to-RAS LTA.
 
-        ``src`` is the moving/input volume. ``dst`` is the reference/target volume.
+        Parameters
+        ----------
+        src_fname, dst_fname : str
+            Source and destination filenames stored in the output LTA metadata.
+        src_img, dst_img : header-like
+            Source and destination image headers used to recover tkregister
+            geometry.
+
+        Returns
+        -------
+        LTA
+            Canonical scanner-RAS transform wrapper.
+
+        Notes
+        -----
+        ``src`` is the moving/input volume and ``dst`` is the reference/target
+        volume.
         """
         src = _header_to_vol_info(_header_info(src_img), src_fname)
         dst = _header_to_vol_info(_header_info(dst_img), dst_fname)
@@ -116,7 +180,18 @@ class RegisterDat:
         return LTA(matrix, 1, src, dst, subject=self.subject, fscale=self.intensity)
 
     def write(self, filename: str | Path) -> None:
-        """Write the register.dat file."""
+        """Write the transform in ``register.dat`` format.
+
+        Parameters
+        ----------
+        filename : str or Path
+            Output transform path.
+
+        Returns
+        -------
+        None
+            Writes the transform to ``filename``.
+        """
         path = Path(filename)
         with path.open("w") as f:
             f.write(f"{self.subject or 'subject-unknown'}\n")

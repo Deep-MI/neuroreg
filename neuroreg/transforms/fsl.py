@@ -10,11 +10,36 @@ from .regdat import RegisterDat, _vox2tkr_from_info
 
 
 def _is_nifti_like(path: str) -> bool:
+    """Return whether a filename looks like a NIfTI/Analyze image path.
+
+    Parameters
+    ----------
+    path : str
+        Candidate image filename.
+
+    Returns
+    -------
+    bool
+        ``True`` when the suffix matches one of the NIfTI/Analyze extensions
+        that trigger FSL's handedness convention adjustments.
+    """
     lower = path.lower()
     return lower.endswith('.nii') or lower.endswith('.nii.gz') or lower.endswith('.img') or lower.endswith('.hdr')
 
 
 def _diag_spacing(info: dict) -> np.ndarray:
+    """Construct a diagonal voxel-size matrix from volume metadata.
+
+    Parameters
+    ----------
+    info : dict
+        FreeSurfer-style volume-info dictionary containing ``voxelsize``.
+
+    Returns
+    -------
+    np.ndarray
+        ``(4, 4)`` diagonal spacing matrix.
+    """
     vs = np.asarray(info['voxelsize'], dtype=float)
     mat = np.eye(4, dtype=float)
     mat[0, 0] = vs[0]
@@ -29,6 +54,21 @@ def _apply_fsl_nifti_convention(
     d_ref: np.ndarray,
     d_mov: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray]:
+    """Apply FSL's NIfTI handedness convention to spacing matrices.
+
+    Parameters
+    ----------
+    ref, mov : dict
+        Reference and moving FreeSurfer-style volume-info dictionaries.
+    d_ref, d_mov : np.ndarray
+        Reference and moving diagonal spacing matrices.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        Possibly adjusted ``(d_ref, d_mov)`` pair following FSL's NIfTI
+        convention for positive-determinant affines.
+    """
     ref_aff = _affine_from_info(ref)
     mov_aff = _affine_from_info(mov)
 
@@ -44,6 +84,20 @@ def _apply_fsl_nifti_convention(
 
 
 def _fsl_to_tkreg(ref: dict, mov: dict, fsl_matrix: np.ndarray) -> np.ndarray:
+    """Convert an FSL voxel-to-voxel matrix to tkregister convention.
+
+    Parameters
+    ----------
+    ref, mov : dict
+        Reference and moving FreeSurfer-style volume-info dictionaries.
+    fsl_matrix : np.ndarray
+        ``(4, 4)`` affine matrix in FSL voxel-space convention.
+
+    Returns
+    -------
+    np.ndarray
+        Equivalent ``(4, 4)`` affine in tkregister voxel-space convention.
+    """
     inv_d_mov = np.linalg.inv(_diag_spacing(mov))
     d_ref = _diag_spacing(ref)
     mov_path = mov.get('filename', '')
@@ -57,6 +111,20 @@ def _fsl_to_tkreg(ref: dict, mov: dict, fsl_matrix: np.ndarray) -> np.ndarray:
 
 
 def _tkreg_to_fsl(ref: dict, mov: dict, tkreg_matrix: np.ndarray) -> np.ndarray:
+    """Convert a tkregister voxel-to-voxel matrix to FSL convention.
+
+    Parameters
+    ----------
+    ref, mov : dict
+        Reference and moving FreeSurfer-style volume-info dictionaries.
+    tkreg_matrix : np.ndarray
+        ``(4, 4)`` affine matrix in tkregister voxel-space convention.
+
+    Returns
+    -------
+    np.ndarray
+        Equivalent ``(4, 4)`` affine in FSL voxel-space convention.
+    """
     d_mov = _diag_spacing(mov)
     d_ref = _diag_spacing(ref)
     mov_path = mov.get('filename', '')
@@ -84,6 +152,23 @@ class FSLMat:
 
     @classmethod
     def read(cls, filename: str | Path) -> FSLMat:
+        """Read an FSL FLIRT matrix file.
+
+        Parameters
+        ----------
+        filename : str or Path
+            Path to a text ``.mat`` file containing a 4x4 FLIRT affine.
+
+        Returns
+        -------
+        FSLMat
+            Parsed FSL matrix wrapper.
+
+        Raises
+        ------
+        ValueError
+            If the file does not contain exactly four rows of four values.
+        """
         path = Path(filename)
         rows = []
         for line in path.read_text().splitlines():
@@ -100,6 +185,18 @@ class FSLMat:
 
     @classmethod
     def from_lta(cls, lta: LTA) -> FSLMat:
+        """Create an FSL matrix wrapper from a canonical LTA.
+
+        Parameters
+        ----------
+        lta : LTA
+            Canonical scanner-RAS transform mapping moving to reference space.
+
+        Returns
+        -------
+        FSLMat
+            Wrapper containing the equivalent FLIRT voxel-space affine.
+        """
         reg = RegisterDat.from_lta(lta)
         return cls(_tkreg_to_fsl(lta.dst, lta.src, reg.matrix))
 
@@ -111,6 +208,21 @@ class FSLMat:
         dst_fname: str,
         dst_img: _AnyHeader,
     ) -> LTA:
+        """Convert the FSL matrix to canonical scanner-RAS LTA form.
+
+        Parameters
+        ----------
+        src_fname, dst_fname : str
+            Source and destination filenames stored in the output LTA metadata.
+        src_img, dst_img : header-like
+            Source and destination image headers used to resolve the FSL voxel
+            conventions.
+
+        Returns
+        -------
+        LTA
+            Canonical RAS-to-RAS transform wrapper.
+        """
         src = _header_to_vol_info(_header_info(src_img), src_fname)
         dst = _header_to_vol_info(_header_info(dst_img), dst_fname)
         reg_matrix = _fsl_to_tkreg(dst, src, self.matrix)
@@ -122,6 +234,18 @@ class FSLMat:
         )
 
     def write(self, filename: str | Path) -> None:
+        """Write the matrix in FSL text format.
+
+        Parameters
+        ----------
+        filename : str or Path
+            Output transform path.
+
+        Returns
+        -------
+        None
+            Writes the transform to ``filename``.
+        """
         path = Path(filename)
         with path.open('w') as f:
             for row in self.matrix:
