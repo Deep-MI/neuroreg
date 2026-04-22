@@ -248,9 +248,8 @@
         <article role="main" id="furo-main-content">
           <section id="cli-modules">
 <h1>CLI modules<a class="headerlink" href="#cli-modules" title="Link to this heading">¶</a></h1>
-<p>These pages document the installed console commands directly from the live
-<code class="docutils literal notranslate"><span class="pre">argparse</span></code> parsers, so the Sphinx reference stays aligned with each command’s
-<code class="docutils literal notranslate"><span class="pre">--help</span></code> output.</p>
+<p>This page documents the installed console commands from the live parser
+objects so the Sphinx reference stays aligned with the CLI help text.</p>
 <section id="robreg">
 <h2><code class="docutils literal notranslate"><span class="pre">robreg</span></code><a class="headerlink" href="#robreg" title="Link to this heading">¶</a></h2>
 <p><p>IRLS robust 3-D image-to-image registration.
@@ -749,7 +748,7 @@ Supports rigid or affine centroid alignment between segmentations, to bundled at
 <h3>Positional Arguments<a class="headerlink" href="#neuroreg.cli.lta-_build_parser-positional-arguments" title="Link to this heading">¶</a></h3>
 <dl class="option-list">
 <dt><kbd>COMMAND</kbd></dt>
-<dd><p>Possible choices: diff, invert, concat</p>
+<dd><p>Possible choices: diff, invert, concat, convert</p>
 </dd>
 </dl>
 </section>
@@ -870,6 +869,86 @@ src geometry is taken from LTA1; dst geometry from LTA2.</p>
 </dd>
 <dt><kbd>OUTPUT</kbd></dt>
 <dd><p>Output LTA file  (A → C).</p>
+</dd>
+</dl>
+</section>
+</section>
+<section id="convert">
+<h4>convert<a class="headerlink" href="#convert" title="Link to this heading">¶</a></h4>
+<p>Convert between FreeSurfer-adjacent linear transform formats.</p>
+<dl class="simple">
+<dt>Supported formats are usually inferred from file suffixes:</dt><dd><p>.lta  FreeSurfer Linear Transform Array
+.xfm  MNI/MINC linear transform
+.mat/.fslmat  FSL FLIRT affine matrix
+.dat/.reg  tkregister volumetric register.dat format
+.tfm  ITK/ANTs 3D affine text transform
+*GenericAffine.mat  experimental ANTs / ITK Matlab affine
+.aff12.1D  experimental AFNI affine text matrix
+.niftyreg.txt  NiftyReg 3D affine text matrix</p>
+</dd>
+</dl>
+<p>Use –in-format/–out-format for ambiguous text outputs such as .txt, .1D, or .mat.
+FSL and register.dat conversion require both –src-img and –dst-img
+because the stored matrices depend on image geometry rather than being
+plain scanner-RAS affines. ITK/ANTs text affines, experimental ANTs .mat,
+experimental AFNI affine text, and NiftyReg affine text matrices are
+scanner-space transforms and can be read without images, though
+–src-img/–dst-img still enrich the resulting LTA geometry blocks.
+ANTs .mat support is currently based on SciPy + ITK Matlab IO semantics
+and should be considered experimental until validated on real files.
+AFNI support currently targets affine text matrices in DICOM/LPS
+coordinates and should likewise be considered experimental.
+NiftyReg affine text matrices store the inverse target-to-source RAS matrix.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">lta</span> <span class="n">convert</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="ow">in</span><span class="o">-</span><span class="nb">format</span> <span class="p">{</span><span class="n">lta</span><span class="p">,</span><span class="n">xfm</span><span class="p">,</span><span class="n">fsl</span><span class="p">,</span><span class="n">regdat</span><span class="p">,</span><span class="n">itk</span><span class="p">,</span><span class="n">antsmat</span><span class="p">,</span><span class="n">afni</span><span class="p">,</span><span class="n">niftyreg</span><span class="p">}]</span>
+            <span class="p">[</span><span class="o">--</span><span class="n">out</span><span class="o">-</span><span class="nb">format</span> <span class="p">{</span><span class="n">lta</span><span class="p">,</span><span class="n">xfm</span><span class="p">,</span><span class="n">fsl</span><span class="p">,</span><span class="n">regdat</span><span class="p">,</span><span class="n">itk</span><span class="p">,</span><span class="n">antsmat</span><span class="p">,</span><span class="n">afni</span><span class="p">,</span><span class="n">niftyreg</span><span class="p">}]</span>
+            <span class="p">[</span><span class="o">--</span><span class="n">src</span><span class="o">-</span><span class="n">img</span> <span class="n">SRC_IMG</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">dst</span><span class="o">-</span><span class="n">img</span> <span class="n">DST_IMG</span><span class="p">]</span>
+            <span class="p">[</span><span class="o">--</span><span class="n">out</span><span class="o">-</span><span class="nb">type</span> <span class="p">{</span><span class="n">ras2ras</span><span class="p">,</span><span class="n">vox2vox</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">subject</span> <span class="n">SUBJECT</span><span class="p">]</span>
+            <span class="p">[</span><span class="o">--</span><span class="n">fscale</span> <span class="n">FSCALE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">float2int</span> <span class="p">{</span><span class="n">tkregister</span><span class="p">,</span><span class="nb">round</span><span class="p">,</span><span class="n">floor</span><span class="p">}]</span>
+            <span class="n">INPUT</span> <span class="n">OUTPUT</span>
+</pre></div>
+</div>
+<section id="positional-arguments_repeat3">
+<h5>Positional Arguments<a class="headerlink" href="#positional-arguments_repeat3" title="Link to this heading">¶</a></h5>
+<dl class="option-list">
+<dt><kbd>INPUT</kbd></dt>
+<dd><p>Input transform file.</p>
+</dd>
+<dt><kbd>OUTPUT</kbd></dt>
+<dd><p>Output transform file.</p>
+</dd>
+</dl>
+</section>
+<section id="named-arguments_repeat1">
+<h5>Named Arguments<a class="headerlink" href="#named-arguments_repeat1" title="Link to this heading">¶</a></h5>
+<dl class="option-list">
+<dt><kbd>--in-format</kbd></dt>
+<dd><p>Possible choices: lta, xfm, fsl, regdat, itk, antsmat, afni, niftyreg</p>
+<p>Override input format inference for ambiguous files.</p>
+</dd>
+<dt><kbd>--out-format</kbd></dt>
+<dd><p>Possible choices: lta, xfm, fsl, regdat, itk, antsmat, afni, niftyreg</p>
+<p>Override output format inference for ambiguous files.</p>
+</dd>
+<dt><kbd>--src-img</kbd></dt>
+<dd><p>Moving/source image geometry for conversion when needed.</p>
+</dd>
+<dt><kbd>--dst-img</kbd></dt>
+<dd><p>Reference/target image geometry for conversion when needed.</p>
+</dd>
+<dt><kbd>--out-type</kbd></dt>
+<dd><p>Possible choices: ras2ras, vox2vox</p>
+<p>Output LTA storage type when OUTPUT ends in .lta (default: preserve the input LTA storage type).</p>
+</dd>
+<dt><kbd>--subject</kbd></dt>
+<dd><p>Subject metadata to store when writing register.dat.</p>
+</dd>
+<dt><kbd>--fscale</kbd></dt>
+<dd><p>Intensity/fscale metadata to store when writing register.dat.</p>
+</dd>
+<dt><kbd>--float2int</kbd></dt>
+<dd><p>Possible choices: tkregister, round, floor</p>
+<p>Float-to-int footer when writing register.dat (default: round).</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">'round'</span></code></p>
 </dd>
 </dl>
 </section>
@@ -997,11 +1076,97 @@ src geometry is taken from LTA1; dst geometry from LTA2.</p>
 </dl>
 </section>
 </section>
+<section id="lta-convert">
+<h3><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">convert</span></code><a class="headerlink" href="#lta-convert" title="Link to this heading">¶</a></h3>
+<p><p>Convert between FreeSurfer-adjacent linear transform formats.</p>
+<dl class="simple">
+<dt>Supported formats are usually inferred from file suffixes:</dt><dd><p>.lta  FreeSurfer Linear Transform Array
+.xfm  MNI/MINC linear transform
+.mat/.fslmat  FSL FLIRT affine matrix
+.dat/.reg  tkregister volumetric register.dat format
+.tfm  ITK/ANTs 3D affine text transform
+*GenericAffine.mat  experimental ANTs / ITK Matlab affine
+.aff12.1D  experimental AFNI affine text matrix
+.niftyreg.txt  NiftyReg 3D affine text matrix</p>
+</dd>
+</dl>
+<p>Use –in-format/–out-format for ambiguous text outputs such as .txt, .1D, or .mat.
+FSL and register.dat conversion require both –src-img and –dst-img
+because the stored matrices depend on image geometry rather than being
+plain scanner-RAS affines. ITK/ANTs text affines, experimental ANTs .mat,
+experimental AFNI affine text, and NiftyReg affine text matrices are
+scanner-space transforms and can be read without images, though
+–src-img/–dst-img still enrich the resulting LTA geometry blocks.
+ANTs .mat support is currently based on SciPy + ITK Matlab IO semantics
+and should be considered experimental until validated on real files.
+AFNI support currently targets affine text matrices in DICOM/LPS
+coordinates and should likewise be considered experimental.
+NiftyReg affine text matrices store the inverse target-to-source RAS matrix.</p>
+</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">lta</span> <span class="n">convert</span> <span class="n">convert</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span>
+                           <span class="p">[</span><span class="o">--</span><span class="ow">in</span><span class="o">-</span><span class="nb">format</span> <span class="p">{</span><span class="n">lta</span><span class="p">,</span><span class="n">xfm</span><span class="p">,</span><span class="n">fsl</span><span class="p">,</span><span class="n">regdat</span><span class="p">,</span><span class="n">itk</span><span class="p">,</span><span class="n">antsmat</span><span class="p">,</span><span class="n">afni</span><span class="p">,</span><span class="n">niftyreg</span><span class="p">}]</span>
+                           <span class="p">[</span><span class="o">--</span><span class="n">out</span><span class="o">-</span><span class="nb">format</span> <span class="p">{</span><span class="n">lta</span><span class="p">,</span><span class="n">xfm</span><span class="p">,</span><span class="n">fsl</span><span class="p">,</span><span class="n">regdat</span><span class="p">,</span><span class="n">itk</span><span class="p">,</span><span class="n">antsmat</span><span class="p">,</span><span class="n">afni</span><span class="p">,</span><span class="n">niftyreg</span><span class="p">}]</span>
+                           <span class="p">[</span><span class="o">--</span><span class="n">src</span><span class="o">-</span><span class="n">img</span> <span class="n">SRC_IMG</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">dst</span><span class="o">-</span><span class="n">img</span> <span class="n">DST_IMG</span><span class="p">]</span>
+                           <span class="p">[</span><span class="o">--</span><span class="n">out</span><span class="o">-</span><span class="nb">type</span> <span class="p">{</span><span class="n">ras2ras</span><span class="p">,</span><span class="n">vox2vox</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">subject</span> <span class="n">SUBJECT</span><span class="p">]</span>
+                           <span class="p">[</span><span class="o">--</span><span class="n">fscale</span> <span class="n">FSCALE</span><span class="p">]</span>
+                           <span class="p">[</span><span class="o">--</span><span class="n">float2int</span> <span class="p">{</span><span class="n">tkregister</span><span class="p">,</span><span class="nb">round</span><span class="p">,</span><span class="n">floor</span><span class="p">}]</span>
+                           <span class="n">INPUT</span> <span class="n">OUTPUT</span>
+</pre></div>
+</div>
+<section id="neuroreg.cli.lta-_build_parser-positional-arguments">
+<h4>Positional Arguments<a class="headerlink" href="#neuroreg.cli.lta-_build_parser-positional-arguments" title="Link to this heading">¶</a></h4>
+<dl class="option-list">
+<dt><kbd>INPUT</kbd></dt>
+<dd><p>Input transform file.</p>
+</dd>
+<dt><kbd>OUTPUT</kbd></dt>
+<dd><p>Output transform file.</p>
+</dd>
+</dl>
+</section>
+<section id="neuroreg.cli.lta-_build_parser-named-arguments">
+<h4>Named Arguments<a class="headerlink" href="#neuroreg.cli.lta-_build_parser-named-arguments" title="Link to this heading">¶</a></h4>
+<dl class="option-list">
+<dt><kbd>--in-format</kbd></dt>
+<dd><p>Possible choices: lta, xfm, fsl, regdat, itk, antsmat, afni, niftyreg</p>
+<p>Override input format inference for ambiguous files.</p>
+</dd>
+<dt><kbd>--out-format</kbd></dt>
+<dd><p>Possible choices: lta, xfm, fsl, regdat, itk, antsmat, afni, niftyreg</p>
+<p>Override output format inference for ambiguous files.</p>
+</dd>
+<dt><kbd>--src-img</kbd></dt>
+<dd><p>Moving/source image geometry for conversion when needed.</p>
+</dd>
+<dt><kbd>--dst-img</kbd></dt>
+<dd><p>Reference/target image geometry for conversion when needed.</p>
+</dd>
+<dt><kbd>--out-type</kbd></dt>
+<dd><p>Possible choices: ras2ras, vox2vox</p>
+<p>Output LTA storage type when OUTPUT ends in .lta (default: preserve the input LTA storage type).</p>
+</dd>
+<dt><kbd>--subject</kbd></dt>
+<dd><p>Subject metadata to store when writing register.dat.</p>
+</dd>
+<dt><kbd>--fscale</kbd></dt>
+<dd><p>Intensity/fscale metadata to store when writing register.dat.</p>
+</dd>
+<dt><kbd>--float2int</kbd></dt>
+<dd><p>Possible choices: tkregister, round, floor</p>
+<p>Float-to-int footer when writing register.dat (default: round).</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">'round'</span></code></p>
+</dd>
+</dl>
+</section>
+</section>
 <section id="id4">
 <h3>Python module<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h3>
 <p id="module-neuroreg.cli.lta">Unified LTA transform manipulation CLI.</p>
 <p>Available subcommands are <code class="docutils literal notranslate"><span class="pre">diff</span></code> to compare transforms, <code class="docutils literal notranslate"><span class="pre">invert</span></code> to invert
-an LTA, and <code class="docutils literal notranslate"><span class="pre">concat</span></code> to chain two LTAs. Run <code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">--help</span></code> or
+an LTA, <code class="docutils literal notranslate"><span class="pre">concat</span></code> to chain two LTAs, and <code class="docutils literal notranslate"><span class="pre">convert</span></code> to translate between
+LTA, XFM, FSL, ITK/ANTs text affine, experimental ANTs Matlab affine,
+experimental AFNI affine text, NiftyReg affine text matrices, and
+tkregister <code class="docutils literal notranslate"><span class="pre">register.dat</span></code> transforms. Run <code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">--help</span></code> or
 <code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">&lt;subcommand&gt;</span> <span class="pre">--help</span></code> for the full command syntax.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.cli.lta.main">
@@ -1164,6 +1329,11 @@ an LTA, and <code class="docutils literal notranslate"><span class="pre">concat<
 <li><a class="reference internal" href="#positional-arguments_repeat2">Positional Arguments</a></li>
 </ul>
 </li>
+<li><a class="reference internal" href="#convert">convert</a><ul>
+<li><a class="reference internal" href="#positional-arguments_repeat3">Positional Arguments</a></li>
+<li><a class="reference internal" href="#named-arguments_repeat1">Named Arguments</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a class="reference internal" href="#lta-diff"><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">diff</span></code></a><ul>
@@ -1177,6 +1347,11 @@ an LTA, and <code class="docutils literal notranslate"><span class="pre">concat<
 </li>
 <li><a class="reference internal" href="#lta-concat"><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">concat</span></code></a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.lta-_build_parser-positional-arguments">Positional Arguments</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#lta-convert"><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">convert</span></code></a><ul>
+<li><a class="reference internal" href="#neuroreg.cli.lta-_build_parser-positional-arguments">Positional Arguments</a></li>
+<li><a class="reference internal" href="#neuroreg.cli.lta-_build_parser-named-arguments">Named Arguments</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#id4">Python module</a><ul>

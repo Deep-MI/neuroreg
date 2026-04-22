@@ -241,7 +241,7 @@
           
 <section class="genindex-section">
   <h1 id="index">Index</h1>
-  <div class="genindex-jumpbox"><a href="#A"><strong>A</strong></a> | <a href="#B"><strong>B</strong></a> | <a href="#C"><strong>C</strong></a> | <a href="#D"><strong>D</strong></a> | <a href="#E"><strong>E</strong></a> | <a href="#F"><strong>F</strong></a> | <a href="#G"><strong>G</strong></a> | <a href="#I"><strong>I</strong></a> | <a href="#L"><strong>L</strong></a> | <a href="#M"><strong>M</strong></a> | <a href="#N"><strong>N</strong></a> | <a href="#R"><strong>R</strong></a> | <a href="#S"><strong>S</strong></a> | <a href="#V"><strong>V</strong></a> | <a href="#W"><strong>W</strong></a></div>
+  <div class="genindex-jumpbox"><a href="#A"><strong>A</strong></a> | <a href="#B"><strong>B</strong></a> | <a href="#C"><strong>C</strong></a> | <a href="#D"><strong>D</strong></a> | <a href="#E"><strong>E</strong></a> | <a href="#F"><strong>F</strong></a> | <a href="#G"><strong>G</strong></a> | <a href="#I"><strong>I</strong></a> | <a href="#L"><strong>L</strong></a> | <a href="#M"><strong>M</strong></a> | <a href="#N"><strong>N</strong></a> | <a href="#R"><strong>R</strong></a> | <a href="#S"><strong>S</strong></a> | <a href="#T"><strong>T</strong></a> | <a href="#V"><strong>V</strong></a> | <a href="#W"><strong>W</strong></a> | <a href="#X"><strong>X</strong></a></div>
 </section>
 <section id="A" class="genindex-section">
   <h2>A</h2>
@@ -253,9 +253,13 @@
           <li><a href="api/transforms.html#neuroreg.transforms.LTA.affine_dist">(neuroreg.transforms.LTA method)</a>
 </li>
         </ul></li>
+        <li><a href="api/segreg.html#neuroreg.segreg.atlas.affine_from_header">affine_from_header() (in module neuroreg.segreg.atlas)</a>
+</li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="api/segreg.html#neuroreg.segreg.atlas.affine_from_header">affine_from_header() (in module neuroreg.segreg.atlas)</a>
+        <li><a href="api/transforms.html#neuroreg.transforms.AFNIAffine">AFNIAffine (class in neuroreg.transforms)</a>
+</li>
+        <li><a href="api/transforms.html#neuroreg.transforms.ANTsMatTransform">ANTsMatTransform (class in neuroreg.transforms)</a>
 </li>
         <li><a href="api/segreg.html#neuroreg.segreg.atlas.AtlasHeaderDict">AtlasHeaderDict (class in neuroreg.segreg.atlas)</a>
 </li>
@@ -347,11 +351,19 @@
 </li>
         <li><a href="api/segreg.html#neuroreg.segreg.points.find_rigid">find_rigid() (in module neuroreg.segreg.points)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="api/segreg.html#neuroreg.segreg.points.find_rotation">find_rotation() (in module neuroreg.segreg.points)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api/transforms.html#neuroreg.transforms.RegisterDat.from_lta">from_lta() (neuroreg.transforms.RegisterDat class method)</a>
+
+        <ul>
+          <li><a href="api/transforms.html#neuroreg.transforms.XFM.from_lta">(neuroreg.transforms.XFM class method)</a>
+</li>
+        </ul></li>
         <li><a href="api/transforms.html#neuroreg.transforms.LTA.from_matrix">from_matrix() (neuroreg.transforms.LTA class method)</a>
+</li>
+        <li><a href="api/transforms.html#neuroreg.transforms.FSLMat">FSLMat (class in neuroreg.transforms)</a>
 </li>
     </ul></td>
   </tr></table>
@@ -378,6 +390,10 @@
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="api/transforms.html#neuroreg.transforms.LTA.invert">invert() (neuroreg.transforms.LTA method)</a>
+</li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api/transforms.html#neuroreg.transforms.ITKTransform">ITKTransform (class in neuroreg.transforms)</a>
 </li>
     </ul></td>
   </tr></table>
@@ -571,6 +587,8 @@
           <li><a href="api/segreg.html#module-neuroreg.segreg.register">module</a>
 </li>
         </ul></li>
+        <li><a href="api/transforms.html#neuroreg.transforms.NiftyRegTransform">NiftyRegTransform (class in neuroreg.transforms)</a>
+</li>
     </ul></td>
   </tr></table>
 </section>
@@ -582,7 +600,13 @@
         <li><a href="api/transforms.html#neuroreg.transforms.LTA.r2r">r2r() (neuroreg.transforms.LTA method)</a>
 </li>
         <li><a href="api/transforms.html#neuroreg.transforms.LTA.read">read() (neuroreg.transforms.LTA class method)</a>
+
+        <ul>
+          <li><a href="api/transforms.html#neuroreg.transforms.RegisterDat.read">(neuroreg.transforms.RegisterDat class method)</a>
 </li>
+          <li><a href="api/transforms.html#neuroreg.transforms.XFM.read">(neuroreg.transforms.XFM class method)</a>
+</li>
+        </ul></li>
         <li><a href="api/segreg.html#neuroreg.segreg.io.read_centroids_json">read_centroids_json() (in module neuroreg.segreg.io)</a>
 </li>
         <li><a href="api/imreg.html#neuroreg.imreg.coreg.register_gd_pyramid">register_gd_pyramid() (in module neuroreg.imreg.coreg)</a>
@@ -591,10 +615,12 @@
 </li>
         <li><a href="api/segreg.html#neuroreg.segreg.points.register_points">register_points() (in module neuroreg.segreg.points)</a>
 </li>
-        <li><a href="api/bbreg.html#neuroreg.bbreg.register.register_surface">register_surface() (in module neuroreg.bbreg.register)</a>
-</li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api/bbreg.html#neuroreg.bbreg.register.register_surface">register_surface() (in module neuroreg.bbreg.register)</a>
+</li>
+        <li><a href="api/transforms.html#neuroreg.transforms.RegisterDat">RegisterDat (class in neuroreg.transforms)</a>
+</li>
         <li><a href="api/segreg.html#neuroreg.segreg.register.RegistrationResult">RegistrationResult (class in neuroreg.segreg.register)</a>
 </li>
         <li><a href="api/segreg.html#neuroreg.segreg.register.resolve_output_geometry">resolve_output_geometry() (in module neuroreg.segreg.register)</a>
@@ -639,6 +665,20 @@
   </tr></table>
 </section>
 
+<section id="T" class="genindex-section">
+  <h2>T</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api/transforms.html#neuroreg.transforms.RegisterDat.to_lta">to_lta() (neuroreg.transforms.RegisterDat method)</a>
+
+        <ul>
+          <li><a href="api/transforms.html#neuroreg.transforms.XFM.to_lta">(neuroreg.transforms.XFM method)</a>
+</li>
+        </ul></li>
+    </ul></td>
+  </tr></table>
+</section>
+
 <section id="V" class="genindex-section">
   <h2>V</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
@@ -654,10 +694,26 @@
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="api/transforms.html#neuroreg.transforms.LTA.write">write() (neuroreg.transforms.LTA method)</a>
+
+        <ul>
+          <li><a href="api/transforms.html#neuroreg.transforms.RegisterDat.write">(neuroreg.transforms.RegisterDat method)</a>
 </li>
+          <li><a href="api/transforms.html#neuroreg.transforms.XFM.write">(neuroreg.transforms.XFM method)</a>
+</li>
+        </ul></li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="api/segreg.html#neuroreg.segreg.io.write_centroids_json">write_centroids_json() (in module neuroreg.segreg.io)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="X" class="genindex-section">
+  <h2>X</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api/transforms.html#neuroreg.transforms.XFM">XFM (class in neuroreg.transforms)</a>
 </li>
     </ul></td>
   </tr></table>

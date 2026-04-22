@@ -263,7 +263,7 @@ and speed.</p>
 (extending FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">bbregister</span></code>)</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">segreg</span></code></strong> – segmentation-based registration via label centroids
 (rigid/affine, including atlas-centroid and upright/self-flip modes)</p></li>
-<li><p><strong><code class="docutils literal notranslate"><span class="pre">lta</span></code></strong> – transform comparison / inversion / concatenation utilities</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">lta</span></code></strong> – transform comparison, inversion, concatenation, and conversion utilities</p></li>
 </ul>
 <p>This project is a work-in-progress in an early development stage. It is developed by
 the creator of FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">mri_robust_register</span></code> as an efficient pure Python
@@ -695,13 +695,14 @@ segreg<span class="w"> </span>--mov<span class="w"> </span>subj/mri/aparc+aseg.m
 <p>Run <code class="docutils literal notranslate"><span class="pre">segreg</span> <span class="pre">-h</span></code> for a full argument summary with defaults.</p>
 </section>
 <hr class="docutils" />
-<section id="lta-lta-transform-utilities">
-<h3><code class="docutils literal notranslate"><span class="pre">lta</span></code> — LTA transform utilities<a class="headerlink" href="#lta-lta-transform-utilities" title="Link to this heading">¶</a></h3>
-<p>Unified command for manipulating FreeSurfer LTA transform files with three
-subcommands: <code class="docutils literal notranslate"><span class="pre">diff</span></code>, <code class="docutils literal notranslate"><span class="pre">invert</span></code>, and <code class="docutils literal notranslate"><span class="pre">concat</span></code>.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">lta</span> <span class="n">diff</span>    <span class="n">LTA1</span> <span class="p">[</span><span class="n">LTA2</span><span class="p">]</span> <span class="p">[</span><span class="n">options</span><span class="p">]</span>     <span class="c1"># Compare transforms</span>
-<span class="n">lta</span> <span class="n">invert</span>  <span class="n">INPUT</span> <span class="n">OUTPUT</span>              <span class="c1"># Invert a transform</span>
-<span class="n">lta</span> <span class="n">concat</span>  <span class="n">LTA1</span> <span class="n">LTA2</span> <span class="n">OUTPUT</span>          <span class="c1"># Concatenate two transforms</span>
+<section id="lta-lta-and-linear-transform-utilities">
+<h3><code class="docutils literal notranslate"><span class="pre">lta</span></code> — LTA and linear-transform utilities<a class="headerlink" href="#lta-lta-and-linear-transform-utilities" title="Link to this heading">¶</a></h3>
+<p>Unified command for manipulating FreeSurfer-adjacent linear transforms with four
+subcommands: <code class="docutils literal notranslate"><span class="pre">diff</span></code>, <code class="docutils literal notranslate"><span class="pre">invert</span></code>, <code class="docutils literal notranslate"><span class="pre">concat</span></code>, and <code class="docutils literal notranslate"><span class="pre">convert</span></code>.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">lta</span> <span class="n">diff</span>    <span class="n">LTA1</span> <span class="p">[</span><span class="n">LTA2</span><span class="p">]</span> <span class="p">[</span><span class="n">options</span><span class="p">]</span>                   <span class="c1"># Compare transforms</span>
+<span class="n">lta</span> <span class="n">invert</span>  <span class="n">INPUT</span> <span class="n">OUTPUT</span>                            <span class="c1"># Invert a transform</span>
+<span class="n">lta</span> <span class="n">concat</span>  <span class="n">LTA1</span> <span class="n">LTA2</span> <span class="n">OUTPUT</span>                        <span class="c1"># Concatenate two transforms</span>
+<span class="n">lta</span> <span class="n">convert</span> <span class="n">INPUT</span> <span class="n">OUTPUT</span> <span class="p">[</span><span class="o">--</span><span class="n">src</span><span class="o">-</span><span class="n">img</span> <span class="n">SRC</span> <span class="o">--</span><span class="n">dst</span><span class="o">-</span><span class="n">img</span> <span class="n">DST</span><span class="p">]</span>  <span class="c1"># Convert formats</span>
 </pre></div>
 </div>
 <hr class="docutils" />
@@ -825,7 +826,98 @@ lta<span class="w"> </span>concat<span class="w"> </span>fMRI_to_T1.lta<span cla
 lta<span class="w"> </span>concat<span class="w"> </span>moving_to_intermediate.lta<span class="w"> </span>intermediate_to_fixed.lta<span class="w"> </span>moving_to_fixed.lta
 </pre></div>
 </div>
+</section>
+<hr class="docutils" />
+<section id="lta-convert-convert-between-transform-formats">
+<h4><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">convert</span></code> — Convert between transform formats<a class="headerlink" href="#lta-convert-convert-between-transform-formats" title="Link to this heading">¶</a></h4>
+<p>Converts between <code class="docutils literal notranslate"><span class="pre">.lta</span></code>, <code class="docutils literal notranslate"><span class="pre">.xfm</span></code>, volumetric tkregister <code class="docutils literal notranslate"><span class="pre">.dat</span></code>/<code class="docutils literal notranslate"><span class="pre">.reg</span></code>, FSL <code class="docutils literal notranslate"><span class="pre">.mat</span></code>/<code class="docutils literal notranslate"><span class="pre">.fslmat</span></code>, ITK/ANTs 3D affine text transforms, experimental ANTs Matlab-format affine transforms, experimental AFNI affine text transforms, and NiftyReg affine text matrices by normalizing through an internal RAS-to-RAS <code class="docutils literal notranslate"><span class="pre">LTA</span></code>.</p>
+<p><strong>Usage</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">lta</span> <span class="n">convert</span> <span class="n">INPUT</span> <span class="n">OUTPUT</span> <span class="p">[</span><span class="o">--</span><span class="ow">in</span><span class="o">-</span><span class="nb">format</span> <span class="p">{</span><span class="n">lta</span><span class="p">,</span><span class="n">xfm</span><span class="p">,</span><span class="n">fsl</span><span class="p">,</span><span class="n">regdat</span><span class="p">,</span><span class="n">itk</span><span class="p">,</span><span class="n">antsmat</span><span class="p">,</span><span class="n">afni</span><span class="p">,</span><span class="n">niftyreg</span><span class="p">}]</span>
+                         <span class="p">[</span><span class="o">--</span><span class="n">out</span><span class="o">-</span><span class="nb">format</span> <span class="p">{</span><span class="n">lta</span><span class="p">,</span><span class="n">xfm</span><span class="p">,</span><span class="n">fsl</span><span class="p">,</span><span class="n">regdat</span><span class="p">,</span><span class="n">itk</span><span class="p">,</span><span class="n">antsmat</span><span class="p">,</span><span class="n">afni</span><span class="p">,</span><span class="n">niftyreg</span><span class="p">}]</span>
+                         <span class="p">[</span><span class="o">--</span><span class="n">src</span><span class="o">-</span><span class="n">img</span> <span class="n">SRC</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">dst</span><span class="o">-</span><span class="n">img</span> <span class="n">DST</span><span class="p">]</span>
+                         <span class="p">[</span><span class="o">--</span><span class="n">out</span><span class="o">-</span><span class="nb">type</span> <span class="p">{</span><span class="n">ras2ras</span><span class="p">,</span><span class="n">vox2vox</span><span class="p">}]</span>
+                         <span class="p">[</span><span class="o">--</span><span class="n">subject</span> <span class="n">SUBJECT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">fscale</span> <span class="n">FSCALE</span><span class="p">]</span>
+                         <span class="p">[</span><span class="o">--</span><span class="n">float2int</span> <span class="p">{</span><span class="n">tkregister</span><span class="p">,</span><span class="nb">round</span><span class="p">,</span><span class="n">floor</span><span class="p">}]</span>
+</pre></div>
+</div>
+<p><strong>Supported formats</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">.lta</span></code> — FreeSurfer Linear Transform Array</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">.xfm</span></code> — MNI/MINC linear transform</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">.dat</span></code> — old tkregister volumetric <code class="docutils literal notranslate"><span class="pre">register.dat</span></code> format</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">.mat</span></code> / <code class="docutils literal notranslate"><span class="pre">.fslmat</span></code> — FSL FLIRT affine matrix</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">.tfm</span></code> — ITK/ANTs 3D affine text transform</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">*GenericAffine.mat</span></code> — experimental ANTs / ITK Matlab-format affine transform</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">.aff12.1D</span></code> — experimental AFNI affine text matrix</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">.niftyreg.txt</span></code> — NiftyReg 3D affine text matrix</p></li>
+</ul>
 <p><strong>Notes</strong></p>
+<ul class="simple">
+<li><p>Reading <code class="docutils literal notranslate"><span class="pre">register.dat</span></code> requires both <code class="docutils literal notranslate"><span class="pre">--src-img</span></code> and <code class="docutils literal notranslate"><span class="pre">--dst-img</span></code>, because the
+stored matrix is defined in tkregister coordinates rather than scanner RAS.</p></li>
+<li><p>Reading FSL <code class="docutils literal notranslate"><span class="pre">.mat</span></code> / <code class="docutils literal notranslate"><span class="pre">.fslmat</span></code> also requires both <code class="docutils literal notranslate"><span class="pre">--src-img</span></code> and <code class="docutils literal notranslate"><span class="pre">--dst-img</span></code>,
+because the stored matrix is defined in FSL voxel conventions rather than
+scanner RAS.</p></li>
+<li><p>Reading <code class="docutils literal notranslate"><span class="pre">.xfm</span></code>, ITK/ANTs text affines, experimental ANTs <code class="docutils literal notranslate"><span class="pre">.mat</span></code>, experimental
+AFNI affine text, or NiftyReg text matrices without images still preserves the
+transform matrix, but the resulting LTA geometry blocks stay marked as <code class="docutils literal notranslate"><span class="pre">valid=0</span></code>
+unless you provide <code class="docutils literal notranslate"><span class="pre">--src-img</span></code> and <code class="docutils literal notranslate"><span class="pre">--dst-img</span></code>.</p></li>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">--in-format</span></code> / <code class="docutils literal notranslate"><span class="pre">--out-format</span></code> for ambiguous filenames such as <code class="docutils literal notranslate"><span class="pre">.txt</span></code>, <code class="docutils literal notranslate"><span class="pre">.1D</span></code>, or <code class="docutils literal notranslate"><span class="pre">.mat</span></code>.</p></li>
+<li><p>ITK/ANTs text support currently targets 3D affine transforms only, not binary or
+composite transform files.</p></li>
+<li><p>Experimental ANTs <code class="docutils literal notranslate"><span class="pre">.mat</span></code> support is implemented via SciPy using ITK Matlab IO semantics.</p></li>
+<li><p>Experimental AFNI support targets affine text matrices in AFNI’s DICOM/LPS convention.</p></li>
+<li><p>NiftyReg stores the inverse target-to-source RAS matrix in the file, matching
+FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">lta_convert</span></code> handling.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--subject</span></code>, <code class="docutils literal notranslate"><span class="pre">--fscale</span></code>, and <code class="docutils literal notranslate"><span class="pre">--float2int</span></code> apply when writing <code class="docutils literal notranslate"><span class="pre">register.dat</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--out-type</span></code> applies when writing <code class="docutils literal notranslate"><span class="pre">.lta</span></code> output.</p></li>
+</ul>
+<p><strong>Examples</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># XFM -&gt; LTA with explicit image geometry</span>
+lta<span class="w"> </span>convert<span class="w"> </span>talairach.xfm<span class="w"> </span>talairach.lta<span class="w"> </span>--src-img<span class="w"> </span>mov.mgz<span class="w"> </span>--dst-img<span class="w"> </span>ref.mgz
+
+<span class="c1"># LTA -&gt; XFM</span>
+lta<span class="w"> </span>convert<span class="w"> </span>sub01_to_mni.lta<span class="w"> </span>sub01_to_mni.xfm
+
+<span class="c1"># LTA -&gt; tkregister register.dat</span>
+lta<span class="w"> </span>convert<span class="w"> </span>bold_to_orig.lta<span class="w"> </span>bold_to_orig.dat<span class="w"> </span>--subject<span class="w"> </span>sub-01<span class="w"> </span>--fscale<span class="w"> </span><span class="m">0</span>.1
+
+<span class="c1"># tkregister register.dat -&gt; LTA</span>
+lta<span class="w"> </span>convert<span class="w"> </span>bold_to_orig.dat<span class="w"> </span>bold_to_orig.lta<span class="w"> </span>--src-img<span class="w"> </span>bold.nii.gz<span class="w"> </span>--dst-img<span class="w"> </span>orig.mgz
+
+<span class="c1"># LTA -&gt; FSL FLIRT matrix</span>
+lta<span class="w"> </span>convert<span class="w"> </span>bold_to_orig.lta<span class="w"> </span>bold_to_orig.mat
+
+<span class="c1"># FSL FLIRT matrix -&gt; LTA</span>
+lta<span class="w"> </span>convert<span class="w"> </span>bold_to_orig.mat<span class="w"> </span>bold_to_orig_from_fsl.lta<span class="w"> </span>--src-img<span class="w"> </span>bold.nii.gz<span class="w"> </span>--dst-img<span class="w"> </span>orig.mgz
+
+<span class="c1"># LTA -&gt; ITK/ANTs text affine</span>
+lta<span class="w"> </span>convert<span class="w"> </span>bold_to_orig.lta<span class="w"> </span>bold_to_orig.tfm
+
+<span class="c1"># ITK/ANTs text affine (.txt requires explicit format override)</span>
+lta<span class="w"> </span>convert<span class="w"> </span>bold_to_orig.txt<span class="w"> </span>bold_to_orig_from_itk.lta<span class="w"> </span>--in-format<span class="w"> </span>itk<span class="w"> </span>--src-img<span class="w"> </span>bold.nii.gz<span class="w"> </span>--dst-img<span class="w"> </span>orig.mgz
+
+<span class="c1"># LTA -&gt; experimental ANTs GenericAffine .mat</span>
+lta<span class="w"> </span>convert<span class="w"> </span>bold_to_orig.lta<span class="w"> </span>bold_to_orig0GenericAffine.mat
+
+<span class="c1"># Experimental ANTs GenericAffine .mat -&gt; LTA (.mat is otherwise assumed FSL)</span>
+lta<span class="w"> </span>convert<span class="w"> </span>bold_to_orig0GenericAffine.mat<span class="w"> </span>bold_to_orig_from_antsmat.lta
+lta<span class="w"> </span>convert<span class="w"> </span>some_affine.mat<span class="w"> </span>bold_to_orig_from_antsmat.lta<span class="w"> </span>--in-format<span class="w"> </span>antsmat
+
+<span class="c1"># LTA -&gt; experimental AFNI affine text</span>
+lta<span class="w"> </span>convert<span class="w"> </span>bold_to_orig.lta<span class="w"> </span>bold_to_orig.aff12.1D
+
+<span class="c1"># Experimental AFNI affine text -&gt; LTA (.1D may need explicit format override)</span>
+lta<span class="w"> </span>convert<span class="w"> </span>bold_to_orig.aff12.1D<span class="w"> </span>bold_to_orig_from_afni.lta
+
+<span class="c1"># LTA -&gt; NiftyReg affine text matrix (.txt requires explicit format override)</span>
+lta<span class="w"> </span>convert<span class="w"> </span>bold_to_orig.lta<span class="w"> </span>bold_to_orig.txt<span class="w"> </span>--out-format<span class="w"> </span>niftyreg
+
+<span class="c1"># NiftyReg affine text matrix -&gt; LTA</span>
+lta<span class="w"> </span>convert<span class="w"> </span>bold_to_orig.txt<span class="w"> </span>bold_to_orig_from_niftyreg.lta<span class="w"> </span>--in-format<span class="w"> </span>niftyreg
+</pre></div>
+</div>
+<p><strong>General notes</strong></p>
 <ul class="simple">
 <li><p>All metrics are numerically matched to FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">lta_diff</span></code> (except for a
 known bug in the C++ single-transform corner metric, which is fixed here).</p></li>
@@ -911,6 +1003,9 @@ known bug in the C++ single-transform corner metric, which is fixed here).</p></
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">bbreg</span></code> / public <code class="docutils literal notranslate"><span class="pre">bbreg()</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">6</span></code>, <code class="docutils literal notranslate"><span class="pre">9</span></code>, <code class="docutils literal notranslate"><span class="pre">12</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">segreg</span></code> / public <code class="docutils literal notranslate"><span class="pre">segreg()</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">6</span></code>, <code class="docutils literal notranslate"><span class="pre">12</span></code></p></td>
 </tr>
 </tbody>
 </table>
@@ -998,10 +1093,11 @@ NeuroImage 48(1):63-72.
 <li><a class="reference internal" href="#coreg-image-based-cross-modal-registration"><code class="docutils literal notranslate"><span class="pre">coreg</span></code> — image-based cross-modal registration</a></li>
 <li><a class="reference internal" href="#bbreg-boundary-based-registration"><code class="docutils literal notranslate"><span class="pre">bbreg</span></code> — boundary-based registration</a></li>
 <li><a class="reference internal" href="#segreg-segmentation-based-registration"><code class="docutils literal notranslate"><span class="pre">segreg</span></code> — segmentation-based registration</a></li>
-<li><a class="reference internal" href="#lta-lta-transform-utilities"><code class="docutils literal notranslate"><span class="pre">lta</span></code> — LTA transform utilities</a><ul>
+<li><a class="reference internal" href="#lta-lta-and-linear-transform-utilities"><code class="docutils literal notranslate"><span class="pre">lta</span></code> — LTA and linear-transform utilities</a><ul>
 <li><a class="reference internal" href="#lta-diff-compare-transforms"><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">diff</span></code> — Compare transforms</a></li>
 <li><a class="reference internal" href="#lta-invert-invert-a-transform"><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">invert</span></code> — Invert a transform</a></li>
 <li><a class="reference internal" href="#lta-concat-concatenate-transforms"><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">concat</span></code> — Concatenate transforms</a></li>
+<li><a class="reference internal" href="#lta-convert-convert-between-transform-formats"><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">convert</span></code> — Convert between transform formats</a></li>
 </ul>
 </li>
 </ul>

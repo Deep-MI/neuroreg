@@ -17,7 +17,7 @@ The main user-facing tools are:
   (extending FreeSurfer's `bbregister`)
 - **`segreg`** – segmentation-based registration via label centroids
   (rigid/affine, including atlas-centroid and upright/self-flip modes)
-- **`lta`** – transform comparison / inversion / concatenation utilities
+- **`lta`** – transform comparison, inversion, concatenation, and conversion utilities
 
 This project is a work-in-progress in an early development stage. It is developed by
 the creator of FreeSurfer's `mri_robust_register` as an efficient pure Python
@@ -270,15 +270,16 @@ Run `segreg -h` for a full argument summary with defaults.
 
 ---
 
-### `lta` — LTA transform utilities
+### `lta` — LTA and linear-transform utilities
 
-Unified command for manipulating FreeSurfer LTA transform files with three
-subcommands: `diff`, `invert`, and `concat`.
+Unified command for manipulating FreeSurfer-adjacent linear transforms with four
+subcommands: `diff`, `invert`, `concat`, and `convert`.
 
 ```
-lta diff    LTA1 [LTA2] [options]     # Compare transforms
-lta invert  INPUT OUTPUT              # Invert a transform
-lta concat  LTA1 LTA2 OUTPUT          # Concatenate two transforms
+lta diff    LTA1 [LTA2] [options]                   # Compare transforms
+lta invert  INPUT OUTPUT                            # Invert a transform
+lta concat  LTA1 LTA2 OUTPUT                        # Concatenate two transforms
+lta convert INPUT OUTPUT [--src-img SRC --dst-img DST]  # Convert formats
 ```
 
 ---
@@ -376,7 +377,103 @@ lta concat fMRI_to_T1.lta T1_to_MNI.lta fMRI_to_MNI.lta
 lta concat moving_to_intermediate.lta intermediate_to_fixed.lta moving_to_fixed.lta
 ```
 
+---
+
+#### `lta convert` — Convert between transform formats
+
+Converts between `.lta`, `.xfm`, volumetric tkregister `.dat`/`.reg`, FSL `.mat`/`.fslmat`, ITK/ANTs 3D affine text transforms, experimental ANTs Matlab-format affine transforms, experimental AFNI affine text transforms, and NiftyReg affine text matrices by normalizing through an internal RAS-to-RAS `LTA`.
+
+**Usage**
+
+```
+lta convert INPUT OUTPUT [--in-format {lta,xfm,fsl,regdat,itk,antsmat,afni,niftyreg}]
+                         [--out-format {lta,xfm,fsl,regdat,itk,antsmat,afni,niftyreg}]
+                         [--src-img SRC] [--dst-img DST]
+                         [--out-type {ras2ras,vox2vox}]
+                         [--subject SUBJECT] [--fscale FSCALE]
+                         [--float2int {tkregister,round,floor}]
+```
+
+**Supported formats**
+
+- `.lta` — FreeSurfer Linear Transform Array
+- `.xfm` — MNI/MINC linear transform
+- `.dat` — old tkregister volumetric `register.dat` format
+- `.mat` / `.fslmat` — FSL FLIRT affine matrix
+- `.tfm` — ITK/ANTs 3D affine text transform
+- `*GenericAffine.mat` — experimental ANTs / ITK Matlab-format affine transform
+- `.aff12.1D` — experimental AFNI affine text matrix
+- `.niftyreg.txt` — NiftyReg 3D affine text matrix
+
 **Notes**
+
+- Reading `register.dat` requires both `--src-img` and `--dst-img`, because the
+  stored matrix is defined in tkregister coordinates rather than scanner RAS.
+- Reading FSL `.mat` / `.fslmat` also requires both `--src-img` and `--dst-img`,
+  because the stored matrix is defined in FSL voxel conventions rather than
+  scanner RAS.
+- Reading `.xfm`, ITK/ANTs text affines, experimental ANTs `.mat`, experimental
+  AFNI affine text, or NiftyReg text matrices without images still preserves the
+  transform matrix, but the resulting LTA geometry blocks stay marked as `valid=0`
+  unless you provide `--src-img` and `--dst-img`.
+- Use `--in-format` / `--out-format` for ambiguous filenames such as `.txt`, `.1D`, or `.mat`.
+- ITK/ANTs text support currently targets 3D affine transforms only, not binary or
+  composite transform files.
+- Experimental ANTs `.mat` support is implemented via SciPy using ITK Matlab IO semantics.
+- Experimental AFNI support targets affine text matrices in AFNI's DICOM/LPS convention.
+- NiftyReg stores the inverse target-to-source RAS matrix in the file, matching
+  FreeSurfer's `lta_convert` handling.
+- `--subject`, `--fscale`, and `--float2int` apply when writing `register.dat`.
+- `--out-type` applies when writing `.lta` output.
+
+**Examples**
+
+```bash
+# XFM -> LTA with explicit image geometry
+lta convert talairach.xfm talairach.lta --src-img mov.mgz --dst-img ref.mgz
+
+# LTA -> XFM
+lta convert sub01_to_mni.lta sub01_to_mni.xfm
+
+# LTA -> tkregister register.dat
+lta convert bold_to_orig.lta bold_to_orig.dat --subject sub-01 --fscale 0.1
+
+# tkregister register.dat -> LTA
+lta convert bold_to_orig.dat bold_to_orig.lta --src-img bold.nii.gz --dst-img orig.mgz
+
+# LTA -> FSL FLIRT matrix
+lta convert bold_to_orig.lta bold_to_orig.mat
+
+# FSL FLIRT matrix -> LTA
+lta convert bold_to_orig.mat bold_to_orig_from_fsl.lta --src-img bold.nii.gz --dst-img orig.mgz
+
+# LTA -> ITK/ANTs text affine
+lta convert bold_to_orig.lta bold_to_orig.tfm
+
+# ITK/ANTs text affine (.txt requires explicit format override)
+lta convert bold_to_orig.txt bold_to_orig_from_itk.lta --in-format itk --src-img bold.nii.gz --dst-img orig.mgz
+
+# LTA -> experimental ANTs GenericAffine .mat
+lta convert bold_to_orig.lta bold_to_orig0GenericAffine.mat
+
+# Experimental ANTs GenericAffine .mat -> LTA (.mat is otherwise assumed FSL)
+lta convert bold_to_orig0GenericAffine.mat bold_to_orig_from_antsmat.lta
+lta convert some_affine.mat bold_to_orig_from_antsmat.lta --in-format antsmat
+
+# LTA -> experimental AFNI affine text
+lta convert bold_to_orig.lta bold_to_orig.aff12.1D
+
+# Experimental AFNI affine text -> LTA (.1D may need explicit format override)
+lta convert bold_to_orig.aff12.1D bold_to_orig_from_afni.lta
+
+# LTA -> NiftyReg affine text matrix (.txt requires explicit format override)
+lta convert bold_to_orig.lta bold_to_orig.txt --out-format niftyreg
+
+# NiftyReg affine text matrix -> LTA
+lta convert bold_to_orig.txt bold_to_orig_from_niftyreg.lta --in-format niftyreg
+```
+
+**General notes**
 
 - All metrics are numerically matched to FreeSurfer's `lta_diff` (except for a
   known bug in the C++ single-transform corner metric, which is fixed here).
@@ -449,6 +546,7 @@ Current DOF support is:
 | `robreg` / public `robreg()` | `6` only            |
 | `coreg` / public `coreg()`   | `3`, `6`, `9`, `12` |
 | `bbreg` / public `bbreg()`   | `6`, `9`, `12`      |
+| `segreg` / public `segreg()` | `6`, `12`           |
 
 The public `robreg` path is intentionally rigid-only for now because it tracks
 the current IRLS implementation.
