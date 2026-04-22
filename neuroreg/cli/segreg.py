@@ -9,11 +9,11 @@ resliced images, header-only mappings, or centroid JSON files.
 from __future__ import annotations
 
 import argparse
+import logging
 
 import nibabel as nib
 import numpy as np
 
-import logging
 from neuroreg.image import header_map_image, reslice_r2r_image
 from neuroreg.segreg import segreg
 from neuroreg.segreg.atlas import load_atlas_centroids as load_bundled_atlas_centroids
