@@ -84,10 +84,22 @@ CORTEX_LR_LABELS: tuple[int, ...] = CORTEX_LH_LABELS + CORTEX_RH_LABELS
 
 
 def get_cortex_lr_pairs() -> tuple[tuple[int, int], ...]:
-    """Return the FastSurfer cortical left/right label pairs used for upright mode."""
+    """Return cortical left/right label pairs used for upright registration.
+
+    Returns
+    -------
+    tuple[tuple[int, int], ...]
+        Paired FastSurfer cortical labels ordered as ``(left, right)``.
+    """
     return CORTEX_LR_PAIRS
 
 
 def get_cortex_lr_labels() -> list[int]:
-    """Return the flattened cortical label list used by the upright mode."""
+    """Return the flattened cortical label list used by upright mode.
+
+    Returns
+    -------
+    list[int]
+        Left-hemisphere labels followed by the matching right-hemisphere labels.
+    """
     return list(CORTEX_LR_LABELS)

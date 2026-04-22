@@ -29,23 +29,55 @@ _ATLAS_NAMES = {"fsaverage"}
 
 
 def _resource(name: str) -> resources.abc.Traversable:
-    """Return a traversable handle to a bundled segreg resource file."""
+    """Return a handle to a bundled atlas resource.
+
+    Parameters
+    ----------
+    name : str
+        Resource filename inside ``neuroreg/segreg/data``.
+
+    Returns
+    -------
+    importlib.resources.abc.Traversable
+        Traversable handle that can be opened directly or materialized on disk.
+    """
     return resources.files("neuroreg.segreg").joinpath("data", name)
 
 
 def available_atlases() -> tuple[str, ...]:
-    """Return the atlas names bundled with the package."""
+    """Return the names of bundled atlas resources.
+
+    Returns
+    -------
+    tuple[str, ...]
+        Supported atlas names in sorted order.
+    """
     return tuple(sorted(_ATLAS_NAMES))
 
 
 def load_fsaverage_centroids() -> CentroidDict:
-    """Load the bundled fsaverage centroid resource."""
+    """Load bundled fsaverage centroid coordinates.
+
+    Returns
+    -------
+    dict[int, np.ndarray]
+        Label-to-centroid mapping in scanner-RAS coordinates.
+    """
     with resources.as_file(_resource("fsaverage_centroids.json")) as path:
         return read_centroids_json(path)
 
 
 def load_fsaverage_data() -> tuple[npt.NDArray[np.float64], AtlasHeaderDict]:
-    """Load the bundled fsaverage affine together with minimal geometry metadata."""
+    """Load bundled fsaverage geometry metadata.
+
+    Returns
+    -------
+    affine : np.ndarray
+        Voxel-to-RAS affine stored for the bundled fsaverage geometry.
+    header : AtlasHeaderDict
+        Minimal header-like metadata needed for LTA writing and output geometry
+        reconstruction.
+    """
     with _resource("fsaverage_data.json").open() as f:
         data = json.load(f)
 
@@ -60,21 +92,67 @@ def load_fsaverage_data() -> tuple[npt.NDArray[np.float64], AtlasHeaderDict]:
 
 
 def load_atlas_centroids(name: str) -> CentroidDict:
-    """Load centroid resources for a supported bundled atlas."""
+    """Load centroid resources for a supported bundled atlas.
+
+    Parameters
+    ----------
+    name : str
+        Bundled atlas name.
+
+    Returns
+    -------
+    dict[int, np.ndarray]
+        Label-to-centroid mapping for the requested atlas.
+
+    Raises
+    ------
+    ValueError
+        If ``name`` does not match a bundled atlas.
+    """
     if name != "fsaverage":
         raise ValueError(f"Unknown atlas '{name}'. Available atlases: {', '.join(available_atlases())}.")
     return load_fsaverage_centroids()
 
 
 def load_atlas_data(name: str) -> tuple[npt.NDArray[np.float64], AtlasHeaderDict]:
-    """Load geometry resources for a supported bundled atlas."""
+    """Load geometry metadata for a supported bundled atlas.
+
+    Parameters
+    ----------
+    name : str
+        Bundled atlas name.
+
+    Returns
+    -------
+    affine : np.ndarray
+        Voxel-to-RAS affine for the atlas geometry.
+    header : AtlasHeaderDict
+        Minimal atlas header metadata.
+
+    Raises
+    ------
+    ValueError
+        If ``name`` does not match a bundled atlas.
+    """
     if name != "fsaverage":
         raise ValueError(f"Unknown atlas '{name}'. Available atlases: {', '.join(available_atlases())}.")
     return load_fsaverage_data()
 
 
 def affine_from_header(header: AtlasHeaderDict) -> npt.NDArray[np.float64]:
-    """Reconstruct a voxel-to-RAS affine from ``dims/delta/Mdc/Pxyz_c`` metadata."""
+    """Reconstruct a voxel-to-RAS affine from atlas header metadata.
+
+    Parameters
+    ----------
+    header : AtlasHeaderDict
+        Dictionary containing ``dims``, ``delta``, ``Mdc``, and ``Pxyz_c`` as
+        stored in bundled atlas metadata.
+
+    Returns
+    -------
+    np.ndarray
+        Reconstructed ``(4, 4)`` voxel-to-RAS affine.
+    """
     dims = np.asarray(header["dims"], dtype=np.float64)
     delta = np.asarray(header["delta"], dtype=np.float64)
     mdc = np.asarray(header["Mdc"], dtype=np.float64)

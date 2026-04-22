@@ -72,16 +72,27 @@ class _GeometryInfo:
 
 
 def _default_min_common_labels(dof: int) -> int:
-    """Return the minimum number of matched labels required for a given DoF."""
+    """Return the default correspondence count for a given transform family.
+
+    Parameters
+    ----------
+    dof : int
+        Requested registration degrees of freedom.
+
+    Returns
+    -------
+    int
+        Minimum number of matched labels required for the default solver setup.
+    """
     return 4 if dof in {9, 12} else 3
 
 
 def _infer_label_ids(
-    *,
-    mode: str,
-    explicit_labels: list[int] | None,
-    label_set: LabelSetName | None,
-    target_centroids: CentroidDict | None,
+        *,
+        mode: str,
+        explicit_labels: list[int] | None,
+        label_set: LabelSetName | None,
+        target_centroids: CentroidDict | None,
 ) -> list[int] | None:
     """Resolve the label IDs to evaluate for the selected registration mode.
 
@@ -117,7 +128,22 @@ def _infer_label_ids(
 
 
 def _geometry_from_image(image: Any, *, fallback_name: str) -> _GeometryInfo:
-    """Build an internal geometry descriptor from a nibabel-like image."""
+    """Build an internal geometry descriptor from an image object.
+
+    Parameters
+    ----------
+    image : Any
+        Nibabel-like image exposing ``get_filename()``, ``affine``, and
+        ``shape``.
+    fallback_name : str
+        Name to use when the image object does not report a filename.
+
+    Returns
+    -------
+    _GeometryInfo
+        Geometry wrapper containing the image object, its affine, and its
+        spatial shape.
+    """
     return _GeometryInfo(
         name=image.get_filename() or fallback_name,
         geometry=image,
@@ -127,7 +153,19 @@ def _geometry_from_image(image: Any, *, fallback_name: str) -> _GeometryInfo:
 
 
 def _geometry_from_atlas(name: str) -> _GeometryInfo:
-    """Build an internal geometry descriptor from a bundled atlas resource."""
+    """Build an internal geometry descriptor from bundled atlas metadata.
+
+    Parameters
+    ----------
+    name : str
+        Bundled atlas name.
+
+    Returns
+    -------
+    _GeometryInfo
+        Geometry wrapper containing the atlas header metadata, affine, and
+        spatial shape.
+    """
     atlas_affine, atlas_header = load_atlas_data(name)
     return _GeometryInfo(
         name=name,
@@ -138,11 +176,11 @@ def _geometry_from_atlas(name: str) -> _GeometryInfo:
 
 
 def _resolve_target_centroids_and_geometry(
-    *,
-    ref: ImageLike | None,
-    ref_centroids: str | Path | None,
-    ref_geom: ImageLike | None,
-    atlas: str | None,
+        *,
+        ref: ImageLike | None,
+        ref_centroids: str | Path | None,
+        ref_geom: ImageLike | None,
+        atlas: str | None,
 ) -> tuple[str, CentroidDict, _GeometryInfo | None]:
     """Resolve target centroids and optional target geometry for registration.
 
@@ -191,18 +229,18 @@ def _resolve_target_centroids_and_geometry(
 
 
 def segreg(
-    mov: ImageLike,
-    ref: ImageLike | None = None,
-    *,
-    ref_centroids: str | Path | None = None,
-    ref_geom: ImageLike | None = None,
-    atlas: str | None = None,
-    dof: int = 6,
-    labels: list[int] | None = None,
-    label_set: LabelSetName | None = None,
-    min_common_labels: int | None = None,
-    flipped: bool = False,
-    midslice: float | None = None,
+        mov: ImageLike,
+        ref: ImageLike | None = None,
+        *,
+        ref_centroids: str | Path | None = None,
+        ref_geom: ImageLike | None = None,
+        atlas: str | None = None,
+        dof: int = 6,
+        labels: list[int] | None = None,
+        label_set: LabelSetName | None = None,
+        min_common_labels: int | None = None,
+        flipped: bool = False,
+        midslice: float | None = None,
 ) -> RegistrationResult:
     """Register a moving segmentation to another segmentation, an atlas, or its LR-flipped self.
 
@@ -343,17 +381,22 @@ def export_segmentation_centroids(seg: ImageLike, out_path: str | Path, *, label
     labels : list[int] or None, optional
         Optional label subset to export. When omitted, all non-zero labels are
         written.
+
+    Returns
+    -------
+    None
+        Writes the selected scanner-RAS centroids to ``out_path``.
     """
     centroids = compute_ras_centroids_from_seg(seg, label_ids=labels)
     write_centroids_json(out_path, centroids)
 
 
 def resolve_output_geometry(
-    result: RegistrationResult,
-    *,
-    keep_geom: str,
-    mov_img: Any,
-    ref_img: Any | None,
+        result: RegistrationResult,
+        *,
+        keep_geom: str,
+        mov_img: Any,
+        ref_img: Any | None,
 ) -> tuple[np.ndarray, tuple[int, int, int]]:
     """Resolve the geometry used for a resliced mapped output.
 

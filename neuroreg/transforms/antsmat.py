@@ -32,6 +32,24 @@ class ANTsMatTransform:
 
     @classmethod
     def read(cls, filename: str | Path) -> ANTsMatTransform:
+        """Read an ANTs Matlab-format affine transform from disk.
+
+        Parameters
+        ----------
+        filename : str or Path
+            Path to an ANTs ``0GenericAffine.mat``-style transform file.
+
+        Returns
+        -------
+        ANTsMatTransform
+            Parsed ANTs Matlab transform wrapper.
+
+        Raises
+        ------
+        ValueError
+            If the file does not contain exactly one supported affine transform
+            payload.
+        """
         path = Path(filename)
         data = loadmat(path)
         payload = {key: value for key, value in data.items() if not key.startswith("__")}
@@ -58,6 +76,18 @@ class ANTsMatTransform:
 
     @classmethod
     def from_lta(cls, lta: LTA) -> ANTsMatTransform:
+        """Create an ANTs Matlab transform wrapper from a canonical LTA.
+
+        Parameters
+        ----------
+        lta : LTA
+            Canonical scanner-RAS transform mapping moving to reference space.
+
+        Returns
+        -------
+        ANTsMatTransform
+            Wrapper containing the equivalent ANTs/ITK file-space affine.
+        """
         return cls(matrix=_lps_to_ras(np.linalg.inv(lta.r2r())))
 
     def to_lta(
@@ -67,6 +97,21 @@ class ANTsMatTransform:
         dst_fname: str | None = None,
         dst_img: _AnyHeader | None = None,
     ) -> LTA:
+        """Convert the ANTs Matlab transform to canonical LTA form.
+
+        Parameters
+        ----------
+        src_fname, dst_fname : str or None, optional
+            Optional filenames to store in the output LTA metadata.
+        src_img, dst_img : header-like or None, optional
+            Optional source and destination image headers used to populate LTA
+            volume information.
+
+        Returns
+        -------
+        LTA
+            Canonical RAS-to-RAS transform wrapper.
+        """
         src_fname = "" if src_fname is None else src_fname
         dst_fname = "" if dst_fname is None else dst_fname
         src = _invalid_vol_info(src_fname) if src_img is None else _header_to_vol_info(_header_info(src_img), src_fname)
@@ -74,6 +119,18 @@ class ANTsMatTransform:
         return LTA(np.linalg.inv(_lps_to_ras(self.matrix)), 1, src, dst)
 
     def write(self, filename: str | Path) -> None:
+        """Write the transform in ANTs Matlab ``.mat`` format.
+
+        Parameters
+        ----------
+        filename : str or Path
+            Output transform path.
+
+        Returns
+        -------
+        None
+            Writes the transform to ``filename``.
+        """
         path = Path(filename)
         rotation = self.matrix[:3, :3]
         center = self.fixed_parameters

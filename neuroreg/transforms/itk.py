@@ -13,10 +13,40 @@ _LPS_RAS = np.diag([-1.0, -1.0, 1.0, 1.0])
 
 
 def _lps_to_ras(matrix: np.ndarray) -> np.ndarray:
+    """Convert a homogeneous affine between LPS and scanner-RAS conventions.
+
+    Parameters
+    ----------
+    matrix : np.ndarray
+        ``(4, 4)`` affine matrix expressed in LPS physical coordinates.
+
+    Returns
+    -------
+    np.ndarray
+        Equivalent ``(4, 4)`` affine matrix in scanner-RAS coordinates.
+    """
     return _LPS_RAS @ matrix @ _LPS_RAS
 
 
 def _validate_transform_type(transform_type: str) -> str:
+    """Validate an ITK affine transform type string.
+
+    Parameters
+    ----------
+    transform_type : str
+        Transform type string parsed from an ITK/ANTs transform file.
+
+    Returns
+    -------
+    str
+        The validated transform type string.
+
+    Raises
+    ------
+    ValueError
+        If ``transform_type`` is not one of the supported 3-D affine text
+        transform types.
+    """
     if not _ITK_TRANSFORM_RE.match(transform_type):
         raise ValueError(
             "unsupported ITK transform type "
@@ -44,6 +74,24 @@ class ITKTransform:
 
     @classmethod
     def read(cls, filename: str | Path) -> ITKTransform:
+        """Read an ITK affine text transform from disk.
+
+        Parameters
+        ----------
+        filename : str or Path
+            Path to an ITK ``.tfm``-style affine transform file.
+
+        Returns
+        -------
+        ITKTransform
+            Parsed transform wrapper.
+
+        Raises
+        ------
+        ValueError
+            If the file is malformed or does not contain a supported 3-D affine
+            transform.
+        """
         path = Path(filename)
         transform_type: str | None = None
         parameters: list[float] | None = None
@@ -88,6 +136,18 @@ class ITKTransform:
 
     @classmethod
     def from_lta(cls, lta: LTA) -> ITKTransform:
+        """Create an ITK transform wrapper from a canonical LTA.
+
+        Parameters
+        ----------
+        lta : LTA
+            Canonical scanner-RAS transform mapping moving to reference space.
+
+        Returns
+        -------
+        ITKTransform
+            Wrapper containing the equivalent ITK/ANTs file-space affine.
+        """
         matrix = _lps_to_ras(np.linalg.inv(lta.r2r()))
         return cls(matrix=matrix)
 
@@ -98,6 +158,21 @@ class ITKTransform:
         dst_fname: str | None = None,
         dst_img: _AnyHeader | None = None,
     ) -> LTA:
+        """Convert the ITK transform to canonical scanner-RAS LTA form.
+
+        Parameters
+        ----------
+        src_fname, dst_fname : str or None, optional
+            Optional filenames to store in the output LTA metadata.
+        src_img, dst_img : header-like or None, optional
+            Optional source and destination image headers used to populate LTA
+            volume information.
+
+        Returns
+        -------
+        LTA
+            Canonical RAS-to-RAS transform wrapper.
+        """
         src_fname = "" if src_fname is None else src_fname
         dst_fname = "" if dst_fname is None else dst_fname
         src = _invalid_vol_info(src_fname) if src_img is None else _header_to_vol_info(_header_info(src_img), src_fname)
@@ -106,6 +181,18 @@ class ITKTransform:
         return LTA(matrix, 1, src, dst)
 
     def write(self, filename: str | Path) -> None:
+        """Write the transform in ITK text format.
+
+        Parameters
+        ----------
+        filename : str or Path
+            Output transform path.
+
+        Returns
+        -------
+        None
+            Writes the transform to ``filename``.
+        """
         path = Path(filename)
         with path.open("w") as f:
             f.write("#Insight Transform File V1.0\n")

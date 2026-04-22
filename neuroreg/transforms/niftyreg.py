@@ -24,6 +24,23 @@ class NiftyRegTransform:
 
     @classmethod
     def read(cls, filename: str | Path) -> NiftyRegTransform:
+        """Read a NiftyReg affine text matrix from disk.
+
+        Parameters
+        ----------
+        filename : str or Path
+            Path to a NiftyReg affine text file.
+
+        Returns
+        -------
+        NiftyRegTransform
+            Parsed NiftyReg transform wrapper.
+
+        Raises
+        ------
+        ValueError
+            If the file does not contain exactly four rows of four values.
+        """
         path = Path(filename)
         rows = []
         for raw_line in path.read_text().splitlines():
@@ -40,6 +57,18 @@ class NiftyRegTransform:
 
     @classmethod
     def from_lta(cls, lta: LTA) -> NiftyRegTransform:
+        """Create a NiftyReg transform wrapper from a canonical LTA.
+
+        Parameters
+        ----------
+        lta : LTA
+            Canonical scanner-RAS transform mapping moving to reference space.
+
+        Returns
+        -------
+        NiftyRegTransform
+            Wrapper containing the equivalent NiftyReg file-space matrix.
+        """
         return cls(np.linalg.inv(lta.r2r()))
 
     def to_lta(
@@ -49,6 +78,21 @@ class NiftyRegTransform:
         dst_fname: str | None = None,
         dst_img: _AnyHeader | None = None,
     ) -> LTA:
+        """Convert the NiftyReg matrix to canonical scanner-RAS LTA form.
+
+        Parameters
+        ----------
+        src_fname, dst_fname : str or None, optional
+            Optional filenames to store in the output LTA metadata.
+        src_img, dst_img : header-like or None, optional
+            Optional source and destination image headers used to populate LTA
+            volume information.
+
+        Returns
+        -------
+        LTA
+            Canonical RAS-to-RAS transform wrapper.
+        """
         src_fname = "" if src_fname is None else src_fname
         dst_fname = "" if dst_fname is None else dst_fname
         src = _invalid_vol_info(src_fname) if src_img is None else _header_to_vol_info(_header_info(src_img), src_fname)
@@ -56,6 +100,18 @@ class NiftyRegTransform:
         return LTA(np.linalg.inv(self.matrix), 1, src, dst)
 
     def write(self, filename: str | Path) -> None:
+        """Write the matrix in NiftyReg text format.
+
+        Parameters
+        ----------
+        filename : str or Path
+            Output transform path.
+
+        Returns
+        -------
+        None
+            Writes the transform to ``filename``.
+        """
         path = Path(filename)
         with path.open("w") as f:
             for row in self.matrix:

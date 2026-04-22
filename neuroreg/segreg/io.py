@@ -18,7 +18,19 @@ CentroidDict = dict[int, npt.NDArray[np.float64]]
 
 
 def convert_numpy_to_json_serializable(obj: object) -> object:
-    """Recursively convert NumPy scalars, arrays, and tuples into JSON-safe values."""
+    """Convert nested NumPy-backed objects into JSON-safe Python values.
+
+    Parameters
+    ----------
+    obj : object
+        Object tree that may contain dictionaries, lists, tuples, NumPy arrays,
+        or NumPy scalar types.
+
+    Returns
+    -------
+    object
+        Equivalent structure composed only of JSON-serializable Python values.
+    """
     if isinstance(obj, dict):
         return {key: convert_numpy_to_json_serializable(value) for key, value in obj.items()}
     if isinstance(obj, list):
@@ -33,7 +45,18 @@ def convert_numpy_to_json_serializable(obj: object) -> object:
 
 
 def read_centroids_json(path: str | Path) -> CentroidDict:
-    """Read label centroids from a JSON file into float64 NumPy arrays."""
+    """Read centroid coordinates from JSON.
+
+    Parameters
+    ----------
+    path : str or Path
+        Path to a centroid JSON file.
+
+    Returns
+    -------
+    dict[int, np.ndarray]
+        Label-to-centroid mapping with float64 NumPy arrays.
+    """
     centroid_path = Path(path)
     with centroid_path.open() as f:
         data = json.load(f)
@@ -41,7 +64,20 @@ def read_centroids_json(path: str | Path) -> CentroidDict:
 
 
 def write_centroids_json(path: str | Path, centroids: dict[int, npt.ArrayLike | None]) -> None:
-    """Write centroid coordinates to JSON, skipping labels whose points are missing."""
+    """Write centroid coordinates to JSON.
+
+    Parameters
+    ----------
+    path : str or Path
+        Output JSON path.
+    centroids : dict[int, array-like or None]
+        Label-to-centroid mapping. Entries with value ``None`` are skipped.
+
+    Returns
+    -------
+    None
+        Writes the centroid payload to ``path``.
+    """
     payload: dict[str, Any] = {}
     for label, point in centroids.items():
         if point is None:
