@@ -160,6 +160,8 @@ class LTA:
             lta_type: int,
             src: dict,
             dst: dict,
+            subject: str | None = None,
+            fscale: float | None = None,
     ) -> None:
         """
         Parameters
@@ -171,6 +173,10 @@ class LTA:
             Source volume info (keys: volume, voxelsize, xras, yras, zras, cras).
         dst : dict
             Destination volume info (same keys).
+        subject : str, optional
+            Optional top-level FreeSurfer subject metadata.
+        fscale : float, optional
+            Optional top-level FreeSurfer intensity scaling metadata.
         """
         if lta_type not in (0, 1):
             raise ValueError(f"lta_type must be 0 (LINEAR_VOX_TO_VOX) or 1 (LINEAR_RAS_TO_RAS), got {lta_type!r}")
@@ -178,6 +184,8 @@ class LTA:
         self.type = lta_type
         self.src = src
         self.dst = dst
+        self.subject = subject
+        self.fscale = fscale
 
     # ── construction ────────────────────────────────────────────────────────
 
@@ -228,20 +236,41 @@ class LTA:
             )
 
         mat: list[list[float]] = []
+        matrix_start = None
         for i, line in enumerate(lines):
             if "1 4 4" in line:
+                matrix_start = i
                 for row in lines[i + 1: i + 5]:
                     mat.append([float(v) for v in row.strip().split()])
                 break
         if len(mat) != 4:
             raise ValueError(f"Could not parse 4×4 matrix from {filename}")
 
-        def _parse_vol_block(start: int) -> dict:
+        volume_field_prefixes = (
+            "valid",
+            "filename",
+            "fname",
+            "subject",
+            "volume",
+            "voxelsize",
+            "xras",
+            "yras",
+            "zras",
+            "cras",
+        )
+
+        def _parse_vol_block(start: int) -> tuple[dict, int]:
             info: dict = {}
-            for line in lines[start:]:
-                line = line.strip()
+            end = start
+            for i in range(start, len(lines)):
+                line = lines[i].strip()
                 if not line or line.startswith("#"):
                     continue
+                if line.startswith(("src volume info", "dst volume info")):
+                    break
+                if not line.startswith(volume_field_prefixes):
+                    break
+                end = i + 1
                 if line.startswith("valid"):
                     info["valid"] = int(line.split("=", 1)[1].split("#")[0].strip())
                 elif line.startswith("filename"):
@@ -268,17 +297,17 @@ class LTA:
                     info["zras"] = [float(v) for v in line.split("=", 1)[1].split()]
                 elif line.startswith("cras"):
                     info["cras"] = [float(v) for v in line.split("=", 1)[1].split()]
-                elif line.startswith("dst volume info"):
                     break
-            return info
+            return info, end
 
         src: dict = {}
         dst: dict = {}
+        footer_start = len(lines) if matrix_start is None else matrix_start + 5
         for i, line in enumerate(lines):
             if line.strip().startswith("src volume info"):
-                src = _parse_vol_block(i + 1)
+                src, footer_start = _parse_vol_block(i + 1)
             elif line.strip().startswith("dst volume info"):
-                dst = _parse_vol_block(i + 1)
+                dst, footer_start = _parse_vol_block(i + 1)
 
         for role, info in (("src", src), ("dst", dst)):
             if info.get("valid", 1) == 0:
@@ -288,7 +317,19 @@ class LTA:
                     role,
                 )
 
-        lta = cls(np.array(mat), stored_type, src, dst)
+        subject: str | None = None
+        fscale: float | None = None
+        for line in lines[footer_start:]:
+            stripped = line.strip()
+            if stripped.startswith("subject "):
+                parts = stripped.split(None, 1)
+                if len(parts) == 2:
+                    subject = parts[1].strip()
+            elif stripped.startswith("fscale"):
+                value = stripped.split("=", 1)[1].strip() if "=" in stripped else stripped.split(None, 1)[1].strip()
+                fscale = float(value)
+
+        lta = cls(np.array(mat), stored_type, src, dst, subject=subject, fscale=fscale)
 
         if lta_type is not None and lta_type != stored_type:
             lta = cls(
@@ -403,6 +444,10 @@ class LTA:
                 f.write(f"yras   = {_fmt(info['yras'])}\n")
                 f.write(f"zras   = {_fmt(info['zras'])}\n")
                 f.write(f"cras   = {_fmt(info['cras'])}\n")
+            if self.subject:
+                f.write(f"subject {self.subject}\n")
+            if self.fscale is not None:
+                f.write(f"fscale {float(self.fscale):.6f}\n")
 
         logger.debug("Wrote LTA (%s): %s", type_name, filename)
 
@@ -442,7 +487,7 @@ class LTA:
 
     def invert(self) -> LTA:
         """Return an inverted copy with src/dst swapped, stored as R2R."""
-        return LTA(np.linalg.inv(self.r2r()), 1, self.dst, self.src)
+        return LTA(np.linalg.inv(self.r2r()), 1, self.dst, self.src, subject=self.subject, fscale=self.fscale)
 
     def concat(self, other: LTA) -> LTA:
         """Concatenate two transforms: ``self`` (A→B) followed by ``other`` (B→C).
@@ -465,7 +510,7 @@ class LTA:
             New LTA whose matrix is ``other.r2r() @ self.r2r()``,
             with ``src`` from ``self`` and ``dst`` from ``other``.
         """
-        return LTA(other.r2r() @ self.r2r(), 1, self.src, other.dst)
+        return LTA(other.r2r() @ self.r2r(), 1, self.src, other.dst, subject=self.subject, fscale=self.fscale)
 
     # ── single-transform analysis ────────────────────────────────────────────
 

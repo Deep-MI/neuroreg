@@ -37,13 +37,25 @@ Example::
 lta
 ---
 
-Utilities for comparing, concatenating, and inverting FreeSurfer LTA files.
+Utilities for comparing, concatenating, inverting, and converting
+FreeSurfer-adjacent linear transform files. The ``convert`` subcommand supports
+``.lta``, ``.xfm``, volumetric tkregister ``.dat``/``.reg``, FSL FLIRT
+``.mat``/``.fslmat``, ITK/ANTs 3D affine text ``.tfm``, experimental ANTs
+``*GenericAffine.mat``, experimental AFNI ``.aff12.1D``, and NiftyReg affine
+text matrices.
 
 Examples::
 
    lta diff reg1.lta reg2.lta
    lta invert in.lta out.lta
    lta concat a_to_b.lta b_to_c.lta a_to_c.lta
+   lta convert talairach.xfm talairach.lta --src-img mov.mgz --dst-img ref.mgz
+   lta convert bold_to_orig.mat bold_to_orig.lta --src-img bold.nii.gz --dst-img orig.mgz
+   lta convert bold_to_orig.txt bold_to_orig.lta --in-format itk --src-img bold.nii.gz --dst-img orig.mgz
+   lta convert bold_to_orig0GenericAffine.mat bold_to_orig_from_antsmat.lta
+   lta convert bold_to_orig.aff12.1D bold_to_orig_from_afni.lta
+   lta convert bold_to_orig.txt bold_to_orig_from_niftyreg.lta --in-format niftyreg
+
 
 neuroreg-sys_info
 -----------------
@@ -54,3 +66,4 @@ installations and CI environments.
 Example::
 
    neuroreg-sys_info --developer
+

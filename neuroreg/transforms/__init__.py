@@ -1,5 +1,9 @@
 """Transform utilities: matrices, LTA file I/O, and transform metrics."""
 
+from .afni import AFNIAffine
+from .antsmat import ANTsMatTransform
+from .fsl import FSLMat
+from .itk import ITKTransform
 from .lta import LTA
 from .matrices import (
     LINEAR_RAS_TO_RAS,
@@ -24,10 +28,20 @@ from .metrics import (
     rigid_dist,
     sphere_dist,
 )
+from .niftyreg import NiftyRegTransform
+from .regdat import RegisterDat
+from .xfm import XFM
 
 __all__ = [
     # lta
+    "AFNIAffine",
+    "ANTsMatTransform",
+    "FSLMat",
+    "ITKTransform",
     "LTA",
+    "NiftyRegTransform",
+    "RegisterDat",
+    "XFM",
     "affine_dist",
     "corner_dist",
     "decompose_transform",

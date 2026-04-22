@@ -7,6 +7,48 @@ Transform API
 .. autoclass:: neuroreg.transforms.LTA
    :members:
 
+``neuroreg.transforms.XFM``
+---------------------------
+
+.. autoclass:: neuroreg.transforms.XFM
+   :members:
+
+``neuroreg.transforms.RegisterDat``
+-----------------------------------
+
+.. autoclass:: neuroreg.transforms.RegisterDat
+   :members:
+
+``neuroreg.transforms.FSLMat``
+------------------------------
+
+.. autoclass:: neuroreg.transforms.FSLMat
+   :members:
+
+``neuroreg.transforms.ITKTransform``
+------------------------------------
+
+.. autoclass:: neuroreg.transforms.ITKTransform
+   :members:
+
+``neuroreg.transforms.ANTsMatTransform``
+----------------------------------------
+
+.. autoclass:: neuroreg.transforms.ANTsMatTransform
+   :members:
+
+``neuroreg.transforms.AFNIAffine``
+----------------------------------
+
+.. autoclass:: neuroreg.transforms.AFNIAffine
+   :members:
+
+``neuroreg.transforms.NiftyRegTransform``
+-----------------------------------------
+
+.. autoclass:: neuroreg.transforms.NiftyRegTransform
+   :members:
+
 Selected transform helpers
 --------------------------
 
