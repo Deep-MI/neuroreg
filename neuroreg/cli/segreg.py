@@ -9,11 +9,11 @@ resliced images, header-only mappings, or centroid JSON files.
 from __future__ import annotations
 
 import argparse
-import logging
 
 import nibabel as nib
 import numpy as np
 
+import logging
 from neuroreg.image import header_map_image, reslice_r2r_image
 from neuroreg.segreg import segreg
 from neuroreg.segreg.atlas import load_atlas_centroids as load_bundled_atlas_centroids
@@ -144,6 +144,8 @@ def _validate_args(ns: argparse.Namespace, parser: argparse.ArgumentParser) -> N
 
     if ns.flipped and ns.ref_geom is not None:
         parser.error("--ref-geom is not valid with --flipped.")
+    if ns.flipped and ns.dof != 6:
+        parser.error("--flipped currently supports only --dof 6.")
 
     keep_geom = _default_keep_geom(ns)
     if ns.flipped and keep_geom != "mov":

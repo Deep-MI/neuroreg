@@ -166,7 +166,7 @@ def test_find_rigid_anisotropic_scale_recovers_known_transform_without_shear():
     expected[:3, :3] = linear
     expected[:3, 3] = translation
     assert recovered == pytest.approx(expected, abs=1e-8)
-    assert recovered[:3, :3].T @ recovered[:3, :3] == pytest.approx(np.diag(scales**2), abs=1e-8)
+    assert recovered[:3, :3].T @ recovered[:3, :3] == pytest.approx(np.diag(scales ** 2), abs=1e-8)
 
 
 def test_build_flipped_centroid_targets_mirrors_and_swaps_pairs():
@@ -305,7 +305,8 @@ def test_segreg_anisotropic_scale_recovers_known_ras_transform(tmp_path: Path):
     expected = ref_affine @ np.linalg.inv(mov_affine)
 
     assert result.r2r == pytest.approx(expected, abs=1e-6)
-    assert result.r2r[:3, :3].T @ result.r2r[:3, :3] == pytest.approx(np.diag([1.5**2, 0.75**2, 2.0**2]), abs=1e-6)
+    assert result.r2r[:3, :3].T @ result.r2r[:3, :3] == pytest.approx(np.diag([1.5 ** 2, 0.75 ** 2, 2.0 ** 2]),
+                                                                      abs=1e-6)
     assert result.labels == [1, 2, 3, 4]
 
 
@@ -383,6 +384,81 @@ def test_cli_accepts_translation_only_dof(tmp_path: Path):
 
     assert out_lta.exists()
     assert LTA.read(out_lta).r2r() == pytest.approx(ref_affine, abs=1e-6)
+
+
+@pytest.mark.parametrize(
+    ("dof", "ref_affine"),
+    [
+        (
+                7,
+                np.array(
+                    [
+                        [0.0, -1.5, 0.0, 5.0],
+                        [1.5, 0.0, 0.0, -3.0],
+                        [0.0, 0.0, 1.5, 2.0],
+                        [0.0, 0.0, 0.0, 1.0],
+                    ]
+                ),
+        ),
+        (
+                9,
+                np.array(
+                    [
+                        [0.0, -0.75, 0.0, 5.0],
+                        [1.5, 0.0, 0.0, -3.0],
+                        [0.0, 0.0, 2.0, 2.0],
+                        [0.0, 0.0, 0.0, 1.0],
+                    ]
+                ),
+        ),
+    ],
+)
+def test_cli_accepts_similarity_and_anisotropic_dofs(tmp_path: Path, dof: int, ref_affine: np.ndarray):
+    mov_seg = tmp_path / f"mov_seg_dof_{dof}.nii.gz"
+    ref_seg = tmp_path / f"ref_seg_dof_{dof}.nii.gz"
+    out_lta = tmp_path / f"out_dof_{dof}.lta"
+
+    mov_affine = np.eye(4)
+    _write_seg(mov_seg, affine=mov_affine)
+    _write_seg(ref_seg, affine=ref_affine)
+
+    segreg_main(
+        [
+            "--mov",
+            str(mov_seg),
+            "--ref",
+            str(ref_seg),
+            "--dof",
+            str(dof),
+            "--lta",
+            str(out_lta),
+        ]
+    )
+
+    assert out_lta.exists()
+    assert LTA.read(out_lta).r2r() == pytest.approx(ref_affine, abs=1e-6)
+
+
+def test_cli_rejects_nonrigid_flipped_dofs(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    mov_seg = tmp_path / "mov_seg_flipped_invalid.nii.gz"
+    out_lta = tmp_path / "flipped_invalid.lta"
+    _write_seg(mov_seg, affine=np.eye(4))
+
+    with pytest.raises(SystemExit) as exc_info:
+        segreg_main(
+            [
+                "--mov",
+                str(mov_seg),
+                "--flipped",
+                "--dof",
+                "7",
+                "--lta",
+                str(out_lta),
+            ]
+        )
+
+    assert exc_info.value.code == 2
+    assert "--flipped currently supports only --dof 6." in capsys.readouterr().err
 
 
 def test_cli_writes_header_only_mapmovhdr(tmp_path: Path):
