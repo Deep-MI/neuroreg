@@ -1,4 +1,9 @@
-"""JSON I/O helpers for centroid-based registration."""
+"""JSON I/O helpers for centroid-based registration.
+
+The centroid JSON format is intentionally simple: label IDs map to 3-vector
+coordinates. These helpers normalize NumPy-heavy in-memory objects to that
+portable representation and back.
+"""
 
 from __future__ import annotations
 
@@ -13,7 +18,7 @@ CentroidDict = dict[int, npt.NDArray[np.float64]]
 
 
 def convert_numpy_to_json_serializable(obj: object) -> object:
-    """Convert numpy objects into JSON-serializable Python values."""
+    """Recursively convert NumPy scalars, arrays, and tuples into JSON-safe values."""
     if isinstance(obj, dict):
         return {key: convert_numpy_to_json_serializable(value) for key, value in obj.items()}
     if isinstance(obj, list):
@@ -28,7 +33,7 @@ def convert_numpy_to_json_serializable(obj: object) -> object:
 
 
 def read_centroids_json(path: str | Path) -> CentroidDict:
-    """Read label centroids from a JSON file."""
+    """Read label centroids from a JSON file into float64 NumPy arrays."""
     centroid_path = Path(path)
     with centroid_path.open() as f:
         data = json.load(f)
@@ -36,7 +41,7 @@ def read_centroids_json(path: str | Path) -> CentroidDict:
 
 
 def write_centroids_json(path: str | Path, centroids: dict[int, npt.ArrayLike | None]) -> None:
-    """Write label centroids to a JSON file, skipping labels with missing points."""
+    """Write centroid coordinates to JSON, skipping labels whose points are missing."""
     payload: dict[str, Any] = {}
     for label, point in centroids.items():
         if point is None:

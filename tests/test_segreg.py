@@ -9,7 +9,7 @@ from neuroreg.cli.segreg import main as segreg_main
 from neuroreg.image import header_map_image
 from neuroreg.segreg.atlas import load_fsaverage_centroids, load_fsaverage_data
 from neuroreg.segreg.centroids import build_flipped_centroid_targets
-from neuroreg.segreg.points import find_affine, find_rigid
+from neuroreg.segreg.points import find_affine, find_rigid, find_rigid_anisotropic_scale, find_similarity
 from neuroreg.segreg.register import segreg
 from neuroreg.transforms import LTA
 
@@ -82,6 +82,64 @@ def test_find_affine_recovers_known_transform():
     assert recovered == pytest.approx(affine, abs=1e-8)
 
 
+def test_find_similarity_recovers_known_transform():
+    mov = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 2.0, 0.0],
+            [0.5, 0.5, 1.0],
+        ]
+    )
+    rotation = np.array(
+        [
+            [0.0, -1.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0],
+        ]
+    )
+    scale = 1.5
+    translation = np.array([4.0, -2.0, 1.5])
+    linear = scale * rotation
+    dst = (linear @ mov.T).T + translation
+
+    recovered = find_similarity(mov, dst)
+    expected = np.eye(4)
+    expected[:3, :3] = linear
+    expected[:3, 3] = translation
+    assert recovered == pytest.approx(expected, abs=1e-8)
+
+
+def test_find_rigid_anisotropic_scale_recovers_known_transform_without_shear():
+    mov = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 2.0, 0.0],
+            [0.0, 0.0, 3.0],
+            [1.0, 1.0, 1.0],
+        ]
+    )
+    rotation = np.array(
+        [
+            [0.0, -1.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0],
+        ]
+    )
+    scales = np.array([1.5, 0.75, 2.0])
+    linear = rotation @ np.diag(scales)
+    translation = np.array([4.0, -2.0, 1.5])
+    dst = (linear @ mov.T).T + translation
+
+    recovered = find_rigid_anisotropic_scale(mov, dst)
+    expected = np.eye(4)
+    expected[:3, :3] = linear
+    expected[:3, 3] = translation
+    assert recovered == pytest.approx(expected, abs=1e-8)
+    assert recovered[:3, :3].T @ recovered[:3, :3] == pytest.approx(np.diag(scales**2), abs=1e-8)
+
+
 def test_build_flipped_centroid_targets_mirrors_and_swaps_pairs():
     voxel_centroids = {
         1002: np.array([1.0, 2.0, 3.0]),
@@ -149,6 +207,53 @@ def test_segreg_registers_segmentation_images_in_ras(tmp_path: Path):
     expected = ref_affine @ np.linalg.inv(mov_affine)
 
     assert result.r2r == pytest.approx(expected, abs=1e-6)
+    assert result.labels == [1, 2, 3, 4]
+
+
+def test_segreg_similarity_recovers_known_ras_transform(tmp_path: Path):
+    mov_path = tmp_path / "mov_seg_similarity.nii.gz"
+    ref_path = tmp_path / "ref_seg_similarity.nii.gz"
+
+    mov_affine = np.eye(4)
+    ref_affine = np.array(
+        [
+            [0.0, -1.5, 0.0, 5.0],
+            [1.5, 0.0, 0.0, -3.0],
+            [0.0, 0.0, 1.5, 2.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    _write_seg(mov_path, affine=mov_affine)
+    _write_seg(ref_path, affine=ref_affine)
+
+    result = segreg(mov_path, ref_path, dof=7)
+    expected = ref_affine @ np.linalg.inv(mov_affine)
+
+    assert result.r2r == pytest.approx(expected, abs=1e-6)
+    assert result.labels == [1, 2, 3, 4]
+
+
+def test_segreg_anisotropic_scale_recovers_known_ras_transform(tmp_path: Path):
+    mov_path = tmp_path / "mov_seg_aniso.nii.gz"
+    ref_path = tmp_path / "ref_seg_aniso.nii.gz"
+
+    mov_affine = np.eye(4)
+    ref_affine = np.array(
+        [
+            [0.0, -0.75, 0.0, 5.0],
+            [1.5, 0.0, 0.0, -3.0],
+            [0.0, 0.0, 2.0, 2.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    _write_seg(mov_path, affine=mov_affine)
+    _write_seg(ref_path, affine=ref_affine)
+
+    result = segreg(mov_path, ref_path, dof=9)
+    expected = ref_affine @ np.linalg.inv(mov_affine)
+
+    assert result.r2r == pytest.approx(expected, abs=1e-6)
+    assert result.r2r[:3, :3].T @ result.r2r[:3, :3] == pytest.approx(np.diag([1.5**2, 0.75**2, 2.0**2]), abs=1e-6)
     assert result.labels == [1, 2, 3, 4]
 
 

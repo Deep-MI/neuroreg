@@ -1,4 +1,8 @@
-"""Atlas resources for segmentation-based registration."""
+"""Bundled atlas resources for segmentation-based registration.
+
+This module ships lightweight centroid and geometry metadata for atlas-backed
+``segreg`` modes so atlas registration can run without external downloads.
+"""
 
 from __future__ import annotations
 
@@ -25,6 +29,7 @@ _ATLAS_NAMES = {"fsaverage"}
 
 
 def _resource(name: str) -> resources.abc.Traversable:
+    """Return a traversable handle to a bundled segreg resource file."""
     return resources.files("neuroreg.segreg").joinpath("data", name)
 
 
@@ -40,7 +45,7 @@ def load_fsaverage_centroids() -> CentroidDict:
 
 
 def load_fsaverage_data() -> tuple[npt.NDArray[np.float64], AtlasHeaderDict]:
-    """Load the bundled fsaverage affine and header metadata."""
+    """Load the bundled fsaverage affine together with minimal geometry metadata."""
     with _resource("fsaverage_data.json").open() as f:
         data = json.load(f)
 
@@ -55,14 +60,14 @@ def load_fsaverage_data() -> tuple[npt.NDArray[np.float64], AtlasHeaderDict]:
 
 
 def load_atlas_centroids(name: str) -> CentroidDict:
-    """Load centroid resources for a supported atlas."""
+    """Load centroid resources for a supported bundled atlas."""
     if name != "fsaverage":
         raise ValueError(f"Unknown atlas '{name}'. Available atlases: {', '.join(available_atlases())}.")
     return load_fsaverage_centroids()
 
 
 def load_atlas_data(name: str) -> tuple[npt.NDArray[np.float64], AtlasHeaderDict]:
-    """Load geometry resources for a supported atlas."""
+    """Load geometry resources for a supported bundled atlas."""
     if name != "fsaverage":
         raise ValueError(f"Unknown atlas '{name}'. Available atlases: {', '.join(available_atlases())}.")
     return load_fsaverage_data()

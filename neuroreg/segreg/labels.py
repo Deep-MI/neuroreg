@@ -1,4 +1,9 @@
-"""Label presets for segmentation-based registration."""
+"""Label presets and left/right cortical pairing tables for segreg.
+
+The helpers in this module provide stable label subsets for centroid-based
+registration modes, especially the left/right pairing used by upright/self-flip
+registration.
+"""
 
 from __future__ import annotations
 

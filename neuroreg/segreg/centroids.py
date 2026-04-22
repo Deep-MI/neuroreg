@@ -1,4 +1,9 @@
-"""Centroid extraction helpers for label images."""
+"""Centroid extraction and matching helpers for label images.
+
+These utilities keep image loading, centroid computation, and shared-label
+assembly in one place so higher-level registration code can focus on transform
+estimation rather than segmentation bookkeeping.
+"""
 
 from __future__ import annotations
 
@@ -15,13 +20,14 @@ ImageLike = str | Path | Any
 
 
 def load_spatial_image(image: ImageLike) -> Any:
-    """Load a nibabel-compatible image or return an already-loaded image."""
+    """Load a nibabel-compatible image or pass through an already-loaded object."""
     if isinstance(image, (str, Path)):
         return nib.load(str(image))
     return image
 
 
 def _resolve_label_ids(seg_data: npt.NDArray[np.integer], label_ids: list[int] | None) -> list[int]:
+    """Resolve the label IDs that should participate in centroid extraction."""
     if label_ids is None:
         labels = np.unique(seg_data)
         labels = labels[labels > 0]
@@ -33,7 +39,7 @@ def compute_voxel_centroids_from_seg(
     seg_img: ImageLike,
     label_ids: list[int] | None = None,
 ) -> dict[int, npt.NDArray[np.float64] | None]:
-    """Compute voxel-space centroids for segmentation labels."""
+    """Compute voxel-space centroids for the requested segmentation labels."""
     image = load_spatial_image(seg_img)
     seg_data = np.asarray(image.dataobj)
     labels = _resolve_label_ids(seg_data, label_ids)
@@ -49,7 +55,7 @@ def compute_ras_centroids_from_seg(
     seg_img: ImageLike,
     label_ids: list[int] | None = None,
 ) -> dict[int, npt.NDArray[np.float64] | None]:
-    """Compute RAS-space centroids for segmentation labels."""
+    """Compute RAS-space centroids by mapping voxel centroids through the image affine."""
     image = load_spatial_image(seg_img)
     voxel_centroids = compute_voxel_centroids_from_seg(image, label_ids=label_ids)
     affine = np.asarray(image.affine, dtype=np.float64)
@@ -70,7 +76,7 @@ def collect_joint_centroids(
     *,
     min_common_labels: int,
 ) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64], list[int]]:
-    """Collect matched centroid arrays and their shared label IDs."""
+    """Collect matched centroid arrays and the shared labels used in the fit."""
     labels = [
         label
         for label, mov_point in mov_centroids.items()
@@ -95,7 +101,7 @@ def build_flipped_centroid_targets(
     mid_slice: float,
     min_common_labels: int,
 ) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64], list[int]]:
-    """Build source/target voxel centroids for left-right flipped self-registration."""
+    """Build paired voxel centroids for left-right flipped self-registration."""
     source_points: list[npt.NDArray[np.float64]] = []
     target_points: list[npt.NDArray[np.float64]] = []
     labels: list[int] = []
