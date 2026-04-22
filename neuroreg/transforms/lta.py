@@ -236,20 +236,41 @@ class LTA:
             )
 
         mat: list[list[float]] = []
+        matrix_start = None
         for i, line in enumerate(lines):
             if "1 4 4" in line:
+                matrix_start = i
                 for row in lines[i + 1: i + 5]:
                     mat.append([float(v) for v in row.strip().split()])
                 break
         if len(mat) != 4:
             raise ValueError(f"Could not parse 4×4 matrix from {filename}")
 
-        def _parse_vol_block(start: int) -> dict:
+        volume_field_prefixes = (
+            "valid",
+            "filename",
+            "fname",
+            "subject",
+            "volume",
+            "voxelsize",
+            "xras",
+            "yras",
+            "zras",
+            "cras",
+        )
+
+        def _parse_vol_block(start: int) -> tuple[dict, int]:
             info: dict = {}
-            for line in lines[start:]:
-                line = line.strip()
+            end = start
+            for i in range(start, len(lines)):
+                line = lines[i].strip()
                 if not line or line.startswith("#"):
                     continue
+                if line.startswith(("src volume info", "dst volume info")):
+                    break
+                if not line.startswith(volume_field_prefixes):
+                    break
+                end = i + 1
                 if line.startswith("valid"):
                     info["valid"] = int(line.split("=", 1)[1].split("#")[0].strip())
                 elif line.startswith("filename"):
@@ -276,17 +297,17 @@ class LTA:
                     info["zras"] = [float(v) for v in line.split("=", 1)[1].split()]
                 elif line.startswith("cras"):
                     info["cras"] = [float(v) for v in line.split("=", 1)[1].split()]
-                elif line.startswith("dst volume info"):
                     break
-            return info
+            return info, end
 
         src: dict = {}
         dst: dict = {}
+        footer_start = len(lines) if matrix_start is None else matrix_start + 5
         for i, line in enumerate(lines):
             if line.strip().startswith("src volume info"):
-                src = _parse_vol_block(i + 1)
+                src, footer_start = _parse_vol_block(i + 1)
             elif line.strip().startswith("dst volume info"):
-                dst = _parse_vol_block(i + 1)
+                dst, footer_start = _parse_vol_block(i + 1)
 
         for role, info in (("src", src), ("dst", dst)):
             if info.get("valid", 1) == 0:
@@ -298,7 +319,7 @@ class LTA:
 
         subject: str | None = None
         fscale: float | None = None
-        for line in lines:
+        for line in lines[footer_start:]:
             stripped = line.strip()
             if stripped.startswith("subject "):
                 parts = stripped.split(None, 1)

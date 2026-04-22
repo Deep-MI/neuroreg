@@ -1,9 +1,8 @@
 CLI modules
 ===========
 
-These pages document the installed console commands directly from the live
-``argparse`` parsers, so the Sphinx reference stays aligned with each command's
-``--help`` output.
+This page documents the installed console commands from the live parser
+objects so the Sphinx reference stays aligned with the CLI help text.
 
 ``robreg``
 ----------

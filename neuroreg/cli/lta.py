@@ -95,7 +95,7 @@ def _infer_transform_format(path: str, explicit: str | None = None) -> str:
         return "niftyreg"
     raise ValueError(
         f"Unsupported transform format for {path!r}; expected .lta, .xfm, .mat, .fslmat, "
-        ".dat, .reg, .tfm, .aff12.1D, *GenericAffine.mat, or .niftyreg.txt. "
+        ".dat, .reg, .tfm, .aff12.1D, \\*GenericAffine.mat, or .niftyreg.txt. "
         "Use --in-format/--out-format for ambiguous text formats such as .txt, .1D, or .mat"
     )
 
@@ -321,7 +321,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "  .mat/.fslmat  FSL FLIRT affine matrix\n"
             "  .dat/.reg  tkregister volumetric register.dat format\n"
             "  .tfm  ITK/ANTs 3D affine text transform\n"
-            "  *GenericAffine.mat  experimental ANTs / ITK Matlab affine\n"
+            "  \\*GenericAffine.mat  experimental ANTs / ITK Matlab affine\n"
             "  .aff12.1D  experimental AFNI affine text matrix\n"
             "  .niftyreg.txt  NiftyReg 3D affine text matrix\n"
             "\n"
@@ -348,7 +348,7 @@ def _build_parser() -> argparse.ArgumentParser:
     conv_p.add_argument(
         "--out-type",
         choices=["ras2ras", "vox2vox"],
-        help="Output LTA storage type when OUTPUT ends in .lta (default: keep RAS-to-RAS).",
+        help="Output LTA storage type when OUTPUT ends in .lta (default: preserve the input LTA storage type).",
     )
     conv_p.add_argument("--subject", help="Subject metadata to store when writing register.dat.")
     conv_p.add_argument(

@@ -219,6 +219,48 @@ class TestLTAClass:
         assert reread.subject == "bert"
         assert reread.fscale == pytest.approx(0.1)
 
+    def test_footer_subject_and_fscale_do_not_override_volume_subjects(self, tmp_path: Path):
+        path = tmp_path / "footer_meta.lta"
+        path.write_text(
+            "type      = 1\n"
+            "nxforms   = 1\n"
+            "mean      = 0.0 0.0 0.0\n"
+            "sigma     = 1.0\n"
+            "1 4 4\n"
+            "1 0 0 0\n"
+            "0 1 0 0\n"
+            "0 0 1 0\n"
+            "0 0 0 1\n"
+            "src volume info\n"
+            "valid = 1\n"
+            "filename = src.mgz\n"
+            "subject srcsubject\n"
+            "volume = 1 1 1\n"
+            "voxelsize = 1 1 1\n"
+            "xras   = 1 0 0\n"
+            "yras   = 0 1 0\n"
+            "zras   = 0 0 1\n"
+            "cras   = 0 0 0\n"
+            "dst volume info\n"
+            "valid = 1\n"
+            "filename = dst.mgz\n"
+            "subject dstsubject\n"
+            "volume = 1 1 1\n"
+            "voxelsize = 1 1 1\n"
+            "xras   = 1 0 0\n"
+            "yras   = 0 1 0\n"
+            "zras   = 0 0 1\n"
+            "cras   = 0 0 0\n"
+            "subject bert\n"
+            "fscale 0.1\n"
+        )
+
+        reread = LTA.read(path)
+        assert reread.src["subject"] == "srcsubject"
+        assert reread.dst["subject"] == "dstsubject"
+        assert reread.subject == "bert"
+        assert reread.fscale == pytest.approx(0.1)
+
     def test_r2r_and_v2v(self, tmp_path):
         p = _write_lta(tmp_path / "id.lta", _IDENTITY, lta_type=1)
         assert LTA.read(p).r2r() == pytest.approx(_IDENTITY, abs=1e-10)
@@ -651,6 +693,34 @@ class TestConvertCLI:
 
         reread = LTA.read(roundtrip_lta)
         assert reread.r2r() == pytest.approx(M, rel=1e-6, abs=1e-6)
+
+    def test_convert_lta_to_lta_preserves_storage_type_by_default(self, tmp_path: Path):
+        src_img = _make_image(tmp_path / "mov.nii.gz")
+        dst_img = _make_image(tmp_path / "ref.nii.gz")
+        lta = LTA.from_matrix(np.eye(4), src_img, src_img, dst_img, dst_img, lta_type=0)
+        lta_path = tmp_path / "input_v2v.lta"
+        out = tmp_path / "roundtrip_v2v.lta"
+        lta.write(lta_path)
+
+        main(["convert", str(lta_path), str(out)])
+
+        reread = LTA.read(out)
+        assert reread.type == 0
+        assert reread.v2v() == pytest.approx(np.eye(4), abs=1e-10)
+
+    def test_convert_lta_to_lta_respects_explicit_out_type(self, tmp_path: Path):
+        src_img = _make_image(tmp_path / "mov.nii.gz")
+        dst_img = _make_image(tmp_path / "ref.nii.gz")
+        lta = LTA.from_matrix(np.eye(4), src_img, src_img, dst_img, dst_img, lta_type=0)
+        lta_path = tmp_path / "input_v2v.lta"
+        out = tmp_path / "roundtrip_r2r.lta"
+        lta.write(lta_path)
+
+        main(["convert", str(lta_path), str(out), "--out-type", "ras2ras"])
+
+        reread = LTA.read(out)
+        assert reread.type == 1
+        assert reread.r2r() == pytest.approx(np.eye(4), abs=1e-10)
 
     def test_convert_lta_to_fsl_and_back(self, tmp_path: Path):
         src_img = _make_image(tmp_path / "mov.nii.gz", affine=np.eye(4))

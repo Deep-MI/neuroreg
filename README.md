@@ -546,6 +546,7 @@ Current DOF support is:
 | `robreg` / public `robreg()` | `6` only            |
 | `coreg` / public `coreg()`   | `3`, `6`, `9`, `12` |
 | `bbreg` / public `bbreg()`   | `6`, `9`, `12`      |
+| `segreg` / public `segreg()` | `6`, `12`           |
 
 The public `robreg` path is intentionally rigid-only for now because it tracks
 the current IRLS implementation.
