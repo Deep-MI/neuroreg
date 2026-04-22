@@ -9,7 +9,13 @@ from neuroreg.cli.segreg import main as segreg_main
 from neuroreg.image import header_map_image
 from neuroreg.segreg.atlas import load_fsaverage_centroids, load_fsaverage_data
 from neuroreg.segreg.centroids import build_flipped_centroid_targets
-from neuroreg.segreg.points import find_affine, find_rigid, find_rigid_anisotropic_scale, find_similarity
+from neuroreg.segreg.points import (
+    find_affine,
+    find_rigid,
+    find_rigid_anisotropic_scale,
+    find_similarity,
+    find_translation,
+)
 from neuroreg.segreg.register import segreg
 from neuroreg.transforms import LTA
 
@@ -30,6 +36,29 @@ def _write_seg(path: Path, *, affine: np.ndarray) -> None:
 def _write_float_image(path: Path, *, affine: np.ndarray) -> None:
     data = np.arange(8 * 8 * 8, dtype=np.float32).reshape(8, 8, 8)
     nib.save(nib.Nifti1Image(data, affine=affine), path)
+
+
+def _write_single_label_seg(path: Path, *, affine: np.ndarray) -> None:
+    data = np.zeros((8, 8, 8), dtype=np.int16)
+    data[3, 4, 5] = 1
+    nib.save(nib.Nifti1Image(data, affine=affine), path)
+
+
+def test_find_translation_recovers_known_transform():
+    mov = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [1.0, 2.0, 3.0],
+            [4.0, 1.0, 2.0],
+        ]
+    )
+    translation = np.array([4.0, -2.0, 1.5])
+    dst = mov + translation
+
+    recovered = find_translation(mov, dst)
+    expected = np.eye(4)
+    expected[:3, 3] = translation
+    assert recovered == pytest.approx(expected, abs=1e-8)
 
 
 def test_find_rigid_recovers_known_transform():
@@ -210,6 +239,29 @@ def test_segreg_registers_segmentation_images_in_ras(tmp_path: Path):
     assert result.labels == [1, 2, 3, 4]
 
 
+def test_segreg_translation_recovers_known_ras_transform_with_one_label(tmp_path: Path):
+    mov_path = tmp_path / "mov_seg_translation.nii.gz"
+    ref_path = tmp_path / "ref_seg_translation.nii.gz"
+
+    mov_affine = np.eye(4)
+    ref_affine = np.array(
+        [
+            [1.0, 0.0, 0.0, 5.0],
+            [0.0, 1.0, 0.0, -3.0],
+            [0.0, 0.0, 1.0, 2.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    _write_single_label_seg(mov_path, affine=mov_affine)
+    _write_single_label_seg(ref_path, affine=ref_affine)
+
+    result = segreg(mov_path, ref_path, dof=3)
+    expected = ref_affine @ np.linalg.inv(mov_affine)
+
+    assert result.r2r == pytest.approx(expected, abs=1e-6)
+    assert result.labels == [1]
+
+
 def test_segreg_similarity_recovers_known_ras_transform(tmp_path: Path):
     mov_path = tmp_path / "mov_seg_similarity.nii.gz"
     ref_path = tmp_path / "ref_seg_similarity.nii.gz"
@@ -297,6 +349,40 @@ def test_cli_writes_lta_and_mapmov(tmp_path: Path):
     mapped_img = nib.load(str(out_map))
     assert mapped_img.shape[:3] == nib.load(str(ref_seg)).shape[:3]
     assert mapped_img.affine == pytest.approx(ref_affine)
+
+
+def test_cli_accepts_translation_only_dof(tmp_path: Path):
+    mov_seg = tmp_path / "mov_seg_translation_cli.nii.gz"
+    ref_seg = tmp_path / "ref_seg_translation_cli.nii.gz"
+    out_lta = tmp_path / "translation_only.lta"
+
+    mov_affine = np.eye(4)
+    ref_affine = np.array(
+        [
+            [1.0, 0.0, 0.0, 5.0],
+            [0.0, 1.0, 0.0, -3.0],
+            [0.0, 0.0, 1.0, 2.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    _write_single_label_seg(mov_seg, affine=mov_affine)
+    _write_single_label_seg(ref_seg, affine=ref_affine)
+
+    segreg_main(
+        [
+            "--mov",
+            str(mov_seg),
+            "--ref",
+            str(ref_seg),
+            "--dof",
+            "3",
+            "--lta",
+            str(out_lta),
+        ]
+    )
+
+    assert out_lta.exists()
+    assert LTA.read(out_lta).r2r() == pytest.approx(ref_affine, abs=1e-6)
 
 
 def test_cli_writes_header_only_mapmovhdr(tmp_path: Path):

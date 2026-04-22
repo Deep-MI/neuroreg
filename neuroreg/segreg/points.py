@@ -1,8 +1,8 @@
 """Closed-form point-set registration helpers.
 
 This module implements the small family of transform models used by
-``segreg``: rigid, similarity, anisotropic no-shear, and full affine fits
-between paired 3-D point sets.
+``segreg``: translation-only, rigid, similarity, anisotropic no-shear, and
+full affine fits between paired 3-D point sets.
 """
 
 from __future__ import annotations
@@ -119,6 +119,34 @@ def _center_pairwise_points(
     centroid_mov = mov.mean(axis=0)
     centroid_dst = dst.mean(axis=0)
     return mov, dst, mov - centroid_mov, dst - centroid_dst
+
+
+def find_translation(p_mov: npt.ArrayLike, p_dst: npt.ArrayLike) -> PointArray:
+    """Fit a translation-only transform between paired 3-D point sets.
+
+    Parameters
+    ----------
+    p_mov, p_dst : array-like
+        Paired moving and destination points with shape ``(N, 3)``.
+
+    Returns
+    -------
+    np.ndarray
+        ``(4, 4)`` homogeneous transform with identity linear part and a
+        translation equal to the centroid offset between the point sets.
+
+    Raises
+    ------
+    ValueError
+        If no point correspondences are provided.
+    """
+    mov, dst = _validate_pairwise_points(p_mov, p_dst)
+    if mov.shape[0] < 1:
+        raise ValueError("Translation registration requires at least 1 point correspondence.")
+
+    transform = np.eye(4, dtype=np.float64)
+    transform[:3, 3] = dst.mean(axis=0) - mov.mean(axis=0)
+    return transform
 
 
 def find_rigid(p_mov: npt.ArrayLike, p_dst: npt.ArrayLike) -> PointArray:
@@ -312,7 +340,7 @@ def register_points(p_mov: npt.ArrayLike, p_dst: npt.ArrayLike, dof: int = 6) ->
     ----------
     p_mov, p_dst : array-like
         Paired moving and destination points with shape ``(N, 3)``.
-    dof : {6, 7, 9, 12}, default=6
+    dof : {3, 6, 7, 9, 12}, default=6
         Requested transform family.
 
     Returns
@@ -325,6 +353,8 @@ def register_points(p_mov: npt.ArrayLike, p_dst: npt.ArrayLike, dof: int = 6) ->
     ValueError
         If ``dof`` is not one of the supported closed-form solvers.
     """
+    if dof == 3:
+        return find_translation(p_mov, p_dst)
     if dof == 6:
         return find_rigid(p_mov, p_dst)
     if dof == 7:
@@ -333,4 +363,6 @@ def register_points(p_mov: npt.ArrayLike, p_dst: npt.ArrayLike, dof: int = 6) ->
         return find_rigid_anisotropic_scale(p_mov, p_dst)
     if dof == 12:
         return find_affine(p_mov, p_dst)
-    raise ValueError(f"Unsupported dof={dof}. Closed-form point registration supports only 6, 7, 9, or 12 DoF.")
+    raise ValueError(
+        f"Unsupported dof={dof}. Closed-form point registration supports only 3, 6, 7, 9, or 12 DoF."
+    )

@@ -84,6 +84,8 @@ def _default_min_common_labels(dof: int) -> int:
     int
         Minimum number of matched labels required for the default solver setup.
     """
+    if dof == 3:
+        return 1
     return 4 if dof in {9, 12} else 3
 
 
@@ -259,18 +261,19 @@ def segreg(
         grid for mapped images or LTAs.
     atlas : str or None, optional
         Name of a bundled atlas resource such as ``"fsaverage"``.
-    dof : {6, 7, 9, 12}, default=6
-        Degrees of freedom for the closed-form fit. ``6`` selects rigid,
-        ``7`` rigid plus global scale, ``9`` rigid plus anisotropic scaling
-        without shear, and ``12`` affine registration.
+    dof : {3, 6, 7, 9, 12}, default=6
+        Degrees of freedom for the closed-form fit. ``3`` selects
+        translation-only, ``6`` rigid, ``7`` rigid plus global scale, ``9``
+        rigid plus anisotropic scaling without shear, and ``12`` affine
+        registration.
     labels : list[int] or None, optional
         Explicit label subset override.
     label_set : {'all_shared', 'fsaverage_centroids', 'cortex_lr_pairs'} or None, optional
         Named label preset. Mode-specific defaults are used when omitted.
     min_common_labels : int or None, optional
         Minimum number of matched labels required to proceed. When omitted, the
-        default is ``3`` for rigid/similarity and ``4`` for anisotropic-scale
-        or affine registration.
+        default is ``1`` for translation-only, ``3`` for rigid/similarity, and
+        ``4`` for anisotropic-scale or affine registration.
     flipped : bool, default=False
         If ``True``, ignore external targets and register the moving
         segmentation to a left-right flipped self target for upright/midspace
@@ -295,11 +298,11 @@ def segreg(
     mov_name = mov_img.get_filename() or (str(mov) if isinstance(mov, (str, Path)) else "moving.mgz")
     mov_affine = np.asarray(mov_img.affine, dtype=np.float64)
 
-    if dof not in {6, 7, 9, 12}:
+    if dof not in {3, 6, 7, 9, 12}:
         raise ValueError(
             f"Unsupported dof={dof}. Segmentation registration supports "
-            "6 (rigid), 7 (similarity), 9 (anisotropic scale without shear), "
-            "or 12 (affine)."
+            "3 (translation-only), 6 (rigid), 7 (similarity), "
+            "9 (anisotropic scale without shear), or 12 (affine)."
         )
 
     if min_common_labels is None:

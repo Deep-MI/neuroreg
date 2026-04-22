@@ -229,8 +229,9 @@ Run `bbreg -h` for a full argument summary with defaults.
 Registers a moving segmentation by aligning label centroids to another
 segmentation, to bundled atlas centroids such as `fsaverage`, or to a
 left-right flipped self target for upright/midspace workflows. The centroid
-fit now supports rigid (`6`), similarity / global-scale (`7`), anisotropic
-no-shear scaling (`9`), or full affine (`12`) transforms.
+fit now supports translation-only (`3`), rigid (`6`), similarity /
+global-scale (`7`), anisotropic no-shear scaling (`9`), or full affine
+(`12`) transforms.
 
 `segreg` can also write mapped outputs while the package does not yet have a
 separate transform-application CLI. If `--movimg` is provided, `--mapmov` and
@@ -548,7 +549,7 @@ Current DOF support is:
 | `robreg` / public `robreg()` | `6` only            |
 | `coreg` / public `coreg()`   | `3`, `6`, `9`, `12` |
 | `bbreg` / public `bbreg()`   | `6`, `9`, `12`      |
-| `segreg` / public `segreg()` | `6`, `7`, `9`, `12` |
+| `segreg` / public `segreg()` | `3`, `6`, `7`, `9`, `12` |
 
 The public `robreg` path is intentionally rigid-only for now because it tracks
 the current IRLS implementation.

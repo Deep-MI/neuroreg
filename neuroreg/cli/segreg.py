@@ -40,8 +40,9 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="segreg",
         description=(
             "Segmentation-based registration via label centroids.\n"
-            "Supports rigid, similarity, no-shear anisotropic-scale, or affine centroid alignment between "
-            "segmentations, to bundled atlas centroids, or to a left-right flipped self target for uprighting."
+            "Supports translation-only, rigid, similarity, no-shear anisotropic-scale, or affine centroid "
+            "alignment between segmentations, to bundled atlas centroids, or to a left-right flipped self "
+            "target for uprighting."
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -90,9 +91,12 @@ def _build_parser() -> argparse.ArgumentParser:
         "--dof",
         type=int,
         default=6,
-        choices=[6, 7, 9, 12],
-        metavar="{6,7,9,12}",
-        help="6=rigid, 7=rigid+global scale, 9=rigid+anisotropic scale (no shear), 12=affine.",
+        choices=[3, 6, 7, 9, 12],
+        metavar="{3,6,7,9,12}",
+        help=(
+            "3=translation only, 6=rigid, 7=rigid+global scale, "
+            "9=rigid+anisotropic scale (no shear), 12=affine."
+        ),
     )
     parser.add_argument("--labels", type=_parse_int_csv, default=None, help="Comma-separated label subset override.")
     parser.add_argument(
