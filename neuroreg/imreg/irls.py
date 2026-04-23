@@ -30,11 +30,10 @@ FreeSurfer source: mri_robust_register/Regression.cpp,
 
 from __future__ import annotations
 
-import logging
-
 import torch
 import torch.nn.functional as F
 
+import logging
 from ..transforms.matrices import matrix_sqrt_schur, params_to_rigid_matrix
 from ..transforms.metrics import affine_dist
 
@@ -592,8 +591,10 @@ def register_irls(
 
         # Keep best T by minimum inner-loop cost (no early stopping —
         # FreeSurfer's outer loop runs all nmax iterations and only stops
-        # on AffineTransDist convergence).
-        if err_val < best_err:
+        # on AffineTransDist convergence). Always retain the first computed
+        # weights/mask so downstream outlier handling still has valid data even
+        # if the tracked error is NaN on that iteration.
+        if best_w_sqrt is None or best_valid is None or err_val < best_err:
             best_err = err_val
             best_T = T.clone()
             best_w_sqrt = w_sqrt.clone()

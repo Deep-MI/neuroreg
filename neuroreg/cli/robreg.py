@@ -1,9 +1,11 @@
 """Command-line interface for IRLS-backed robust registration (robreg)."""
 
 import argparse
-import logging
 import sys
+from pathlib import Path
 from typing import Any, cast
+
+import logging
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -18,11 +20,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     # ── required ────────────────────────────────────────────────────────────
-    p.add_argument("--mov", required=True, metavar="FILE", 
+    p.add_argument("--mov", required=True, metavar="FILE",
                    help="Moving (source) image (NIfTI or MGZ).")
-    p.add_argument("--ref", required=True, metavar="FILE", 
+    p.add_argument("--ref", required=True, metavar="FILE",
                    help="Reference (target/fixed) image (NIfTI or MGZ).")
-    p.add_argument("--out", required=True, metavar="LTA", 
+    p.add_argument("--out", required=True, metavar="LTA",
                    help="Output LTA file for the recovered transformation.")
 
     # ── transform ───────────────────────────────────────────────────────────
@@ -183,7 +185,10 @@ def main(args=None) -> None:
 
     # Outliers file is already saved by register_irls_pyramid if requested
     if ns.outliers:
-        print(f"Outliers:  {ns.outliers}")
+        if Path(ns.outliers).exists():
+            print(f"Outliers:  {ns.outliers}")
+        else:
+            logger.warning("Outlier map was requested but no file was written: %s", ns.outliers)
 
     logger.info("Registration complete")
 

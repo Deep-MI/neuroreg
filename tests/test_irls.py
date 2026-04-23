@@ -16,6 +16,7 @@ from neuroreg.imreg.irls import (
 from neuroreg.imreg.robreg import register_irls_pyramid
 from neuroreg.transforms import affine_dist, params_to_rigid_matrix
 
+
 # ---------------------------------------------------------------------------
 # _sqrt_tukey
 # ---------------------------------------------------------------------------
@@ -173,6 +174,21 @@ class TestRegisterIrls:
         vm = info['valid_mask']
         assert w is not None and vm is not None
         assert w.shape == (vm.sum().item(),)
+
+    def test_first_iteration_weights_are_kept_even_if_error_is_nan(self, monkeypatch: pytest.MonkeyPatch):
+        src, trg = self._make_images()
+
+        def fake_irls_inner_loop(A, b, sat=4.685, max_iterations=20, verbose=False):
+            return torch.zeros(6), torch.ones(A.shape[0]), 1.0, float("nan")
+
+        monkeypatch.setattr("neuroreg.imreg.irls.irls_inner_loop", fake_irls_inner_loop)
+
+        _, info = register_irls(src, trg, nmax=1)
+        w = info['weights']
+        vm = info['valid_mask']
+        assert w is not None and vm is not None
+        assert w.shape == (vm.sum().item(),)
+        assert torch.all(w == 1)
 
     def test_adaptive_sat_runs_and_records_sigma_history(self):
         src, trg = self._make_images()

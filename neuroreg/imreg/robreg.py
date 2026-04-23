@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import warnings
 from pathlib import Path
 from typing import Any, cast
@@ -12,11 +11,12 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from ..image import build_gaussian_pyramid, get_pyramid_limits
-from ..image.map import resample_isotropic_tensor
+import logging
 from .device import resolve_torch_device
 from .init import InitType, get_init_vox2vox, resolve_init_type
 from .irls import move_tensor, register_irls
+from ..image import build_gaussian_pyramid, get_pyramid_limits
+from ..image.map import resample_isotropic_tensor
 
 ImageLike = str | Path | Any | Tensor
 
@@ -101,13 +101,17 @@ def _save_outlier_map(all_info: list[dict[str, Any]], outliers_name: str, verbos
         logger.warning("Cannot save outlier map: no weights in final level")
         return
 
+    weights_sqrt = final_info["weights"]
+    valid_mask = final_info["valid_mask"]
+    if weights_sqrt is None or valid_mask is None:
+        logger.warning("Cannot save outlier map: final IRLS level did not produce usable weights")
+        return
+
     reg_affine = final_info.get("iso_affine")
     if reg_affine is None:
         logger.warning("Cannot save outlier map: no affine available")
         return
 
-    weights_sqrt = final_info["weights"]
-    valid_mask = final_info["valid_mask"]
     reg_shape = final_info["image_shape"]
     if torch.is_tensor(reg_affine):
         reg_affine = reg_affine.detach().cpu().numpy()
@@ -249,9 +253,9 @@ def register_irls_pyramid(
 
         if initial_transform is not None:
             T_iso = (
-                move_tensor(Rtrg, device=src.device, dtype=src.dtype)
-                @ move_tensor(initial_transform, device=src.device, dtype=src.dtype)
-                @ torch.inverse(move_tensor(Rsrc, device=src.device, dtype=src.dtype))
+                    move_tensor(Rtrg, device=src.device, dtype=src.dtype)
+                    @ move_tensor(initial_transform, device=src.device, dtype=src.dtype)
+                    @ torch.inverse(move_tensor(Rsrc, device=src.device, dtype=src.dtype))
             )
         else:
             T_iso = move_tensor(
@@ -352,9 +356,9 @@ def register_irls_pyramid(
 
     if isotropic:
         T = (
-            Rtrg.to(device=T.device, dtype=T.dtype)
-            @ T
-            @ torch.inverse(Rsrc.to(device=T.device, dtype=T.dtype))
+                Rtrg.to(device=T.device, dtype=T.dtype)
+                @ T
+                @ torch.inverse(Rsrc.to(device=T.device, dtype=T.dtype))
         )
 
     if outliers_name is not None:

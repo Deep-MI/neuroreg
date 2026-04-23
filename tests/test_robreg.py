@@ -8,6 +8,7 @@ import pytest
 import torch
 
 from neuroreg import robreg
+from neuroreg.imreg.robreg import _save_outlier_map
 
 
 def _make_blob(shape: tuple[int, int, int] = (20, 20, 20), shift: tuple[float, float, float] = (0, 0, 0)) -> np.ndarray:
@@ -29,6 +30,26 @@ def _make_img(
     affine = np.eye(4, dtype=np.float32)
     data = _make_blob(shape, shift)
     return nib.Nifti1Image(data, affine)
+
+
+def test_save_outlier_map_skips_missing_final_weights(tmp_path: Path, caplog: pytest.LogCaptureFixture):
+    outliers_path = tmp_path / "outliers.mgz"
+
+    with caplog.at_level("WARNING"):
+        _save_outlier_map(
+            [
+                {
+                    "weights": None,
+                    "valid_mask": None,
+                    "image_shape": (8, 8, 8),
+                    "iso_affine": np.eye(4, dtype=np.float32),
+                }
+            ],
+            str(outliers_path),
+        )
+
+    assert not outliers_path.exists()
+    assert "final IRLS level did not produce usable weights" in caplog.text
 
 
 class TestPublicRobregWrapper:
