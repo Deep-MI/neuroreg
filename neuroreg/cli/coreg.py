@@ -37,6 +37,12 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--mov", required=True, metavar="FILE", help="Moving (source) image (NIfTI or MGZ).")
     p.add_argument("--ref", required=True, metavar="FILE", help="Reference (target/fixed) image (NIfTI or MGZ).")
     p.add_argument("--out", required=True, metavar="LTA", help="Output LTA file for the recovered transformation.")
+    p.add_argument("--mapmov", metavar="FILE", help="Save the mapped moving image resliced into reference geometry.")
+    p.add_argument(
+        "--mapmovhdr",
+        metavar="FILE",
+        help="Save a header-only mapped moving image with no interpolation.",
+    )
 
     p.add_argument(
         "--dof",
@@ -164,6 +170,7 @@ def main(args=None) -> None:
     """
     import nibabel as nib
 
+    from neuroreg.image import save_header_mapped_image
     from neuroreg.imreg.coreg import coreg
     from neuroreg.transforms import LTA
 
@@ -192,6 +199,7 @@ def main(args=None) -> None:
         method=ns.method,
         device=ns.device,
         return_v2v=True,
+        mapped_name=ns.mapmov,
         symmetric=ns.symmetric,
         isotropic=ns.isotropic,
         level_iters=ns.level_iters,
@@ -232,6 +240,13 @@ def main(args=None) -> None:
     LTA.from_matrix(v2v_cpu.numpy(), ns.mov, mov_img, ns.ref, ref_img, lta_type=0).write(ns.out)
     logger.info("Wrote LTA: %s", ns.out)
     print(f"Output: {ns.out}")
+    if ns.mapmov:
+        logger.info("Wrote resliced mapped image: %s", ns.mapmov)
+        print(f"MapMov:    {ns.mapmov}")
+    if ns.mapmovhdr:
+        save_header_mapped_image(mov_img, v2v_cpu.numpy(), ns.mapmovhdr)
+        logger.info("Wrote header-mapped image: %s", ns.mapmovhdr)
+        print(f"MapMovHdr: {ns.mapmovhdr}")
 
 
 if __name__ == "__main__":

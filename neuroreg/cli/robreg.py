@@ -1,11 +1,10 @@
 """Command-line interface for IRLS-backed robust registration (robreg)."""
 
 import argparse
+import logging
 import sys
 from pathlib import Path
 from typing import Any, cast
-
-import logging
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -84,9 +83,14 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # ── output options ──────────────────────────────────────────────────────
     p.add_argument(
-        "--mapped",
+        "--mapmov",
         metavar="FILE",
-        help="Save warped moving image to this file (MGZ format).",
+        help="Save the mapped moving image resliced into reference geometry.",
+    )
+    p.add_argument(
+        "--mapmovhdr",
+        metavar="FILE",
+        help="Save a header-only mapped moving image with no interpolation.",
     )
     p.add_argument(
         "--outliers",
@@ -110,7 +114,7 @@ def main(args=None) -> None:
     """Entry point for the ``robreg`` command."""
     import nibabel as nib
 
-    from neuroreg.image import reslice_r2r_image
+    from neuroreg.image import save_header_mapped_image, save_resliced_r2r_image
     from neuroreg.imreg.robreg import robreg
     from neuroreg.transforms import LTA
 
@@ -170,18 +174,23 @@ def main(args=None) -> None:
     print(f"Transform: {ns.out}")
 
     # ── write mapped image if requested ─────────────────────────────────────
-    if ns.mapped:
+    if ns.mapmov:
         target_shape = cast(tuple[int, int, int], tuple(int(v) for v in ref_img.shape[:3]))
-        mapped_img = reslice_r2r_image(
+        save_resliced_r2r_image(
             mov_img,
             Mr2r_cpu.numpy(),
+            ns.mapmov,
             target_affine=ref_img.affine,
             target_shape=target_shape,
             mode="linear",
         )
-        mapped_img.to_filename(ns.mapped)
-        logger.info("Wrote mapped image: %s", ns.mapped)
-        print(f"Mapped:    {ns.mapped}")
+        logger.info("Wrote resliced mapped image: %s", ns.mapmov)
+        print(f"MapMov:    {ns.mapmov}")
+
+    if ns.mapmovhdr:
+        save_header_mapped_image(mov_img, Mr2r_cpu.numpy(), ns.mapmovhdr)
+        logger.info("Wrote header-mapped image: %s", ns.mapmovhdr)
+        print(f"MapMovHdr: {ns.mapmovhdr}")
 
     # Outliers file is already saved by register_irls_pyramid if requested
     if ns.outliers:

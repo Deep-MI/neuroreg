@@ -15,7 +15,7 @@ from scipy.optimize import minimize
 from scipy.signal import convolve2d
 from scipy.spatial.transform import Rotation
 
-from neuroreg.image import reslice_r2r_image
+from neuroreg.image import save_resliced_r2r_image
 from neuroreg.imreg.reg_model import RegModel
 from neuroreg.transforms import LINEAR_RAS_TO_RAS, LINEAR_VOX_TO_VOX, LTA, convert_transform_type
 
@@ -777,14 +777,14 @@ def register_powell_coreg(
         LTA.from_matrix(Mr2r.numpy(), src.get_filename(), src, trg.get_filename(), trg).write(lta_name)
     if mapped_name is not None:
         logger.info("Writing mapped image: %s", mapped_name)
-        mapped_img = reslice_r2r_image(
+        save_resliced_r2r_image(
             src,
             Mr2r.numpy(),
+            mapped_name,
             target_affine=trg.affine,
             target_shape=_shape3(trg.shape),
             mode="linear",
         )
-        mapped_img.to_filename(mapped_name)
 
     logger.info("register_powell_coreg total time: %.2f s", time.perf_counter() - start)
     if return_v2v:

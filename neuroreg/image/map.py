@@ -12,11 +12,11 @@ import neuroreg.transforms.matrices as trans
 
 def _normalize_interpolation_mode(mode: str) -> str:
     """Map public interpolation names to the backend names used by PyTorch."""
-    if mode == "linear":
+    if mode in ("linear", "bilinear"):
         return "bilinear"
-    if mode in ("bilinear", "nearest"):
+    if mode == "nearest":
         return mode
-    raise ValueError(f"mode must be 'linear', 'bilinear', or 'nearest', got '{mode}'.")
+    raise ValueError(f"mode must be 'linear' or 'nearest', got '{mode}'.")
 
 
 def map(
@@ -44,9 +44,9 @@ def map(
         ``is_torch_mat=False``.  Defaults to the shape of *image*.
     mode : {'linear', 'nearest'}, optional
         Interpolation mode passed to :func:`torch.nn.functional.grid_sample`.
-        ``'linear'`` is translated internally to PyTorch's ``'bilinear'`` name.
-        The backend-specific ``'bilinear'`` spelling is also accepted for
-        compatibility. Default is ``'linear'``.
+        ``'linear'`` is translated internally to PyTorch's ``'bilinear'``
+        backend name. The backend-specific spelling ``'bilinear'`` is still
+        accepted as an alias for compatibility. Default is ``'linear'``.
     padding_mode : {'zeros', 'border', 'reflection'}, optional
         Padding strategy for out-of-bounds coordinates, passed directly to
         :func:`torch.nn.functional.grid_sample`.  Default is ``'zeros'``.
@@ -60,7 +60,7 @@ def map(
     Raises
     ------
     ValueError
-        If *mode* is not ``'linear'``, ``'bilinear'``, or ``'nearest'``, or if
+        If *mode* is not ``'linear'`` or ``'nearest'``, or if
         *padding_mode* is not one of ``'zeros'``, ``'border'``, or
         ``'reflection'``.
     """
@@ -238,8 +238,8 @@ def resample_isotropic_tensor(
     out_shape : tuple[int, int, int], optional
         Output image shape (D, H, W). If None, computed automatically.
     mode : {'linear', 'nearest'}, optional
-        Interpolation mode. Default is 'linear'. The backend-specific
-        spelling 'bilinear' is also accepted as an alias.
+        Interpolation mode. Default is ``'linear'``. The backend-specific
+        spelling ``'bilinear'`` is still accepted as an alias.
 
     Returns
     -------
@@ -384,3 +384,95 @@ def reslice_r2r_image(
     else:
         mapped_np = mapped_np.astype(np.float32, copy=False)
     return create_image_like(image, mapped_np, np.asarray(target_affine, dtype=np.float64))
+
+
+def infer_image_reslice_mode(image: Any) -> str:
+    """Infer a safe default interpolation mode for a nibabel-like image.
+
+    Parameters
+    ----------
+    image : Any
+        Nibabel-like image object exposing ``get_data_dtype()``.
+
+    Returns
+    -------
+    str
+        ``"nearest"`` for integer-valued images such as segmentations and
+        labels, otherwise ``"linear"`` for floating-point intensity images.
+    """
+    source_dtype = np.dtype(image.get_data_dtype())
+    return "nearest" if np.issubdtype(source_dtype, np.integer) else "linear"
+
+
+def save_resliced_r2r_image(
+        image: Any,
+        r2r: torch.Tensor | np.ndarray,
+        output_path: str,
+        *,
+        target_affine: np.ndarray,
+        target_shape: tuple[int, int, int],
+        mode: str | None = None,
+        padding_mode: str = "zeros",
+) -> Any:
+    """Reslice and write an image using a shared RAS-to-RAS mapping path.
+
+    Parameters
+    ----------
+    image : Any
+        Nibabel-like source image.
+    r2r : torch.Tensor or np.ndarray, shape (4, 4)
+        Source-to-target RAS transform.
+    output_path : str
+        Destination filename for the resliced output.
+    target_affine : np.ndarray, shape (4, 4)
+        Voxel-to-RAS affine of the output grid.
+    target_shape : tuple of int
+        Spatial shape of the output grid.
+    mode : {'linear', 'nearest'} or None, optional
+        Interpolation mode. When omitted, the mode is chosen automatically from
+        the source image data type via :func:`infer_image_reslice_mode`.
+    padding_mode : {'zeros', 'border', 'reflection'}, default='zeros'
+        Out-of-bounds padding mode.
+
+    Returns
+    -------
+    Any
+        Written mapped image object.
+    """
+    resolved_mode = infer_image_reslice_mode(image) if mode is None else mode
+    mapped_img = reslice_r2r_image(
+        image,
+        r2r,
+        target_affine=target_affine,
+        target_shape=target_shape,
+        mode=resolved_mode,
+        padding_mode=padding_mode,
+    )
+    mapped_img.to_filename(output_path)
+    return mapped_img
+
+
+def save_header_mapped_image(
+        image: Any,
+        r2r: torch.Tensor | np.ndarray,
+        output_path: str,
+) -> Any:
+    """Write a header-only mapped image using a shared helper.
+
+    Parameters
+    ----------
+    image : Any
+        Nibabel-like source image.
+    r2r : torch.Tensor or np.ndarray, shape (4, 4)
+        Source-to-target RAS transform.
+    output_path : str
+        Destination filename for the output image.
+
+    Returns
+    -------
+    Any
+        Written header-mapped image object.
+    """
+    mapped_img = header_map_image(image, r2r)
+    mapped_img.to_filename(output_path)
+    return mapped_img

@@ -540,6 +540,68 @@ class TestPublicCoregWrapper:
         assert Mr2r.shape == (4, 4)
         assert torch.isfinite(Mr2r).all()
 
+    def test_register_gd_pyramid_writes_mapped_image_with_linear_mode(self, monkeypatch: pytest.MonkeyPatch):
+        captured: dict[str, object] = {}
+
+        def fake_register_level(simg, timg, **kwargs):
+            _ = simg, timg, kwargs
+            return torch.eye(4, dtype=torch.float64), [], None
+
+        def fake_save_resliced(src, matrix, path, **kwargs):
+            captured["src"] = src
+            captured["matrix"] = matrix
+            captured["path"] = path
+            captured.update(kwargs)
+
+        monkeypatch.setattr("neuroreg.imreg.gd.register_level", fake_register_level)
+        monkeypatch.setattr("neuroreg.imreg.gd.save_resliced_r2r_image", fake_save_resliced)
+
+        img = _make_img()
+        out_path = "mapped.nii.gz"
+        _ = register_gd_pyramid(
+            img,
+            img.__class__(img.get_fdata(), img.affine.copy()),
+            mapped_name=out_path,
+            init_type="header",
+            symmetric=False,
+            n=1,
+            min_voxels=16,
+            max_voxels=16,
+            device="cpu",
+        )
+
+        assert captured["path"] == out_path
+        assert captured["mode"] == "linear"
+
+    def test_register_powell_coreg_writes_mapped_image_with_linear_mode(self, monkeypatch: pytest.MonkeyPatch):
+        captured: dict[str, object] = {}
+
+        class DummyEvaluator:
+            def __init__(self, src, trg, sep):
+                self.src = src
+                self.trg = trg
+                self.sep = sep
+
+            def optimize_powell_params(self, init_params, **kwargs):
+                _ = init_params, kwargs
+                return type("Result", (), {"final_r2r": np.eye(4, dtype=np.float64), "final_cost": 0.0})()
+
+        def fake_save_resliced(src, matrix, path, **kwargs):
+            captured["src"] = src
+            captured["matrix"] = matrix
+            captured["path"] = path
+            captured.update(kwargs)
+
+        monkeypatch.setattr("neuroreg.imreg.powell.PowellCostEvaluator", DummyEvaluator)
+        monkeypatch.setattr("neuroreg.imreg.powell.save_resliced_r2r_image", fake_save_resliced)
+
+        img = _make_img()
+        out_path = "mapped.nii.gz"
+        _ = register_powell_coreg(img, img, mapped_name=out_path, init_type="header", dof=6)
+
+        assert captured["path"] == out_path
+        assert captured["mode"] == "linear"
+
     def test_register_powell_coreg_warns_and_falls_back_to_cpu(self, monkeypatch: pytest.MonkeyPatch):
         class DummyEvaluator:
             def __init__(self, src, trg, sep):

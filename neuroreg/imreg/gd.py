@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from ..image import build_gaussian_pyramid, reslice_r2r_image
+from ..image import build_gaussian_pyramid, save_resliced_r2r_image
 from ..image.pyramid import _PYRAMID_FILTER, _smooth3d, get_pyramid_limits
 from ..transforms import LTA
 from ..transforms.matrices import matrix_sqrt_schur
@@ -522,14 +522,14 @@ def register_gd_pyramid(
         LTA.from_matrix(Mr2r.numpy(), src.get_filename(), src, trg.get_filename(), trg).write(lta_name)
     if mapped_name is not None:
         logger.info("Writing mapped image: %s", mapped_name)
-        mapped_img = reslice_r2r_image(
+        save_resliced_r2r_image(
             src,
             Mr2r.numpy(),
+            mapped_name,
             target_affine=trg.affine,
             target_shape=_shape3(trg.shape),
             mode="linear",
         )
-        mapped_img.to_filename(mapped_name)
 
     logger.info("register_gd_pyramid total time: %.2f s", time.perf_counter() - start)
     if return_v2v:

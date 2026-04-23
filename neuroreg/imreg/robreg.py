@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import warnings
 from pathlib import Path
 from typing import Any, cast
@@ -11,12 +12,11 @@ import numpy as np
 import torch
 from torch import Tensor
 
-import logging
+from ..image import build_gaussian_pyramid, get_pyramid_limits
+from ..image.map import resample_isotropic_tensor
 from .device import resolve_torch_device
 from .init import InitType, get_init_vox2vox, resolve_init_type
 from .irls import move_tensor, register_irls
-from ..image import build_gaussian_pyramid, get_pyramid_limits
-from ..image.map import resample_isotropic_tensor
 
 ImageLike = str | Path | Any | Tensor
 

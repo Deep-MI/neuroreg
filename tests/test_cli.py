@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any, cast
 
 import nibabel as nib
+import numpy as np
 import pytest
 import torch
 
@@ -31,6 +32,11 @@ class _TensorRequiringCpu:
 
 def _write_zero_image(path: Path) -> None:
     data = torch.zeros(8, 8, 8, dtype=torch.float32).numpy()
+    nib.save(nib.Nifti1Image(data, affine=torch.eye(4).numpy()), path)
+
+
+def _write_uint8_image(path: Path) -> None:
+    data = torch.arange(8 * 8 * 8, dtype=torch.uint8).reshape(8, 8, 8).numpy()
     nib.save(nib.Nifti1Image(data, affine=torch.eye(4).numpy()), path)
 
 
@@ -116,6 +122,56 @@ class TestRobregCli:
         assert captured["init_type"] == "image_center"
         assert out_path.exists()
 
+    def test_main_writes_mapmov_and_mapmovhdr(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        mov_path = tmp_path / "mov.nii.gz"
+        ref_path = tmp_path / "ref.nii.gz"
+        out_path = tmp_path / "out.lta"
+        out_map = tmp_path / "mapped.nii.gz"
+        out_hdr = tmp_path / "mapped_hdr.nii.gz"
+
+        _write_uint8_image(mov_path)
+        _write_zero_image(ref_path)
+
+        class _DummyLTA:
+            def write(self, path):
+                Path(path).write_text("dummy")
+
+        transform = torch.eye(4, dtype=torch.float64)
+        transform[0, 3] = 1.5
+        transform[2, 3] = -2.0
+
+        monkeypatch.setattr("neuroreg.imreg.robreg.robreg", lambda *args, **kwargs: _TensorRequiringCpu(transform))
+        monkeypatch.setattr("neuroreg.transforms.LTA.from_matrix", lambda *args, **kwargs: _DummyLTA())
+
+        robreg_main(
+            [
+                "--mov",
+                str(mov_path),
+                "--ref",
+                str(ref_path),
+                "--out",
+                str(out_path),
+                "--mapmov",
+                str(out_map),
+                "--mapmovhdr",
+                str(out_hdr),
+            ]
+        )
+
+        assert out_path.exists()
+        assert out_map.exists()
+        assert out_hdr.exists()
+        mapped = nib.load(str(out_map))
+        mapped_hdr = nib.load(str(out_hdr))
+        ref_img = nib.load(str(ref_path))
+        assert mapped.shape[:3] == ref_img.shape[:3]
+        assert mapped.affine == pytest.approx(ref_img.affine)
+        assert mapped.get_data_dtype() == np.dtype(np.float32)
+        expected_affine = np.eye(4)
+        expected_affine[0, 3] = 1.5
+        expected_affine[2, 3] = -2.0
+        assert mapped_hdr.affine == pytest.approx(expected_affine)
+
     def test_parser_rejects_non_rigid_dof(self, tmp_path: Path):
         mov_path = tmp_path / "mov.nii.gz"
         ref_path = tmp_path / "ref.nii.gz"
@@ -145,6 +201,11 @@ class TestCoregCli:
         def fake_coreg(*args, **kwargs):
             captured_kwargs["args"] = args
             captured_kwargs.update(kwargs)
+            mapped_name = kwargs.get("mapped_name")
+            if mapped_name is not None:
+                ref_img = cast(Any, args[1])
+                zeros = torch.zeros(tuple(int(v) for v in ref_img.shape[:3]), dtype=torch.float32).numpy()
+                nib.save(nib.Nifti1Image(zeros, affine=ref_img.affine), str(mapped_name))
             return _TensorRequiringCpu(torch.eye(4))
 
         class _DummyLTA:
@@ -276,3 +337,59 @@ class TestCoregCli:
         assert captured["min_voxels"] == 32
         assert captured["max_voxels"] == 128
         assert out_path.exists()
+
+    def test_main_writes_mapmov_and_mapmovhdr(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        mov_path = tmp_path / "mov.nii.gz"
+        ref_path = tmp_path / "ref.nii.gz"
+        out_path = tmp_path / "out.lta"
+        out_map = tmp_path / "mapped.nii.gz"
+        out_hdr = tmp_path / "mapped_hdr.nii.gz"
+        _write_zero_image(mov_path)
+        _write_zero_image(ref_path)
+
+        captured: dict[str, object] = {}
+
+        def fake_coreg(*args, **kwargs):
+            captured["args"] = args
+            captured.update(kwargs)
+            mapped_name = kwargs.get("mapped_name")
+            if mapped_name is not None:
+                ref_img = cast(Any, args[1])
+                zeros = torch.zeros(tuple(int(v) for v in ref_img.shape[:3]), dtype=torch.float32).numpy()
+                nib.save(nib.Nifti1Image(zeros, affine=ref_img.affine), str(mapped_name))
+            transform = torch.eye(4, dtype=torch.float64)
+            transform[0, 3] = 2.5
+            transform[1, 3] = -1.0
+            return _TensorRequiringCpu(transform)
+
+        class _DummyLTA:
+            def write(self, path):
+                Path(path).write_text("dummy")
+
+        monkeypatch.setattr("neuroreg.imreg.coreg.coreg", fake_coreg)
+        monkeypatch.setattr("neuroreg.transforms.LTA.from_matrix", lambda *args, **kwargs: _DummyLTA())
+
+        coreg_main(
+            [
+                "--mov",
+                str(mov_path),
+                "--ref",
+                str(ref_path),
+                "--out",
+                str(out_path),
+                "--mapmov",
+                str(out_map),
+                "--mapmovhdr",
+                str(out_hdr),
+            ]
+        )
+
+        assert captured["mapped_name"] == str(out_map)
+        assert out_path.exists()
+        assert out_map.exists()
+        assert out_hdr.exists()
+        mapped_hdr = nib.load(str(out_hdr))
+        expected_affine = np.eye(4)
+        expected_affine[0, 3] = 2.5
+        expected_affine[1, 3] = -1.0
+        assert mapped_hdr.affine == pytest.approx(expected_affine)

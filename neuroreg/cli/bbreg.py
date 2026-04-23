@@ -142,6 +142,12 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="DEVICE",
         help="Torch device string, e.g. 'cpu', 'cuda', 'mps', or 'gpu'.",
     )
+    p.add_argument("--mapmov", metavar="FILE", help="Save the mapped moving image resliced into target geometry.")
+    p.add_argument(
+        "--mapmovhdr",
+        metavar="FILE",
+        help="Save a header-only mapped moving image with no interpolation.",
+    )
     p.add_argument("--verbose", action="store_true", help="Enable INFO-level logging.")
     p.add_argument("--debug", action="store_true", help="Enable DEBUG-level logging.")
 
@@ -203,6 +209,29 @@ def _load_reference_image_for_mode(ns: argparse.Namespace, mode: str) -> Any | N
     if mode == "seg" and ns.ref is not None:
         return nib.load(ns.ref)
     return None
+
+
+def _load_target_geometry_image(ns: argparse.Namespace, mode: str) -> Any:
+    """Load the final target geometry used for mapped output export.
+
+    Parameters
+    ----------
+    ns : argparse.Namespace
+        Parsed CLI arguments.
+    mode : {"subject_dir", "explicit", "seg"}
+        Resolved surface-input mode from :func:`_validate_args`.
+
+    Returns
+    -------
+    Any
+        Nibabel-like image defining the target/reference geometry of the final
+        BBR solution.
+    """
+    if mode == "subject_dir":
+        return nib.load(str(Path(ns.subject_dir) / "mri" / "orig.mgz"))
+    if mode == "seg":
+        return nib.load(ns.seg)
+    return nib.load(ns.ref)
 
 
 def _load_prealign_mask_image(ns: argparse.Namespace, mode: str) -> Any | None:
@@ -290,9 +319,12 @@ def main(args=None) -> None:
     The CLI normalizes the different input modes, optionally runs a coarse NMI
     prealignment to obtain a ``moving -> target`` initialization, and then calls
     :func:`neuroreg.bbreg.register.register_surface` with a consistent public
-    transform direction.
+    transform direction. When requested, it also exports resliced or header-only
+    mapped versions of the moving image using the same shared mapping helpers as
+    the other registration CLIs.
     """
     from neuroreg.bbreg.register import register_surface
+    from neuroreg.image import save_header_mapped_image, save_resliced_r2r_image
 
     parser = _build_parser()
     ns = parser.parse_args(args)
@@ -356,7 +388,7 @@ def main(args=None) -> None:
         kwargs["ref"] = ns.ref
 
     try:
-        register_surface(**kwargs)
+        mr2r = register_surface(**kwargs)
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         if ns.debug:
@@ -366,6 +398,25 @@ def main(args=None) -> None:
         sys.exit(1)
 
     print(f"Output: {ns.out}")
+    if ns.mapmov or ns.mapmovhdr:
+        target_img = _load_target_geometry_image(ns, mode)
+        mr2r_np = mr2r.detach().cpu().numpy()
+        target_shape = tuple(int(v) for v in target_img.shape[:3])
+        if ns.mapmov:
+            save_resliced_r2r_image(
+                mov_img,
+                mr2r_np,
+                ns.mapmov,
+                target_affine=target_img.affine,
+                target_shape=target_shape,
+                mode="linear",
+            )
+            logger.info("Wrote resliced mapped image: %s", ns.mapmov)
+            print(f"MapMov:    {ns.mapmov}")
+        if ns.mapmovhdr:
+            save_header_mapped_image(mov_img, mr2r_np, ns.mapmovhdr)
+            logger.info("Wrote header-mapped image: %s", ns.mapmovhdr)
+            print(f"MapMovHdr: {ns.mapmovhdr}")
 
 
 if __name__ == "__main__":

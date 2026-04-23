@@ -12,9 +12,8 @@ import argparse
 import logging
 
 import nibabel as nib
-import numpy as np
 
-from neuroreg.image import header_map_image, reslice_r2r_image
+from neuroreg.image import save_header_mapped_image, save_resliced_r2r_image
 from neuroreg.segreg import segreg
 from neuroreg.segreg.atlas import load_atlas_centroids as load_bundled_atlas_centroids
 from neuroreg.segreg.centroids import load_spatial_image
@@ -235,22 +234,19 @@ def main(args=None) -> None:
             mov_img=mapped_source_img,
             ref_img=ref_geom_img,
         )
-        source_dtype = np.dtype(mapped_source_img.get_data_dtype())
-        interp_mode = "nearest" if np.issubdtype(source_dtype, np.integer) else "linear"
-        mapped_img = reslice_r2r_image(
+        save_resliced_r2r_image(
             mapped_source_img,
             result.r2r,
+            ns.mapmov,
             target_affine=target_affine,
             target_shape=target_shape,
-            mode=interp_mode,
+            mode="linear" if ns.movimg is not None else None,
         )
-        mapped_img.to_filename(ns.mapmov)
         logger.info("Wrote resliced mapped image: %s", ns.mapmov)
         print(f"MapMov:    {ns.mapmov}")
 
     if ns.mapmovhdr and mapped_source_img is not None:
-        mapped_hdr_img = header_map_image(mapped_source_img, result.r2r)
-        mapped_hdr_img.to_filename(ns.mapmovhdr)
+        save_header_mapped_image(mapped_source_img, result.r2r, ns.mapmovhdr)
         logger.info("Wrote header-mapped image: %s", ns.mapmovhdr)
         print(f"MapMovHdr: {ns.mapmovhdr}")
 
