@@ -257,9 +257,9 @@ Uses Iteratively Reweighted Least Squares with Tukey biweights,
 closely matching FreeSurfer’s mri_robust_register algorithm.</p>
 </p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">robreg</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">mov</span> <span class="n">FILE</span> <span class="o">--</span><span class="n">ref</span> <span class="n">FILE</span> <span class="o">--</span><span class="n">out</span> <span class="n">LTA</span> <span class="p">[</span><span class="o">--</span><span class="n">dof</span> <span class="p">{</span><span class="mi">6</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">nmax</span> <span class="n">N</span><span class="p">]</span>
-              <span class="p">[</span><span class="o">--</span><span class="n">sat</span> <span class="n">FLOAT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">nosym</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">header</span> <span class="o">|</span> <span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">centroid</span> <span class="o">|</span>
-              <span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">center</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">mapped</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">outliers</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span>
-              <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
+              <span class="p">[</span><span class="o">--</span><span class="n">sat</span> <span class="n">FLOAT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">nosym</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">lta</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">header</span> <span class="o">|</span>
+              <span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">centroid</span> <span class="o">|</span> <span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">center</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">mapmov</span> <span class="n">FILE</span><span class="p">]</span>
+              <span class="p">[</span><span class="o">--</span><span class="n">mapmovhdr</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">outliers</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
 </pre></div>
 </div>
 <section id="neuroreg.cli.robreg-_build_parser-named-arguments">
@@ -290,6 +290,9 @@ closely matching FreeSurfer’s mri_robust_register algorithm.</p>
 <dt><kbd>--nosym</kbd></dt>
 <dd><p>Disable symmetric halfway-space registration and run directed registration.</p>
 </dd>
+<dt><kbd>--init-lta</kbd></dt>
+<dd><p>Initialize from an existing LTA transform. When given, other init flags are ignored.</p>
+</dd>
 <dt><kbd>--init-header</kbd></dt>
 <dd><p>Use header alignment only.</p>
 </dd>
@@ -299,8 +302,11 @@ closely matching FreeSurfer’s mri_robust_register algorithm.</p>
 <dt><kbd>--init-center</kbd></dt>
 <dd><p>Initialize by aligning geometric image centers in RAS (FreeSurfer cras0-style).</p>
 </dd>
-<dt><kbd>--mapped</kbd></dt>
-<dd><p>Save warped moving image to this file (MGZ format).</p>
+<dt><kbd>--mapmov</kbd></dt>
+<dd><p>Save the mapped moving image resliced into reference geometry.</p>
+</dd>
+<dt><kbd>--mapmovhdr</kbd></dt>
+<dd><p>Save a header-only mapped moving image with no interpolation.</p>
 </dd>
 <dt><kbd>--outliers</kbd></dt>
 <dd><p>Save outlier map (1 - Tukey weights) to this file (MGZ format). High values indicate poorly registered regions (outliers), low values indicate well-registered regions. Use with heat colormap in freeview for visualization.</p>
@@ -336,11 +342,12 @@ closely matching FreeSurfer’s mri_robust_register algorithm.</p>
 <p><p>3-D image-to-image registration.
 Defaults to the MRI_coreg-style Powell path; use –method gd for the legacy PyTorch gradient-descent path.</p>
 </p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">coreg</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">mov</span> <span class="n">FILE</span> <span class="o">--</span><span class="n">ref</span> <span class="n">FILE</span> <span class="o">--</span><span class="n">out</span> <span class="n">LTA</span> <span class="p">[</span><span class="o">--</span><span class="n">dof</span> <span class="p">{</span><span class="mi">3</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">9</span><span class="p">,</span><span class="mi">12</span><span class="p">}]</span>
-             <span class="p">[</span><span class="o">--</span><span class="n">method</span> <span class="p">{</span><span class="n">powell</span><span class="p">,</span><span class="n">gd</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">n_iters</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">level</span><span class="o">-</span><span class="n">iters</span> <span class="n">LEVEL_ITERS</span><span class="p">]</span>
-             <span class="p">[</span><span class="o">--</span><span class="n">lr</span> <span class="n">LR</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="nb">min</span><span class="o">-</span><span class="n">voxels</span> <span class="n">MIN_VOXELS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="nb">max</span><span class="o">-</span><span class="n">voxels</span> <span class="n">MAX_VOXELS</span><span class="p">]</span>
-             <span class="p">[</span><span class="o">--</span><span class="n">nosym</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">header</span> <span class="o">|</span> <span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">centroid</span> <span class="o">|</span> <span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">center</span><span class="p">]</span>
-             <span class="p">[</span><span class="o">--</span><span class="n">isotropic</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">device</span> <span class="n">DEVICE</span><span class="p">]</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">coreg</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">mov</span> <span class="n">FILE</span> <span class="o">--</span><span class="n">ref</span> <span class="n">FILE</span> <span class="o">--</span><span class="n">out</span> <span class="n">LTA</span> <span class="p">[</span><span class="o">--</span><span class="n">mapmov</span> <span class="n">FILE</span><span class="p">]</span>
+             <span class="p">[</span><span class="o">--</span><span class="n">mapmovhdr</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">dof</span> <span class="p">{</span><span class="mi">3</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">9</span><span class="p">,</span><span class="mi">12</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">method</span> <span class="p">{</span><span class="n">powell</span><span class="p">,</span><span class="n">gd</span><span class="p">}]</span>
+             <span class="p">[</span><span class="o">--</span><span class="n">n_iters</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">level</span><span class="o">-</span><span class="n">iters</span> <span class="n">LEVEL_ITERS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">lr</span> <span class="n">LR</span><span class="p">]</span>
+             <span class="p">[</span><span class="o">--</span><span class="nb">min</span><span class="o">-</span><span class="n">voxels</span> <span class="n">MIN_VOXELS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="nb">max</span><span class="o">-</span><span class="n">voxels</span> <span class="n">MAX_VOXELS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">nosym</span><span class="p">]</span>
+             <span class="p">[</span><span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">lta</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">header</span> <span class="o">|</span> <span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">centroid</span> <span class="o">|</span>
+             <span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">center</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">isotropic</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">device</span> <span class="n">DEVICE</span><span class="p">]</span>
              <span class="p">[</span><span class="o">--</span><span class="n">powell</span><span class="o">-</span><span class="n">brute</span><span class="o">-</span><span class="n">limit</span> <span class="n">POWELL_BRUTE_LIMIT</span><span class="p">]</span>
              <span class="p">[</span><span class="o">--</span><span class="n">powell</span><span class="o">-</span><span class="n">brute</span><span class="o">-</span><span class="n">iters</span> <span class="n">POWELL_BRUTE_ITERS</span><span class="p">]</span>
              <span class="p">[</span><span class="o">--</span><span class="n">powell</span><span class="o">-</span><span class="n">brute</span><span class="o">-</span><span class="n">samples</span> <span class="n">POWELL_BRUTE_SAMPLES</span><span class="p">]</span>
@@ -359,6 +366,12 @@ Defaults to the MRI_coreg-style Powell path; use –method gd for the legacy PyT
 </dd>
 <dt><kbd>--out</kbd></dt>
 <dd><p>Output LTA file for the recovered transformation.</p>
+</dd>
+<dt><kbd>--mapmov</kbd></dt>
+<dd><p>Save the mapped moving image resliced into reference geometry.</p>
+</dd>
+<dt><kbd>--mapmovhdr</kbd></dt>
+<dd><p>Save a header-only mapped moving image with no interpolation.</p>
 </dd>
 <dt><kbd>--dof</kbd></dt>
 <dd><p>Possible choices: 3, 6, 9, 12</p>
@@ -388,6 +401,9 @@ Defaults to the MRI_coreg-style Powell path; use –method gd for the legacy PyT
 </dd>
 <dt><kbd>--nosym</kbd></dt>
 <dd><p>Disable symmetric halfway-space registration and run directed registration.</p>
+</dd>
+<dt><kbd>--init-lta</kbd></dt>
+<dd><p>Initialize from an existing LTA transform. When given, other init flags are ignored.</p>
 </dd>
 <dt><kbd>--init-header</kbd></dt>
 <dd><p>Use header alignment only.</p>
@@ -491,7 +507,8 @@ surface files needed)</p>
              <span class="p">[</span><span class="o">--</span><span class="n">wm_proj_abs</span> <span class="n">MM</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">gm_proj_frac</span> <span class="n">FRAC</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">slope</span> <span class="n">SLOPE</span><span class="p">]</span>
              <span class="p">[</span><span class="o">--</span><span class="n">gradient_weight</span> <span class="n">GRADIENT_WEIGHT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">n_iters</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">lr</span> <span class="n">LR</span><span class="p">]</span>
              <span class="p">[</span><span class="o">--</span><span class="n">subsample</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">lta</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">header</span><span class="p">]</span>
-             <span class="p">[</span><span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">coreg</span><span class="o">-</span><span class="n">ref</span><span class="o">-</span><span class="n">mask</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">device</span> <span class="n">DEVICE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
+             <span class="p">[</span><span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">coreg</span><span class="o">-</span><span class="n">ref</span><span class="o">-</span><span class="n">mask</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">device</span> <span class="n">DEVICE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">mapmov</span> <span class="n">FILE</span><span class="p">]</span>
+             <span class="p">[</span><span class="o">--</span><span class="n">mapmovhdr</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
 </pre></div>
 </div>
 <section id="neuroreg.cli.bbreg-_build_parser-named-arguments">
@@ -545,7 +562,7 @@ surface files needed)</p>
 <dd><p>Use every N-th surface vertex (1 = all).</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">2</span></code></p>
 </dd>
-<dt><kbd>--init-lta, --init_lta</kbd></dt>
+<dt><kbd>--init-lta</kbd></dt>
 <dd><p>Initialise registration from an existing LTA file (e.g. from a prior robreg run, or a previous bbreg pass).</p>
 </dd>
 <dt><kbd>--init-header</kbd></dt>
@@ -559,6 +576,12 @@ surface files needed)</p>
 <dt><kbd>--device</kbd></dt>
 <dd><p>Torch device string, e.g. ‘cpu’, ‘cuda’, ‘mps’, or ‘gpu’.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">'cpu'</span></code></p>
+</dd>
+<dt><kbd>--mapmov</kbd></dt>
+<dd><p>Save the mapped moving image resliced into target geometry.</p>
+</dd>
+<dt><kbd>--mapmovhdr</kbd></dt>
+<dd><p>Save a header-only mapped moving image with no interpolation.</p>
 </dd>
 <dt><kbd>--verbose</kbd></dt>
 <dd><p>Enable INFO-level logging.</p>
@@ -629,7 +652,9 @@ surface files needed)</p>
 <p>The CLI normalizes the different input modes, optionally runs a coarse NMI
 prealignment to obtain a <code class="docutils literal notranslate"><span class="pre">moving</span> <span class="pre">-&gt;</span> <span class="pre">target</span></code> initialization, and then calls
 <a class="reference internal" href="bbreg.html#neuroreg.bbreg.register.register_surface" title="neuroreg.bbreg.register.register_surface"><code class="xref py py-func docutils literal notranslate"><span class="pre">neuroreg.bbreg.register.register_surface()</span></code></a> with a consistent public
-transform direction.</p>
+transform direction. When requested, it also exports resliced or header-only
+mapped versions of the moving image using the same shared mapping helpers as
+the other registration CLIs.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>None</p>

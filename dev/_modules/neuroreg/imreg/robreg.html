@@ -256,6 +256,7 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..image</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_gaussian_pyramid</span><span class="p">,</span> <span class="n">get_pyramid_limits</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..image.map</span><span class="w"> </span><span class="kn">import</span> <span class="n">resample_isotropic_tensor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..transforms</span><span class="w"> </span><span class="kn">import</span> <span class="n">LINEAR_RAS_TO_RAS</span><span class="p">,</span> <span class="n">LINEAR_VOX_TO_VOX</span><span class="p">,</span> <span class="n">LTA</span><span class="p">,</span> <span class="n">convert_transform_type</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.device</span><span class="w"> </span><span class="kn">import</span> <span class="n">resolve_torch_device</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.init</span><span class="w"> </span><span class="kn">import</span> <span class="n">InitType</span><span class="p">,</span> <span class="n">get_init_vox2vox</span><span class="p">,</span> <span class="n">resolve_init_type</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.irls</span><span class="w"> </span><span class="kn">import</span> <span class="n">move_tensor</span><span class="p">,</span> <span class="n">register_irls</span>
@@ -343,13 +344,17 @@
         <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Cannot save outlier map: no weights in final level&quot;</span><span class="p">)</span>
         <span class="k">return</span>
 
+    <span class="n">weights_sqrt</span> <span class="o">=</span> <span class="n">final_info</span><span class="p">[</span><span class="s2">&quot;weights&quot;</span><span class="p">]</span>
+    <span class="n">valid_mask</span> <span class="o">=</span> <span class="n">final_info</span><span class="p">[</span><span class="s2">&quot;valid_mask&quot;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">weights_sqrt</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">valid_mask</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Cannot save outlier map: final IRLS level did not produce usable weights&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
     <span class="n">reg_affine</span> <span class="o">=</span> <span class="n">final_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;iso_affine&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">reg_affine</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Cannot save outlier map: no affine available&quot;</span><span class="p">)</span>
         <span class="k">return</span>
 
-    <span class="n">weights_sqrt</span> <span class="o">=</span> <span class="n">final_info</span><span class="p">[</span><span class="s2">&quot;weights&quot;</span><span class="p">]</span>
-    <span class="n">valid_mask</span> <span class="o">=</span> <span class="n">final_info</span><span class="p">[</span><span class="s2">&quot;valid_mask&quot;</span><span class="p">]</span>
     <span class="n">reg_shape</span> <span class="o">=</span> <span class="n">final_info</span><span class="p">[</span><span class="s2">&quot;image_shape&quot;</span><span class="p">]</span>
     <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">is_tensor</span><span class="p">(</span><span class="n">reg_affine</span><span class="p">):</span>
         <span class="n">reg_affine</span> <span class="o">=</span> <span class="n">reg_affine</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
@@ -493,11 +498,11 @@
 
         <span class="k">if</span> <span class="n">initial_transform</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">T_iso</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="n">move_tensor</span><span class="p">(</span><span class="n">Rtrg</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+                    <span class="n">move_tensor</span><span class="p">(</span><span class="n">Rtrg</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
 <div class="viewcode-block" id="robreg">
 <a class="viewcode-back" href="../../../api/public.html#neuroreg.imreg.robreg.robreg">[docs]</a>
-                <span class="o">@</span> <span class="n">move_tensor</span><span class="p">(</span><span class="n">initial_transform</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
-                <span class="o">@</span> <span class="n">torch</span><span class="o">.</span><span class="n">inverse</span><span class="p">(</span><span class="n">move_tensor</span><span class="p">(</span><span class="n">Rsrc</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">dtype</span><span class="p">))</span>
+                    <span class="o">@</span> <span class="n">move_tensor</span><span class="p">(</span><span class="n">initial_transform</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+                    <span class="o">@</span> <span class="n">torch</span><span class="o">.</span><span class="n">inverse</span><span class="p">(</span><span class="n">move_tensor</span><span class="p">(</span><span class="n">Rsrc</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">dtype</span><span class="p">))</span>
             <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">T_iso</span> <span class="o">=</span> <span class="n">move_tensor</span><span class="p">(</span>
@@ -598,9 +603,9 @@
 
     <span class="k">if</span> <span class="n">isotropic</span><span class="p">:</span>
         <span class="n">T</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">Rtrg</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">T</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">T</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
-            <span class="o">@</span> <span class="n">T</span>
-            <span class="o">@</span> <span class="n">torch</span><span class="o">.</span><span class="n">inverse</span><span class="p">(</span><span class="n">Rsrc</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">T</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">T</span><span class="o">.</span><span class="n">dtype</span><span class="p">))</span>
+                <span class="n">Rtrg</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">T</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">T</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+                <span class="o">@</span> <span class="n">T</span>
+                <span class="o">@</span> <span class="n">torch</span><span class="o">.</span><span class="n">inverse</span><span class="p">(</span><span class="n">Rsrc</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">T</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">T</span><span class="o">.</span><span class="n">dtype</span><span class="p">))</span>
         <span class="p">)</span>
 
     <span class="k">if</span> <span class="n">outliers_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -618,6 +623,7 @@
         <span class="n">trg_affine</span><span class="p">:</span> <span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">return_v2v</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">init_type</span><span class="p">:</span> <span class="n">InitType</span> <span class="o">=</span> <span class="s2">&quot;centroid&quot;</span><span class="p">,</span>
+        <span class="n">init_lta</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">dof</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span>
         <span class="n">nmax</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
         <span class="n">sat</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">6.0</span><span class="p">,</span>
@@ -646,8 +652,11 @@
 <span class="sd">        If ``True``, return the estimated transform in voxel coordinates. If</span>
 <span class="sd">        ``False``, return the corresponding RAS-to-RAS transform.</span>
 <span class="sd">    init_type : {&quot;header&quot;, &quot;centroid&quot;, &quot;image_center&quot;}, default=&quot;centroid&quot;</span>
-<span class="sd">        Explicit initialization mode used when no ``initial_transform`` is</span>
-<span class="sd">        supplied. ``&quot;image_center&quot;`` matches FreeSurfer&#39;s cras0-style center start.</span>
+<span class="sd">        Explicit initialization mode used when no ``init_lta`` is supplied.</span>
+<span class="sd">        ``&quot;image_center&quot;`` matches FreeSurfer&#39;s cras0-style center start.</span>
+<span class="sd">    init_lta : str, optional</span>
+<span class="sd">        Existing LTA used for initialization. When provided, it overrides the</span>
+<span class="sd">        requested ``init_type``.</span>
 <span class="sd">    dof : int, default=6</span>
 <span class="sd">        Degrees of freedom. The public IRLS path currently supports rigid</span>
 <span class="sd">        registration only, so this must remain ``6``.</span>
@@ -688,6 +697,18 @@
 
     <span class="n">src_data</span><span class="p">,</span> <span class="n">src_aff</span> <span class="o">=</span> <span class="n">_as_tensor_and_affine</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">src_affine</span><span class="p">)</span>
     <span class="n">trg_data</span><span class="p">,</span> <span class="n">trg_aff</span> <span class="o">=</span> <span class="n">_as_tensor_and_affine</span><span class="p">(</span><span class="n">trg</span><span class="p">,</span> <span class="n">trg_affine</span><span class="p">)</span>
+    <span class="n">initial_transform</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">init_lta</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Loading init transform from LTA: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">init_lta</span><span class="p">)</span>
+        <span class="n">initial_transform</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span>
+            <span class="n">convert_transform_type</span><span class="p">(</span>
+                <span class="n">LTA</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">init_lta</span><span class="p">)</span><span class="o">.</span><span class="n">r2r</span><span class="p">(),</span>
+                <span class="n">src_affine</span><span class="o">=</span><span class="n">src_aff</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span>
+                <span class="n">dst_affine</span><span class="o">=</span><span class="n">trg_aff</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span>
+                <span class="n">from_type</span><span class="o">=</span><span class="n">LINEAR_RAS_TO_RAS</span><span class="p">,</span>
+                <span class="n">to_type</span><span class="o">=</span><span class="n">LINEAR_VOX_TO_VOX</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">src_data</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
 
     <span class="n">run_device</span> <span class="o">=</span> <span class="n">_resolve_robreg_device</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
     <span class="n">src_data</span> <span class="o">=</span> <span class="n">src_data</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">run_device</span><span class="p">)</span>
@@ -700,6 +721,7 @@
         <span class="n">trg</span><span class="o">=</span><span class="n">trg_data</span><span class="p">,</span>
         <span class="n">src_affine</span><span class="o">=</span><span class="n">src_aff</span><span class="p">,</span>
         <span class="n">trg_affine</span><span class="o">=</span><span class="n">trg_aff</span><span class="p">,</span>
+        <span class="n">initial_transform</span><span class="o">=</span><span class="n">initial_transform</span><span class="p">,</span>
         <span class="n">init_type</span><span class="o">=</span><span class="n">init_type</span><span class="p">,</span>
         <span class="n">nmax</span><span class="o">=</span><span class="n">nmax</span><span class="p">,</span>
         <span class="n">sat</span><span class="o">=</span><span class="n">sat</span><span class="p">,</span>

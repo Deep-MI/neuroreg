@@ -250,6 +250,8 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">cast</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">neuroreg.transforms</span><span class="w"> </span><span class="kn">import</span> <span class="n">LINEAR_RAS_TO_RAS</span><span class="p">,</span> <span class="n">LINEAR_VOX_TO_VOX</span><span class="p">,</span> <span class="n">LTA</span><span class="p">,</span> <span class="n">convert_transform_type</span>
+
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_parse_int_csv</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Parse a coarse-to-fine pyramid iteration schedule from the CLI.</span>
@@ -279,6 +281,12 @@
     <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--mov&quot;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FILE&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Moving (source) image (NIfTI or MGZ).&quot;</span><span class="p">)</span>
     <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--ref&quot;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FILE&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Reference (target/fixed) image (NIfTI or MGZ).&quot;</span><span class="p">)</span>
     <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--out&quot;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;LTA&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Output LTA file for the recovered transformation.&quot;</span><span class="p">)</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--mapmov&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FILE&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save the mapped moving image resliced into reference geometry.&quot;</span><span class="p">)</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--mapmovhdr&quot;</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FILE&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save a header-only mapped moving image with no interpolation.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
 
     <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
         <span class="s2">&quot;--dof&quot;</span><span class="p">,</span>
@@ -322,6 +330,12 @@
         <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_false&quot;</span><span class="p">,</span>
         <span class="n">default</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">SUPPRESS</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Disable symmetric halfway-space registration and run directed registration.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--init-lta&quot;</span><span class="p">,</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;init_lta&quot;</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FILE&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Initialize from an existing LTA transform. When given, other init flags are ignored.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">init_group</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">add_mutually_exclusive_group</span><span class="p">()</span>
     <span class="n">init_group</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
@@ -408,12 +422,17 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">nibabel</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nib</span>
 
+    <span class="kn">from</span><span class="w"> </span><span class="nn">neuroreg.image</span><span class="w"> </span><span class="kn">import</span> <span class="n">save_header_mapped_image</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">neuroreg.imreg.coreg</span><span class="w"> </span><span class="kn">import</span> <span class="n">coreg</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">neuroreg.transforms</span><span class="w"> </span><span class="kn">import</span> <span class="n">LTA</span>
 
     <span class="n">parser</span> <span class="o">=</span> <span class="n">_build_parser</span><span class="p">()</span>
     <span class="n">ns</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
     <span class="n">ns</span><span class="o">.</span><span class="n">symmetric</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">ns</span><span class="p">,</span> <span class="s2">&quot;symmetric&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">init_lta</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">ns</span><span class="o">.</span><span class="n">init_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;neuroreg.cli.coreg&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+            <span class="s2">&quot;Ignoring </span><span class="si">%s</span><span class="s2"> because --init-lta was provided.&quot;</span><span class="p">,</span>
+            <span class="n">ns</span><span class="o">.</span><span class="n">init_type</span><span class="p">,</span>
+        <span class="p">)</span>
 
     <span class="n">level</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span> <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">debug</span> <span class="k">else</span> <span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span> <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">verbose</span> <span class="k">else</span> <span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span><span class="p">)</span>
     <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">level</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%(levelname)s</span><span class="s2"> </span><span class="si">%(name)s</span><span class="s2">: </span><span class="si">%(message)s</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -435,7 +454,9 @@
         <span class="n">dof</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">dof</span><span class="p">,</span>
         <span class="n">method</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">method</span><span class="p">,</span>
         <span class="n">device</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
-        <span class="n">return_v2v</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">return_v2v</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">mapped_name</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">mapmov</span><span class="p">,</span>
+        <span class="n">init_lta</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">init_lta</span><span class="p">,</span>
         <span class="n">symmetric</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">symmetric</span><span class="p">,</span>
         <span class="n">isotropic</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">isotropic</span><span class="p">,</span>
         <span class="n">level_iters</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">level_iters</span><span class="p">,</span>
@@ -448,7 +469,9 @@
         <span class="n">powell_maxiter</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">powell_maxiter</span><span class="p">,</span>
         <span class="n">powell_sep</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">powell_sep</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">init_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">init_lta</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Using explicit LTA initialization: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">init_lta</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">init_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;init_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ns</span><span class="o">.</span><span class="n">init_type</span>
     <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">n_iters</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;n&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ns</span><span class="o">.</span><span class="n">n_iters</span>
@@ -470,12 +493,26 @@
         <span class="n">ns</span><span class="o">.</span><span class="n">max_voxels</span><span class="p">,</span>
         <span class="n">ns</span><span class="o">.</span><span class="n">powell_sep</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">v2v</span> <span class="o">=</span> <span class="n">coreg</span><span class="p">(</span><span class="n">mov_img</span><span class="p">,</span> <span class="n">ref_img</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-    <span class="n">v2v_cpu</span> <span class="o">=</span> <span class="n">v2v</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span>
+    <span class="n">r2r</span> <span class="o">=</span> <span class="n">coreg</span><span class="p">(</span><span class="n">mov_img</span><span class="p">,</span> <span class="n">ref_img</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">r2r_cpu</span> <span class="o">=</span> <span class="n">r2r</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span>
+    <span class="n">v2v</span> <span class="o">=</span> <span class="n">convert_transform_type</span><span class="p">(</span>
+        <span class="n">r2r_cpu</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span>
+        <span class="n">src_affine</span><span class="o">=</span><span class="n">mov_img</span><span class="o">.</span><span class="n">affine</span><span class="p">,</span>
+        <span class="n">dst_affine</span><span class="o">=</span><span class="n">ref_img</span><span class="o">.</span><span class="n">affine</span><span class="p">,</span>
+        <span class="n">from_type</span><span class="o">=</span><span class="n">LINEAR_RAS_TO_RAS</span><span class="p">,</span>
+        <span class="n">to_type</span><span class="o">=</span><span class="n">LINEAR_VOX_TO_VOX</span><span class="p">,</span>
+    <span class="p">)</span>
 
-    <span class="n">LTA</span><span class="o">.</span><span class="n">from_matrix</span><span class="p">(</span><span class="n">v2v_cpu</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">ns</span><span class="o">.</span><span class="n">mov</span><span class="p">,</span> <span class="n">mov_img</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">ref</span><span class="p">,</span> <span class="n">ref_img</span><span class="p">,</span> <span class="n">lta_type</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">)</span>
+    <span class="n">LTA</span><span class="o">.</span><span class="n">from_matrix</span><span class="p">(</span><span class="n">v2v</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">mov</span><span class="p">,</span> <span class="n">mov_img</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">ref</span><span class="p">,</span> <span class="n">ref_img</span><span class="p">,</span> <span class="n">lta_type</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Wrote LTA: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Output: </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Output: </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">mapmov</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Wrote resliced mapped image: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">mapmov</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;MapMov:    </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">mapmov</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">mapmovhdr</span><span class="p">:</span>
+        <span class="n">save_header_mapped_image</span><span class="p">(</span><span class="n">mov_img</span><span class="p">,</span> <span class="n">r2r_cpu</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">ns</span><span class="o">.</span><span class="n">mapmovhdr</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Wrote header-mapped image: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">mapmovhdr</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;MapMovHdr: </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">mapmovhdr</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
 
 
