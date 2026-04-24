@@ -15,6 +15,7 @@ def coreg(
         mapped_name: str | None = None,
         return_v2v: bool = False,
         init_type: InitType = "image_center",
+        init_lta: str | None = None,
         method: str = "powell",
         symmetric: bool = True,
         dof: int = 6,
@@ -51,7 +52,11 @@ def coreg(
     return_v2v : bool, default=False
         Return the final transform in voxel coordinates instead of RAS.
     init_type : {"header", "centroid", "image_center"}, default="image_center"
-        Initialization strategy for the selected backend.
+        Initialization strategy for the selected backend when ``init_lta`` is
+        not provided.
+    init_lta : str, optional
+        Existing LTA used for initialization. When provided, it overrides the
+        requested ``init_type``.
     method : {"powell", "gd"}, default="powell"
         Registration backend. ``"powell"`` uses the MRI_coreg-style brute-force
         plus Powell path; ``"gd"`` runs the legacy PyTorch gradient-descent
@@ -86,6 +91,7 @@ def coreg(
             mapped_name=mapped_name,
             return_v2v=return_v2v,
             init_type=init_type,
+            init_lta=init_lta,
             dof=dof,
             brute_force_limit=powell_brute_force_limit,
             brute_force_iters=powell_brute_force_iters,
@@ -104,6 +110,7 @@ def coreg(
         mapped_name=mapped_name,
         return_v2v=return_v2v,
         init_type=init_type,
+        init_lta=init_lta,
         symmetric=symmetric,
         dof=dof,
         n=n,

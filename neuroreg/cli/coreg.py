@@ -8,6 +8,8 @@ import logging
 import sys
 from typing import Any, cast
 
+from neuroreg.transforms import LINEAR_RAS_TO_RAS, LINEAR_VOX_TO_VOX, LTA, convert_transform_type
+
 
 def _parse_int_csv(value: str) -> list[int]:
     """Parse a coarse-to-fine pyramid iteration schedule from the CLI.
@@ -37,6 +39,12 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--mov", required=True, metavar="FILE", help="Moving (source) image (NIfTI or MGZ).")
     p.add_argument("--ref", required=True, metavar="FILE", help="Reference (target/fixed) image (NIfTI or MGZ).")
     p.add_argument("--out", required=True, metavar="LTA", help="Output LTA file for the recovered transformation.")
+    p.add_argument("--mapmov", metavar="FILE", help="Save the mapped moving image resliced into reference geometry.")
+    p.add_argument(
+        "--mapmovhdr",
+        metavar="FILE",
+        help="Save a header-only mapped moving image with no interpolation.",
+    )
 
     p.add_argument(
         "--dof",
@@ -80,6 +88,12 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_false",
         default=argparse.SUPPRESS,
         help="Disable symmetric halfway-space registration and run directed registration.",
+    )
+    p.add_argument(
+        "--init-lta",
+        dest="init_lta",
+        metavar="FILE",
+        help="Initialize from an existing LTA transform. When given, other init flags are ignored.",
     )
     init_group = p.add_mutually_exclusive_group()
     init_group.add_argument(
@@ -164,12 +178,17 @@ def main(args=None) -> None:
     """
     import nibabel as nib
 
+    from neuroreg.image import save_header_mapped_image
     from neuroreg.imreg.coreg import coreg
-    from neuroreg.transforms import LTA
 
     parser = _build_parser()
     ns = parser.parse_args(args)
     ns.symmetric = getattr(ns, "symmetric", True)
+    if ns.init_lta is not None and ns.init_type is not None:
+        logging.getLogger("neuroreg.cli.coreg").warning(
+            "Ignoring %s because --init-lta was provided.",
+            ns.init_type,
+        )
 
     level = logging.DEBUG if ns.debug else (logging.INFO if ns.verbose else logging.WARNING)
     logging.basicConfig(level=level, format="%(levelname)s %(name)s: %(message)s")
@@ -191,7 +210,9 @@ def main(args=None) -> None:
         dof=ns.dof,
         method=ns.method,
         device=ns.device,
-        return_v2v=True,
+        return_v2v=False,
+        mapped_name=ns.mapmov,
+        init_lta=ns.init_lta,
         symmetric=ns.symmetric,
         isotropic=ns.isotropic,
         level_iters=ns.level_iters,
@@ -204,7 +225,9 @@ def main(args=None) -> None:
         powell_maxiter=ns.powell_maxiter,
         powell_sep=ns.powell_sep,
     )
-    if ns.init_type is not None:
+    if ns.init_lta is not None:
+        logger.info("Using explicit LTA initialization: %s", ns.init_lta)
+    elif ns.init_type is not None:
         kwargs["init_type"] = ns.init_type
     if ns.n_iters is not None:
         kwargs["n"] = ns.n_iters
@@ -226,12 +249,26 @@ def main(args=None) -> None:
         ns.max_voxels,
         ns.powell_sep,
     )
-    v2v = coreg(mov_img, ref_img, **kwargs)
-    v2v_cpu = v2v.detach().cpu()
+    r2r = coreg(mov_img, ref_img, **kwargs)
+    r2r_cpu = r2r.detach().cpu()
+    v2v = convert_transform_type(
+        r2r_cpu.numpy(),
+        src_affine=mov_img.affine,
+        dst_affine=ref_img.affine,
+        from_type=LINEAR_RAS_TO_RAS,
+        to_type=LINEAR_VOX_TO_VOX,
+    )
 
-    LTA.from_matrix(v2v_cpu.numpy(), ns.mov, mov_img, ns.ref, ref_img, lta_type=0).write(ns.out)
+    LTA.from_matrix(v2v, ns.mov, mov_img, ns.ref, ref_img, lta_type=0).write(ns.out)
     logger.info("Wrote LTA: %s", ns.out)
     print(f"Output: {ns.out}")
+    if ns.mapmov:
+        logger.info("Wrote resliced mapped image: %s", ns.mapmov)
+        print(f"MapMov:    {ns.mapmov}")
+    if ns.mapmovhdr:
+        save_header_mapped_image(mov_img, r2r_cpu.numpy(), ns.mapmovhdr)
+        logger.info("Wrote header-mapped image: %s", ns.mapmovhdr)
+        print(f"MapMovHdr: {ns.mapmovhdr}")
 
 
 if __name__ == "__main__":

@@ -17,6 +17,11 @@ def _write_zero_image(path: Path) -> None:
     nib.save(nib.Nifti1Image(data, affine=torch.eye(4).numpy()), path)
 
 
+def _write_uint8_image(path: Path) -> None:
+    data = torch.arange(8 * 8 * 8, dtype=torch.uint8).reshape(8, 8, 8).numpy()
+    nib.save(nib.Nifti1Image(data, affine=torch.eye(4).numpy()), path)
+
+
 bbreg_register_module = importlib.import_module("neuroreg.bbreg.register")
 
 
@@ -181,6 +186,50 @@ class TestBbregCli:
         assert captured_ref_sum["sum"] == pytest.approx(float((seg_data > 0).sum()))
         assert captured_surface_kwargs["seg"] == str(seg_path)
         assert captured_surface_kwargs["init_ras"] is not None
+
+    def test_main_writes_mapmov_and_mapmovhdr(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        mov_path = tmp_path / "mov.nii.gz"
+        ref_path = tmp_path / "ref.nii.gz"
+        out_path = tmp_path / "out.lta"
+        out_map = tmp_path / "mapped.nii.gz"
+        out_hdr = tmp_path / "mapped_hdr.nii.gz"
+
+        _write_uint8_image(mov_path)
+        _write_zero_image(ref_path)
+
+        def fake_register_surface(**kwargs):
+            transform = torch.eye(4, dtype=torch.float64)
+            transform[0, 3] = 4.0
+            transform[1, 3] = -3.0
+            return transform
+
+        def fail_register_pyramid(*args, **kwargs):
+            raise AssertionError("prealignment should not run")
+
+        monkeypatch.setattr(bbreg_register_module, "register_surface", fake_register_surface)
+        monkeypatch.setattr("neuroreg.imreg.coreg.coreg", fail_register_pyramid)
+
+        bbreg_main([
+            "--mov", str(mov_path),
+            "--ref", str(ref_path),
+            "--lh_surf", str(tmp_path / "lh.white"),
+            "--out", str(out_path),
+            "--init-header",
+            "--mapmov", str(out_map),
+            "--mapmovhdr", str(out_hdr),
+        ])
+
+        assert out_map.exists()
+        assert out_hdr.exists()
+        mapped = nib.load(str(out_map))
+        mapped_hdr = nib.load(str(out_hdr))
+        assert mapped.shape[:3] == nib.load(str(ref_path)).shape[:3]
+        assert mapped.affine == pytest.approx(nib.load(str(ref_path)).affine)
+        assert mapped.get_data_dtype() == np.dtype(np.float32)
+        expected_affine = np.eye(4)
+        expected_affine[0, 3] = 4.0
+        expected_affine[1, 3] = -3.0
+        assert mapped_hdr.affine == pytest.approx(expected_affine)
 
 
 class TestBbregRegister:

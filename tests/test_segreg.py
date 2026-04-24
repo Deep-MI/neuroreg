@@ -38,6 +38,11 @@ def _write_float_image(path: Path, *, affine: np.ndarray) -> None:
     nib.save(nib.Nifti1Image(data, affine=affine), path)
 
 
+def _write_uint8_image(path: Path, *, affine: np.ndarray) -> None:
+    data = np.arange(8 * 8 * 8, dtype=np.uint8).reshape(8, 8, 8)
+    nib.save(nib.Nifti1Image(data, affine=affine), path)
+
+
 def _write_single_label_seg(path: Path, *, affine: np.ndarray) -> None:
     data = np.zeros((8, 8, 8), dtype=np.int16)
     data[3, 4, 5] = 1
@@ -328,7 +333,7 @@ def test_cli_writes_lta_and_mapmov(tmp_path: Path):
     )
     _write_seg(mov_seg, affine=mov_affine)
     _write_seg(ref_seg, affine=ref_affine)
-    _write_float_image(mov_img, affine=mov_affine)
+    _write_uint8_image(mov_img, affine=mov_affine)
 
     segreg_main(
         [
@@ -350,6 +355,7 @@ def test_cli_writes_lta_and_mapmov(tmp_path: Path):
     mapped_img = nib.load(str(out_map))
     assert mapped_img.shape[:3] == nib.load(str(ref_seg)).shape[:3]
     assert mapped_img.affine == pytest.approx(ref_affine)
+    assert mapped_img.get_data_dtype() == np.dtype(np.float32)
 
 
 def test_cli_accepts_translation_only_dof(tmp_path: Path):
