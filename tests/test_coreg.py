@@ -114,6 +114,61 @@ class TestRegisterPyramidSynthetic:
         expected = rtrg.double() @ torch.inverse(rsrc.double())
         assert torch.allclose(v2v, expected)
 
+    def test_register_pyramid_uses_init_lta_for_first_directed_level(self, monkeypatch: pytest.MonkeyPatch):
+        seen_v2v_init: list[torch.Tensor | None] = []
+        init_r2r = np.array(
+            [[1.0, 0.0, 0.0, 2.0], [0.0, 1.0, 0.0, -3.0], [0.0, 0.0, 1.0, 1.5], [0.0, 0.0, 0.0, 1.0]],
+            dtype=np.float64,
+        )
+
+        class _DummyLTA:
+            def r2r(self):
+                return init_r2r
+
+        def fake_register_level(simg, timg, **kwargs):
+            _ = simg, timg
+            seen_v2v_init.append(kwargs.get("v2v_init"))
+            return torch.eye(4, dtype=torch.float64), [], None
+
+        monkeypatch.setattr("neuroreg.imreg.gd.register_level", fake_register_level)
+        monkeypatch.setattr("neuroreg.imreg.gd.LTA.read", lambda path: _DummyLTA())
+
+        src_affine = np.array(
+            [[2.0, 0.0, 0.0, 10.0], [0.0, 2.0, 0.0, -4.0], [0.0, 0.0, 2.0, 1.0], [0.0, 0.0, 0.0, 1.0]],
+            dtype=np.float32,
+        )
+        trg_affine = np.array(
+            [[1.5, 0.0, 0.0, -2.0], [0.0, 1.5, 0.0, 3.0], [0.0, 0.0, 1.5, -1.0], [0.0, 0.0, 0.0, 1.0]],
+            dtype=np.float32,
+        )
+        src_img = nib.Nifti1Image(_make_blob((16, 16, 16)), src_affine)
+        trg_img = nib.Nifti1Image(_make_blob((16, 16, 16)), trg_affine)
+
+        _ = register_gd_pyramid(
+            src_img,
+            trg_img,
+            return_v2v=True,
+            init_type="centroid",
+            init_lta="init.lta",
+            symmetric=False,
+            n=1,
+            min_voxels=16,
+            max_voxels=16,
+            device="cpu",
+        )
+
+        expected_v2v = torch.from_numpy(
+            convert_transform_type(
+                init_r2r,
+                src_affine=src_affine,
+                dst_affine=trg_affine,
+                from_type=LINEAR_RAS_TO_RAS,
+                to_type=LINEAR_VOX_TO_VOX,
+            )
+        ).double()
+        assert seen_v2v_init[0] is not None
+        assert torch.allclose(cast(torch.Tensor, seen_v2v_init[0]).double(), expected_v2v)
+
     def test_register_pyramid_respects_max_voxels_schedule(self, monkeypatch: pytest.MonkeyPatch):
         seen_shapes: list[tuple[int, int, int]] = []
 
@@ -661,6 +716,24 @@ class TestPublicCoregWrapper:
         assert len(cast(tuple[Any, ...], captured["args"])) == 0
         assert Mr2r.shape == (4, 4)
         assert torch.isfinite(Mr2r).all()
+
+    def test_top_level_coreg_forwards_init_lta(self, monkeypatch: pytest.MonkeyPatch):
+        captured: dict[str, object] = {}
+
+        def fake_register_powell_coreg(*args, **kwargs):
+            captured["args"] = args
+            captured.update(kwargs)
+            return torch.eye(4)
+
+        monkeypatch.setattr("neuroreg.imreg.coreg.register_powell_coreg", fake_register_powell_coreg)
+
+        img = _make_img()
+        init_lta = "init.lta"
+        Mr2r = coreg(img, img, return_v2v=False, init_type="header", init_lta=init_lta, dof=6)
+
+        assert captured["init_lta"] == init_lta
+        assert captured["init_type"] == "header"
+        assert Mr2r.shape == (4, 4)
 
     def test_top_level_coreg_rejects_unknown_method(self):
         img = _make_img()

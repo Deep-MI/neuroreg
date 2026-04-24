@@ -6,6 +6,8 @@ import sys
 from pathlib import Path
 from typing import Any, cast
 
+from neuroreg.transforms import LTA
+
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
@@ -57,6 +59,12 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_false",
         default=argparse.SUPPRESS,
         help="Disable symmetric halfway-space registration and run directed registration.",
+    )
+    p.add_argument(
+        "--init-lta",
+        dest="init_lta",
+        metavar="FILE",
+        help="Initialize from an existing LTA transform. When given, other init flags are ignored.",
     )
     init_group = p.add_mutually_exclusive_group()
     init_group.add_argument(
@@ -116,11 +124,15 @@ def main(args=None) -> None:
 
     from neuroreg.image import save_header_mapped_image, save_resliced_r2r_image
     from neuroreg.imreg.robreg import robreg
-    from neuroreg.transforms import LTA
 
     parser = _build_parser()
     ns = parser.parse_args(args)
     ns.symmetric = getattr(ns, "symmetric", True)
+    if ns.init_lta is not None and ns.init_type is not None:
+        logging.getLogger("neuroreg.cli.robreg").warning(
+            "Ignoring %s because --init-lta was provided.",
+            ns.init_type,
+        )
 
     # ── logging ─────────────────────────────────────────────────────────────
     level = logging.DEBUG if ns.debug else (logging.INFO if ns.verbose else logging.WARNING)
@@ -145,6 +157,7 @@ def main(args=None) -> None:
     kwargs: dict[str, Any] = dict(
         return_v2v=False,
         dof=ns.dof,
+        init_lta=ns.init_lta,
         nmax=ns.nmax,
         sat=ns.sat,
         symmetric=ns.symmetric,
@@ -152,7 +165,9 @@ def main(args=None) -> None:
         outliers_name=ns.outliers,
         verbose=ns.verbose or ns.debug,
     )
-    if ns.init_type is not None:
+    if ns.init_lta is not None:
+        logger.info("Using explicit LTA initialization: %s", ns.init_lta)
+    elif ns.init_type is not None:
         kwargs["init_type"] = ns.init_type
     Mr2r = robreg(
         mov_img,

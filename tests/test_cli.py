@@ -122,6 +122,46 @@ class TestRobregCli:
         assert captured["init_type"] == "image_center"
         assert out_path.exists()
 
+    def test_main_init_lta_overrides_other_init_flags(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        mov_path = tmp_path / "mov.nii.gz"
+        ref_path = tmp_path / "ref.nii.gz"
+        out_path = tmp_path / "out.lta"
+
+        _write_zero_image(mov_path)
+        _write_zero_image(ref_path)
+
+        captured: dict[str, object] = {}
+
+        def fake_register_pyramid(*args, **kwargs):
+            captured.update(kwargs)
+            return _TensorRequiringCpu(torch.eye(4))
+
+        class _DummyLTA:
+            def write(self, path):
+                Path(path).write_text("dummy")
+
+        monkeypatch.setattr("neuroreg.imreg.robreg.robreg", fake_register_pyramid)
+        monkeypatch.setattr("neuroreg.transforms.LTA.from_matrix", lambda *args, **kwargs: _DummyLTA())
+
+        init_lta = tmp_path / "init.lta"
+        robreg_main(
+            [
+                "--mov",
+                str(mov_path),
+                "--ref",
+                str(ref_path),
+                "--out",
+                str(out_path),
+                "--init-header",
+                "--init-lta",
+                str(init_lta),
+            ]
+        )
+
+        assert captured["init_lta"] == str(init_lta)
+        assert "init_type" not in captured
+        assert out_path.exists()
+
     def test_main_writes_mapmov_and_mapmovhdr(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         mov_path = tmp_path / "mov.nii.gz"
         ref_path = tmp_path / "ref.nii.gz"
@@ -295,6 +335,35 @@ class TestCoregCli:
         assert captured["powell_brute_force_samples"] == 11
         assert captured["powell_maxiter"] == 7
         assert captured["powell_sep"] == 6
+        assert out_path.exists()
+
+    def test_main_init_lta_overrides_other_init_flags(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        mov_path = tmp_path / "mov.nii.gz"
+        ref_path = tmp_path / "ref.nii.gz"
+        out_path = tmp_path / "out.lta"
+        _write_zero_image(mov_path)
+        _write_zero_image(ref_path)
+
+        captured: dict[str, object] = {}
+        self._patch_coreg(monkeypatch, captured)
+        init_lta = tmp_path / "init.lta"
+
+        coreg_main(
+            [
+                "--mov",
+                str(mov_path),
+                "--ref",
+                str(ref_path),
+                "--out",
+                str(out_path),
+                "--init-center",
+                "--init-lta",
+                str(init_lta),
+            ]
+        )
+
+        assert captured["init_lta"] == str(init_lta)
+        assert "init_type" not in captured
         assert out_path.exists()
 
     def test_main_can_select_gd_method_and_forward_schedule(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):

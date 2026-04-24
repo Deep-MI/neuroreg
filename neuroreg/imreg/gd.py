@@ -184,6 +184,7 @@ def register_gd_pyramid(
     mapped_name: str | None = None,
     return_v2v: bool = False,
     init_type: InitType = "image_center",
+    init_lta: str | None = None,
     symmetric: bool = True,
     dof: int = 6,
     n: int = 30,
@@ -219,7 +220,11 @@ def register_gd_pyramid(
     return_v2v : bool, default=False
         Return voxel-to-voxel instead of RAS-to-RAS when ``True``.
     init_type : {"header", "centroid", "image_center"}, default="image_center"
-        Initialization strategy used on the coarsest level.
+        Initialization strategy used on the coarsest level when ``init_lta`` is
+        not provided.
+    init_lta : str, optional
+        Existing LTA used for initialization. When provided, it overrides the
+        requested ``init_type``.
     symmetric : bool, default=True
         Run symmetric halfway-space registration when ``True``.
     dof, n, level_iters, loss_name, loss_beta, loss_bins, optimizer, lr
@@ -252,6 +257,10 @@ def register_gd_pyramid(
 
     src_affine_t = torch.from_numpy(src.affine).double()
     trg_affine_t = torch.from_numpy(trg.affine).double()
+    init_r2r_explicit = None
+    if init_lta is not None:
+        logger.info("Loading init transform from LTA: %s", init_lta)
+        init_r2r_explicit = torch.from_numpy(np.asarray(LTA.read(init_lta).r2r(), dtype=np.float64)).double()
     src_iso_aff = None
     trg_iso_aff = None
     Rsrc = torch.eye(4, dtype=torch.float32)
@@ -353,6 +362,12 @@ def register_gd_pyramid(
 
             src_mid = _map_img(si.float(), mh.float(), is_torch_mat=False, target_shape=midspace_shape)
             trg_mid = _map_img(ti.float(), mhi.float(), is_torch_mat=False, target_shape=midspace_shape)
+            level_init_v2v = None
+            level_init_type: InitType = resolved_init_type if level_idx == 0 else "header"
+            if level_idx == 0 and init_r2r_explicit is not None:
+                explicit_v2v = torch.inverse(ta.double()) @ init_r2r_explicit @ sa.double()
+                level_init_v2v = mhi.double() @ explicit_v2v @ torch.inverse(mh.double())
+                level_init_type = "header"
 
             def _level_trace(_mhi=mhi, _mh=mh, _ta=ta, _sa=sa, _level_idx=level_idx, _si=si, **payload):
                 if trace_fn is None:
@@ -381,8 +396,8 @@ def register_gd_pyramid(
                 src_mid,
                 trg_mid,
                 dof=dof,
-                v2v_init=None,
-                init_type=resolved_init_type if level_idx == 0 else "header",
+                v2v_init=level_init_v2v,
+                init_type=level_init_type,
                 src_affine=torch.eye(4, dtype=src_mid.dtype, device=src_mid.device),
                 trg_affine=torch.eye(4, dtype=trg_mid.dtype, device=trg_mid.device),
                 n=n_level,
@@ -450,13 +465,18 @@ def register_gd_pyramid(
                         pyramid_shape=tuple(int(v) for v in _si.shape),
                         **payload,
                     )
-
             if level_idx == 0:
+                level_init_v2v = None
+                level_init_type: InitType = resolved_init_type
+                if init_r2r_explicit is not None:
+                    level_init_v2v = torch.inverse(ta.double()) @ init_r2r_explicit @ sa.double()
+                    level_init_type = "header"
                 Mv2v_level, losses, _ = register_level(
                     si,
                     ti,
                     dof=dof,
-                    init_type=resolved_init_type,
+                    v2v_init=level_init_v2v,
+                    init_type=level_init_type,
                     src_affine=sa.float(),
                     trg_affine=ta.float(),
                     n=n_level,

@@ -660,6 +660,7 @@ def register_powell_coreg(
         mapped_name: str | None = None,
         return_v2v: bool = False,
         init_type: InitType = "image_center",
+        init_lta: str | None = None,
         dof: int = 6,
         brute_force_limit: float = 30.0,
         brute_force_iters: int = 1,
@@ -685,7 +686,11 @@ def register_powell_coreg(
     return_v2v : bool, default=False
         Return voxel-to-voxel instead of RAS-to-RAS when requested.
     init_type : {"header", "centroid", "image_center"}, default="image_center"
-        Initialization mode used before the brute-force sweep.
+        Initialization mode used before the brute-force sweep when ``init_lta``
+        is not provided.
+    init_lta : str, optional
+        Existing LTA used for initialization. When provided, it overrides the
+        requested ``init_type``.
     dof : {6, 9, 12}, default=6
         Powell parameterization to optimize.
     brute_force_limit, brute_force_iters, brute_force_samples
@@ -721,14 +726,18 @@ def register_powell_coreg(
     trg_affine_t = torch.from_numpy(np.asarray(trg.affine, dtype=np.float64))
     sdata_full = torch.from_numpy(np.asarray(src.get_fdata(dtype=np.float32), dtype=np.float32))
     tdata_full = torch.from_numpy(np.asarray(trg.get_fdata(dtype=np.float32), dtype=np.float32))
-    init_v2v = get_init_vox2vox(
-        sdata_full,
-        tdata_full,
-        saffine=src_affine_t.float(),
-        taffine=trg_affine_t.float(),
-        init_type=resolved_init_type,
-    )
-    init_r2r = trg_affine_t @ init_v2v.double() @ torch.inverse(src_affine_t)
+    if init_lta is not None:
+        logger.info("Loading init transform from LTA: %s", init_lta)
+        init_r2r = torch.from_numpy(np.asarray(LTA.read(init_lta).r2r(), dtype=np.float64)).double()
+    else:
+        init_v2v = get_init_vox2vox(
+            sdata_full,
+            tdata_full,
+            saffine=src_affine_t.float(),
+            taffine=trg_affine_t.float(),
+            init_type=resolved_init_type,
+        )
+        init_r2r = trg_affine_t @ init_v2v.double() @ torch.inverse(src_affine_t)
     init_params = powell_mov_to_ref_r2r_to_params(np.asarray(init_r2r.cpu(), dtype=np.float64), dof=dof)
 
     evaluator = PowellCostEvaluator(src, trg, sep=sep)

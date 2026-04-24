@@ -14,6 +14,7 @@ from torch import Tensor
 
 from ..image import build_gaussian_pyramid, get_pyramid_limits
 from ..image.map import resample_isotropic_tensor
+from ..transforms import LINEAR_RAS_TO_RAS, LINEAR_VOX_TO_VOX, LTA, convert_transform_type
 from .device import resolve_torch_device
 from .init import InitType, get_init_vox2vox, resolve_init_type
 from .irls import move_tensor, register_irls
@@ -375,6 +376,7 @@ def robreg(
         trg_affine: Tensor | None = None,
         return_v2v: bool = False,
         init_type: InitType = "centroid",
+        init_lta: str | None = None,
         dof: int = 6,
         nmax: int = 5,
         sat: float = 6.0,
@@ -403,8 +405,11 @@ def robreg(
         If ``True``, return the estimated transform in voxel coordinates. If
         ``False``, return the corresponding RAS-to-RAS transform.
     init_type : {"header", "centroid", "image_center"}, default="centroid"
-        Explicit initialization mode used when no ``initial_transform`` is
-        supplied. ``"image_center"`` matches FreeSurfer's cras0-style center start.
+        Explicit initialization mode used when no ``init_lta`` is supplied.
+        ``"image_center"`` matches FreeSurfer's cras0-style center start.
+    init_lta : str, optional
+        Existing LTA used for initialization. When provided, it overrides the
+        requested ``init_type``.
     dof : int, default=6
         Degrees of freedom. The public IRLS path currently supports rigid
         registration only, so this must remain ``6``.
@@ -445,6 +450,18 @@ def robreg(
 
     src_data, src_aff = _as_tensor_and_affine(src, src_affine)
     trg_data, trg_aff = _as_tensor_and_affine(trg, trg_affine)
+    initial_transform = None
+    if init_lta is not None:
+        logger.info("Loading init transform from LTA: %s", init_lta)
+        initial_transform = torch.from_numpy(
+            convert_transform_type(
+                LTA.read(init_lta).r2r(),
+                src_affine=src_aff.detach().cpu().numpy(),
+                dst_affine=trg_aff.detach().cpu().numpy(),
+                from_type=LINEAR_RAS_TO_RAS,
+                to_type=LINEAR_VOX_TO_VOX,
+            )
+        ).to(dtype=src_data.dtype)
 
     run_device = _resolve_robreg_device(device)
     src_data = src_data.to(run_device)
@@ -457,6 +474,7 @@ def robreg(
         trg=trg_data,
         src_affine=src_aff,
         trg_affine=trg_aff,
+        initial_transform=initial_transform,
         init_type=init_type,
         nmax=nmax,
         sat=sat,

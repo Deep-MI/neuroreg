@@ -111,7 +111,6 @@ def _build_parser() -> argparse.ArgumentParser:
 
     p.add_argument(
         "--init-lta",
-        "--init_lta",
         dest="init_lta",
         metavar="FILE",
         help=(

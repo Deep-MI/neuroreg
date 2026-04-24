@@ -8,7 +8,7 @@ import logging
 import sys
 from typing import Any, cast
 
-from neuroreg.transforms import LINEAR_RAS_TO_RAS, LINEAR_VOX_TO_VOX, convert_transform_type
+from neuroreg.transforms import LINEAR_RAS_TO_RAS, LINEAR_VOX_TO_VOX, LTA, convert_transform_type
 
 
 def _parse_int_csv(value: str) -> list[int]:
@@ -88,6 +88,12 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_false",
         default=argparse.SUPPRESS,
         help="Disable symmetric halfway-space registration and run directed registration.",
+    )
+    p.add_argument(
+        "--init-lta",
+        dest="init_lta",
+        metavar="FILE",
+        help="Initialize from an existing LTA transform. When given, other init flags are ignored.",
     )
     init_group = p.add_mutually_exclusive_group()
     init_group.add_argument(
@@ -174,11 +180,15 @@ def main(args=None) -> None:
 
     from neuroreg.image import save_header_mapped_image
     from neuroreg.imreg.coreg import coreg
-    from neuroreg.transforms import LTA
 
     parser = _build_parser()
     ns = parser.parse_args(args)
     ns.symmetric = getattr(ns, "symmetric", True)
+    if ns.init_lta is not None and ns.init_type is not None:
+        logging.getLogger("neuroreg.cli.coreg").warning(
+            "Ignoring %s because --init-lta was provided.",
+            ns.init_type,
+        )
 
     level = logging.DEBUG if ns.debug else (logging.INFO if ns.verbose else logging.WARNING)
     logging.basicConfig(level=level, format="%(levelname)s %(name)s: %(message)s")
@@ -202,6 +212,7 @@ def main(args=None) -> None:
         device=ns.device,
         return_v2v=False,
         mapped_name=ns.mapmov,
+        init_lta=ns.init_lta,
         symmetric=ns.symmetric,
         isotropic=ns.isotropic,
         level_iters=ns.level_iters,
@@ -214,7 +225,9 @@ def main(args=None) -> None:
         powell_maxiter=ns.powell_maxiter,
         powell_sep=ns.powell_sep,
     )
-    if ns.init_type is not None:
+    if ns.init_lta is not None:
+        logger.info("Using explicit LTA initialization: %s", ns.init_lta)
+    elif ns.init_type is not None:
         kwargs["init_type"] = ns.init_type
     if ns.n_iters is not None:
         kwargs["n"] = ns.n_iters
