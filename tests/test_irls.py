@@ -16,7 +16,6 @@ from neuroreg.imreg.irls import (
 from neuroreg.imreg.robreg import register_irls_pyramid
 from neuroreg.transforms import affine_dist, params_to_rigid_matrix
 
-
 # ---------------------------------------------------------------------------
 # _sqrt_tukey
 # ---------------------------------------------------------------------------

@@ -8,6 +8,8 @@ import logging
 import sys
 from typing import Any, cast
 
+from neuroreg.transforms import LINEAR_RAS_TO_RAS, LINEAR_VOX_TO_VOX, convert_transform_type
+
 
 def _parse_int_csv(value: str) -> list[int]:
     """Parse a coarse-to-fine pyramid iteration schedule from the CLI.
@@ -198,7 +200,7 @@ def main(args=None) -> None:
         dof=ns.dof,
         method=ns.method,
         device=ns.device,
-        return_v2v=True,
+        return_v2v=False,
         mapped_name=ns.mapmov,
         symmetric=ns.symmetric,
         isotropic=ns.isotropic,
@@ -234,17 +236,24 @@ def main(args=None) -> None:
         ns.max_voxels,
         ns.powell_sep,
     )
-    v2v = coreg(mov_img, ref_img, **kwargs)
-    v2v_cpu = v2v.detach().cpu()
+    r2r = coreg(mov_img, ref_img, **kwargs)
+    r2r_cpu = r2r.detach().cpu()
+    v2v = convert_transform_type(
+        r2r_cpu.numpy(),
+        src_affine=mov_img.affine,
+        dst_affine=ref_img.affine,
+        from_type=LINEAR_RAS_TO_RAS,
+        to_type=LINEAR_VOX_TO_VOX,
+    )
 
-    LTA.from_matrix(v2v_cpu.numpy(), ns.mov, mov_img, ns.ref, ref_img, lta_type=0).write(ns.out)
+    LTA.from_matrix(v2v, ns.mov, mov_img, ns.ref, ref_img, lta_type=0).write(ns.out)
     logger.info("Wrote LTA: %s", ns.out)
     print(f"Output: {ns.out}")
     if ns.mapmov:
         logger.info("Wrote resliced mapped image: %s", ns.mapmov)
         print(f"MapMov:    {ns.mapmov}")
     if ns.mapmovhdr:
-        save_header_mapped_image(mov_img, v2v_cpu.numpy(), ns.mapmovhdr)
+        save_header_mapped_image(mov_img, r2r_cpu.numpy(), ns.mapmovhdr)
         logger.info("Wrote header-mapped image: %s", ns.mapmovhdr)
         print(f"MapMovHdr: {ns.mapmovhdr}")
 

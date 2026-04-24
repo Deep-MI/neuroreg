@@ -10,6 +10,7 @@ import torch
 from scipy.spatial.transform import Rotation
 
 from neuroreg import coreg
+from neuroreg.image.map import map as map_image
 from neuroreg.imreg.coreg import register_powell_coreg
 from neuroreg.imreg.device import resolve_cpu_only_device, resolve_torch_device
 from neuroreg.imreg.gd import register_gd_pyramid, register_level
@@ -48,6 +49,10 @@ def _make_img(
 
 
 class TestRegisterPyramidSynthetic:
+    def test_map_rejects_public_bilinear_alias(self):
+        with pytest.raises(ValueError, match="mode must be 'linear' or 'nearest'"):
+            map_image(torch.zeros((4, 4, 4), dtype=torch.float32), torch.eye(4, dtype=torch.float32), mode="bilinear")
+
     def test_register_pyramid_returns_v2v_on_identical_images(self):
         img = _make_img()
         v2v = register_gd_pyramid(
@@ -82,7 +87,7 @@ class TestRegisterPyramidSynthetic:
             return (
                 torch.ones((16, 16, 16), dtype=torch.float32),
                 torch.eye(4, dtype=torch.float32),
-                rsrc if mode in {"linear", "bilinear"} and _img is img else rtrg,
+                rsrc if mode == "linear" and _img is img else rtrg,
             )
 
         def fake_register_level(simg, timg, **kwargs):

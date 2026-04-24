@@ -12,7 +12,7 @@ import neuroreg.transforms.matrices as trans
 
 def _normalize_interpolation_mode(mode: str) -> str:
     """Map public interpolation names to the backend names used by PyTorch."""
-    if mode in ("linear", "bilinear"):
+    if mode == "linear":
         return "bilinear"
     if mode == "nearest":
         return mode
@@ -45,8 +45,7 @@ def map(
     mode : {'linear', 'nearest'}, optional
         Interpolation mode passed to :func:`torch.nn.functional.grid_sample`.
         ``'linear'`` is translated internally to PyTorch's ``'bilinear'``
-        backend name. The backend-specific spelling ``'bilinear'`` is still
-        accepted as an alias for compatibility. Default is ``'linear'``.
+        backend name. Default is ``'linear'``.
     padding_mode : {'zeros', 'border', 'reflection'}, optional
         Padding strategy for out-of-bounds coordinates, passed directly to
         :func:`torch.nn.functional.grid_sample`.  Default is ``'zeros'``.
@@ -238,8 +237,7 @@ def resample_isotropic_tensor(
     out_shape : tuple[int, int, int], optional
         Output image shape (D, H, W). If None, computed automatically.
     mode : {'linear', 'nearest'}, optional
-        Interpolation mode. Default is ``'linear'``. The backend-specific
-        spelling ``'bilinear'`` is still accepted as an alias.
+        Interpolation mode. Default is ``'linear'``.
 
     Returns
     -------

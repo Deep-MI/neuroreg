@@ -30,10 +30,11 @@ FreeSurfer source: mri_robust_register/Regression.cpp,
 
 from __future__ import annotations
 
+import logging
+
 import torch
 import torch.nn.functional as F
 
-import logging
 from ..transforms.matrices import matrix_sqrt_schur, params_to_rigid_matrix
 from ..transforms.metrics import affine_dist
 

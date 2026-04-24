@@ -344,8 +344,17 @@ class TestCoregCli:
         out_path = tmp_path / "out.lta"
         out_map = tmp_path / "mapped.nii.gz"
         out_hdr = tmp_path / "mapped_hdr.nii.gz"
-        _write_zero_image(mov_path)
-        _write_zero_image(ref_path)
+
+        mov_affine = np.array(
+            [[2.0, 0.0, 0.0, 10.0], [0.0, 3.0, 0.0, -5.0], [0.0, 0.0, 4.0, 2.0], [0.0, 0.0, 0.0, 1.0]],
+            dtype=np.float32,
+        )
+        ref_affine = np.array(
+            [[1.5, 0.0, 0.0, -4.0], [0.0, 2.5, 0.0, 7.0], [0.0, 0.0, 3.5, -1.0], [0.0, 0.0, 0.0, 1.0]],
+            dtype=np.float32,
+        )
+        nib.save(nib.Nifti1Image(torch.zeros(8, 8, 8, dtype=torch.float32).numpy(), mov_affine), mov_path)
+        nib.save(nib.Nifti1Image(torch.zeros(8, 8, 8, dtype=torch.float32).numpy(), ref_affine), ref_path)
 
         captured: dict[str, object] = {}
 
@@ -363,11 +372,15 @@ class TestCoregCli:
             return _TensorRequiringCpu(transform)
 
         class _DummyLTA:
+            def __init__(self, matrix):
+                self.matrix = matrix
+
             def write(self, path):
+                captured["lta_matrix"] = self.matrix
                 Path(path).write_text("dummy")
 
         monkeypatch.setattr("neuroreg.imreg.coreg.coreg", fake_coreg)
-        monkeypatch.setattr("neuroreg.transforms.LTA.from_matrix", lambda *args, **kwargs: _DummyLTA())
+        monkeypatch.setattr("neuroreg.transforms.LTA.from_matrix", lambda matrix, *args, **kwargs: _DummyLTA(matrix))
 
         coreg_main(
             [
@@ -384,12 +397,16 @@ class TestCoregCli:
             ]
         )
 
+        expected_r2r = np.eye(4)
+        expected_r2r[0, 3] = 2.5
+        expected_r2r[1, 3] = -1.0
+        expected_v2v = np.linalg.inv(ref_affine) @ expected_r2r @ mov_affine
+
         assert captured["mapped_name"] == str(out_map)
+        assert captured["return_v2v"] is False
+        assert np.asarray(captured["lta_matrix"]) == pytest.approx(expected_v2v)
         assert out_path.exists()
         assert out_map.exists()
         assert out_hdr.exists()
         mapped_hdr = nib.load(str(out_hdr))
-        expected_affine = np.eye(4)
-        expected_affine[0, 3] = 2.5
-        expected_affine[1, 3] = -1.0
-        assert mapped_hdr.affine == pytest.approx(expected_affine)
+        assert mapped_hdr.affine == pytest.approx(expected_r2r @ mov_affine)
