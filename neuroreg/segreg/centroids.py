@@ -14,7 +14,6 @@ import numpy as np
 import numpy.typing as npt
 
 from ..image import load_image
-
 from .io import CentroidDict
 
 ImageLike = str | Path | Any

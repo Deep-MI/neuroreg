@@ -17,11 +17,10 @@ from scipy.spatial.transform import Rotation
 
 from ..image import load_image, save_resliced_r2r_image
 from ..image.map import coerce_image_data_3d
-from .reg_model import RegModel
 from ..transforms import LINEAR_RAS_TO_RAS, LINEAR_VOX_TO_VOX, LTA, convert_transform_type
-
 from .device import resolve_cpu_only_device
 from .init import InitType, get_init_vox2vox, resolve_init_type
+from .reg_model import RegModel
 
 logger = logging.getLogger(__name__)
 
