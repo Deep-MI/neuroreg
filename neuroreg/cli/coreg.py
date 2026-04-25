@@ -4,10 +4,10 @@
 from __future__ import annotations
 
 import argparse
-import logging
 import sys
 from typing import Any, cast
 
+import logging
 from ..transforms import LINEAR_RAS_TO_RAS, LINEAR_VOX_TO_VOX, LTA, convert_transform_type
 
 
@@ -44,6 +44,16 @@ def _build_parser() -> argparse.ArgumentParser:
         "--mapmovhdr",
         metavar="FILE",
         help="Save a header-only mapped moving image with no interpolation.",
+    )
+    p.add_argument(
+        "--mov-mask",
+        metavar="FILE",
+        help="Optional moving/source mask. Voxels outside the mask are ignored during registration.",
+    )
+    p.add_argument(
+        "--ref-mask",
+        metavar="FILE",
+        help="Optional reference/target mask. Voxels outside the mask are ignored during registration.",
     )
 
     p.add_argument(
@@ -197,12 +207,16 @@ def main(args=None) -> None:
     try:
         mov_img = load_image(ns.mov)
         ref_img = load_image(ns.ref)
+        mov_mask_img = load_image(ns.mov_mask) if ns.mov_mask is not None else None
+        ref_mask_img = load_image(ns.ref_mask) if ns.ref_mask is not None else None
     except Exception as exc:
         print(f"ERROR loading image: {exc}", file=sys.stderr)
         sys.exit(1)
 
     mov_img = cast(Any, mov_img)
     ref_img = cast(Any, ref_img)
+    mov_mask_img = cast(Any | None, mov_mask_img)
+    ref_mask_img = cast(Any | None, ref_mask_img)
 
     kwargs = dict(
         dof=ns.dof,
@@ -227,6 +241,10 @@ def main(args=None) -> None:
         logger.info("Using explicit LTA initialization: %s", ns.init_lta)
     elif ns.init_type is not None:
         kwargs["init_type"] = ns.init_type
+    if mov_mask_img is not None:
+        kwargs["src_mask"] = mov_mask_img
+    if ref_mask_img is not None:
+        kwargs["trg_mask"] = ref_mask_img
     if ns.n_iters is not None:
         kwargs["n"] = ns.n_iters
 

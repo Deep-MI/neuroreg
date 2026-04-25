@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -15,12 +14,14 @@ from scipy.optimize import minimize
 from scipy.signal import convolve2d
 from scipy.spatial.transform import Rotation
 
-from ..image import load_image, save_resliced_r2r_image
-from ..image.map import coerce_image_data_3d
-from ..transforms import LINEAR_RAS_TO_RAS, LINEAR_VOX_TO_VOX, LTA, convert_transform_type
+import logging
 from .device import resolve_cpu_only_device
 from .init import InitType, get_init_vox2vox, resolve_init_type
 from .reg_model import RegModel
+from ..image import load_image, save_resliced_r2r_image
+from ..image.map import coerce_image_data_3d
+from ..image.masking import load_mask
+from ..transforms import LINEAR_RAS_TO_RAS, LINEAR_VOX_TO_VOX, LTA, convert_transform_type
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +90,7 @@ class PowellCostEvaluator:
             mov_img: nib.spatialimages.SpatialImage,
             ref_img: nib.spatialimages.SpatialImage,
             *,
+            mov_mask_img: nib.spatialimages.SpatialImage | None = None,
             ref_mask_img: nib.spatialimages.SpatialImage | None = None,
             sep: int = 4,
             saturation_pct: float = 99.99,
@@ -110,12 +112,16 @@ class PowellCostEvaluator:
             coerce_image_data_3d(ref_img.get_fdata(dtype=np.float32), name="reference image"),
             dtype=np.float32,
         )
+        ref_mask_data = None
         if ref_mask_img is not None:
-            ref_mask = np.asarray(
+            ref_mask_data = np.asarray(
                 coerce_image_data_3d(ref_mask_img.get_fdata(dtype=np.float32), name="reference mask"),
                 dtype=np.float32,
             )
-            ref_data = np.where(ref_mask > 0, ref_data, 0.0).astype(np.float32, copy=False)
+            if ref_mask_data.shape != ref_data.shape:
+                raise ValueError(
+                    f"Reference mask shape {ref_mask_data.shape} does not match reference image shape {ref_data.shape}."
+                )
         self.ref = _prepare_volume(
             ref_data,
             affine=np.asarray(ref_img.affine, dtype=np.float64),
@@ -137,6 +143,18 @@ class PowellCostEvaluator:
             intensity_dither=intensity_dither,
             smooth_images=smooth_images,
         )
+        self.ref_mask_data = (ref_mask_data > 0).astype(np.float32, copy=False) if ref_mask_data is not None else None
+        self.mov_mask_data = None
+        if mov_mask_img is not None:
+            mov_mask_data = np.asarray(
+                coerce_image_data_3d(mov_mask_img.get_fdata(dtype=np.float32), name="moving mask"),
+                dtype=np.float32,
+            )
+            if mov_mask_data.shape != self.mov.data.shape:
+                raise ValueError(
+                    f"Moving mask shape {mov_mask_data.shape} does not match moving image shape {self.mov.data.shape}."
+                )
+            self.mov_mask_data = (mov_mask_data > 0).astype(np.float32, copy=False)
         self.hist_kernel = (
             _gaussian_kernel(_HIST_FWHM / np.sqrt(np.log(_HIST_SIZE)), int(np.ceil(2.0 * _HIST_FWHM)))
             if smooth_histogram
@@ -169,16 +187,32 @@ class PowellCostEvaluator:
         ref_vals = self._ref_vals
         mov_coords = ref_to_mov_v2v @ self._ref_coords_hom
         in_bounds = _coords_in_bounds(mov_coords[:3], self.mov.shape)
-        nhits = int(np.count_nonzero(in_bounds))
         if not self.include_oob:
-            ref_vals = ref_vals[in_bounds]
+            valid = in_bounds.copy()
             mov_coords = mov_coords[:3, in_bounds]
         else:
+            valid = np.ones(self._ref_sample_count, dtype=bool)
             mov_coords = mov_coords[:3]
+        if self._ref_mask_vals is not None:
+            valid &= self._ref_mask_vals > 0.5
+        ref_vals = ref_vals[valid]
+        if not self.include_oob:
+            mov_coords = mov_coords[:, valid[in_bounds]]
+        else:
+            mov_coords = mov_coords[:, valid]
+        nhits = int(ref_vals.size)
         if ref_vals.size == 0:
             return PowellCostResult(cost=float("inf"), nhits=0, pcthits=0.0)
 
         mov_vals = map_coordinates(self.mov.data, mov_coords, order=1, mode="constant", cval=0.0)
+        if self.mov_mask_data is not None:
+            mov_mask_vals = map_coordinates(self.mov_mask_data, mov_coords, order=0, mode="constant", cval=0.0)
+            valid_mov = mov_mask_vals > 0.5
+            ref_vals = ref_vals[valid_mov]
+            mov_vals = mov_vals[valid_mov]
+            nhits = int(np.count_nonzero(valid_mov))
+            if ref_vals.size == 0:
+                return PowellCostResult(cost=float("inf"), nhits=0, pcthits=0.0)
         hist = _joint_histogram(ref_vals, mov_vals)
         if self.hist_kernel is not None:
             hist = convolve2d(hist, self.hist_kernel[:, None], mode="full")
@@ -204,6 +238,8 @@ class PowellCostEvaluator:
                 coord_dither=self.coord_dither,
                 include_oob=include_oob,
                 hist_kernel=self.hist_kernel,
+                mov_mask_data=self.mov_mask_data,
+                ref_mask_data=self.ref_mask_data,
             )
             self._alternate_evaluators[bool(include_oob)] = alt
         return alt.evaluate_r2r(mov_to_ref_r2r)
@@ -219,6 +255,8 @@ class PowellCostEvaluator:
             coord_dither: bool,
             include_oob: bool,
             hist_kernel: np.ndarray | None,
+            mov_mask_data: np.ndarray | None = None,
+            ref_mask_data: np.ndarray | None = None,
     ) -> PowellCostEvaluator:
         """Construct an evaluator from already prepared volumes and cached settings."""
         obj = cls.__new__(cls)
@@ -229,6 +267,8 @@ class PowellCostEvaluator:
         obj.mov = mov
         obj.ref = ref
         obj.hist_kernel = hist_kernel
+        obj.mov_mask_data = mov_mask_data
+        obj.ref_mask_data = ref_mask_data
         obj._initialize_cached_state()
         return obj
 
@@ -244,6 +284,11 @@ class PowellCostEvaluator:
             map_coordinates(self.ref.data, self._ref_coords, order=1, mode="nearest")
             if self._ref_sample_count > 0
             else np.empty((0,), dtype=np.float32)
+        )
+        self._ref_mask_vals = (
+            map_coordinates(self.ref_mask_data, self._ref_coords, order=0, mode="nearest")
+            if self._ref_sample_count > 0 and self.ref_mask_data is not None
+            else None
         )
         self._ref_voxel_count = float(np.prod(self.ref.shape))
         self._alternate_evaluators: dict[bool, PowellCostEvaluator] = {}
@@ -665,6 +710,8 @@ def _shape3(shape: torch.Size | tuple[int, ...]) -> tuple[int, int, int]:
 def register_powell_coreg(
         src: str | nib.Nifti1Image,
         trg: str | nib.Nifti1Image,
+        src_mask: str | nib.spatialimages.SpatialImage | None = None,
+        trg_mask: str | nib.spatialimages.SpatialImage | None = None,
         lta_name: str | None = None,
         mapped_name: str | None = None,
         return_v2v: bool = False,
@@ -690,6 +737,9 @@ def register_powell_coreg(
     ----------
     src, trg : str or nibabel image
         Moving and reference images.
+    src_mask, trg_mask : optional
+        Optional moving/source and reference/target masks. Masked-out voxels are
+        excluded from the NMI sample set rather than zero-filled.
     lta_name, mapped_name : str or None, optional
         Optional output paths for the final LTA and mapped moving volume.
     return_v2v : bool, default=False
@@ -730,6 +780,10 @@ def register_powell_coreg(
         src = load_image(src)
     if isinstance(trg, str):
         trg = load_image(trg)
+    if src_mask is not None:
+        src_mask = load_mask(src_mask)
+    if trg_mask is not None:
+        trg_mask = load_mask(trg_mask)
 
     src_affine_t = torch.from_numpy(np.asarray(src.affine, dtype=np.float64))
     trg_affine_t = torch.from_numpy(np.asarray(trg.affine, dtype=np.float64))
@@ -753,7 +807,7 @@ def register_powell_coreg(
         init_r2r = trg_affine_t @ init_v2v.double() @ torch.inverse(src_affine_t)
     init_params = powell_mov_to_ref_r2r_to_params(np.asarray(init_r2r.cpu(), dtype=np.float64), dof=dof)
 
-    evaluator = PowellCostEvaluator(src, trg, sep=sep)
+    evaluator = PowellCostEvaluator(src, trg, mov_mask_img=src_mask, ref_mask_img=trg_mask, sep=sep)
 
     def _step_trace(step):
         if trace_fn is None:

@@ -16,6 +16,7 @@ from neuroreg.imreg.irls import (
 from neuroreg.imreg.robreg import register_irls_pyramid
 from neuroreg.transforms import affine_dist, params_to_rigid_matrix
 
+
 # ---------------------------------------------------------------------------
 # _sqrt_tukey
 # ---------------------------------------------------------------------------
@@ -113,6 +114,19 @@ class TestConstructAb:
         assert abs(fy[4, 5, 6].item()) < 1e-4
         assert fz[4, 5, 6].item() > 0.9
 
+    def test_external_valid_mask_filters_rows(self):
+        src = torch.rand(10, 10, 10)
+        trg = torch.rand(10, 10, 10)
+        valid_mask = torch.zeros_like(src)
+        valid_mask[3:7, 3:7, 3:7] = 1.0
+
+        A, b, valid = construct_Ab(src, trg, valid_mask=valid_mask)
+
+        assert A.shape[0] == b.shape[0]
+        assert int(valid.sum().item()) == A.shape[0]
+        mask_flat = valid_mask.reshape(-1) > 0.5
+        assert torch.all(mask_flat[valid])
+
 
 # ---------------------------------------------------------------------------
 # irls_inner_loop
@@ -201,6 +215,20 @@ class TestRegisterIrls:
         assert T.shape == (4, 4)
         assert len(info['sigma_hist']) == info['iterations']
         assert all(isinstance(v, float) for v in info['sigma_hist'])
+
+    def test_empty_mask_intersection_returns_empty_weights(self):
+        src, trg = self._make_images()
+        src_mask = torch.zeros_like(src)
+        trg_mask = torch.zeros_like(trg)
+
+        T, info = register_irls(src, trg, src_mask=src_mask, trg_mask=trg_mask, nmax=1)
+
+        assert T.shape == (4, 4)
+        assert torch.isfinite(T).all()
+        assert info["weights"] is not None
+        assert info["valid_mask"] is not None
+        assert cast(torch.Tensor, info["weights"]).numel() == 0
+        assert int(cast(torch.Tensor, info["valid_mask"]).sum().item()) == 0
 
 
 # ---------------------------------------------------------------------------
@@ -320,6 +348,43 @@ class TestRegisterIrlsPyramid:
         assert tuple(T.shape) == (4, 4)
         assert len(all_info) == 2
         assert all_info[-1]["image_shape"] == tuple(img.shape)
+
+    def test_pyramid_forwards_mask_levels(self, monkeypatch: pytest.MonkeyPatch):
+        seen: list[tuple[tuple[int, int, int], tuple[int, int, int]]] = []
+
+        def fake_register_irls(src, trg, src_mask=None, trg_mask=None, **kwargs):
+            assert src_mask is not None
+            assert trg_mask is not None
+            seen.append((tuple(int(v) for v in src_mask.shape), tuple(int(v) for v in trg_mask.shape)))
+            return kwargs["initial_transform"], {
+                "iterations": 0,
+                "converged": False,
+                "dists": [],
+                "weights": torch.zeros(0),
+                "valid_mask": torch.zeros(int(trg.numel()), dtype=torch.bool),
+                "image_shape": tuple(int(v) for v in trg.shape),
+                "sigma_hist": [],
+            }
+
+        monkeypatch.setattr("neuroreg.imreg.robreg.register_irls", fake_register_irls)
+
+        img = torch.rand(32, 32, 32)
+        mask = torch.ones_like(img)
+        aff = self._aff()
+        _, _ = register_irls_pyramid(
+            img,
+            img.clone(),
+            src_mask=mask,
+            trg_mask=mask,
+            src_affine=aff,
+            trg_affine=aff,
+            min_voxels=8,
+            max_voxels=16,
+            nmax=1,
+            isotropic=False,
+        )
+
+        assert seen == [((8, 8, 8), (8, 8, 8)), ((16, 16, 16), (16, 16, 16))]
 
 
 if __name__ == "__main__":

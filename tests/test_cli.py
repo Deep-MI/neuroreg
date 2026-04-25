@@ -212,6 +212,44 @@ class TestRobregCli:
         expected_affine[2, 3] = -2.0
         assert mapped_hdr.affine == pytest.approx(expected_affine)
 
+    def test_main_forwards_mask_images(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        mov_path = tmp_path / "mov.nii.gz"
+        ref_path = tmp_path / "ref.nii.gz"
+        mov_mask_path = tmp_path / "mov_mask.nii.gz"
+        ref_mask_path = tmp_path / "ref_mask.nii.gz"
+        out_path = tmp_path / "out.lta"
+
+        _write_zero_image(mov_path)
+        _write_zero_image(ref_path)
+        _write_zero_image(mov_mask_path)
+        _write_zero_image(ref_mask_path)
+
+        captured: dict[str, object] = {}
+
+        def fake_register_pyramid(*args, **kwargs):
+            captured.update(kwargs)
+            return _TensorRequiringCpu(torch.eye(4))
+
+        class _DummyLTA:
+            def write(self, path):
+                Path(path).write_text("dummy")
+
+        monkeypatch.setattr("neuroreg.imreg.robreg.robreg", fake_register_pyramid)
+        monkeypatch.setattr("neuroreg.transforms.LTA.from_matrix", lambda *args, **kwargs: _DummyLTA())
+
+        robreg_main(
+            [
+                "--mov", str(mov_path),
+                "--ref", str(ref_path),
+                "--mov-mask", str(mov_mask_path),
+                "--ref-mask", str(ref_mask_path),
+                "--out", str(out_path),
+            ]
+        )
+
+        assert hasattr(captured["src_mask"], "get_fdata")
+        assert hasattr(captured["trg_mask"], "get_fdata")
+
     def test_parser_rejects_non_rigid_dof(self, tmp_path: Path):
         mov_path = tmp_path / "mov.nii.gz"
         ref_path = tmp_path / "ref.nii.gz"
@@ -336,6 +374,33 @@ class TestCoregCli:
         assert captured["powell_maxiter"] == 7
         assert captured["powell_sep"] == 6
         assert out_path.exists()
+
+    def test_main_forwards_mask_images(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        mov_path = tmp_path / "mov.nii.gz"
+        ref_path = tmp_path / "ref.nii.gz"
+        mov_mask_path = tmp_path / "mov_mask.nii.gz"
+        ref_mask_path = tmp_path / "ref_mask.nii.gz"
+        out_path = tmp_path / "out.lta"
+        _write_zero_image(mov_path)
+        _write_zero_image(ref_path)
+        _write_zero_image(mov_mask_path)
+        _write_zero_image(ref_mask_path)
+
+        captured: dict[str, object] = {}
+        self._patch_coreg(monkeypatch, captured)
+
+        coreg_main(
+            [
+                "--mov", str(mov_path),
+                "--ref", str(ref_path),
+                "--mov-mask", str(mov_mask_path),
+                "--ref-mask", str(ref_mask_path),
+                "--out", str(out_path),
+            ]
+        )
+
+        assert hasattr(captured["src_mask"], "get_fdata")
+        assert hasattr(captured["trg_mask"], "get_fdata")
 
     def test_main_init_lta_overrides_other_init_flags(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         mov_path = tmp_path / "mov.nii.gz"

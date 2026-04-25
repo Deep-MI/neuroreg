@@ -1,11 +1,11 @@
 """Command-line interface for IRLS-backed robust registration (robreg)."""
 
 import argparse
-import logging
 import sys
 from pathlib import Path
 from typing import Any, cast
 
+import logging
 from ..transforms import LTA
 
 
@@ -27,6 +27,16 @@ def _build_parser() -> argparse.ArgumentParser:
                    help="Reference (target/fixed) image (NIfTI or MGZ).")
     p.add_argument("--out", required=True, metavar="LTA",
                    help="Output LTA file for the recovered transformation.")
+    p.add_argument(
+        "--mov-mask",
+        metavar="FILE",
+        help="Optional moving/source mask. Voxels outside the mask are ignored during registration.",
+    )
+    p.add_argument(
+        "--ref-mask",
+        metavar="FILE",
+        help="Optional reference/target mask. Voxels outside the mask are ignored during registration.",
+    )
 
     # ── transform ───────────────────────────────────────────────────────────
     p.add_argument(
@@ -144,12 +154,16 @@ def main(args=None) -> None:
     try:
         mov_img = load_image(ns.mov)
         ref_img = load_image(ns.ref)
+        mov_mask_img = load_image(ns.mov_mask) if ns.mov_mask is not None else None
+        ref_mask_img = load_image(ns.ref_mask) if ns.ref_mask is not None else None
     except Exception as exc:
         print(f"ERROR loading image: {exc}", file=sys.stderr)
         sys.exit(1)
 
     mov_img = cast(Any, mov_img)
     ref_img = cast(Any, ref_img)
+    mov_mask_img = cast(Any | None, mov_mask_img)
+    ref_mask_img = cast(Any | None, ref_mask_img)
 
     # ── register ────────────────────────────────────────────────────────────
     logger.info("Starting IRLS registration (dof=%d, symmetric=%s) …", ns.dof, ns.symmetric)
@@ -168,6 +182,10 @@ def main(args=None) -> None:
         logger.info("Using explicit LTA initialization: %s", ns.init_lta)
     elif ns.init_type is not None:
         kwargs["init_type"] = ns.init_type
+    if mov_mask_img is not None:
+        kwargs["src_mask"] = mov_mask_img
+    if ref_mask_img is not None:
+        kwargs["trg_mask"] = ref_mask_img
     Mr2r = robreg(
         mov_img,
         ref_img,

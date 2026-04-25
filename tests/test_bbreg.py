@@ -127,14 +127,15 @@ class TestBbregCli:
         nib.save(nib.MGHImage(mask_data, affine=torch.eye(4).numpy()), mri_dir / "aparc+aseg.mgz")
 
         captured_surface_kwargs: dict[str, object] = {}
-        captured_ref_sum: dict[str, float] = {}
+        captured_prealign: dict[str, float] = {}
 
         def fake_register_surface(**kwargs):
             captured_surface_kwargs.update(kwargs)
             return torch.eye(4), object()
 
         def fake_register_pyramid(mov_img, ref_img, **kwargs):
-            captured_ref_sum["sum"] = float(ref_img.get_fdata().sum())
+            captured_prealign["ref_sum"] = float(ref_img.get_fdata().sum())
+            captured_prealign["mask_sum"] = float(kwargs["trg_mask"].get_fdata().sum())
             return torch.eye(4, dtype=torch.float64)
 
         monkeypatch.setattr(bbreg_register_module, "register_surface", fake_register_surface)
@@ -146,7 +147,8 @@ class TestBbregCli:
             "--out", str(out_path),
         ])
 
-        assert captured_ref_sum["sum"] == pytest.approx(float(mask_data.sum()))
+        assert captured_prealign["ref_sum"] == pytest.approx(float(ref_data.sum()))
+        assert captured_prealign["mask_sum"] == pytest.approx(float(mask_data.sum()))
         assert captured_surface_kwargs["subject_dir"] == str(subject_dir)
 
     def test_seg_mode_uses_ref_for_prealignment_and_seg_as_mask(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
@@ -163,14 +165,15 @@ class TestBbregCli:
         nib.save(nib.Nifti1Image(seg_data, affine=torch.eye(4).numpy()), seg_path)
 
         captured_surface_kwargs: dict[str, object] = {}
-        captured_ref_sum: dict[str, float] = {}
+        captured_prealign: dict[str, float] = {}
 
         def fake_register_surface(**kwargs):
             captured_surface_kwargs.update(kwargs)
             return torch.eye(4), object()
 
         def fake_register_pyramid(mov_img, ref_img, **kwargs):
-            captured_ref_sum["sum"] = float(ref_img.get_fdata().sum())
+            captured_prealign["ref_sum"] = float(ref_img.get_fdata().sum())
+            captured_prealign["mask_sum"] = float(kwargs["trg_mask"].get_fdata().sum())
             return torch.eye(4, dtype=torch.float64)
 
         monkeypatch.setattr(bbreg_register_module, "register_surface", fake_register_surface)
@@ -183,7 +186,8 @@ class TestBbregCli:
             "--out", str(out_path),
         ])
 
-        assert captured_ref_sum["sum"] == pytest.approx(float((seg_data > 0).sum()))
+        assert captured_prealign["ref_sum"] == pytest.approx(float(ref_data.sum()))
+        assert captured_prealign["mask_sum"] == pytest.approx(float(seg_data.sum()))
         assert captured_surface_kwargs["seg"] == str(seg_path)
         assert captured_surface_kwargs["init_ras"] is not None
 

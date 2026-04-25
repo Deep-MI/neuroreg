@@ -106,6 +106,23 @@ class TestPublicRobregWrapper:
         assert mr2r.shape == (4, 4)
         assert torch.isfinite(mr2r).all()
 
+    def test_top_level_robreg_forwards_masks(self, monkeypatch: pytest.MonkeyPatch):
+        captured: dict[str, object] = {}
+
+        def fake_register_irls_pyramid(**kwargs):
+            captured.update(kwargs)
+            return torch.eye(4), []
+
+        monkeypatch.setattr("neuroreg.imreg.robreg.register_irls_pyramid", fake_register_irls_pyramid)
+
+        img = _make_img()
+        src_mask = nib.Nifti1Image(np.ones((20, 20, 20), dtype=np.float32), img.affine)
+        trg_mask = nib.Nifti1Image(np.ones((20, 20, 20), dtype=np.float32), img.affine)
+        _ = robreg(img, img, src_mask=src_mask, trg_mask=trg_mask, return_v2v=False, init_type="header", dof=6, nmax=1)
+
+        assert cast(torch.Tensor, captured["src_mask"]).shape == (20, 20, 20)
+        assert cast(torch.Tensor, captured["trg_mask"]).shape == (20, 20, 20)
+
     def test_robreg_accepts_file_paths(self, tmp_path: Path):
         src = _make_img()
         trg = _make_img()

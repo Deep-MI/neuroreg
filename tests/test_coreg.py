@@ -600,6 +600,24 @@ class TestPublicCoregWrapper:
         assert Mr2r.shape == (4, 4)
         assert torch.isfinite(Mr2r).all()
 
+    def test_top_level_coreg_forwards_masks_to_powell(self, monkeypatch: pytest.MonkeyPatch):
+        captured: dict[str, object] = {}
+
+        def fake_register_powell_coreg(*args, **kwargs):
+            captured["args"] = args
+            captured.update(kwargs)
+            return torch.eye(4)
+
+        monkeypatch.setattr("neuroreg.imreg.coreg.register_powell_coreg", fake_register_powell_coreg)
+
+        img = _make_img()
+        src_mask = _make_img()
+        trg_mask = _make_img()
+        _ = coreg(img, img, src_mask=src_mask, trg_mask=trg_mask, init_type="header", dof=6)
+
+        assert captured["src_mask"] is src_mask
+        assert captured["trg_mask"] is trg_mask
+
     def test_register_gd_pyramid_writes_mapped_image_with_linear_mode(self, monkeypatch: pytest.MonkeyPatch):
         captured: dict[str, object] = {}
 
@@ -637,10 +655,11 @@ class TestPublicCoregWrapper:
         captured: dict[str, object] = {}
 
         class DummyEvaluator:
-            def __init__(self, src, trg, sep):
+            def __init__(self, src, trg, sep, **kwargs):
                 self.src = src
                 self.trg = trg
                 self.sep = sep
+                self.kwargs = kwargs
 
             def optimize_powell_params(self, init_params, **kwargs):
                 _ = init_params, kwargs
@@ -664,10 +683,11 @@ class TestPublicCoregWrapper:
 
     def test_register_powell_coreg_warns_and_falls_back_to_cpu(self, monkeypatch: pytest.MonkeyPatch):
         class DummyEvaluator:
-            def __init__(self, src, trg, sep):
+            def __init__(self, src, trg, sep, **kwargs):
                 self.src = src
                 self.trg = trg
                 self.sep = sep
+                self.kwargs = kwargs
 
             def optimize_powell_params(self, init_params, **kwargs):
                 _ = init_params, kwargs
@@ -738,6 +758,24 @@ class TestPublicCoregWrapper:
         assert Mr2r.shape == (4, 4)
         assert torch.isfinite(Mr2r).all()
 
+    def test_top_level_coreg_forwards_masks_to_gd(self, monkeypatch: pytest.MonkeyPatch):
+        captured: dict[str, object] = {}
+
+        def fake_register_gd_pyramid(*args, **kwargs):
+            captured["args"] = args
+            captured.update(kwargs)
+            return torch.eye(4)
+
+        monkeypatch.setattr("neuroreg.imreg.coreg.register_gd_pyramid", fake_register_gd_pyramid)
+
+        img = _make_img()
+        src_mask = _make_img()
+        trg_mask = _make_img()
+        _ = coreg(img, img, method="gd", src_mask=src_mask, trg_mask=trg_mask, init_type="header", dof=6, n=1)
+
+        assert captured["src_mask"] is src_mask
+        assert captured["trg_mask"] is trg_mask
+
     def test_top_level_coreg_forwards_init_lta(self, monkeypatch: pytest.MonkeyPatch):
         captured: dict[str, object] = {}
 
@@ -805,6 +843,18 @@ class TestLossFunctions:
         loss = ncc_loss(a, a.clone(), win_size=99)
         assert torch.isfinite(loss)
 
+    def test_masked_losses_ignore_outside_voxels(self):
+        a = torch.from_numpy(self._blob())
+        b = torch.rand_like(a)
+        mask = torch.zeros_like(a)
+        mask[6:14, 6:14, 6:14] = 1.0
+        b = b.clone()
+        b[mask > 0] = a[mask > 0]
+
+        assert ncc_loss(a, b, win_size=5, mask=mask) < ncc_loss(a, b, win_size=5)
+        assert mi_loss(a, b, num_bins=16, mask=mask) < mi_loss(a, b, num_bins=16)
+        assert nmi_loss(a, b, num_bins=16, mask=mask) < nmi_loss(a, b, num_bins=16)
+
     # ---- MI ----------------------------------------------------------------
 
     def test_mi_identical_images_is_finite_and_negative(self):
@@ -871,6 +921,30 @@ class TestLossFunctions:
 
 
 class TestMRICoregCost:
+    def test_register_powell_coreg_forwards_masks_to_evaluator(self, monkeypatch: pytest.MonkeyPatch):
+        captured: dict[str, object] = {}
+
+        class DummyEvaluator:
+            def __init__(self, src, trg, sep, **kwargs):
+                captured["src"] = src
+                captured["trg"] = trg
+                captured["sep"] = sep
+                captured.update(kwargs)
+
+            def optimize_powell_params(self, init_params, **kwargs):
+                _ = init_params, kwargs
+                return type("Result", (), {"final_r2r": np.eye(4, dtype=np.float64), "final_cost": 0.0})()
+
+        monkeypatch.setattr("neuroreg.imreg.powell.PowellCostEvaluator", DummyEvaluator)
+
+        img = _make_img()
+        src_mask = _make_img()
+        trg_mask = _make_img()
+        _ = register_powell_coreg(img, img, src_mask=src_mask, trg_mask=trg_mask, init_type="header", dof=6)
+
+        assert captured["mov_mask_img"] is src_mask
+        assert captured["ref_mask_img"] is trg_mask
+
     def test_identity_beats_shift_on_same_image(self):
         img = _make_img(shape=(24, 24, 24))
         evaluator = PowellCostEvaluator(img, img, sep=2, coord_dither=False, intensity_dither=False)

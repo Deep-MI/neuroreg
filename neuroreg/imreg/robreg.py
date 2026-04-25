@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import warnings
 from pathlib import Path
 from typing import Any, cast
@@ -12,12 +11,14 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from ..image import build_gaussian_pyramid, get_pyramid_limits, load_image
-from ..image.map import coerce_image_data_3d, resample_isotropic_tensor
-from ..transforms import LINEAR_RAS_TO_RAS, LINEAR_VOX_TO_VOX, LTA, convert_transform_type
+import logging
 from .device import resolve_torch_device
 from .init import InitType, get_init_vox2vox, resolve_init_type
 from .irls import move_tensor, register_irls
+from ..image import build_gaussian_pyramid, get_pyramid_limits, load_image
+from ..image.map import coerce_image_data_3d, resample_isotropic_tensor
+from ..image.masking import as_mask_tensor_and_affine, build_binary_mask_pyramid
+from ..transforms import LINEAR_RAS_TO_RAS, LINEAR_VOX_TO_VOX, LTA, convert_transform_type
 
 ImageLike = str | Path | Any | Tensor
 
@@ -139,6 +140,8 @@ def _save_outlier_map(all_info: list[dict[str, Any]], outliers_name: str, verbos
 def register_irls_pyramid(
         src: Tensor,
         trg: Tensor,
+        src_mask: Tensor | None = None,
+        trg_mask: Tensor | None = None,
         src_affine: Tensor | None = None,
         trg_affine: Tensor | None = None,
         initial_transform: Tensor | None = None,
@@ -168,6 +171,9 @@ def register_irls_pyramid(
     ----------
     src, trg : Tensor
         Full-resolution source and target image tensors in ``(D, H, W)`` order.
+    src_mask, trg_mask : Tensor, optional
+        Optional binary masks in source and target space. Masked-out voxels are
+        excluded from the IRLS system instead of being treated as zero-valued data.
     src_affine, trg_affine : Tensor, optional
         Voxel-to-RAS affines. Required when ``isotropic=True``.
     initial_transform : Tensor, optional
@@ -225,6 +231,10 @@ def register_irls_pyramid(
         )
         src = src.to(device="cpu")
         trg = trg.to(device="cpu")
+        if src_mask is not None:
+            src_mask = src_mask.to(device="cpu")
+        if trg_mask is not None:
+            trg_mask = trg_mask.to(device="cpu")
         if src_affine is not None:
             src_affine = src_affine.to(device="cpu")
         if trg_affine is not None:
@@ -249,6 +259,26 @@ def register_irls_pyramid(
 
         src_iso, src_iso_aff, Rsrc = resample_isotropic_tensor(src, src_affine_np, isosize, mode="linear")
         trg_iso, trg_iso_aff, Rtrg = resample_isotropic_tensor(trg, trg_affine_np, isosize, mode="linear")
+        src_mask_iso = None
+        trg_mask_iso = None
+        if src_mask is not None:
+            src_mask_iso, _, _ = resample_isotropic_tensor(
+                (src_mask > 0).float(),
+                src_affine_np,
+                isosize,
+                out_shape=tuple(int(v) for v in src_iso.shape),
+                mode="nearest",
+            )
+            src_mask_iso = (src_mask_iso > 0.5).float()
+        if trg_mask is not None:
+            trg_mask_iso, _, _ = resample_isotropic_tensor(
+                (trg_mask > 0).float(),
+                trg_affine_np,
+                isosize,
+                out_shape=tuple(int(v) for v in trg_iso.shape),
+                mode="nearest",
+            )
+            trg_mask_iso = (trg_mask_iso > 0.5).float()
 
         if verbose:
             logger.info("  Src resampled: %s → %s", src.shape, src_iso.shape)
@@ -285,6 +315,16 @@ def register_irls_pyramid(
         shared_limits = get_pyramid_limits(src_iso.shape, trg_iso.shape, minsize=min_voxels, maxsize=max_voxels)
         pyramid_src, _ = build_gaussian_pyramid(src_iso, src_iso_aff, limits=shared_limits)
         pyramid_trg, _ = build_gaussian_pyramid(trg_iso, trg_iso_aff, limits=shared_limits)
+        src_mask_levels = (
+            build_binary_mask_pyramid(src_mask_iso, [tuple(int(v) for v in level.shape) for level in pyramid_src])
+            if src_mask_iso is not None
+            else None
+        )
+        trg_mask_levels = (
+            build_binary_mask_pyramid(trg_mask_iso, [tuple(int(v) for v in level.shape) for level in pyramid_trg])
+            if trg_mask_iso is not None
+            else None
+        )
         iso_affine = trg_iso_aff
     else:
         src_affine_for_pyramid = (
@@ -296,6 +336,22 @@ def register_irls_pyramid(
         shared_limits = get_pyramid_limits(src.shape, trg.shape, minsize=min_voxels, maxsize=max_voxels)
         pyramid_src, _ = build_gaussian_pyramid(src, src_affine_for_pyramid, limits=shared_limits)
         pyramid_trg, _ = build_gaussian_pyramid(trg, trg_affine_for_pyramid, limits=shared_limits)
+        src_mask_levels = (
+            build_binary_mask_pyramid(
+                (src_mask > 0).float(),
+                [tuple(int(v) for v in level.shape) for level in pyramid_src],
+            )
+            if src_mask is not None
+            else None
+        )
+        trg_mask_levels = (
+            build_binary_mask_pyramid(
+                (trg_mask > 0).float(),
+                [tuple(int(v) for v in level.shape) for level in pyramid_trg],
+            )
+            if trg_mask is not None
+            else None
+        )
         if initial_transform is not None:
             T_iso = move_tensor(initial_transform, device=src.device, dtype=src.dtype)
         else:
@@ -330,6 +386,8 @@ def register_irls_pyramid(
     for lvl in range(len(pyramid_src) - 1, -1, -1):
         s = pyramid_src[lvl].float()
         t = pyramid_trg[lvl].float()
+        sm = src_mask_levels[lvl].float() if src_mask_levels is not None else None
+        tm = trg_mask_levels[lvl].float() if trg_mask_levels is not None else None
         scale = float(2 ** lvl)
 
         T_lvl = T.clone()
@@ -341,6 +399,8 @@ def register_irls_pyramid(
         T_lvl, info = register_irls(
             s,
             t,
+            src_mask=sm,
+            trg_mask=tm,
             initial_transform=T_lvl,
             nmax=nmax,
             sat=sat,
@@ -376,6 +436,8 @@ def robreg(
         *,
         src_affine: Tensor | None = None,
         trg_affine: Tensor | None = None,
+        src_mask: ImageLike | None = None,
+        trg_mask: ImageLike | None = None,
         return_v2v: bool = False,
         init_type: InitType = "centroid",
         init_lta: str | None = None,
@@ -403,6 +465,9 @@ def robreg(
     src_affine, trg_affine : Tensor, optional
         Explicit voxel-to-RAS affines to use when ``src`` or ``trg`` are passed
         as tensors.
+    src_mask, trg_mask : ImageLike, optional
+        Optional source and target masks. Voxels outside these masks are
+        ignored during IRLS fitting.
     return_v2v : bool, default=False
         If ``True``, return the estimated transform in voxel coordinates. If
         ``False``, return the corresponding RAS-to-RAS transform.
@@ -452,6 +517,8 @@ def robreg(
 
     src_data, src_aff = _as_tensor_and_affine(src, src_affine)
     trg_data, trg_aff = _as_tensor_and_affine(trg, trg_affine)
+    src_mask_data, _ = as_mask_tensor_and_affine(src_mask, affine=src_affine, name="moving mask")
+    trg_mask_data, _ = as_mask_tensor_and_affine(trg_mask, affine=trg_affine, name="reference mask")
     initial_transform = None
     if init_lta is not None:
         logger.info("Loading init transform from LTA: %s", init_lta)
@@ -468,12 +535,18 @@ def robreg(
     run_device = _resolve_robreg_device(device)
     src_data = src_data.to(run_device)
     trg_data = trg_data.to(run_device)
+    if src_mask_data is not None:
+        src_mask_data = src_mask_data.to(run_device)
+    if trg_mask_data is not None:
+        trg_mask_data = trg_mask_data.to(run_device)
     src_aff = src_aff.to(run_device)
     trg_aff = trg_aff.to(run_device)
 
     T_v2v, _ = register_irls_pyramid(
         src=src_data,
         trg=trg_data,
+        src_mask=src_mask_data,
+        trg_mask=trg_mask_data,
         src_affine=src_aff,
         trg_affine=trg_aff,
         initial_transform=initial_transform,

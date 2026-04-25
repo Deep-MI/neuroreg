@@ -4,14 +4,13 @@
 from __future__ import annotations
 
 import argparse
-import logging
 import sys
 from pathlib import Path
 from typing import Any
 
-import nibabel as nib
 import numpy as np
 
+import logging
 from ..image import load_image
 
 
@@ -254,28 +253,6 @@ def _load_prealign_mask_image(ns: argparse.Namespace, mode: str) -> Any | None:
     return None
 
 
-def _mask_reference_image(
-        ref_img: Any,
-        mask_img: Any | None,
-) -> Any:
-    """Apply a binary mask to the fixed/reference image for NMI prealignment.
-
-    Voxels outside the mask are set to zero so the coarse image registration is
-    driven more by intracranial anatomy and less by unrelated head/background
-    content.
-    """
-    if mask_img is None:
-        return ref_img
-
-    ref_data = np.asarray(ref_img.get_fdata(), dtype=np.float32)
-    mask_data = np.asarray(mask_img.get_fdata()) > 0
-    if mask_data.shape != ref_data.shape:
-        raise ValueError(f"Prealignment mask shape {mask_data.shape} does not match reference shape {ref_data.shape}.")
-
-    masked = ref_data * mask_data.astype(np.float32)
-    return nib.Nifti1Image(masked, ref_img.affine)
-
-
 def _run_default_nmi_prealign(
         mov_img: Any,
         ref_img: Any,
@@ -294,14 +271,14 @@ def _run_default_nmi_prealign(
     """
     from ..imreg.coreg import coreg
 
-    prealign_ref = _mask_reference_image(ref_img, mask_img)
     logger.info(
         "Running default Powell NMI prealignment (image-center start, sep=4)%s",
-        " with aparc+aseg/aseg mask" if mask_img is not None else "",
+        " with sample-exclusion mask" if mask_img is not None else "",
     )
     Mr2r = coreg(
         mov_img,
-        prealign_ref,
+        ref_img,
+        trg_mask=mask_img,
         return_v2v=False,
         method="powell",
         init_type="image_center",
