@@ -252,34 +252,13 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">nibabel</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nib</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy.typing</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">npt</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">..image</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_image</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">CentroidDict</span>
 
 <span class="n">ImageLike</span> <span class="o">=</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="n">Any</span>
-
-
-<div class="viewcode-block" id="load_spatial_image">
-<a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.centroids.load_spatial_image">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">load_spatial_image</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="n">ImageLike</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load a nibabel-compatible image or pass through an in-memory object.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    image : ImageLike</span>
-<span class="sd">        Path to an image on disk or an already-loaded nibabel-like image.</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    Any</span>
-<span class="sd">        Loaded image object exposing at least ``dataobj`` and ``affine``.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">)):</span>
-        <span class="k">return</span> <span class="n">nib</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">image</span><span class="p">))</span>
-    <span class="k">return</span> <span class="n">image</span></div>
-
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_label_ids</span><span class="p">(</span><span class="n">seg_data</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">],</span> <span class="n">label_ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
@@ -327,7 +306,7 @@
 <span class="sd">        Mapping from label ID to centroid in voxel coordinates. Labels with no</span>
 <span class="sd">        matching voxels are assigned ``None``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">image</span> <span class="o">=</span> <span class="n">load_spatial_image</span><span class="p">(</span><span class="n">seg_img</span><span class="p">)</span>
+    <span class="n">image</span> <span class="o">=</span> <span class="n">load_image</span><span class="p">(</span><span class="n">seg_img</span><span class="p">)</span>
     <span class="n">seg_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">dataobj</span><span class="p">)</span>
     <span class="n">labels</span> <span class="o">=</span> <span class="n">_resolve_label_ids</span><span class="p">(</span><span class="n">seg_data</span><span class="p">,</span> <span class="n">label_ids</span><span class="p">)</span>
 
@@ -361,7 +340,7 @@
 <span class="sd">        Mapping from label ID to centroid in scanner-RAS coordinates. Labels</span>
 <span class="sd">        with no matching voxels are assigned ``None``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">image</span> <span class="o">=</span> <span class="n">load_spatial_image</span><span class="p">(</span><span class="n">seg_img</span><span class="p">)</span>
+    <span class="n">image</span> <span class="o">=</span> <span class="n">load_image</span><span class="p">(</span><span class="n">seg_img</span><span class="p">)</span>
     <span class="n">voxel_centroids</span> <span class="o">=</span> <span class="n">compute_voxel_centroids_from_seg</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">label_ids</span><span class="o">=</span><span class="n">label_ids</span><span class="p">)</span>
     <span class="n">affine</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">affine</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
 

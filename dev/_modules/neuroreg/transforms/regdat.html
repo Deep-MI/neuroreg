@@ -247,37 +247,10 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">..image.geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">vox2tkras_from_volume_info</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.lta</span><span class="w"> </span><span class="kn">import</span> <span class="n">LTA</span><span class="p">,</span> <span class="n">_affine_from_info</span><span class="p">,</span> <span class="n">_AnyHeader</span><span class="p">,</span> <span class="n">_header_info</span><span class="p">,</span> <span class="n">_header_to_vol_info</span>
 
 <span class="n">_VALID_FLOAT2INT</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;tkregister&quot;</span><span class="p">,</span> <span class="s2">&quot;round&quot;</span><span class="p">,</span> <span class="s2">&quot;floor&quot;</span><span class="p">}</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">_vox2tkr_from_info</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct the tkregister voxel-to-tkRAS matrix from volume metadata.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    info : dict</span>
-<span class="sd">        FreeSurfer-style volume-info dictionary containing ``volume`` and</span>
-<span class="sd">        ``voxelsize``.</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    np.ndarray</span>
-<span class="sd">        ``(4, 4)`` voxel-to-tkRAS matrix.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">dims</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;volume&quot;</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-    <span class="n">delta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;voxelsize&quot;</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
-    <span class="n">mat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
-        <span class="p">[</span>
-            <span class="p">[</span><span class="o">-</span><span class="n">delta</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">delta</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">dims</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">],</span>
-            <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">delta</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="o">-</span><span class="n">delta</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">*</span> <span class="n">dims</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">],</span>
-            <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="o">-</span><span class="n">delta</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">delta</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">dims</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">],</span>
-            <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
-        <span class="p">],</span>
-        <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="k">return</span> <span class="n">mat</span>
 
 
 <div class="viewcode-block" id="RegisterDat">
@@ -344,12 +317,12 @@
 <a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.RegisterDat.from_lta">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">from_lta</span><span class="p">(</span>
-        <span class="bp">cls</span><span class="p">,</span>
-        <span class="n">lta</span><span class="p">:</span> <span class="n">LTA</span><span class="p">,</span>
-        <span class="o">*</span><span class="p">,</span>
-        <span class="n">subject</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">intensity</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">float2int</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;round&quot;</span><span class="p">,</span>
+            <span class="bp">cls</span><span class="p">,</span>
+            <span class="n">lta</span><span class="p">:</span> <span class="n">LTA</span><span class="p">,</span>
+            <span class="o">*</span><span class="p">,</span>
+            <span class="n">subject</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">intensity</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">float2int</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;round&quot;</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RegisterDat</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a register.dat transform from a canonical LTA.</span>
 
@@ -373,11 +346,11 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">src_affine</span> <span class="o">=</span> <span class="n">_affine_from_info</span><span class="p">(</span><span class="n">lta</span><span class="o">.</span><span class="n">src</span><span class="p">)</span>
         <span class="n">dst_affine</span> <span class="o">=</span> <span class="n">_affine_from_info</span><span class="p">(</span><span class="n">lta</span><span class="o">.</span><span class="n">dst</span><span class="p">)</span>
-        <span class="n">src_vox2tkr</span> <span class="o">=</span> <span class="n">_vox2tkr_from_info</span><span class="p">(</span><span class="n">lta</span><span class="o">.</span><span class="n">src</span><span class="p">)</span>
-        <span class="n">dst_vox2tkr</span> <span class="o">=</span> <span class="n">_vox2tkr_from_info</span><span class="p">(</span><span class="n">lta</span><span class="o">.</span><span class="n">dst</span><span class="p">)</span>
-        <span class="n">src_ras2tkr</span> <span class="o">=</span> <span class="n">src_vox2tkr</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">src_affine</span><span class="p">)</span>
-        <span class="n">dst_tkr2ras</span> <span class="o">=</span> <span class="n">dst_affine</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">dst_vox2tkr</span><span class="p">)</span>
-        <span class="n">reg_matrix</span> <span class="o">=</span> <span class="n">src_ras2tkr</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">lta</span><span class="o">.</span><span class="n">r2r</span><span class="p">())</span> <span class="o">@</span> <span class="n">dst_tkr2ras</span>
+        <span class="n">src_vox2tkras</span> <span class="o">=</span> <span class="n">vox2tkras_from_volume_info</span><span class="p">(</span><span class="n">lta</span><span class="o">.</span><span class="n">src</span><span class="p">)</span>
+        <span class="n">dst_vox2tkras</span> <span class="o">=</span> <span class="n">vox2tkras_from_volume_info</span><span class="p">(</span><span class="n">lta</span><span class="o">.</span><span class="n">dst</span><span class="p">)</span>
+        <span class="n">src_ras2tkras</span> <span class="o">=</span> <span class="n">src_vox2tkras</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">src_affine</span><span class="p">)</span>
+        <span class="n">dst_tkras2ras</span> <span class="o">=</span> <span class="n">dst_affine</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">dst_vox2tkras</span><span class="p">)</span>
+        <span class="n">reg_matrix</span> <span class="o">=</span> <span class="n">src_ras2tkras</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">lta</span><span class="o">.</span><span class="n">r2r</span><span class="p">())</span> <span class="o">@</span> <span class="n">dst_tkras2ras</span>
         <span class="n">subject_name</span> <span class="o">=</span> <span class="n">subject</span> <span class="k">if</span> <span class="n">subject</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">(</span><span class="n">lta</span><span class="o">.</span><span class="n">subject</span> <span class="ow">or</span> <span class="s2">&quot;subject-unknown&quot;</span><span class="p">)</span>
         <span class="n">reg_intensity</span> <span class="o">=</span> <span class="n">intensity</span> <span class="k">if</span> <span class="n">intensity</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">(</span><span class="mf">0.1</span> <span class="k">if</span> <span class="n">lta</span><span class="o">.</span><span class="n">fscale</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">lta</span><span class="o">.</span><span class="n">fscale</span><span class="p">))</span>
         <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
@@ -393,12 +366,12 @@
 <div class="viewcode-block" id="RegisterDat.to_lta">
 <a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.RegisterDat.to_lta">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">to_lta</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="o">*</span><span class="p">,</span>
-        <span class="n">src_fname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-        <span class="n">src_img</span><span class="p">:</span> <span class="n">_AnyHeader</span><span class="p">,</span>
-        <span class="n">dst_fname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-        <span class="n">dst_img</span><span class="p">:</span> <span class="n">_AnyHeader</span><span class="p">,</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="o">*</span><span class="p">,</span>
+            <span class="n">src_fname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+            <span class="n">src_img</span><span class="p">:</span> <span class="n">_AnyHeader</span><span class="p">,</span>
+            <span class="n">dst_fname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+            <span class="n">dst_img</span><span class="p">:</span> <span class="n">_AnyHeader</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">LTA</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert the tkregister transform to canonical RAS-to-RAS LTA.</span>
 
@@ -424,11 +397,11 @@
         <span class="n">dst</span> <span class="o">=</span> <span class="n">_header_to_vol_info</span><span class="p">(</span><span class="n">_header_info</span><span class="p">(</span><span class="n">dst_img</span><span class="p">),</span> <span class="n">dst_fname</span><span class="p">)</span>
         <span class="n">src_affine</span> <span class="o">=</span> <span class="n">_affine_from_info</span><span class="p">(</span><span class="n">src</span><span class="p">)</span>
         <span class="n">dst_affine</span> <span class="o">=</span> <span class="n">_affine_from_info</span><span class="p">(</span><span class="n">dst</span><span class="p">)</span>
-        <span class="n">src_vox2tkr</span> <span class="o">=</span> <span class="n">_vox2tkr_from_info</span><span class="p">(</span><span class="n">src</span><span class="p">)</span>
-        <span class="n">dst_vox2tkr</span> <span class="o">=</span> <span class="n">_vox2tkr_from_info</span><span class="p">(</span><span class="n">dst</span><span class="p">)</span>
-        <span class="n">src_ras2tkr</span> <span class="o">=</span> <span class="n">src_vox2tkr</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">src_affine</span><span class="p">)</span>
-        <span class="n">dst_tkr2ras</span> <span class="o">=</span> <span class="n">dst_affine</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">dst_vox2tkr</span><span class="p">)</span>
-        <span class="n">matrix</span> <span class="o">=</span> <span class="n">dst_tkr2ras</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">)</span> <span class="o">@</span> <span class="n">src_ras2tkr</span>
+        <span class="n">src_vox2tkras</span> <span class="o">=</span> <span class="n">vox2tkras_from_volume_info</span><span class="p">(</span><span class="n">src</span><span class="p">)</span>
+        <span class="n">dst_vox2tkras</span> <span class="o">=</span> <span class="n">vox2tkras_from_volume_info</span><span class="p">(</span><span class="n">dst</span><span class="p">)</span>
+        <span class="n">src_ras2tkras</span> <span class="o">=</span> <span class="n">src_vox2tkras</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">src_affine</span><span class="p">)</span>
+        <span class="n">dst_tkras2ras</span> <span class="o">=</span> <span class="n">dst_affine</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">dst_vox2tkras</span><span class="p">)</span>
+        <span class="n">matrix</span> <span class="o">=</span> <span class="n">dst_tkras2ras</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">)</span> <span class="o">@</span> <span class="n">src_ras2tkras</span>
         <span class="k">return</span> <span class="n">LTA</span><span class="p">(</span><span class="n">matrix</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="n">fscale</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">intensity</span><span class="p">)</span></div>
 
 

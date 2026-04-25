@@ -255,6 +255,8 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">coreg</span><span class="p">(</span>
         <span class="n">src</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">nib</span><span class="o">.</span><span class="n">Nifti1Image</span><span class="p">,</span>
         <span class="n">trg</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">nib</span><span class="o">.</span><span class="n">Nifti1Image</span><span class="p">,</span>
+        <span class="n">src_mask</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">nib</span><span class="o">.</span><span class="n">spatialimages</span><span class="o">.</span><span class="n">SpatialImage</span> <span class="o">|</span> <span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">trg_mask</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">nib</span><span class="o">.</span><span class="n">spatialimages</span><span class="o">.</span><span class="n">SpatialImage</span> <span class="o">|</span> <span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">lta_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">mapped_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">return_v2v</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -291,6 +293,9 @@
 <span class="sd">    ----------</span>
 <span class="sd">    src, trg : str or nibabel image</span>
 <span class="sd">        Moving and reference images.</span>
+<span class="sd">    src_mask, trg_mask : optional</span>
+<span class="sd">        Optional masks in moving/source and reference/target space. Voxels</span>
+<span class="sd">        outside these masks are excluded from the similarity objective.</span>
 <span class="sd">    lta_name, mapped_name : str or None, optional</span>
 <span class="sd">        Optional output paths for the final transform and mapped moving image.</span>
 <span class="sd">    return_v2v : bool, default=False</span>
@@ -331,6 +336,8 @@
         <span class="k">return</span> <span class="n">register_powell_coreg</span><span class="p">(</span>
             <span class="n">src</span><span class="o">=</span><span class="n">src</span><span class="p">,</span>
             <span class="n">trg</span><span class="o">=</span><span class="n">trg</span><span class="p">,</span>
+            <span class="n">src_mask</span><span class="o">=</span><span class="n">src_mask</span><span class="p">,</span>
+            <span class="n">trg_mask</span><span class="o">=</span><span class="n">trg_mask</span><span class="p">,</span>
             <span class="n">lta_name</span><span class="o">=</span><span class="n">lta_name</span><span class="p">,</span>
             <span class="n">mapped_name</span><span class="o">=</span><span class="n">mapped_name</span><span class="p">,</span>
             <span class="n">return_v2v</span><span class="o">=</span><span class="n">return_v2v</span><span class="p">,</span>
@@ -350,6 +357,8 @@
     <span class="k">return</span> <span class="n">register_gd_pyramid</span><span class="p">(</span>
         <span class="n">src</span><span class="o">=</span><span class="n">src</span><span class="p">,</span>
         <span class="n">trg</span><span class="o">=</span><span class="n">trg</span><span class="p">,</span>
+        <span class="n">src_mask</span><span class="o">=</span><span class="n">src_mask</span><span class="p">,</span>
+        <span class="n">trg_mask</span><span class="o">=</span><span class="n">trg_mask</span><span class="p">,</span>
         <span class="n">lta_name</span><span class="o">=</span><span class="n">lta_name</span><span class="p">,</span>
         <span class="n">mapped_name</span><span class="o">=</span><span class="n">mapped_name</span><span class="p">,</span>
         <span class="n">return_v2v</span><span class="o">=</span><span class="n">return_v2v</span><span class="p">,</span>

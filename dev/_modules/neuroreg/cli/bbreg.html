@@ -251,8 +251,9 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">nibabel</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nib</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..image</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_image</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_build_parser</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">:</span>
@@ -444,11 +445,11 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;subject_dir&quot;</span><span class="p">:</span>
         <span class="n">orig_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">subject_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;mri&quot;</span> <span class="o">/</span> <span class="s2">&quot;orig.mgz&quot;</span>
-        <span class="k">return</span> <span class="n">nib</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">orig_path</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">load_image</span><span class="p">(</span><span class="n">orig_path</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;explicit&quot;</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">nib</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">ref</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">load_image</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">ref</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;seg&quot;</span> <span class="ow">and</span> <span class="n">ns</span><span class="o">.</span><span class="n">ref</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">nib</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">ref</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">load_image</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">ref</span><span class="p">)</span>
     <span class="k">return</span> <span class="kc">None</span>
 
 
@@ -469,10 +470,10 @@
 <span class="sd">        BBR solution.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;subject_dir&quot;</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">nib</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">subject_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;mri&quot;</span> <span class="o">/</span> <span class="s2">&quot;orig.mgz&quot;</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">load_image</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">subject_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;mri&quot;</span> <span class="o">/</span> <span class="s2">&quot;orig.mgz&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;seg&quot;</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">nib</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">seg</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">nib</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">ref</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">load_image</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">seg</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">load_image</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">ref</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_load_prealign_mask_image</span><span class="p">(</span><span class="n">ns</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
@@ -487,33 +488,11 @@
         <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;aparc+aseg.mgz&quot;</span><span class="p">,</span> <span class="s2">&quot;aseg.mgz&quot;</span><span class="p">):</span>
             <span class="n">path</span> <span class="o">=</span> <span class="n">mri_dir</span> <span class="o">/</span> <span class="n">name</span>
             <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-                <span class="k">return</span> <span class="n">nib</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>
+                <span class="k">return</span> <span class="n">load_image</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
         <span class="k">return</span> <span class="kc">None</span>
     <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;seg&quot;</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">nib</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">seg</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">load_image</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">seg</span><span class="p">)</span>
     <span class="k">return</span> <span class="kc">None</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">_mask_reference_image</span><span class="p">(</span>
-        <span class="n">ref_img</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
-        <span class="n">mask_img</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply a binary mask to the fixed/reference image for NMI prealignment.</span>
-
-<span class="sd">    Voxels outside the mask are set to zero so the coarse image registration is</span>
-<span class="sd">    driven more by intracranial anatomy and less by unrelated head/background</span>
-<span class="sd">    content.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">mask_img</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">ref_img</span>
-
-    <span class="n">ref_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">ref_img</span><span class="o">.</span><span class="n">get_fdata</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
-    <span class="n">mask_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mask_img</span><span class="o">.</span><span class="n">get_fdata</span><span class="p">())</span> <span class="o">&gt;</span> <span class="mi">0</span>
-    <span class="k">if</span> <span class="n">mask_data</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">ref_data</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Prealignment mask shape </span><span class="si">{</span><span class="n">mask_data</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> does not match reference shape </span><span class="si">{</span><span class="n">ref_data</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
-
-    <span class="n">masked</span> <span class="o">=</span> <span class="n">ref_data</span> <span class="o">*</span> <span class="n">mask_data</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">nib</span><span class="o">.</span><span class="n">Nifti1Image</span><span class="p">(</span><span class="n">masked</span><span class="p">,</span> <span class="n">ref_img</span><span class="o">.</span><span class="n">affine</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_run_default_nmi_prealign</span><span class="p">(</span>
@@ -532,16 +511,16 @@
 <span class="sd">    directly to :func:`neuroreg.bbreg.register.register_surface` as</span>
 <span class="sd">    ``init_ras``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">neuroreg.imreg.coreg</span><span class="w"> </span><span class="kn">import</span> <span class="n">coreg</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">..imreg.coreg</span><span class="w"> </span><span class="kn">import</span> <span class="n">coreg</span>
 
-    <span class="n">prealign_ref</span> <span class="o">=</span> <span class="n">_mask_reference_image</span><span class="p">(</span><span class="n">ref_img</span><span class="p">,</span> <span class="n">mask_img</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
         <span class="s2">&quot;Running default Powell NMI prealignment (image-center start, sep=4)</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
-        <span class="s2">&quot; with aparc+aseg/aseg mask&quot;</span> <span class="k">if</span> <span class="n">mask_img</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="s2">&quot; with sample-exclusion mask&quot;</span> <span class="k">if</span> <span class="n">mask_img</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">Mr2r</span> <span class="o">=</span> <span class="n">coreg</span><span class="p">(</span>
         <span class="n">mov_img</span><span class="p">,</span>
-        <span class="n">prealign_ref</span><span class="p">,</span>
+        <span class="n">ref_img</span><span class="p">,</span>
+        <span class="n">trg_mask</span><span class="o">=</span><span class="n">mask_img</span><span class="p">,</span>
         <span class="n">return_v2v</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">method</span><span class="o">=</span><span class="s2">&quot;powell&quot;</span><span class="p">,</span>
         <span class="n">init_type</span><span class="o">=</span><span class="s2">&quot;image_center&quot;</span><span class="p">,</span>
@@ -566,8 +545,8 @@
 <span class="sd">    mapped versions of the moving image using the same shared mapping helpers as</span>
 <span class="sd">    the other registration CLIs.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">neuroreg.bbreg.register</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_surface</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">neuroreg.image</span><span class="w"> </span><span class="kn">import</span> <span class="n">save_header_mapped_image</span><span class="p">,</span> <span class="n">save_resliced_r2r_image</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">..bbreg.register</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_surface</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">..image</span><span class="w"> </span><span class="kn">import</span> <span class="n">save_header_mapped_image</span><span class="p">,</span> <span class="n">save_resliced_r2r_image</span>
 
     <span class="n">parser</span> <span class="o">=</span> <span class="n">_build_parser</span><span class="p">()</span>
     <span class="n">ns</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
@@ -593,7 +572,7 @@
         <span class="n">device</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
     <span class="p">)</span>
 
-    <span class="n">mov_img</span> <span class="o">=</span> <span class="n">nib</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">mov</span><span class="p">)</span>
+    <span class="n">mov_img</span> <span class="o">=</span> <span class="n">load_image</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">mov</span><span class="p">)</span>
     <span class="n">ref_img</span> <span class="o">=</span> <span class="n">_load_reference_image_for_mode</span><span class="p">(</span><span class="n">ns</span><span class="p">,</span> <span class="n">mode</span><span class="p">)</span>
     <span class="n">mask_img</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="k">if</span> <span class="n">ref_img</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">ns</span><span class="o">.</span><span class="n">no_coreg_ref_mask</span><span class="p">:</span>

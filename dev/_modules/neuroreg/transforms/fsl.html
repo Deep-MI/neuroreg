@@ -247,8 +247,9 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">..image.geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">vox2tkras_from_volume_info</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.lta</span><span class="w"> </span><span class="kn">import</span> <span class="n">LTA</span><span class="p">,</span> <span class="n">_affine_from_info</span><span class="p">,</span> <span class="n">_AnyHeader</span><span class="p">,</span> <span class="n">_header_info</span><span class="p">,</span> <span class="n">_header_to_vol_info</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.regdat</span><span class="w"> </span><span class="kn">import</span> <span class="n">RegisterDat</span><span class="p">,</span> <span class="n">_vox2tkr_from_info</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.regdat</span><span class="w"> </span><span class="kn">import</span> <span class="n">RegisterDat</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_is_nifti_like</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
@@ -291,10 +292,10 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_apply_fsl_nifti_convention</span><span class="p">(</span>
-    <span class="n">ref</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
-    <span class="n">mov</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
-    <span class="n">d_ref</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-    <span class="n">d_mov</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">ref</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+        <span class="n">mov</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+        <span class="n">d_ref</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">d_mov</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply FSL&#39;s NIfTI handedness convention to spacing matrices.</span>
 
@@ -347,8 +348,8 @@
     <span class="k">if</span> <span class="n">_is_nifti_like</span><span class="p">(</span><span class="n">mov_path</span><span class="p">)</span> <span class="ow">or</span> <span class="n">_is_nifti_like</span><span class="p">(</span><span class="n">ref_path</span><span class="p">):</span>
         <span class="n">d_ref</span><span class="p">,</span> <span class="n">d_mov</span> <span class="o">=</span> <span class="n">_apply_fsl_nifti_convention</span><span class="p">(</span><span class="n">ref</span><span class="p">,</span> <span class="n">mov</span><span class="p">,</span> <span class="n">d_ref</span><span class="p">,</span> <span class="n">_diag_spacing</span><span class="p">(</span><span class="n">mov</span><span class="p">))</span>
         <span class="n">inv_d_mov</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">d_mov</span><span class="p">)</span>
-    <span class="n">t_mov</span> <span class="o">=</span> <span class="n">_vox2tkr_from_info</span><span class="p">(</span><span class="n">mov</span><span class="p">)</span>
-    <span class="n">t_ref</span> <span class="o">=</span> <span class="n">_vox2tkr_from_info</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span>
+    <span class="n">t_mov</span> <span class="o">=</span> <span class="n">vox2tkras_from_volume_info</span><span class="p">(</span><span class="n">mov</span><span class="p">)</span>
+    <span class="n">t_ref</span> <span class="o">=</span> <span class="n">vox2tkras_from_volume_info</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">t_mov</span> <span class="o">@</span> <span class="n">inv_d_mov</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">fsl_matrix</span><span class="p">)</span> <span class="o">@</span> <span class="n">d_ref</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">t_ref</span><span class="p">)</span>
 
 
@@ -373,8 +374,8 @@
     <span class="n">ref_path</span> <span class="o">=</span> <span class="n">ref</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;filename&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">_is_nifti_like</span><span class="p">(</span><span class="n">mov_path</span><span class="p">)</span> <span class="ow">or</span> <span class="n">_is_nifti_like</span><span class="p">(</span><span class="n">ref_path</span><span class="p">):</span>
         <span class="n">d_ref</span><span class="p">,</span> <span class="n">d_mov</span> <span class="o">=</span> <span class="n">_apply_fsl_nifti_convention</span><span class="p">(</span><span class="n">ref</span><span class="p">,</span> <span class="n">mov</span><span class="p">,</span> <span class="n">d_ref</span><span class="p">,</span> <span class="n">d_mov</span><span class="p">)</span>
-    <span class="n">t_mov</span> <span class="o">=</span> <span class="n">_vox2tkr_from_info</span><span class="p">(</span><span class="n">mov</span><span class="p">)</span>
-    <span class="n">t_ref</span> <span class="o">=</span> <span class="n">_vox2tkr_from_info</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span>
+    <span class="n">t_mov</span> <span class="o">=</span> <span class="n">vox2tkras_from_volume_info</span><span class="p">(</span><span class="n">mov</span><span class="p">)</span>
+    <span class="n">t_ref</span> <span class="o">=</span> <span class="n">vox2tkras_from_volume_info</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">d_mov</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">t_mov</span><span class="p">)</span> <span class="o">@</span> <span class="n">tkreg_matrix</span> <span class="o">@</span> <span class="n">t_ref</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">d_ref</span><span class="p">))</span>
 
 
@@ -453,12 +454,12 @@
 <div class="viewcode-block" id="FSLMat.to_lta">
 <a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.FSLMat.to_lta">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">to_lta</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="o">*</span><span class="p">,</span>
-        <span class="n">src_fname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-        <span class="n">src_img</span><span class="p">:</span> <span class="n">_AnyHeader</span><span class="p">,</span>
-        <span class="n">dst_fname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-        <span class="n">dst_img</span><span class="p">:</span> <span class="n">_AnyHeader</span><span class="p">,</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="o">*</span><span class="p">,</span>
+            <span class="n">src_fname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+            <span class="n">src_img</span><span class="p">:</span> <span class="n">_AnyHeader</span><span class="p">,</span>
+            <span class="n">dst_fname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+            <span class="n">dst_img</span><span class="p">:</span> <span class="n">_AnyHeader</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">LTA</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert the FSL matrix to canonical scanner-RAS LTA form.</span>
 

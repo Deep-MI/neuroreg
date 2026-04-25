@@ -726,32 +726,6 @@ span affine 3-D space.</p>
 assembly in one place so higher-level registration code can focus on transform
 estimation rather than segmentation bookkeeping.</p>
 <dl class="py function">
-<dt class="sig sig-object py" id="neuroreg.segreg.centroids.load_spatial_image">
-<span class="sig-prename descclassname"><span class="pre">neuroreg.segreg.centroids.</span></span><span class="sig-name descname"><span class="pre">load_spatial_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/segreg/centroids.html#load_spatial_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.segreg.centroids.load_spatial_image" title="Link to this definition">¶</a></dt>
-<dd><p>Load a nibabel-compatible image or pass through an in-memory object.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>image</strong><span class="classifier">ImageLike</span></dt><dd><p>Path to an image on disk or an already-loaded nibabel-like image.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><dl class="simple">
-<dt>Any</dt><dd><p>Loaded image object exposing at least <code class="docutils literal notranslate"><span class="pre">dataobj</span></code> and <code class="docutils literal notranslate"><span class="pre">affine</span></code>.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>image</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>Any</em>)</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><em>Any</em></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.segreg.centroids.compute_voxel_centroids_from_seg">
 <span class="sig-prename descclassname"><span class="pre">neuroreg.segreg.centroids.</span></span><span class="sig-name descname"><span class="pre">compute_voxel_centroids_from_seg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">seg_img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label_ids</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/segreg/centroids.html#compute_voxel_centroids_from_seg"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.segreg.centroids.compute_voxel_centroids_from_seg" title="Link to this definition">¶</a></dt>
 <dd><p>Compute voxel-space centroids for labels in a segmentation image.</p>
@@ -1276,7 +1250,6 @@ registration.</p>
 </ul>
 </li>
 <li><a class="reference internal" href="#module-neuroreg.segreg.centroids"><code class="docutils literal notranslate"><span class="pre">neuroreg.segreg.centroids</span></code></a><ul>
-<li><a class="reference internal" href="#neuroreg.segreg.centroids.load_spatial_image"><code class="docutils literal notranslate"><span class="pre">load_spatial_image()</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.segreg.centroids.compute_voxel_centroids_from_seg"><code class="docutils literal notranslate"><span class="pre">compute_voxel_centroids_from_seg()</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.segreg.centroids.compute_ras_centroids_from_seg"><code class="docutils literal notranslate"><span class="pre">compute_ras_centroids_from_seg()</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.segreg.centroids.collect_joint_centroids"><code class="docutils literal notranslate"><span class="pre">collect_joint_centroids()</span></code></a></li>

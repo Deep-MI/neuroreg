@@ -256,6 +256,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">..image</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_image</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..transforms</span><span class="w"> </span><span class="kn">import</span> <span class="n">matrix_sqrt_schur</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.atlas</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_atlas_centroids</span><span class="p">,</span> <span class="n">load_atlas_data</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.centroids</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
@@ -264,7 +265,6 @@
     <span class="n">collect_joint_centroids</span><span class="p">,</span>
     <span class="n">compute_ras_centroids_from_seg</span><span class="p">,</span>
     <span class="n">compute_voxel_centroids_from_seg</span><span class="p">,</span>
-    <span class="n">load_spatial_image</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">CentroidDict</span><span class="p">,</span> <span class="n">read_centroids_json</span><span class="p">,</span> <span class="n">write_centroids_json</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.labels</span><span class="w"> </span><span class="kn">import</span> <span class="n">LabelSetName</span><span class="p">,</span> <span class="n">get_cortex_lr_labels</span><span class="p">,</span> <span class="n">get_cortex_lr_pairs</span>
@@ -456,7 +456,7 @@
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Choose exactly one registration target: ref image, ref_centroids, or atlas.&quot;</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">ref</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">ref_img</span> <span class="o">=</span> <span class="n">load_spatial_image</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span>
+        <span class="n">ref_img</span> <span class="o">=</span> <span class="n">load_image</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span>
         <span class="n">ref_centroid_dict</span> <span class="o">=</span> <span class="p">{</span>
             <span class="n">label</span><span class="p">:</span> <span class="n">point</span>
             <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">point</span> <span class="ow">in</span> <span class="n">compute_ras_centroids_from_seg</span><span class="p">(</span><span class="n">ref_img</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
@@ -468,7 +468,7 @@
         <span class="n">centroid_dict</span> <span class="o">=</span> <span class="n">read_centroids_json</span><span class="p">(</span><span class="n">ref_centroids</span><span class="p">)</span>
         <span class="n">geometry</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">if</span> <span class="n">ref_geom</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">geometry</span> <span class="o">=</span> <span class="n">_geometry_from_image</span><span class="p">(</span><span class="n">load_spatial_image</span><span class="p">(</span><span class="n">ref_geom</span><span class="p">),</span> <span class="n">fallback_name</span><span class="o">=</span><span class="s2">&quot;reference_geom.mgz&quot;</span><span class="p">)</span>
+            <span class="n">geometry</span> <span class="o">=</span> <span class="n">_geometry_from_image</span><span class="p">(</span><span class="n">load_image</span><span class="p">(</span><span class="n">ref_geom</span><span class="p">),</span> <span class="n">fallback_name</span><span class="o">=</span><span class="s2">&quot;reference_geom.mgz&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="s2">&quot;ref_centroids&quot;</span><span class="p">,</span> <span class="n">centroid_dict</span><span class="p">,</span> <span class="n">geometry</span>
 
     <span class="k">assert</span> <span class="n">atlas</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
@@ -541,7 +541,7 @@
 <span class="sd">        If the arguments define no valid target, define multiple targets, or do</span>
 <span class="sd">        not provide enough matched labels for the requested fit.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">mov_img</span> <span class="o">=</span> <span class="n">load_spatial_image</span><span class="p">(</span><span class="n">mov</span><span class="p">)</span>
+    <span class="n">mov_img</span> <span class="o">=</span> <span class="n">load_image</span><span class="p">(</span><span class="n">mov</span><span class="p">)</span>
     <span class="n">mov_name</span> <span class="o">=</span> <span class="n">mov_img</span><span class="o">.</span><span class="n">get_filename</span><span class="p">()</span> <span class="ow">or</span> <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">mov</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">mov</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">))</span> <span class="k">else</span> <span class="s2">&quot;moving.mgz&quot;</span><span class="p">)</span>
     <span class="n">mov_affine</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mov_img</span><span class="o">.</span><span class="n">affine</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
 

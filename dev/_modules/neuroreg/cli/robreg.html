@@ -248,7 +248,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">cast</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">neuroreg.transforms</span><span class="w"> </span><span class="kn">import</span> <span class="n">LTA</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..transforms</span><span class="w"> </span><span class="kn">import</span> <span class="n">LTA</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_build_parser</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">:</span>
@@ -269,6 +269,16 @@
                    <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Reference (target/fixed) image (NIfTI or MGZ).&quot;</span><span class="p">)</span>
     <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--out&quot;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;LTA&quot;</span><span class="p">,</span>
                    <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Output LTA file for the recovered transformation.&quot;</span><span class="p">)</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--mov-mask&quot;</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FILE&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Optional moving/source mask. Voxels outside the mask are ignored during registration.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--ref-mask&quot;</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FILE&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Optional reference/target mask. Voxels outside the mask are ignored during registration.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
 
     <span class="c1"># ── transform ───────────────────────────────────────────────────────────</span>
     <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
@@ -364,10 +374,9 @@
 <a class="viewcode-back" href="../../../api/cli.html#neuroreg.cli.robreg.main">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Entry point for the ``robreg`` command.&quot;&quot;&quot;</span>
-    <span class="kn">import</span><span class="w"> </span><span class="nn">nibabel</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nib</span>
 
-    <span class="kn">from</span><span class="w"> </span><span class="nn">neuroreg.image</span><span class="w"> </span><span class="kn">import</span> <span class="n">save_header_mapped_image</span><span class="p">,</span> <span class="n">save_resliced_r2r_image</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">neuroreg.imreg.robreg</span><span class="w"> </span><span class="kn">import</span> <span class="n">robreg</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">..image</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_image</span><span class="p">,</span> <span class="n">save_header_mapped_image</span><span class="p">,</span> <span class="n">save_resliced_r2r_image</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">..imreg.robreg</span><span class="w"> </span><span class="kn">import</span> <span class="n">robreg</span>
 
     <span class="n">parser</span> <span class="o">=</span> <span class="n">_build_parser</span><span class="p">()</span>
     <span class="n">ns</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
@@ -387,14 +396,18 @@
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Loading moving image:    </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">mov</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Loading reference image: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">ref</span><span class="p">)</span>
     <span class="k">try</span><span class="p">:</span>
-        <span class="n">mov_img</span> <span class="o">=</span> <span class="n">nib</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">mov</span><span class="p">)</span>
-        <span class="n">ref_img</span> <span class="o">=</span> <span class="n">nib</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">ref</span><span class="p">)</span>
+        <span class="n">mov_img</span> <span class="o">=</span> <span class="n">load_image</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">mov</span><span class="p">)</span>
+        <span class="n">ref_img</span> <span class="o">=</span> <span class="n">load_image</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">ref</span><span class="p">)</span>
+        <span class="n">mov_mask_img</span> <span class="o">=</span> <span class="n">load_image</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">mov_mask</span><span class="p">)</span> <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">mov_mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">ref_mask_img</span> <span class="o">=</span> <span class="n">load_image</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">ref_mask</span><span class="p">)</span> <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">ref_mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ERROR loading image: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
         <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 
     <span class="n">mov_img</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Any</span><span class="p">,</span> <span class="n">mov_img</span><span class="p">)</span>
     <span class="n">ref_img</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Any</span><span class="p">,</span> <span class="n">ref_img</span><span class="p">)</span>
+    <span class="n">mov_mask_img</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">mov_mask_img</span><span class="p">)</span>
+    <span class="n">ref_mask_img</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">ref_mask_img</span><span class="p">)</span>
 
     <span class="c1"># ── register ────────────────────────────────────────────────────────────</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting IRLS registration (dof=</span><span class="si">%d</span><span class="s2">, symmetric=</span><span class="si">%s</span><span class="s2">) …&quot;</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">dof</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">symmetric</span><span class="p">)</span>
@@ -413,6 +426,10 @@
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Using explicit LTA initialization: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">init_lta</span><span class="p">)</span>
     <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">init_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;init_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ns</span><span class="o">.</span><span class="n">init_type</span>
+    <span class="k">if</span> <span class="n">mov_mask_img</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;src_mask&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">mov_mask_img</span>
+    <span class="k">if</span> <span class="n">ref_mask_img</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;trg_mask&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ref_mask_img</span>
     <span class="n">Mr2r</span> <span class="o">=</span> <span class="n">robreg</span><span class="p">(</span>
         <span class="n">mov_img</span><span class="p">,</span>
         <span class="n">ref_img</span><span class="p">,</span>
