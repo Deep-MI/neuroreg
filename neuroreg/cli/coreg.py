@@ -176,9 +176,7 @@ def main(args=None) -> None:
     backend available via ``--method gd``. The written output LTA is a
     voxel-to-voxel transform in public ``moving -> reference`` direction.
     """
-    import nibabel as nib
-
-    from neuroreg.image import save_header_mapped_image
+    from neuroreg.image import load_image, save_header_mapped_image
     from neuroreg.imreg.coreg import coreg
 
     parser = _build_parser()
@@ -197,8 +195,8 @@ def main(args=None) -> None:
     logger.info("Loading moving image:    %s", ns.mov)
     logger.info("Loading reference image: %s", ns.ref)
     try:
-        mov_img = nib.load(ns.mov)
-        ref_img = nib.load(ns.ref)
+        mov_img = load_image(ns.mov)
+        ref_img = load_image(ns.ref)
     except Exception as exc:
         print(f"ERROR loading image: {exc}", file=sys.stderr)
         sys.exit(1)

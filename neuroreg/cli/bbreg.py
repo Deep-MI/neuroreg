@@ -12,6 +12,8 @@ from typing import Any
 import nibabel as nib
 import numpy as np
 
+from neuroreg.image import load_image
+
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
@@ -202,11 +204,11 @@ def _load_reference_image_for_mode(ns: argparse.Namespace, mode: str) -> Any | N
     """
     if mode == "subject_dir":
         orig_path = Path(ns.subject_dir) / "mri" / "orig.mgz"
-        return nib.load(str(orig_path))
+        return load_image(orig_path)
     if mode == "explicit":
-        return nib.load(ns.ref)
+        return load_image(ns.ref)
     if mode == "seg" and ns.ref is not None:
-        return nib.load(ns.ref)
+        return load_image(ns.ref)
     return None
 
 
@@ -227,10 +229,10 @@ def _load_target_geometry_image(ns: argparse.Namespace, mode: str) -> Any:
         BBR solution.
     """
     if mode == "subject_dir":
-        return nib.load(str(Path(ns.subject_dir) / "mri" / "orig.mgz"))
+        return load_image(Path(ns.subject_dir) / "mri" / "orig.mgz")
     if mode == "seg":
-        return nib.load(ns.seg)
-    return nib.load(ns.ref)
+        return load_image(ns.seg)
+    return load_image(ns.ref)
 
 
 def _load_prealign_mask_image(ns: argparse.Namespace, mode: str) -> Any | None:
@@ -245,10 +247,10 @@ def _load_prealign_mask_image(ns: argparse.Namespace, mode: str) -> Any | None:
         for name in ("aparc+aseg.mgz", "aseg.mgz"):
             path = mri_dir / name
             if path.exists():
-                return nib.load(str(path))
+                return load_image(path)
         return None
     if mode == "seg":
-        return nib.load(ns.seg)
+        return load_image(ns.seg)
     return None
 
 
@@ -349,7 +351,7 @@ def main(args=None) -> None:
         device=ns.device,
     )
 
-    mov_img = nib.load(ns.mov)
+    mov_img = load_image(ns.mov)
     ref_img = _load_reference_image_for_mode(ns, mode)
     mask_img = None
     if ref_img is not None and not ns.no_coreg_ref_mask:

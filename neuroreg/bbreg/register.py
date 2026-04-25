@@ -7,6 +7,7 @@ import nibabel as nib
 import numpy as np
 import torch
 
+from ..image import load_image
 from ..transforms import LINEAR_RAS_TO_RAS, LINEAR_VOX_TO_VOX, LTA, convert_transform_type
 from .io import get_vox2ras_tkr, load_surface, load_surface_from_subject
 from .optimize import BBRModel
@@ -136,7 +137,7 @@ def register_surface(
     start = time.perf_counter()
 
     if isinstance(mov, str):
-        mov_img = nib.load(mov)
+        mov_img = load_image(mov)
         mov_path = mov
     else:
         mov_img = mov
@@ -163,7 +164,7 @@ def register_surface(
 
         orig_path = Path(subject_dir) / "mri" / "orig.mgz"
         if orig_path.exists():
-            trg_img = nib.load(str(orig_path))
+            trg_img = load_image(orig_path)
             trg_header = trg_img.header
             trg_path = str(orig_path)
             logger.info(
@@ -182,7 +183,7 @@ def register_surface(
         from ..image.segmentation import surfaces_from_segmentation
 
         logger.info("Extracting WM surfaces from segmentation: %s", seg)
-        seg_img = nib.load(seg)
+        seg_img = load_image(seg)
         trg_img = seg_img
         lh_data, rh_data = surfaces_from_segmentation(seg_img, hemispheres=("lh", "rh"), device=device)
         trg_header = seg_img.header
@@ -209,7 +210,7 @@ def register_surface(
             rh_data = load_surface(rh_surf, rh_thickness, rh_cortex_label, device=device)
 
         if ref is not None:
-            trg_img = nib.load(ref) if isinstance(ref, str) else ref
+            trg_img = load_image(ref) if isinstance(ref, str) else ref
             trg_header = trg_img.header
             trg_path = (
                 ref

@@ -12,8 +12,8 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from ..image import build_gaussian_pyramid, get_pyramid_limits
-from ..image.map import resample_isotropic_tensor
+from ..image import build_gaussian_pyramid, get_pyramid_limits, load_image
+from ..image.map import coerce_image_data_3d, resample_isotropic_tensor
 from ..transforms import LINEAR_RAS_TO_RAS, LINEAR_VOX_TO_VOX, LTA, convert_transform_type
 from .device import resolve_torch_device
 from .init import InitType, get_init_vox2vox, resolve_init_type
@@ -67,11 +67,13 @@ def _as_tensor_and_affine(
         If ``image`` is not one of the supported input types.
     """
     if isinstance(image, str | Path):
-        img = cast(Any, nib.load(str(image)))
-        return torch.from_numpy(img.get_fdata()).float(), torch.from_numpy(img.affine).float()
+        img = cast(Any, load_image(image))
+        data = torch.from_numpy(coerce_image_data_3d(img.get_fdata(), name="moving image")).float()
+        return data, torch.from_numpy(img.affine).float()
 
     if hasattr(image, "get_fdata") and hasattr(image, "affine"):
-        return torch.from_numpy(image.get_fdata()).float(), torch.from_numpy(image.affine).float()
+        data = torch.from_numpy(coerce_image_data_3d(image.get_fdata(), name="image")).float()
+        return data, torch.from_numpy(image.affine).float()
 
     if isinstance(image, torch.Tensor):
         return image.float(), (affine.float() if affine is not None else torch.eye(4, dtype=torch.float32))

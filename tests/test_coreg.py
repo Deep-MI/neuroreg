@@ -682,6 +682,27 @@ class TestPublicCoregWrapper:
         assert Mr2r.shape == (4, 4)
         assert torch.allclose(Mr2r, torch.eye(4, dtype=Mr2r.dtype))
 
+    def test_register_powell_coreg_accepts_singleton_4d_inputs(self, monkeypatch: pytest.MonkeyPatch):
+        def fake_optimize(self, init_params, **kwargs):
+            _ = init_params, kwargs
+            return type("Result", (), {"final_r2r": np.eye(4, dtype=np.float64), "final_cost": 0.0})()
+
+        monkeypatch.setattr("neuroreg.imreg.powell.PowellCostEvaluator.optimize_powell_params", fake_optimize)
+
+        data = _make_blob((16, 16, 16))[..., None]
+        img4d = nib.Nifti1Image(data.astype(np.float32), np.eye(4, dtype=np.float32))
+
+        mr2r = register_powell_coreg(img4d, img4d, init_type="header", dof=9)
+
+        assert mr2r.shape == (4, 4)
+        assert torch.allclose(mr2r, torch.eye(4, dtype=mr2r.dtype))
+
+    def test_register_powell_coreg_rejects_non_singleton_4d_inputs(self):
+        img4d = nib.Nifti1Image(np.zeros((8, 8, 8, 2), dtype=np.float32), np.eye(4, dtype=np.float32))
+
+        with pytest.raises(ValueError, match="must be a 3-D volume or only have singleton extra dimensions"):
+            register_powell_coreg(img4d, img4d, init_type="header", dof=9)
+
     def test_top_level_coreg_can_explicitly_use_gd(self, monkeypatch: pytest.MonkeyPatch):
         captured: dict[str, object] = {}
 

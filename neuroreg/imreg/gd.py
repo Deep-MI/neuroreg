@@ -8,7 +8,8 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from ..image import build_gaussian_pyramid, save_resliced_r2r_image
+from ..image import build_gaussian_pyramid, load_image, save_resliced_r2r_image
+from ..image.map import coerce_image_data_3d
 from ..image.pyramid import _PYRAMID_FILTER, _smooth3d, get_pyramid_limits
 from ..transforms import LTA
 from ..transforms.matrices import matrix_sqrt_schur
@@ -251,9 +252,9 @@ def register_gd_pyramid(
     run_device = resolve_torch_device(device)
     resolved_init_type = resolve_init_type(init_type=init_type, default_init_type="image_center")
     if isinstance(src, str):
-        src = nib.load(src)
+        src = load_image(src)
     if isinstance(trg, str):
-        trg = nib.load(trg)
+        trg = load_image(trg)
 
     src_affine_t = torch.from_numpy(src.affine).double()
     trg_affine_t = torch.from_numpy(trg.affine).double()
@@ -304,8 +305,8 @@ def register_gd_pyramid(
         src_affine_for_pyramid = src_iso_aff
         trg_affine_for_pyramid = trg_iso_aff
     else:
-        sdata = torch.from_numpy(src.get_fdata()).float()
-        tdata = torch.from_numpy(trg.get_fdata()).float()
+        sdata = torch.from_numpy(coerce_image_data_3d(src.get_fdata(), name="moving image")).float()
+        tdata = torch.from_numpy(coerce_image_data_3d(trg.get_fdata(), name="reference image")).float()
         src_affine_for_pyramid = src_affine_t.float()
         trg_affine_for_pyramid = trg_affine_t.float()
 

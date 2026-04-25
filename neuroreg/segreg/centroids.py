@@ -10,31 +10,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-import nibabel as nib
 import numpy as np
 import numpy.typing as npt
+
+from ..image import load_image
 
 from .io import CentroidDict
 
 ImageLike = str | Path | Any
-
-
-def load_spatial_image(image: ImageLike) -> Any:
-    """Load a nibabel-compatible image or pass through an in-memory object.
-
-    Parameters
-    ----------
-    image : ImageLike
-        Path to an image on disk or an already-loaded nibabel-like image.
-
-    Returns
-    -------
-    Any
-        Loaded image object exposing at least ``dataobj`` and ``affine``.
-    """
-    if isinstance(image, (str, Path)):
-        return nib.load(str(image))
-    return image
 
 
 def _resolve_label_ids(seg_data: npt.NDArray[np.integer], label_ids: list[int] | None) -> list[int]:
@@ -80,7 +63,7 @@ def compute_voxel_centroids_from_seg(
         Mapping from label ID to centroid in voxel coordinates. Labels with no
         matching voxels are assigned ``None``.
     """
-    image = load_spatial_image(seg_img)
+    image = load_image(seg_img)
     seg_data = np.asarray(image.dataobj)
     labels = _resolve_label_ids(seg_data, label_ids)
 
@@ -111,7 +94,7 @@ def compute_ras_centroids_from_seg(
         Mapping from label ID to centroid in scanner-RAS coordinates. Labels
         with no matching voxels are assigned ``None``.
     """
-    image = load_spatial_image(seg_img)
+    image = load_image(seg_img)
     voxel_centroids = compute_voxel_centroids_from_seg(image, label_ids=label_ids)
     affine = np.asarray(image.affine, dtype=np.float64)
 

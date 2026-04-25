@@ -36,6 +36,8 @@ from scipy.ndimage import uniform_filter
 
 from neuroreg.bbreg.io import get_vox2ras_tkr
 
+from .io import load_image
+
 if TYPE_CHECKING:
     import numpy.typing as npt
 
@@ -198,7 +200,7 @@ def simplify_segmentation(
     """
     if isinstance(seg_input, str | os.PathLike):
         logger.debug("Loading segmentation from %s", seg_input)
-        seg_img = nib.load(seg_input)
+        seg_img = load_image(seg_input)
     else:
         seg_img = seg_input
 
@@ -508,7 +510,7 @@ def surfaces_from_segmentation(
     import torch
 
     if isinstance(seg_path, str | os.PathLike):
-        seg_img = nib.load(str(seg_path))
+        seg_img = load_image(seg_path)
     else:
         seg_img = seg_path
 
@@ -631,7 +633,7 @@ def compute_cortex_mask(
         segmentation).
     """
     if isinstance(seg_input, str | os.PathLike):
-        seg_img = nib.load(str(seg_input))
+        seg_img = load_image(seg_input)
     else:
         seg_img = seg_input
 

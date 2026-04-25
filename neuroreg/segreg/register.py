@@ -14,6 +14,7 @@ from typing import Any
 import numpy as np
 import torch
 
+from ..image import load_image
 from ..transforms import matrix_sqrt_schur
 from .atlas import load_atlas_centroids, load_atlas_data
 from .centroids import (
@@ -22,7 +23,6 @@ from .centroids import (
     collect_joint_centroids,
     compute_ras_centroids_from_seg,
     compute_voxel_centroids_from_seg,
-    load_spatial_image,
 )
 from .io import CentroidDict, read_centroids_json, write_centroids_json
 from .labels import LabelSetName, get_cortex_lr_labels, get_cortex_lr_pairs
@@ -211,7 +211,7 @@ def _resolve_target_centroids_and_geometry(
         raise ValueError("Choose exactly one registration target: ref image, ref_centroids, or atlas.")
 
     if ref is not None:
-        ref_img = load_spatial_image(ref)
+        ref_img = load_image(ref)
         ref_centroid_dict = {
             label: point
             for label, point in compute_ras_centroids_from_seg(ref_img).items()
@@ -223,7 +223,7 @@ def _resolve_target_centroids_and_geometry(
         centroid_dict = read_centroids_json(ref_centroids)
         geometry = None
         if ref_geom is not None:
-            geometry = _geometry_from_image(load_spatial_image(ref_geom), fallback_name="reference_geom.mgz")
+            geometry = _geometry_from_image(load_image(ref_geom), fallback_name="reference_geom.mgz")
         return "ref_centroids", centroid_dict, geometry
 
     assert atlas is not None
@@ -294,7 +294,7 @@ def segreg(
         If the arguments define no valid target, define multiple targets, or do
         not provide enough matched labels for the requested fit.
     """
-    mov_img = load_spatial_image(mov)
+    mov_img = load_image(mov)
     mov_name = mov_img.get_filename() or (str(mov) if isinstance(mov, (str, Path)) else "moving.mgz")
     mov_affine = np.asarray(mov_img.affine, dtype=np.float64)
 

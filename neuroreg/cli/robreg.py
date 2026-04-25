@@ -120,9 +120,8 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def main(args=None) -> None:
     """Entry point for the ``robreg`` command."""
-    import nibabel as nib
 
-    from neuroreg.image import save_header_mapped_image, save_resliced_r2r_image
+    from neuroreg.image import load_image, save_header_mapped_image, save_resliced_r2r_image
     from neuroreg.imreg.robreg import robreg
 
     parser = _build_parser()
@@ -143,8 +142,8 @@ def main(args=None) -> None:
     logger.info("Loading moving image:    %s", ns.mov)
     logger.info("Loading reference image: %s", ns.ref)
     try:
-        mov_img = nib.load(ns.mov)
-        ref_img = nib.load(ns.ref)
+        mov_img = load_image(ns.mov)
+        ref_img = load_image(ns.ref)
     except Exception as exc:
         print(f"ERROR loading image: {exc}", file=sys.stderr)
         sys.exit(1)

@@ -1,6 +1,7 @@
 """Image utilities: smoothing, pyramid, centroid, mapping, segmentation."""
 
 from .centroid import compute_centroid
+from .io import load_image
 from .map import (
     create_image_like,
     header_map_image,
@@ -18,6 +19,7 @@ from .smooth import get_gaussian_kernel, smooth
 
 __all__ = [
     "compute_centroid",
+    "load_image",
     "map",
     "map_r2r",
     "create_image_like",

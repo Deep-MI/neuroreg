@@ -15,9 +15,10 @@ from scipy.optimize import minimize
 from scipy.signal import convolve2d
 from scipy.spatial.transform import Rotation
 
-from neuroreg.image import save_resliced_r2r_image
-from neuroreg.imreg.reg_model import RegModel
-from neuroreg.transforms import LINEAR_RAS_TO_RAS, LINEAR_VOX_TO_VOX, LTA, convert_transform_type
+from ..image import load_image, save_resliced_r2r_image
+from ..image.map import coerce_image_data_3d
+from .reg_model import RegModel
+from ..transforms import LINEAR_RAS_TO_RAS, LINEAR_VOX_TO_VOX, LTA, convert_transform_type
 
 from .device import resolve_cpu_only_device
 from .init import InitType, get_init_vox2vox, resolve_init_type
@@ -106,9 +107,15 @@ class PowellCostEvaluator:
         self.seed = int(seed)
         self.coord_dither = coord_dither
         self.include_oob = include_oob
-        ref_data = np.asarray(ref_img.get_fdata(dtype=np.float32), dtype=np.float32)
+        ref_data = np.asarray(
+            coerce_image_data_3d(ref_img.get_fdata(dtype=np.float32), name="reference image"),
+            dtype=np.float32,
+        )
         if ref_mask_img is not None:
-            ref_mask = np.asarray(ref_mask_img.get_fdata(dtype=np.float32), dtype=np.float32)
+            ref_mask = np.asarray(
+                coerce_image_data_3d(ref_mask_img.get_fdata(dtype=np.float32), name="reference mask"),
+                dtype=np.float32,
+            )
             ref_data = np.where(ref_mask > 0, ref_data, 0.0).astype(np.float32, copy=False)
         self.ref = _prepare_volume(
             ref_data,
@@ -120,7 +127,10 @@ class PowellCostEvaluator:
             smooth_images=smooth_images,
         )
         self.mov = _prepare_volume(
-            np.asarray(mov_img.get_fdata(dtype=np.float32), dtype=np.float32),
+            np.asarray(
+                coerce_image_data_3d(mov_img.get_fdata(dtype=np.float32), name="moving image"),
+                dtype=np.float32,
+            ),
             affine=np.asarray(mov_img.affine, dtype=np.float64),
             sep=self.sep,
             saturation_pct=saturation_pct,
@@ -718,14 +728,18 @@ def register_powell_coreg(
     resolved_init_type = resolve_init_type(init_type=init_type, default_init_type="image_center")
     logger.debug("Powell coreg running on %s", run_device)
     if isinstance(src, str):
-        src = nib.load(src)
+        src = load_image(src)
     if isinstance(trg, str):
-        trg = nib.load(trg)
+        trg = load_image(trg)
 
     src_affine_t = torch.from_numpy(np.asarray(src.affine, dtype=np.float64))
     trg_affine_t = torch.from_numpy(np.asarray(trg.affine, dtype=np.float64))
-    sdata_full = torch.from_numpy(np.asarray(src.get_fdata(dtype=np.float32), dtype=np.float32))
-    tdata_full = torch.from_numpy(np.asarray(trg.get_fdata(dtype=np.float32), dtype=np.float32))
+    sdata_full = torch.from_numpy(
+        np.asarray(coerce_image_data_3d(src.get_fdata(dtype=np.float32), name="moving image"), dtype=np.float32)
+    )
+    tdata_full = torch.from_numpy(
+        np.asarray(coerce_image_data_3d(trg.get_fdata(dtype=np.float32), name="reference image"), dtype=np.float32)
+    )
     if init_lta is not None:
         logger.info("Loading init transform from LTA: %s", init_lta)
         init_r2r = torch.from_numpy(np.asarray(LTA.read(init_lta).r2r(), dtype=np.float64)).double()
