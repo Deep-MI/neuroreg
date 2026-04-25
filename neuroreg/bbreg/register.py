@@ -7,9 +7,9 @@ import nibabel as nib
 import numpy as np
 import torch
 
-from ..image import load_image
+from ..image import get_tkras2ras, load_image
 from ..transforms import LINEAR_RAS_TO_RAS, LINEAR_VOX_TO_VOX, LTA, convert_transform_type
-from .io import get_vox2ras_tkr, load_surface, load_surface_from_subject
+from .io import load_surface, load_surface_from_subject
 from .optimize import BBRModel
 
 logger = logging.getLogger(__name__)
@@ -227,8 +227,7 @@ def register_surface(
             trg_header = mov_img.header
             trg_path = mov_path
 
-    trg_vox2tkras = get_vox2ras_tkr(trg_header)
-    trg_tkras2ras = trg_img.affine @ np.linalg.inv(trg_vox2tkras)
+    trg_tkras2ras = get_tkras2ras(trg_img)
     trg_tkras2ras_t = torch.from_numpy(trg_tkras2ras).float()
     mov_affine_t = torch.from_numpy(mov_img.affine).float()
 

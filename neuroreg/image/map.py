@@ -7,7 +7,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-import neuroreg.transforms.matrices as trans
+from ..transforms import matrices as trans
 
 
 def _normalize_interpolation_mode(mode: str) -> str:

@@ -15,7 +15,7 @@ from pathlib import Path
 
 import numpy as np
 
-from neuroreg.transforms import (
+from ..transforms import (
     LTA,
     XFM,
     AFNIAffine,

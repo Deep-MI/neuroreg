@@ -12,7 +12,7 @@ from typing import Any
 import nibabel as nib
 import numpy as np
 
-from neuroreg.image import load_image
+from ..image import load_image
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -292,7 +292,7 @@ def _run_default_nmi_prealign(
     directly to :func:`neuroreg.bbreg.register.register_surface` as
     ``init_ras``.
     """
-    from neuroreg.imreg.coreg import coreg
+    from ..imreg.coreg import coreg
 
     prealign_ref = _mask_reference_image(ref_img, mask_img)
     logger.info(
@@ -324,8 +324,8 @@ def main(args=None) -> None:
     mapped versions of the moving image using the same shared mapping helpers as
     the other registration CLIs.
     """
-    from neuroreg.bbreg.register import register_surface
-    from neuroreg.image import save_header_mapped_image, save_resliced_r2r_image
+    from ..bbreg.register import register_surface
+    from ..image import save_header_mapped_image, save_resliced_r2r_image
 
     parser = _build_parser()
     ns = parser.parse_args(args)

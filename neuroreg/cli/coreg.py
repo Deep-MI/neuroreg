@@ -8,7 +8,7 @@ import logging
 import sys
 from typing import Any, cast
 
-from neuroreg.transforms import LINEAR_RAS_TO_RAS, LINEAR_VOX_TO_VOX, LTA, convert_transform_type
+from ..transforms import LINEAR_RAS_TO_RAS, LINEAR_VOX_TO_VOX, LTA, convert_transform_type
 
 
 def _parse_int_csv(value: str) -> list[int]:
@@ -176,8 +176,8 @@ def main(args=None) -> None:
     backend available via ``--method gd``. The written output LTA is a
     voxel-to-voxel transform in public ``moving -> reference`` direction.
     """
-    from neuroreg.image import load_image, save_header_mapped_image
-    from neuroreg.imreg.coreg import coreg
+    from ..image import load_image, save_header_mapped_image
+    from ..imreg.coreg import coreg
 
     parser = _build_parser()
     ns = parser.parse_args(args)

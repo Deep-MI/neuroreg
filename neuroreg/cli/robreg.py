@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from typing import Any, cast
 
-from neuroreg.transforms import LTA
+from ..transforms import LTA
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -121,8 +121,8 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(args=None) -> None:
     """Entry point for the ``robreg`` command."""
 
-    from neuroreg.image import load_image, save_header_mapped_image, save_resliced_r2r_image
-    from neuroreg.imreg.robreg import robreg
+    from ..image import load_image, save_header_mapped_image, save_resliced_r2r_image
+    from ..imreg.robreg import robreg
 
     parser = _build_parser()
     ns = parser.parse_args(args)

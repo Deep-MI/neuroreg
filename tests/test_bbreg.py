@@ -283,7 +283,7 @@ class TestBbregRegister:
             }
 
         monkeypatch.setattr(bbreg_register_module, "load_surface", fake_load_surface)
-        monkeypatch.setattr(bbreg_register_module, "get_vox2ras_tkr", lambda header: torch.eye(4).numpy())
+        monkeypatch.setattr(bbreg_register_module, "get_tkras2ras", lambda header: torch.eye(4).numpy())
         monkeypatch.setattr(bbreg_register_module, "BBRModel", FakeBBRModel)
         monkeypatch.setattr("torch.optim.RMSprop", FakeOptimizer)
 
@@ -345,7 +345,7 @@ class TestBbregRegister:
         init_ras[0, 3] = 3.0
 
         monkeypatch.setattr(bbreg_register_module, "load_surface", fake_load_surface)
-        monkeypatch.setattr(bbreg_register_module, "get_vox2ras_tkr", lambda header: torch.eye(4).numpy())
+        monkeypatch.setattr(bbreg_register_module, "get_tkras2ras", lambda header: torch.eye(4).numpy())
         monkeypatch.setattr(bbreg_register_module, "BBRModel", FakeBBRModel)
         monkeypatch.setattr("torch.optim.RMSprop", FakeOptimizer)
 

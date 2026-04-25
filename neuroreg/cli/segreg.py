@@ -11,12 +11,12 @@ from __future__ import annotations
 import argparse
 import logging
 
-from neuroreg.image import load_image, save_header_mapped_image, save_resliced_r2r_image
-from neuroreg.segreg import segreg
-from neuroreg.segreg.atlas import load_atlas_centroids as load_bundled_atlas_centroids
-from neuroreg.segreg.io import read_centroids_json, write_centroids_json
-from neuroreg.segreg.register import export_segmentation_centroids, resolve_output_geometry
-from neuroreg.transforms import LTA
+from ..image import load_image, save_header_mapped_image, save_resliced_r2r_image
+from ..segreg import segreg
+from ..segreg.atlas import load_atlas_centroids as load_bundled_atlas_centroids
+from ..segreg.io import read_centroids_json, write_centroids_json
+from ..segreg.register import export_segmentation_centroids, resolve_output_geometry
+from ..transforms import LTA
 
 
 def _parse_int_csv(value: str) -> list[int]:

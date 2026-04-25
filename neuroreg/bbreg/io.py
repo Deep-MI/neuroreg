@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TypeAlias
 
 import nibabel as nib
 import numpy as np
@@ -11,11 +10,9 @@ from nibabel.freesurfer import read_geometry, read_morph_data
 
 logger = logging.getLogger(__name__)
 
-_AnyVolRef: TypeAlias = nib.Nifti1Image | nib.MGHImage | nib.nifti1.Nifti1Header | nib.freesurfer.mghformat.MGHHeader
-
 
 def load_surface(
-    surf_path: str, thickness_path: str | None = None, cortex_label_path: str | None = None, device: str = "cpu"
+        surf_path: str, thickness_path: str | None = None, cortex_label_path: str | None = None, device: str = "cpu"
 ) -> dict[str, torch.Tensor]:
     """Load a FreeSurfer surface file and optional associated data.
 
@@ -88,13 +85,13 @@ def load_surface(
 
 
 def load_surface_pair(
-    lh_surf_path: str,
-    rh_surf_path: str,
-    lh_thickness_path: str | None = None,
-    rh_thickness_path: str | None = None,
-    lh_cortex_label_path: str | None = None,
-    rh_cortex_label_path: str | None = None,
-    device: str = "cpu",
+        lh_surf_path: str,
+        rh_surf_path: str,
+        lh_thickness_path: str | None = None,
+        rh_thickness_path: str | None = None,
+        lh_cortex_label_path: str | None = None,
+        rh_cortex_label_path: str | None = None,
+        device: str = "cpu",
 ) -> tuple[dict[str, torch.Tensor], dict[str, torch.Tensor]]:
     """Load left and right hemisphere surfaces.
 
@@ -128,7 +125,7 @@ def load_surface_pair(
 
 
 def load_surface_from_subject(
-    subject_dir: str, hemi: str = "lh", surf_name: str = "white", load_thickness: bool = True, device: str = "cpu"
+        subject_dir: str, hemi: str = "lh", surf_name: str = "white", load_thickness: bool = True, device: str = "cpu"
 ) -> dict[str, torch.Tensor]:
     """Load surface from FreeSurfer subject directory structure.
 
@@ -173,59 +170,3 @@ def load_surface_from_subject(
         )
 
     return load_surface(str(surf_path), thickness_path, cortex_label_path, device)
-
-
-def get_vox2ras_tkr(ref_volume: _AnyVolRef) -> np.ndarray:
-    """Get voxel-to-tkRAS transformation matrix for a reference volume.
-
-    tkRAS is the FreeSurfer coordinate system in which surface vertices are
-    stored.  It is a voxel-centred RAS space that ignores the scanner
-    position but preserves the voxel size and orientation.
-
-    Parameters
-    ----------
-    ref_volume : nibabel image or nibabel header
-        Reference volume or its header (e.g., orig.mgz or T1.mgz).
-        Passing a header avoids loading voxel data entirely.
-
-    Returns
-    -------
-    vox2ras_tkr : np.ndarray, shape (4, 4)
-        Voxel-to-tkRAS transformation matrix.
-
-    Notes
-    -----
-    **MGH/MGZ files** store ``vox2ras_tkr`` explicitly in the header, so
-    nibabel's ``MGHHeader.get_vox2ras_tkr()`` is used directly.
-
-    **NIfTI files** have no such field.  ``nibabel.freesurfer.mghformat
-    .MGHHeader.from_header()`` is *not* used here because it ignores the
-    actual voxel size and shape of the NIfTI and returns an incorrect
-    near-identity matrix.  Instead we compute the standard FreeSurfer
-    tkRAS convention explicitly: a diagonal matrix scaled by voxel size
-    with the origin at the image centre (``shape / 2``), with the x-axis
-    negated to match RAS orientation.
-    """
-    # Accept either an image or a bare header
-    if hasattr(ref_volume, "header"):
-        header = ref_volume.header
-    else:
-        header = ref_volume
-
-    # MGH/MGZ: use the stored field directly
-    if hasattr(header, "get_vox2ras_tkr"):
-        return header.get_vox2ras_tkr()
-
-    # NIfTI (and any other format): compute from voxel size and shape
-    shape = header.get_data_shape()[:3]
-    voxsize = header.get_zooms()[:3]
-
-    M = np.eye(4)
-    M[0, 0] = -voxsize[0]  # x flipped to match RAS convention
-    M[1, 1] = voxsize[1]
-    M[2, 2] = voxsize[2]
-    M[0, 3] = voxsize[0] * shape[0] / 2.0  # centre origin
-    M[1, 3] = -voxsize[1] * shape[1] / 2.0
-    M[2, 3] = -voxsize[2] * shape[2] / 2.0
-
-    return M

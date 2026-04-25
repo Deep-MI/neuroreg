@@ -8,8 +8,7 @@ import nibabel as nib
 import numpy as np
 import numpy.typing as npt
 
-from neuroreg.image import load_image
-
+from ..image import load_image
 from .matrices import convert_transform_type
 from .metrics import (
     affine_dist,

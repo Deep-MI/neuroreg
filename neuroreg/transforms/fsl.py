@@ -5,8 +5,9 @@ from pathlib import Path
 
 import numpy as np
 
+from ..image.geometry import vox2tkras_from_volume_info
 from .lta import LTA, _affine_from_info, _AnyHeader, _header_info, _header_to_vol_info
-from .regdat import RegisterDat, _vox2tkr_from_info
+from .regdat import RegisterDat
 
 
 def _is_nifti_like(path: str) -> bool:
@@ -49,10 +50,10 @@ def _diag_spacing(info: dict) -> np.ndarray:
 
 
 def _apply_fsl_nifti_convention(
-    ref: dict,
-    mov: dict,
-    d_ref: np.ndarray,
-    d_mov: np.ndarray,
+        ref: dict,
+        mov: dict,
+        d_ref: np.ndarray,
+        d_mov: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Apply FSL's NIfTI handedness convention to spacing matrices.
 
@@ -105,8 +106,8 @@ def _fsl_to_tkreg(ref: dict, mov: dict, fsl_matrix: np.ndarray) -> np.ndarray:
     if _is_nifti_like(mov_path) or _is_nifti_like(ref_path):
         d_ref, d_mov = _apply_fsl_nifti_convention(ref, mov, d_ref, _diag_spacing(mov))
         inv_d_mov = np.linalg.inv(d_mov)
-    t_mov = _vox2tkr_from_info(mov)
-    t_ref = _vox2tkr_from_info(ref)
+    t_mov = vox2tkras_from_volume_info(mov)
+    t_ref = vox2tkras_from_volume_info(ref)
     return t_mov @ inv_d_mov @ np.linalg.inv(fsl_matrix) @ d_ref @ np.linalg.inv(t_ref)
 
 
@@ -131,8 +132,8 @@ def _tkreg_to_fsl(ref: dict, mov: dict, tkreg_matrix: np.ndarray) -> np.ndarray:
     ref_path = ref.get('filename', '')
     if _is_nifti_like(mov_path) or _is_nifti_like(ref_path):
         d_ref, d_mov = _apply_fsl_nifti_convention(ref, mov, d_ref, d_mov)
-    t_mov = _vox2tkr_from_info(mov)
-    t_ref = _vox2tkr_from_info(ref)
+    t_mov = vox2tkras_from_volume_info(mov)
+    t_ref = vox2tkras_from_volume_info(ref)
     return np.linalg.inv(d_mov @ np.linalg.inv(t_mov) @ tkreg_matrix @ t_ref @ np.linalg.inv(d_ref))
 
 
@@ -201,12 +202,12 @@ class FSLMat:
         return cls(_tkreg_to_fsl(lta.dst, lta.src, reg.matrix))
 
     def to_lta(
-        self,
-        *,
-        src_fname: str,
-        src_img: _AnyHeader,
-        dst_fname: str,
-        dst_img: _AnyHeader,
+            self,
+            *,
+            src_fname: str,
+            src_img: _AnyHeader,
+            dst_fname: str,
+            dst_img: _AnyHeader,
     ) -> LTA:
         """Convert the FSL matrix to canonical scanner-RAS LTA form.
 

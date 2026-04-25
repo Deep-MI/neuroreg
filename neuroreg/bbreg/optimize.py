@@ -101,34 +101,34 @@ class BBRModel(nn.Module):
     """
 
     def __init__(
-        self,
-        moving_volume: torch.Tensor,
-        lh_white_vertices: torch.Tensor | None = None,
-        lh_faces: torch.Tensor | None = None,
-        rh_white_vertices: torch.Tensor | None = None,
-        rh_faces: torch.Tensor | None = None,
-        lh_thickness: torch.Tensor | None = None,
-        rh_thickness: torch.Tensor | None = None,
-        lh_cortex_mask: torch.Tensor | None = None,
-        rh_cortex_mask: torch.Tensor | None = None,
-        trg_tkras2ras: torch.Tensor | None = None,
-        mov_affine: torch.Tensor | None = None,
-        dof: int = 6,
-        init_transform: torch.Tensor | None = None,
-        contrast: Literal["t1", "t2"] | None = None,
-        wm_proj_abs: float = 1.4,
-        gm_proj_frac: float = 0.5,
-        gm_proj_abs: float | None = None,
-        slope: float = 0.5,
-        cost_type: Literal["contrast", "gradient", "both"] = "contrast",
-        gradient_weight: float = 0.0,
-        subsample: int = 1,
-        device: str = "cpu",
+            self,
+            moving_volume: torch.Tensor,
+            lh_white_vertices: torch.Tensor | None = None,
+            lh_faces: torch.Tensor | None = None,
+            rh_white_vertices: torch.Tensor | None = None,
+            rh_faces: torch.Tensor | None = None,
+            lh_thickness: torch.Tensor | None = None,
+            rh_thickness: torch.Tensor | None = None,
+            lh_cortex_mask: torch.Tensor | None = None,
+            rh_cortex_mask: torch.Tensor | None = None,
+            trg_tkras2ras: torch.Tensor | None = None,
+            mov_affine: torch.Tensor | None = None,
+            dof: int = 6,
+            init_transform: torch.Tensor | None = None,
+            contrast: Literal["t1", "t2"] | None = None,
+            wm_proj_abs: float = 1.4,
+            gm_proj_frac: float = 0.5,
+            gm_proj_abs: float | None = None,
+            slope: float = 0.5,
+            cost_type: Literal["contrast", "gradient", "both"] = "contrast",
+            gradient_weight: float = 0.0,
+            subsample: int = 1,
+            device: str = "cpu",
     ):
         super().__init__()
 
         if trg_tkras2ras is None:
-            raise ValueError("trg_tkras2ras is required. Compute it as: trg_affine @ inv(get_vox2ras_tkr(trg_img))")
+            raise ValueError("trg_tkras2ras is required. Compute it as: get_tkras2ras(trg_img)")
         if mov_affine is None:
             raise ValueError("mov_affine is required (moving image nibabel affine, i.e. img.affine).")
 
@@ -330,11 +330,11 @@ class BBRModel(nn.Module):
 
     # ------------------------------------------------------------------
     def _compute_hemisphere_cost(
-        self,
-        wm_vertices: torch.Tensor,
-        gm_vertices: torch.Tensor,
-        normals: torch.Tensor,
-        ras2ras: torch.Tensor,
+            self,
+            wm_vertices: torch.Tensor,
+            gm_vertices: torch.Tensor,
+            normals: torch.Tensor,
+            ras2ras: torch.Tensor,
     ) -> torch.Tensor:
         """Compute BBR cost for one hemisphere.
 
@@ -562,5 +562,5 @@ class BBRModel(nn.Module):
                 self.transform_params[3:6].copy_(torch.stack([rx, ry, rz]))
 
             if self.dof >= 9:
-                scale = torch.sqrt((R**2).sum(dim=0))
+                scale = torch.sqrt((R ** 2).sum(dim=0))
                 self.transform_params[6:9].copy_(torch.log(scale))
