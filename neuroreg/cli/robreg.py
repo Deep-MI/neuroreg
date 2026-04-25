@@ -1,11 +1,11 @@
 """Command-line interface for IRLS-backed robust registration (robreg)."""
 
 import argparse
+import logging
 import sys
 from pathlib import Path
 from typing import Any, cast
 
-import logging
 from ..transforms import LTA
 
 

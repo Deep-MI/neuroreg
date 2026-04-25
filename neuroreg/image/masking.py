@@ -41,7 +41,7 @@ def load_mask(mask: str | Path | Any | None) -> Any | None:
     """Load a path-based mask and otherwise return the input unchanged."""
     if mask is None:
         return None
-    if isinstance(mask, str | Path):
+    if isinstance(mask, (str, Path)):
         return cast(Any, load_image(mask))
     return mask
 

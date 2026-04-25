@@ -9,8 +9,8 @@ import torch
 from torch import Tensor
 
 from ..image import build_gaussian_pyramid, load_image, save_resliced_r2r_image
-from ..image.masking import build_binary_mask_pyramid, load_mask
 from ..image.map import coerce_image_data_3d
+from ..image.masking import build_binary_mask_pyramid, load_mask
 from ..image.pyramid import _PYRAMID_FILTER, _smooth3d, get_pyramid_limits
 from ..transforms import LTA
 from ..transforms.matrices import matrix_sqrt_schur
@@ -296,12 +296,15 @@ def register_gd_pyramid(
         if isinstance(trg_mask, torch.Tensor):
             trg_mask_data = (trg_mask > 0).float()
         else:
-            trg_mask_data = torch.from_numpy(coerce_image_data_3d(trg_mask.get_fdata(), name="reference mask") > 0).float()
+            trg_mask_array = coerce_image_data_3d(
+                trg_mask.get_fdata(),
+                name="reference mask",
+            ) > 0
+            trg_mask_data = torch.from_numpy(trg_mask_array).float()
             trg_mask_affine = torch.from_numpy(np.asarray(trg_mask.affine, dtype=np.float32)).float()
 
     if isotropic:
-        from ..image.map import resample_isotropic
-        from ..image.map import resample_isotropic_tensor
+        from ..image.map import resample_isotropic, resample_isotropic_tensor
 
         src_zooms = np.linalg.norm(src.affine[:3, :3], axis=0)
         trg_zooms = np.linalg.norm(trg.affine[:3, :3], axis=0)

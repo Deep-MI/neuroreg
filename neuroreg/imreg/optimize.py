@@ -180,13 +180,13 @@ def training_loop(
                 loss = masked_mean((preds - t).abs(), valid_mask)
             elif loss_name == "ncc":
                 win = 9 if loss_beta is None else max(1, int(loss_beta))
-                loss = ncc_loss(preds.squeeze(), t.squeeze(), mask=valid_mask, win_size=win)
+                loss = ncc_loss(preds, t, mask=valid_mask, win_size=win)
             elif loss_name == "mi":
                 sigma = None if loss_beta is None else float(loss_beta)
-                loss = mi_loss(preds.squeeze(), t.squeeze(), mask=valid_mask, num_bins=loss_bins, sigma=sigma)
+                loss = mi_loss(preds, t, mask=valid_mask, num_bins=loss_bins, sigma=sigma)
             elif loss_name == "nmi":
                 sigma = None if loss_beta is None else float(loss_beta)
-                loss = nmi_loss(preds.squeeze(), t.squeeze(), mask=valid_mask, num_bins=loss_bins, sigma=sigma)
+                loss = nmi_loss(preds, t, mask=valid_mask, num_bins=loss_bins, sigma=sigma)
             else:
                 raise ValueError(
                     f"Unknown loss_name '{loss_name}'. "

@@ -4,13 +4,13 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-import logging
 from ..image import load_image
 
 

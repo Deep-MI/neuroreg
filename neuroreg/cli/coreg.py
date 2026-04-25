@@ -4,10 +4,10 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
 from typing import Any, cast
 
-import logging
 from ..transforms import LINEAR_RAS_TO_RAS, LINEAR_VOX_TO_VOX, LTA, convert_transform_type
 
 
