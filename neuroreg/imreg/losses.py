@@ -18,6 +18,30 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 
+_EMPTY_MASK_PENALTY = 1e6
+
+
+def _mask_to_bool(mask: Tensor | None, reference: Tensor) -> Tensor | None:
+    """Validate and normalize a mask tensor to boolean form."""
+    if mask is None:
+        return None
+    if tuple(mask.shape) != tuple(reference.shape):
+        raise ValueError(
+            "Mask shape must match image shape: "
+            f"mask={tuple(mask.shape)} vs image={tuple(reference.shape)}."
+        )
+    return mask.to(device=reference.device) > 0.5
+
+
+def masked_mean(values: Tensor, mask: Tensor | None = None) -> Tensor:
+    """Average a tensor over valid mask elements, or all elements if unmasked."""
+    mask_bool = _mask_to_bool(mask, values)
+    if mask_bool is None:
+        return values.mean()
+    if not torch.any(mask_bool):
+        return values.sum() * 0 + values.new_tensor(_EMPTY_MASK_PENALTY)
+    return values[mask_bool].mean()
+
 # ---------------------------------------------------------------------------
 # Local NCC
 # ---------------------------------------------------------------------------
@@ -25,6 +49,7 @@ from torch import Tensor
 def ncc_loss(
     preds: Tensor,
     target: Tensor,
+    mask: Tensor | None = None,
     win_size: int = 9,
     smooth_nr: float = 1e-5,
     smooth_dr: float = 1e-5,
@@ -65,6 +90,8 @@ def ncc_loss(
             f"ncc_loss expects ≤3-D tensors; got shapes {tuple(preds.shape)} and {tuple(target.shape)}."
         )
 
+    mask_bool = _mask_to_bool(mask, preds)
+
     # Add batch + channel dims for pooling: (1, 1, D, H, W)
     src = preds.unsqueeze(0).unsqueeze(0)
     trg = target.unsqueeze(0).unsqueeze(0)
@@ -78,11 +105,23 @@ def ncc_loss(
 
     pool_kw: dict = dict(kernel_size=win_size, stride=1, padding=pad)
 
-    src_mean = F.avg_pool3d(src, **pool_kw)
-    trg_mean = F.avg_pool3d(trg, **pool_kw)
-    ss_mean  = F.avg_pool3d(src * src, **pool_kw)
-    tt_mean  = F.avg_pool3d(trg * trg, **pool_kw)
-    st_mean  = F.avg_pool3d(src * trg, **pool_kw)
+    if mask_bool is None:
+        src_mean = F.avg_pool3d(src, **pool_kw)
+        trg_mean = F.avg_pool3d(trg, **pool_kw)
+        ss_mean = F.avg_pool3d(src * src, **pool_kw)
+        tt_mean = F.avg_pool3d(trg * trg, **pool_kw)
+        st_mean = F.avg_pool3d(src * trg, **pool_kw)
+        window_valid = torch.ones_like(src_mean, dtype=torch.bool)
+    else:
+        mask_5d = mask_bool.to(dtype=src.dtype).unsqueeze(0).unsqueeze(0)
+        window_weight = F.avg_pool3d(mask_5d, **pool_kw)
+        safe_weight = window_weight.clamp(min=1e-6)
+        src_mean = F.avg_pool3d(src * mask_5d, **pool_kw) / safe_weight
+        trg_mean = F.avg_pool3d(trg * mask_5d, **pool_kw) / safe_weight
+        ss_mean = F.avg_pool3d(src * src * mask_5d, **pool_kw) / safe_weight
+        tt_mean = F.avg_pool3d(trg * trg * mask_5d, **pool_kw) / safe_weight
+        st_mean = F.avg_pool3d(src * trg * mask_5d, **pool_kw) / safe_weight
+        window_valid = window_weight > 0
 
     # Clamp each variance to smooth_dr so the denominator product is always > 0.
     # With smooth_nr == smooth_dr, flat windows give ncc2 ≈ 1 → loss = 0.
@@ -94,7 +133,7 @@ def ncc_loss(
     ncc2 = (cross.pow(2) + smooth_nr) / (src_var * trg_var + smooth_dr)
     # Cauchy-Schwarz guarantees ncc2 ≤ 1; clamp guards floating-point edge cases.
     ncc2 = ncc2.clamp(max=1.0)
-    return 1.0 - ncc2.mean()
+    return 1.0 - masked_mean(ncc2.squeeze(), window_valid.squeeze())
 
 
 # ---------------------------------------------------------------------------
@@ -160,6 +199,7 @@ def _to_unit(x: Tensor) -> Tensor:
 def mi_loss(
     preds: Tensor,
     target: Tensor,
+    mask: Tensor | None = None,
     num_bins: int = 32,
     sigma: float | None = None,
     smooth_nr: float = 1e-7,
@@ -196,6 +236,13 @@ def mi_loss(
     Tensor
         −MI; minimising this maximises mutual information.
     """
+    mask_bool = _mask_to_bool(mask, preds)
+    if mask_bool is not None:
+        preds = preds[mask_bool]
+        target = target[mask_bool]
+        if preds.numel() == 0:
+            return preds.sum() * 0 + preds.new_tensor(_EMPTY_MASK_PENALTY)
+
     joint = _parzen_joint_hist(_to_unit(preds), _to_unit(target), num_bins=num_bins, sigma=sigma)
 
     pa = joint.sum(dim=1, keepdim=True)   # (B, 1) marginal over preds
@@ -213,6 +260,7 @@ def mi_loss(
 def nmi_loss(
     preds: Tensor,
     target: Tensor,
+    mask: Tensor | None = None,
     num_bins: int = 32,
     sigma: float | None = None,
     smooth_nr: float = 1e-7,
@@ -247,6 +295,13 @@ def nmi_loss(
     Tensor
         −NMI; minimising this maximises normalised mutual information.
     """
+    mask_bool = _mask_to_bool(mask, preds)
+    if mask_bool is not None:
+        preds = preds[mask_bool]
+        target = target[mask_bool]
+        if preds.numel() == 0:
+            return preds.sum() * 0 + preds.new_tensor(_EMPTY_MASK_PENALTY)
+
     joint = _parzen_joint_hist(_to_unit(preds), _to_unit(target), num_bins=num_bins, sigma=sigma)
 
     # Additive smoothing: floor every bin, then renormalise to a valid PMF.

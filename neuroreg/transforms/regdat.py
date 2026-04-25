@@ -5,37 +5,10 @@ from pathlib import Path
 
 import numpy as np
 
+from ..image.geometry import vox2tkras_from_volume_info
 from .lta import LTA, _affine_from_info, _AnyHeader, _header_info, _header_to_vol_info
 
 _VALID_FLOAT2INT = {"tkregister", "round", "floor"}
-
-
-def _vox2tkr_from_info(info: dict) -> np.ndarray:
-    """Construct the tkregister voxel-to-tkRAS matrix from volume metadata.
-
-    Parameters
-    ----------
-    info : dict
-        FreeSurfer-style volume-info dictionary containing ``volume`` and
-        ``voxelsize``.
-
-    Returns
-    -------
-    np.ndarray
-        ``(4, 4)`` voxel-to-tkRAS matrix.
-    """
-    dims = np.asarray(info["volume"], dtype=float)
-    delta = np.asarray(info["voxelsize"], dtype=float)
-    mat = np.array(
-        [
-            [-delta[0], 0.0, 0.0, delta[0] * dims[0] / 2.0],
-            [0.0, 0.0, delta[2], -delta[2] * dims[2] / 2.0],
-            [0.0, -delta[1], 0.0, delta[1] * dims[1] / 2.0],
-            [0.0, 0.0, 0.0, 1.0],
-        ],
-        dtype=float,
-    )
-    return mat
 
 
 @dataclass(slots=True)
@@ -95,12 +68,12 @@ class RegisterDat:
 
     @classmethod
     def from_lta(
-        cls,
-        lta: LTA,
-        *,
-        subject: str | None = None,
-        intensity: float | None = None,
-        float2int: str = "round",
+            cls,
+            lta: LTA,
+            *,
+            subject: str | None = None,
+            intensity: float | None = None,
+            float2int: str = "round",
     ) -> RegisterDat:
         """Create a register.dat transform from a canonical LTA.
 
@@ -124,11 +97,11 @@ class RegisterDat:
         """
         src_affine = _affine_from_info(lta.src)
         dst_affine = _affine_from_info(lta.dst)
-        src_vox2tkr = _vox2tkr_from_info(lta.src)
-        dst_vox2tkr = _vox2tkr_from_info(lta.dst)
-        src_ras2tkr = src_vox2tkr @ np.linalg.inv(src_affine)
-        dst_tkr2ras = dst_affine @ np.linalg.inv(dst_vox2tkr)
-        reg_matrix = src_ras2tkr @ np.linalg.inv(lta.r2r()) @ dst_tkr2ras
+        src_vox2tkras = vox2tkras_from_volume_info(lta.src)
+        dst_vox2tkras = vox2tkras_from_volume_info(lta.dst)
+        src_ras2tkras = src_vox2tkras @ np.linalg.inv(src_affine)
+        dst_tkras2ras = dst_affine @ np.linalg.inv(dst_vox2tkras)
+        reg_matrix = src_ras2tkras @ np.linalg.inv(lta.r2r()) @ dst_tkras2ras
         subject_name = subject if subject is not None else (lta.subject or "subject-unknown")
         reg_intensity = intensity if intensity is not None else (0.1 if lta.fscale is None else float(lta.fscale))
         return cls(
@@ -141,12 +114,12 @@ class RegisterDat:
         )
 
     def to_lta(
-        self,
-        *,
-        src_fname: str,
-        src_img: _AnyHeader,
-        dst_fname: str,
-        dst_img: _AnyHeader,
+            self,
+            *,
+            src_fname: str,
+            src_img: _AnyHeader,
+            dst_fname: str,
+            dst_img: _AnyHeader,
     ) -> LTA:
         """Convert the tkregister transform to canonical RAS-to-RAS LTA.
 
@@ -172,11 +145,11 @@ class RegisterDat:
         dst = _header_to_vol_info(_header_info(dst_img), dst_fname)
         src_affine = _affine_from_info(src)
         dst_affine = _affine_from_info(dst)
-        src_vox2tkr = _vox2tkr_from_info(src)
-        dst_vox2tkr = _vox2tkr_from_info(dst)
-        src_ras2tkr = src_vox2tkr @ np.linalg.inv(src_affine)
-        dst_tkr2ras = dst_affine @ np.linalg.inv(dst_vox2tkr)
-        matrix = dst_tkr2ras @ np.linalg.inv(self.matrix) @ src_ras2tkr
+        src_vox2tkras = vox2tkras_from_volume_info(src)
+        dst_vox2tkras = vox2tkras_from_volume_info(dst)
+        src_ras2tkras = src_vox2tkras @ np.linalg.inv(src_affine)
+        dst_tkras2ras = dst_affine @ np.linalg.inv(dst_vox2tkras)
+        matrix = dst_tkras2ras @ np.linalg.inv(self.matrix) @ src_ras2tkras
         return LTA(matrix, 1, src, dst, subject=self.subject, fscale=self.intensity)
 
     def write(self, filename: str | Path) -> None:

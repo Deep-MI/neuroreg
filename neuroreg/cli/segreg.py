@@ -11,15 +11,12 @@ from __future__ import annotations
 import argparse
 import logging
 
-import nibabel as nib
-
-from neuroreg.image import save_header_mapped_image, save_resliced_r2r_image
-from neuroreg.segreg import segreg
-from neuroreg.segreg.atlas import load_atlas_centroids as load_bundled_atlas_centroids
-from neuroreg.segreg.centroids import load_spatial_image
-from neuroreg.segreg.io import read_centroids_json, write_centroids_json
-from neuroreg.segreg.register import export_segmentation_centroids, resolve_output_geometry
-from neuroreg.transforms import LTA
+from ..image import load_image, save_header_mapped_image, save_resliced_r2r_image
+from ..segreg import segreg
+from ..segreg.atlas import load_atlas_centroids as load_bundled_atlas_centroids
+from ..segreg.io import read_centroids_json, write_centroids_json
+from ..segreg.register import export_segmentation_centroids, resolve_output_geometry
+from ..transforms import LTA
 
 
 def _parse_int_csv(value: str) -> list[int]:
@@ -205,7 +202,7 @@ def main(args=None) -> None:
         midslice=ns.midslice,
     )
 
-    mov_seg_img = nib.load(ns.mov)
+    mov_seg_img = load_image(ns.mov)
     if ns.lta:
         LTA.from_matrix(
             result.r2r,
@@ -218,13 +215,13 @@ def main(args=None) -> None:
         print(f"LTA:       {ns.lta}")
 
     mapped_source_path = ns.movimg or ns.mov
-    mapped_source_img = nib.load(mapped_source_path) if (ns.mapmov or ns.mapmovhdr) else None
+    mapped_source_img = load_image(mapped_source_path) if (ns.mapmov or ns.mapmovhdr) else None
 
     ref_geom_img = None
     if ns.ref is not None:
-        ref_geom_img = load_spatial_image(ns.ref)
+        ref_geom_img = load_image(ns.ref)
     elif ns.ref_geom is not None:
-        ref_geom_img = load_spatial_image(ns.ref_geom)
+        ref_geom_img = load_image(ns.ref_geom)
 
     if ns.mapmov and mapped_source_img is not None:
         keep_geom = _default_keep_geom(ns)

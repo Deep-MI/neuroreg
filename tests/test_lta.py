@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 
 from neuroreg.cli.lta import main
+from neuroreg.image import get_tkras2ras, get_vox2tkras, vox2tkras_from_volume_info
 from neuroreg.transforms import (
     LTA,
     XFM,
@@ -343,6 +344,14 @@ class TestXFM:
         assert lta.dst["valid"] == 0
         assert lta.src["filename"] == "mov.mgz"
         assert lta.dst["filename"] == "ref.mgz"
+
+
+def test_get_vox2tkras_matches_volume_info_for_nifti() -> None:
+    img = nib.Nifti1Image(np.zeros((10, 20, 30), dtype=np.float32), np.diag([1.5, 2.0, 3.0, 1.0]))
+    expected = vox2tkras_from_volume_info({"volume": [10, 20, 30], "voxelsize": [1.5, 2.0, 3.0]})
+
+    assert get_vox2tkras(img) == pytest.approx(expected)
+    assert get_tkras2ras(img) == pytest.approx(img.affine @ np.linalg.inv(expected))
 
 
 class TestRegisterDat:

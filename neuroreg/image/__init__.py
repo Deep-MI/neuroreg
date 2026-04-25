@@ -1,6 +1,8 @@
 """Image utilities: smoothing, pyramid, centroid, mapping, segmentation."""
 
 from .centroid import compute_centroid
+from .geometry import get_ras2tkras, get_tkras2ras, get_vox2tkras, vox2tkras_from_volume_info
+from .io import load_image
 from .map import (
     create_image_like,
     header_map_image,
@@ -18,6 +20,11 @@ from .smooth import get_gaussian_kernel, smooth
 
 __all__ = [
     "compute_centroid",
+    "get_ras2tkras",
+    "get_tkras2ras",
+    "get_vox2tkras",
+    "vox2tkras_from_volume_info",
+    "load_image",
     "map",
     "map_r2r",
     "create_image_like",

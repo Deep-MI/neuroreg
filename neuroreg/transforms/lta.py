@@ -8,6 +8,7 @@ import nibabel as nib
 import numpy as np
 import numpy.typing as npt
 
+from ..image import load_image
 from .matrices import convert_transform_type
 from .metrics import (
     affine_dist,
@@ -59,7 +60,7 @@ def _header_info(src: _AnyHeader) -> dict:
         return src
 
     if isinstance(src, (str, Path)):
-        src = nib.load(src).header
+        src = load_image(src).header
 
     if hasattr(src, "affine"):
         affine = src.affine

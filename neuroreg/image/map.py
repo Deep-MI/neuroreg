@@ -7,7 +7,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-import neuroreg.transforms.matrices as trans
+from ..transforms import matrices as trans
 
 
 def _normalize_interpolation_mode(mode: str) -> str:
@@ -17,6 +17,38 @@ def _normalize_interpolation_mode(mode: str) -> str:
     if mode == "nearest":
         return mode
     raise ValueError(f"mode must be 'linear' or 'nearest', got '{mode}'.")
+
+
+def coerce_image_data_3d(data: Any, *, name: str = "image") -> np.ndarray:
+    """Return a 3-D image array, squeezing only singleton extra dimensions.
+
+    Parameters
+    ----------
+    data : Any
+        Array-like image payload.
+    name : str, default="image"
+        Human-readable label used in error messages.
+
+    Returns
+    -------
+    np.ndarray
+        A 3-D NumPy array view/copy of the input data.
+
+    Raises
+    ------
+    ValueError
+        If the input is not 3-D and cannot be reduced to 3-D by removing only
+        singleton dimensions.
+    """
+    array = np.asarray(data)
+    if array.ndim == 3:
+        return array
+    squeezed = np.squeeze(array)
+    if squeezed.ndim == 3:
+        return squeezed
+    raise ValueError(
+        f"{name} must be a 3-D volume or only have singleton extra dimensions; got shape {tuple(array.shape)}."
+    )
 
 
 def map(
@@ -198,7 +230,7 @@ def resample_isotropic(
 
     # Resample using identity RAS-to-RAS transform
     identity_r2r = torch.eye(4, dtype=torch.float64)
-    orig_data = torch.from_numpy(img.get_fdata()).float()
+    orig_data = torch.from_numpy(coerce_image_data_3d(img.get_fdata(), name="resample_isotropic image")).float()
 
     resampled = map_r2r(
         orig_data,

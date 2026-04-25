@@ -9,8 +9,9 @@ import sys
 from pathlib import Path
 from typing import Any
 
-import nibabel as nib
 import numpy as np
+
+from ..image import load_image
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -202,11 +203,11 @@ def _load_reference_image_for_mode(ns: argparse.Namespace, mode: str) -> Any | N
     """
     if mode == "subject_dir":
         orig_path = Path(ns.subject_dir) / "mri" / "orig.mgz"
-        return nib.load(str(orig_path))
+        return load_image(orig_path)
     if mode == "explicit":
-        return nib.load(ns.ref)
+        return load_image(ns.ref)
     if mode == "seg" and ns.ref is not None:
-        return nib.load(ns.ref)
+        return load_image(ns.ref)
     return None
 
 
@@ -227,10 +228,10 @@ def _load_target_geometry_image(ns: argparse.Namespace, mode: str) -> Any:
         BBR solution.
     """
     if mode == "subject_dir":
-        return nib.load(str(Path(ns.subject_dir) / "mri" / "orig.mgz"))
+        return load_image(Path(ns.subject_dir) / "mri" / "orig.mgz")
     if mode == "seg":
-        return nib.load(ns.seg)
-    return nib.load(ns.ref)
+        return load_image(ns.seg)
+    return load_image(ns.ref)
 
 
 def _load_prealign_mask_image(ns: argparse.Namespace, mode: str) -> Any | None:
@@ -245,33 +246,11 @@ def _load_prealign_mask_image(ns: argparse.Namespace, mode: str) -> Any | None:
         for name in ("aparc+aseg.mgz", "aseg.mgz"):
             path = mri_dir / name
             if path.exists():
-                return nib.load(str(path))
+                return load_image(path)
         return None
     if mode == "seg":
-        return nib.load(ns.seg)
+        return load_image(ns.seg)
     return None
-
-
-def _mask_reference_image(
-        ref_img: Any,
-        mask_img: Any | None,
-) -> Any:
-    """Apply a binary mask to the fixed/reference image for NMI prealignment.
-
-    Voxels outside the mask are set to zero so the coarse image registration is
-    driven more by intracranial anatomy and less by unrelated head/background
-    content.
-    """
-    if mask_img is None:
-        return ref_img
-
-    ref_data = np.asarray(ref_img.get_fdata(), dtype=np.float32)
-    mask_data = np.asarray(mask_img.get_fdata()) > 0
-    if mask_data.shape != ref_data.shape:
-        raise ValueError(f"Prealignment mask shape {mask_data.shape} does not match reference shape {ref_data.shape}.")
-
-    masked = ref_data * mask_data.astype(np.float32)
-    return nib.Nifti1Image(masked, ref_img.affine)
 
 
 def _run_default_nmi_prealign(
@@ -290,16 +269,16 @@ def _run_default_nmi_prealign(
     directly to :func:`neuroreg.bbreg.register.register_surface` as
     ``init_ras``.
     """
-    from neuroreg.imreg.coreg import coreg
+    from ..imreg.coreg import coreg
 
-    prealign_ref = _mask_reference_image(ref_img, mask_img)
     logger.info(
         "Running default Powell NMI prealignment (image-center start, sep=4)%s",
-        " with aparc+aseg/aseg mask" if mask_img is not None else "",
+        " with sample-exclusion mask" if mask_img is not None else "",
     )
     Mr2r = coreg(
         mov_img,
-        prealign_ref,
+        ref_img,
+        trg_mask=mask_img,
         return_v2v=False,
         method="powell",
         init_type="image_center",
@@ -322,8 +301,8 @@ def main(args=None) -> None:
     mapped versions of the moving image using the same shared mapping helpers as
     the other registration CLIs.
     """
-    from neuroreg.bbreg.register import register_surface
-    from neuroreg.image import save_header_mapped_image, save_resliced_r2r_image
+    from ..bbreg.register import register_surface
+    from ..image import save_header_mapped_image, save_resliced_r2r_image
 
     parser = _build_parser()
     ns = parser.parse_args(args)
@@ -349,7 +328,7 @@ def main(args=None) -> None:
         device=ns.device,
     )
 
-    mov_img = nib.load(ns.mov)
+    mov_img = load_image(ns.mov)
     ref_img = _load_reference_image_for_mode(ns, mode)
     mask_img = None
     if ref_img is not None and not ns.no_coreg_ref_mask:

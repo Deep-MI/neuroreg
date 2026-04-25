@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from typing import Any, cast
 
-from neuroreg.transforms import LTA
+from ..transforms import LTA
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -27,6 +27,16 @@ def _build_parser() -> argparse.ArgumentParser:
                    help="Reference (target/fixed) image (NIfTI or MGZ).")
     p.add_argument("--out", required=True, metavar="LTA",
                    help="Output LTA file for the recovered transformation.")
+    p.add_argument(
+        "--mov-mask",
+        metavar="FILE",
+        help="Optional moving/source mask. Voxels outside the mask are ignored during registration.",
+    )
+    p.add_argument(
+        "--ref-mask",
+        metavar="FILE",
+        help="Optional reference/target mask. Voxels outside the mask are ignored during registration.",
+    )
 
     # ── transform ───────────────────────────────────────────────────────────
     p.add_argument(
@@ -120,10 +130,9 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def main(args=None) -> None:
     """Entry point for the ``robreg`` command."""
-    import nibabel as nib
 
-    from neuroreg.image import save_header_mapped_image, save_resliced_r2r_image
-    from neuroreg.imreg.robreg import robreg
+    from ..image import load_image, save_header_mapped_image, save_resliced_r2r_image
+    from ..imreg.robreg import robreg
 
     parser = _build_parser()
     ns = parser.parse_args(args)
@@ -143,14 +152,18 @@ def main(args=None) -> None:
     logger.info("Loading moving image:    %s", ns.mov)
     logger.info("Loading reference image: %s", ns.ref)
     try:
-        mov_img = nib.load(ns.mov)
-        ref_img = nib.load(ns.ref)
+        mov_img = load_image(ns.mov)
+        ref_img = load_image(ns.ref)
+        mov_mask_img = load_image(ns.mov_mask) if ns.mov_mask is not None else None
+        ref_mask_img = load_image(ns.ref_mask) if ns.ref_mask is not None else None
     except Exception as exc:
         print(f"ERROR loading image: {exc}", file=sys.stderr)
         sys.exit(1)
 
     mov_img = cast(Any, mov_img)
     ref_img = cast(Any, ref_img)
+    mov_mask_img = cast(Any | None, mov_mask_img)
+    ref_mask_img = cast(Any | None, ref_mask_img)
 
     # ── register ────────────────────────────────────────────────────────────
     logger.info("Starting IRLS registration (dof=%d, symmetric=%s) …", ns.dof, ns.symmetric)
@@ -169,6 +182,10 @@ def main(args=None) -> None:
         logger.info("Using explicit LTA initialization: %s", ns.init_lta)
     elif ns.init_type is not None:
         kwargs["init_type"] = ns.init_type
+    if mov_mask_img is not None:
+        kwargs["src_mask"] = mov_mask_img
+    if ref_mask_img is not None:
+        kwargs["trg_mask"] = ref_mask_img
     Mr2r = robreg(
         mov_img,
         ref_img,

@@ -9,6 +9,7 @@ import pytest
 import torch
 
 from neuroreg import robreg
+from neuroreg.image import load_image
 from neuroreg.imreg.robreg import _save_outlier_map
 from neuroreg.transforms import LINEAR_RAS_TO_RAS, LINEAR_VOX_TO_VOX, convert_transform_type
 
@@ -55,6 +56,40 @@ def test_save_outlier_map_skips_missing_final_weights(tmp_path: Path, caplog: py
 
 
 class TestPublicRobregWrapper:
+    def test_load_image_uses_ifh_affine_for_4dfp_pair(self, tmp_path: Path):
+        data = _make_blob((8, 6, 4)).astype(np.float32)
+        img_path = tmp_path / "example.4dfp.img"
+        nib.AnalyzeImage(data, np.eye(4, dtype=np.float32)).to_filename(img_path)
+        ifh_path = tmp_path / "example.4dfp.ifh"
+        ifh_path.write_text(
+            "\n".join(
+                [
+                    "INTERFILE\t:=",
+                    "orientation\t\t:= 2",
+                    "matrix size [1]\t:= 8",
+                    "matrix size [2]\t:= 6",
+                    "matrix size [3]\t:= 4",
+                    "mmppix\t:=   1.000000 -2.000000 -3.000000",
+                    "center\t:=   4.0000 -6.0000 -6.0000",
+                ]
+            )
+            + "\n"
+        )
+
+        loaded = load_image(img_path)
+        expected_affine = np.array(
+            [
+                [-1.0, 0.0, 0.0, 4.0],
+                [0.0, 0.0, 3.0, -6.0],
+                [0.0, -2.0, 0.0, 6.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ],
+            dtype=np.float64,
+        )
+
+        assert np.array_equal(np.asarray(loaded.dataobj), data)
+        assert np.allclose(loaded.affine, expected_affine)
+
     def test_top_level_robreg_defaults_to_symmetric(self, monkeypatch: pytest.MonkeyPatch):
         captured: dict[str, object] = {}
 
@@ -70,6 +105,23 @@ class TestPublicRobregWrapper:
         assert captured["symmetric"] is True
         assert mr2r.shape == (4, 4)
         assert torch.isfinite(mr2r).all()
+
+    def test_top_level_robreg_forwards_masks(self, monkeypatch: pytest.MonkeyPatch):
+        captured: dict[str, object] = {}
+
+        def fake_register_irls_pyramid(**kwargs):
+            captured.update(kwargs)
+            return torch.eye(4), []
+
+        monkeypatch.setattr("neuroreg.imreg.robreg.register_irls_pyramid", fake_register_irls_pyramid)
+
+        img = _make_img()
+        src_mask = nib.Nifti1Image(np.ones((20, 20, 20), dtype=np.float32), img.affine)
+        trg_mask = nib.Nifti1Image(np.ones((20, 20, 20), dtype=np.float32), img.affine)
+        _ = robreg(img, img, src_mask=src_mask, trg_mask=trg_mask, return_v2v=False, init_type="header", dof=6, nmax=1)
+
+        assert cast(torch.Tensor, captured["src_mask"]).shape == (20, 20, 20)
+        assert cast(torch.Tensor, captured["trg_mask"]).shape == (20, 20, 20)
 
     def test_robreg_accepts_file_paths(self, tmp_path: Path):
         src = _make_img()
@@ -129,4 +181,20 @@ class TestPublicRobregWrapper:
 
         assert torch.allclose(cast(torch.Tensor, captured["initial_transform"]), expected_v2v)
         assert captured["init_type"] == "header"
+        assert mr2r.shape == (4, 4)
+
+    def test_robreg_squeezes_singleton_4d_inputs(self, monkeypatch: pytest.MonkeyPatch):
+        captured: dict[str, object] = {}
+
+        def fake_register_irls_pyramid(**kwargs):
+            captured.update(kwargs)
+            return torch.eye(4), []
+
+        monkeypatch.setattr("neuroreg.imreg.robreg.register_irls_pyramid", fake_register_irls_pyramid)
+
+        img4d = nib.Nifti1Image(_make_blob((16, 16, 16))[..., None], np.eye(4, dtype=np.float32))
+        mr2r = robreg(img4d, img4d, return_v2v=False, init_type="header", dof=6, nmax=1)
+
+        assert cast(torch.Tensor, captured["src"]).ndim == 3
+        assert cast(torch.Tensor, captured["trg"]).ndim == 3
         assert mr2r.shape == (4, 4)

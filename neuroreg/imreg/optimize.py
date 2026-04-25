@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 from torch.functional import F
 
-from .losses import mi_loss, ncc_loss, nmi_loss
+from .losses import masked_mean, mi_loss, ncc_loss, nmi_loss
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +56,8 @@ def training_loop(
         optimizer: torch.optim.Optimizer,
         src_image: torch.Tensor,
         trg_image: torch.Tensor,
+        src_mask: torch.Tensor | None = None,
+        trg_mask: torch.Tensor | None = None,
         n: int = 30,
         loss_name: str = "mse",
         loss_beta: float | None = None,
@@ -75,6 +77,9 @@ def training_loop(
         PyTorch optimiser wrapping ``model.parameters()``.
     src_image, trg_image : Tensor
         Source (moving) and target (fixed) images, shape (D, H, W).
+    src_mask, trg_mask : Tensor, optional
+        Optional binary masks in source and target space. Voxels outside the
+        combined mask intersection are ignored during optimization.
     n : int, default=30
         Number of optimiser iterations.
     loss_name : str, default="mse"
@@ -134,6 +139,9 @@ def training_loop(
         if loss_beta is not None:
             loss_beta = loss_beta / scale.item()
 
+    src_mask = (src_mask > 0).float() if src_mask is not None else None
+    trg_mask = (trg_mask > 0).float() if trg_mask is not None else None
+
     is_lbfgs = optimizer_name.lower() == "lbfgs"
 
     for i in range(n):
@@ -149,25 +157,36 @@ def training_loop(
                     f"preds={tuple(preds.shape)} vs trg={tuple(trg_image.shape)}."
                 )
             t = trg_image
+            valid_mask = None
+            if src_mask is not None:
+                warped_src_mask = model.map_image(
+                    src_mask,
+                    mode="nearest",
+                    target_shape=tuple(int(v) for v in trg_image.shape),
+                )
+                valid_mask = warped_src_mask > 0.5
+            if trg_mask is not None:
+                trg_valid = trg_mask > 0.5
+                valid_mask = trg_valid if valid_mask is None else (valid_mask & trg_valid)
             if loss_name == "mse":
-                loss = F.mse_loss(preds, t)
+                loss = masked_mean((preds - t).pow(2), valid_mask)
             elif loss_name == "huber":
                 kw = {} if loss_beta is None else {"delta": loss_beta}
-                loss = F.huber_loss(preds, t, **kw)
+                loss = masked_mean(F.huber_loss(preds, t, reduction="none", **kw), valid_mask)
             elif loss_name == "smooth_l1":
                 kw = {} if loss_beta is None else {"beta": loss_beta}
-                loss = F.smooth_l1_loss(preds, t, **kw)
+                loss = masked_mean(F.smooth_l1_loss(preds, t, reduction="none", **kw), valid_mask)
             elif loss_name == "l1":
-                loss = F.l1_loss(preds, t)
+                loss = masked_mean((preds - t).abs(), valid_mask)
             elif loss_name == "ncc":
                 win = 9 if loss_beta is None else max(1, int(loss_beta))
-                loss = ncc_loss(preds.squeeze(), t.squeeze(), win_size=win)
+                loss = ncc_loss(preds, t, mask=valid_mask, win_size=win)
             elif loss_name == "mi":
                 sigma = None if loss_beta is None else float(loss_beta)
-                loss = mi_loss(preds.squeeze(), t.squeeze(), num_bins=loss_bins, sigma=sigma)
+                loss = mi_loss(preds, t, mask=valid_mask, num_bins=loss_bins, sigma=sigma)
             elif loss_name == "nmi":
                 sigma = None if loss_beta is None else float(loss_beta)
-                loss = nmi_loss(preds.squeeze(), t.squeeze(), num_bins=loss_bins, sigma=sigma)
+                loss = nmi_loss(preds, t, mask=valid_mask, num_bins=loss_bins, sigma=sigma)
             else:
                 raise ValueError(
                     f"Unknown loss_name '{loss_name}'. "

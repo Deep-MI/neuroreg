@@ -132,6 +132,7 @@ def compute_partials(img: torch.Tensor) -> tuple[torch.Tensor, ...]:
 def construct_Ab(
         src_warped: torch.Tensor,
         trg: torch.Tensor,
+        valid_mask: torch.Tensor | None = None,
         eps: float = 1e-5,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Build gradient matrix A and residual vector b.
@@ -154,6 +155,8 @@ def construct_Ab(
     ----------
     src_warped : [D, H, W]  source image warped into target space
     trg        : [D, H, W]  target image
+    valid_mask : [D, H, W], optional
+        Additional binary mask specifying voxels to keep in the linear system.
     eps        : threshold for zero-gradient masking
 
     Returns
@@ -210,6 +213,15 @@ def construct_Ab(
     # Finite values
     valid &= torch.isfinite(fxf) & torch.isfinite(fyf) & torch.isfinite(fzf)
     valid &= torch.isfinite(bf)
+
+    if valid_mask is not None:
+        mask_flat = valid_mask.reshape(-1).to(device=src_warped.device) > 0.5
+        if mask_flat.shape != valid.shape:
+            raise ValueError(
+                "valid_mask shape must match the flattened image size: "
+                f"mask={tuple(mask_flat.shape)} vs image={tuple(valid.shape)}."
+            )
+        valid &= mask_flat
 
     fxv = fxf[valid]
     fyv = fyf[valid]
@@ -416,6 +428,8 @@ def register_step(
 def register_irls(
         src: torch.Tensor,
         trg: torch.Tensor,
+        src_mask: torch.Tensor | None = None,
+        trg_mask: torch.Tensor | None = None,
         initial_transform: torch.Tensor | None = None,
         nmax: int = 5,
         sat: float = 4.685,
@@ -434,6 +448,8 @@ def register_irls(
     ----------
     src               : [D, H, W]  source image (float32)
     trg               : [D, H, W]  target image
+    src_mask          : [D, H, W], optional source mask
+    trg_mask          : [D, H, W], optional target mask
     initial_transform : 4x4 vox-to-vox matrix (default: identity)
     nmax              : maximum outer-loop iterations (default 5)
     sat               : Tukey saturation threshold (default 4.685)
@@ -465,6 +481,8 @@ def register_irls(
     scale = torch.quantile(trg.reshape(-1).abs(), 0.995).clamp(min=1.0)
     src_n = src / scale
     trg_n = trg / scale
+    src_mask_n = (src_mask > 0).float() if src_mask is not None else None
+    trg_mask_n = (trg_mask > 0).float() if trg_mask is not None else None
 
     src_shape: tuple[int, int, int] = (int(src_n.shape[0]), int(src_n.shape[1]), int(src_n.shape[2]))
     trg_shape: tuple[int, int, int] = (int(trg_n.shape[0]), int(trg_n.shape[1]), int(trg_n.shape[2]))
@@ -511,8 +529,30 @@ def register_irls(
                 padding_mode='zeros',
             ).float()
 
+            valid_user_mask = None
+            if src_mask_n is not None:
+                src_mask_warped = map_image(
+                    src_mask_n, mh_warp,
+                    is_torch_mat=False,
+                    target_shape=src_shape,
+                    mode='nearest',
+                    padding_mode='zeros',
+                ).float()
+                valid_user_mask = src_mask_warped > 0.5
+            if trg_mask_n is not None:
+                trg_mask_warped = map_image(
+                    trg_mask_n, mhi_warp,
+                    is_torch_mat=False,
+                    target_shape=src_shape,
+                    mode='nearest',
+                    padding_mode='zeros',
+                ).float()
+                valid_user_mask = (
+                    trg_mask_warped > 0.5 if valid_user_mask is None else valid_user_mask & (trg_mask_warped > 0.5)
+                )
+
             # Build system in midspace
-            A, b, valid = construct_Ab(src_warped, trg_warped)
+            A, b, valid = construct_Ab(src_warped, trg_warped, valid_mask=valid_user_mask)
         else:
             # Directed mode: warp source to target space
             src_warped = map_image(
@@ -523,12 +563,37 @@ def register_irls(
                 padding_mode='zeros',
             ).float()
 
+            valid_user_mask = None
+            if src_mask_n is not None:
+                src_mask_warped = map_image(
+                    src_mask_n,
+                    T.to(device=src.device, dtype=src.dtype),
+                    is_torch_mat=False,
+                    target_shape=trg_shape,
+                    mode='nearest',
+                    padding_mode='zeros',
+                ).float()
+                valid_user_mask = src_mask_warped > 0.5
+            if trg_mask_n is not None:
+                trg_mask_bool = trg_mask_n > 0.5
+                valid_user_mask = (
+                    trg_mask_bool
+                    if valid_user_mask is None
+                    else valid_user_mask & trg_mask_bool
+                )
+
             # Build system in target space
-            A, b, valid = construct_Ab(src_warped, trg_n)
+            A, b, valid = construct_Ab(src_warped, trg_n, valid_mask=valid_user_mask)
 
         # Solve IRLS on normalised images
-        p, w_sqrt, sigma_val, err_val = irls_inner_loop(
-            A, b, sat=current_sat, max_iterations=max_irls, verbose=verbose)
+        if A.shape[0] == 0:
+            p = torch.zeros(6, dtype=src.dtype, device=src.device)
+            w_sqrt = torch.zeros(0, dtype=src.dtype, device=src.device)
+            sigma_val = 0.0
+            err_val = float('inf')
+        else:
+            p, w_sqrt, sigma_val, err_val = irls_inner_loop(
+                A, b, sat=current_sat, max_iterations=max_irls, verbose=verbose)
         info['sigma_hist'].append(sigma_val)
 
         # Check outlier percentage for adaptive sat adjustment
@@ -560,10 +625,16 @@ def register_irls(
                         zero_pct, target_outlier_pct, error, direction, old_sat, current_sat
                     )
             # Re-solve with new sat (A, b already built above)
-            p, w_sqrt, sigma_val, err_new = irls_inner_loop(
-                A, b, sat=current_sat, max_iterations=max_irls,
-                verbose=verbose
-            )
+            if A.shape[0] == 0:
+                p = torch.zeros(6, dtype=src.dtype, device=src.device)
+                w_sqrt = torch.zeros(0, dtype=src.dtype, device=src.device)
+                sigma_val = 0.0
+                err_new = float('inf')
+            else:
+                p, w_sqrt, sigma_val, err_new = irls_inner_loop(
+                    A, b, sat=current_sat, max_iterations=max_irls,
+                    verbose=verbose
+                )
             info['sigma_hist'][-1] = sigma_val
             err_val = err_new
             zero_pct = (w_sqrt == 0).float().mean().item() * 100

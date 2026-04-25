@@ -8,7 +8,9 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from ..image import build_gaussian_pyramid, save_resliced_r2r_image
+from ..image import build_gaussian_pyramid, load_image, save_resliced_r2r_image
+from ..image.map import coerce_image_data_3d
+from ..image.masking import build_binary_mask_pyramid, load_mask
 from ..image.pyramid import _PYRAMID_FILTER, _smooth3d, get_pyramid_limits
 from ..transforms import LTA
 from ..transforms.matrices import matrix_sqrt_schur
@@ -60,6 +62,8 @@ def _smooth_finest_pyramid_level(levels: list[torch.Tensor]) -> list[torch.Tenso
 def register_level(
     simg: Tensor,
     timg: Tensor,
+    src_mask: Tensor | None = None,
+    trg_mask: Tensor | None = None,
     dof: int = 6,
     v2v_init: Tensor | None = None,
     init_type: InitType = "image_center",
@@ -85,6 +89,8 @@ def register_level(
     ----------
     simg, timg : Tensor
         Source and target tensors for the current pyramid level.
+    src_mask, trg_mask : Tensor, optional
+        Optional binary masks in source and target space for the current level.
     dof : int, default=6
         Degrees of freedom for the registration model.
     v2v_init : Tensor or None, optional
@@ -165,6 +171,8 @@ def register_level(
         opt,
         simg.to(run_device),
         timg.to(run_device),
+        src_mask=src_mask.to(run_device) if src_mask is not None else None,
+        trg_mask=trg_mask.to(run_device) if trg_mask is not None else None,
         n=n,
         loss_name=loss_name,
         loss_beta=loss_beta,
@@ -180,6 +188,8 @@ def register_level(
 def register_gd_pyramid(
     src: str | nib.Nifti1Image,
     trg: str | nib.Nifti1Image,
+    src_mask: str | nib.spatialimages.SpatialImage | Tensor | None = None,
+    trg_mask: str | nib.spatialimages.SpatialImage | Tensor | None = None,
     lta_name: str | None = None,
     mapped_name: str | None = None,
     return_v2v: bool = False,
@@ -215,6 +225,9 @@ def register_gd_pyramid(
     ----------
     src, trg : str or nibabel image
         Moving and reference images.
+    src_mask, trg_mask : optional
+        Optional moving/source and reference/target masks. Masked-out voxels are
+        excluded from the similarity objective instead of being zero-filled.
     lta_name, mapped_name : str or None, optional
         Optional output paths for the final LTA and resampled moving image.
     return_v2v : bool, default=False
@@ -251,9 +264,13 @@ def register_gd_pyramid(
     run_device = resolve_torch_device(device)
     resolved_init_type = resolve_init_type(init_type=init_type, default_init_type="image_center")
     if isinstance(src, str):
-        src = nib.load(src)
+        src = load_image(src)
     if isinstance(trg, str):
-        trg = nib.load(trg)
+        trg = load_image(trg)
+    if isinstance(src_mask, str):
+        src_mask = load_mask(src_mask)
+    if isinstance(trg_mask, str):
+        trg_mask = load_mask(trg_mask)
 
     src_affine_t = torch.from_numpy(src.affine).double()
     trg_affine_t = torch.from_numpy(trg.affine).double()
@@ -265,9 +282,29 @@ def register_gd_pyramid(
     trg_iso_aff = None
     Rsrc = torch.eye(4, dtype=torch.float32)
     Rtrg = torch.eye(4, dtype=torch.float32)
+    src_mask_data = None
+    trg_mask_data = None
+    src_mask_affine = src_affine_t.float()
+    trg_mask_affine = trg_affine_t.float()
+    if src_mask is not None:
+        if isinstance(src_mask, torch.Tensor):
+            src_mask_data = (src_mask > 0).float()
+        else:
+            src_mask_data = torch.from_numpy(coerce_image_data_3d(src_mask.get_fdata(), name="moving mask") > 0).float()
+            src_mask_affine = torch.from_numpy(np.asarray(src_mask.affine, dtype=np.float32)).float()
+    if trg_mask is not None:
+        if isinstance(trg_mask, torch.Tensor):
+            trg_mask_data = (trg_mask > 0).float()
+        else:
+            trg_mask_array = coerce_image_data_3d(
+                trg_mask.get_fdata(),
+                name="reference mask",
+            ) > 0
+            trg_mask_data = torch.from_numpy(trg_mask_array).float()
+            trg_mask_affine = torch.from_numpy(np.asarray(trg_mask.affine, dtype=np.float32)).float()
 
     if isotropic:
-        from ..image.map import resample_isotropic
+        from ..image.map import resample_isotropic, resample_isotropic_tensor
 
         src_zooms = np.linalg.norm(src.affine[:3, :3], axis=0)
         trg_zooms = np.linalg.norm(trg.affine[:3, :3], axis=0)
@@ -303,9 +340,27 @@ def register_gd_pyramid(
 
         src_affine_for_pyramid = src_iso_aff
         trg_affine_for_pyramid = trg_iso_aff
+        if src_mask_data is not None:
+            src_mask_data, _, _ = resample_isotropic_tensor(
+                src_mask_data,
+                src_mask_affine.detach().cpu().numpy(),
+                isosize,
+                out_shape=tuple(int(v) for v in sdata.shape),
+                mode="nearest",
+            )
+            src_mask_data = (src_mask_data > 0.5).float()
+        if trg_mask_data is not None:
+            trg_mask_data, _, _ = resample_isotropic_tensor(
+                trg_mask_data,
+                trg_mask_affine.detach().cpu().numpy(),
+                isosize,
+                out_shape=tuple(int(v) for v in tdata.shape),
+                mode="nearest",
+            )
+            trg_mask_data = (trg_mask_data > 0.5).float()
     else:
-        sdata = torch.from_numpy(src.get_fdata()).float()
-        tdata = torch.from_numpy(trg.get_fdata()).float()
+        sdata = torch.from_numpy(coerce_image_data_3d(src.get_fdata(), name="moving image")).float()
+        tdata = torch.from_numpy(coerce_image_data_3d(trg.get_fdata(), name="reference image")).float()
         src_affine_for_pyramid = src_affine_t.float()
         trg_affine_for_pyramid = trg_affine_t.float()
 
@@ -314,6 +369,16 @@ def register_gd_pyramid(
     timgs, taffines = build_gaussian_pyramid(tdata, trg_affine_for_pyramid, limits=shared_limits)
     simgs = _smooth_finest_pyramid_level(simgs)
     timgs = _smooth_finest_pyramid_level(timgs)
+    src_mask_levels = (
+        build_binary_mask_pyramid(src_mask_data, [_shape3(level.shape) for level in simgs])
+        if src_mask_data is not None
+        else None
+    )
+    trg_mask_levels = (
+        build_binary_mask_pyramid(trg_mask_data, [_shape3(level.shape) for level in timgs])
+        if trg_mask_data is not None
+        else None
+    )
 
     if not simgs:
         raise ValueError(f"build_gaussian_pyramid returned no levels for the source image (shape {list(sdata.shape)}).")
@@ -335,9 +400,20 @@ def register_gd_pyramid(
     if symmetric:
         from ..image.map import map as _map_img
 
-        for level_idx, (si, sa, ti, ta) in enumerate(
-            zip(reversed(simgs), reversed(saffines), reversed(timgs), reversed(taffines), strict=True)
+        src_mask_iter = reversed(src_mask_levels) if src_mask_levels is not None else None
+        trg_mask_iter = reversed(trg_mask_levels) if trg_mask_levels is not None else None
+        for level_idx, items in enumerate(
+            zip(
+                reversed(simgs),
+                reversed(saffines),
+                reversed(timgs),
+                reversed(taffines),
+                src_mask_iter if src_mask_iter is not None else [None] * len(simgs),
+                trg_mask_iter if trg_mask_iter is not None else [None] * len(timgs),
+                strict=True,
+            )
         ):
+            si, sa, ti, ta, smi, tmi = items
             pyramid_level = n_levels - 1 - level_idx
             logger.info("Sym level %d (pyramid %d): shape=%s", level_idx, pyramid_level, list(si.shape))
             n_level = iterations_per_level[level_idx]
@@ -362,6 +438,16 @@ def register_gd_pyramid(
 
             src_mid = _map_img(si.float(), mh.float(), is_torch_mat=False, target_shape=midspace_shape)
             trg_mid = _map_img(ti.float(), mhi.float(), is_torch_mat=False, target_shape=midspace_shape)
+            src_mid_mask = (
+                _map_img(smi.float(), mh.float(), is_torch_mat=False, target_shape=midspace_shape, mode="nearest")
+                if smi is not None
+                else None
+            )
+            trg_mid_mask = (
+                _map_img(tmi.float(), mhi.float(), is_torch_mat=False, target_shape=midspace_shape, mode="nearest")
+                if tmi is not None
+                else None
+            )
             level_init_v2v = None
             level_init_type: InitType = resolved_init_type if level_idx == 0 else "header"
             if level_idx == 0 and init_r2r_explicit is not None:
@@ -395,6 +481,8 @@ def register_gd_pyramid(
             delta_v2v, losses, _ = register_level(
                 src_mid,
                 trg_mid,
+                src_mask=src_mid_mask,
+                trg_mask=trg_mid_mask,
                 dof=dof,
                 v2v_init=level_init_v2v,
                 init_type=level_init_type,
@@ -428,9 +516,20 @@ def register_gd_pyramid(
                     losses=list(losses),
                 )
     else:
-        for level_idx, (si, sa, ti, ta) in enumerate(
-            zip(reversed(simgs), reversed(saffines), reversed(timgs), reversed(taffines), strict=True)
+        src_mask_iter = reversed(src_mask_levels) if src_mask_levels is not None else None
+        trg_mask_iter = reversed(trg_mask_levels) if trg_mask_levels is not None else None
+        for level_idx, items in enumerate(
+            zip(
+                reversed(simgs),
+                reversed(saffines),
+                reversed(timgs),
+                reversed(taffines),
+                src_mask_iter if src_mask_iter is not None else [None] * len(simgs),
+                trg_mask_iter if trg_mask_iter is not None else [None] * len(timgs),
+                strict=True,
+            )
         ):
+            si, sa, ti, ta, smi, tmi = items
             n_level = iterations_per_level[level_idx]
             logger.info("Resolution level %d: %s", level_idx, list(si.size()))
             if trace_fn is not None:
@@ -474,6 +573,8 @@ def register_gd_pyramid(
                 Mv2v_level, losses, _ = register_level(
                     si,
                     ti,
+                    src_mask=smi,
+                    trg_mask=tmi,
                     dof=dof,
                     v2v_init=level_init_v2v,
                     init_type=level_init_type,
@@ -497,6 +598,8 @@ def register_gd_pyramid(
                 Mv2v_level, losses, _ = register_level(
                     si,
                     ti,
+                    src_mask=smi,
+                    trg_mask=tmi,
                     dof=dof,
                     v2v_init=Mv2v_init,
                     init_type="header",

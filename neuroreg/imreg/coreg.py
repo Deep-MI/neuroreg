@@ -11,6 +11,8 @@ from .powell import register_powell_coreg
 def coreg(
         src: str | nib.Nifti1Image,
         trg: str | nib.Nifti1Image,
+        src_mask: str | nib.spatialimages.SpatialImage | Tensor | None = None,
+        trg_mask: str | nib.spatialimages.SpatialImage | Tensor | None = None,
         lta_name: str | None = None,
         mapped_name: str | None = None,
         return_v2v: bool = False,
@@ -47,6 +49,9 @@ def coreg(
     ----------
     src, trg : str or nibabel image
         Moving and reference images.
+    src_mask, trg_mask : optional
+        Optional masks in moving/source and reference/target space. Voxels
+        outside these masks are excluded from the similarity objective.
     lta_name, mapped_name : str or None, optional
         Optional output paths for the final transform and mapped moving image.
     return_v2v : bool, default=False
@@ -87,6 +92,8 @@ def coreg(
         return register_powell_coreg(
             src=src,
             trg=trg,
+            src_mask=src_mask,
+            trg_mask=trg_mask,
             lta_name=lta_name,
             mapped_name=mapped_name,
             return_v2v=return_v2v,
@@ -106,6 +113,8 @@ def coreg(
     return register_gd_pyramid(
         src=src,
         trg=trg,
+        src_mask=src_mask,
+        trg_mask=trg_mask,
         lta_name=lta_name,
         mapped_name=mapped_name,
         return_v2v=return_v2v,
