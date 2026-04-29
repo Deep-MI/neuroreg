@@ -680,59 +680,33 @@ the other registration CLIs.</p>
 <section id="segreg">
 <h2><code class="docutils literal notranslate"><span class="pre">segreg</span></code><a class="headerlink" href="#segreg" title="Link to this heading">¶</a></h2>
 <p><p>Segmentation-based registration via label centroids.
-Supports translation-only, rigid, similarity, no-shear anisotropic-scale, or affine centroid alignment between segmentations, to bundled atlas centroids, or to a left-right flipped self target for uprighting.</p>
+Fits translation-only, rigid, similarity, no-shear anisotropic-scale, or affine transforms from a moving segmentation to a target segmentation, a centroid target file, or a left-right flipped self target.</p>
 </p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">segreg</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">mov</span> <span class="n">FILE</span> <span class="p">(</span><span class="o">--</span><span class="n">ref</span> <span class="n">FILE</span> <span class="o">|</span> <span class="o">--</span><span class="n">ref</span><span class="o">-</span><span class="n">centroids</span> <span class="n">FILE</span> <span class="o">|</span>
-              <span class="o">--</span><span class="n">atlas</span> <span class="p">{</span><span class="n">fsaverage</span><span class="p">}</span> <span class="o">|</span> <span class="o">--</span><span class="n">flipped</span><span class="p">)</span> <span class="p">[</span><span class="o">--</span><span class="n">movimg</span> <span class="n">FILE</span><span class="p">]</span>
-              <span class="p">[</span><span class="o">--</span><span class="n">ref</span><span class="o">-</span><span class="n">geom</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">lta</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">mapmov</span> <span class="n">FILE</span><span class="p">]</span>
-              <span class="p">[</span><span class="o">--</span><span class="n">mapmovhdr</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">write</span><span class="o">-</span><span class="n">mov</span><span class="o">-</span><span class="n">centroids</span> <span class="n">FILE</span><span class="p">]</span>
-              <span class="p">[</span><span class="o">--</span><span class="n">write</span><span class="o">-</span><span class="n">ref</span><span class="o">-</span><span class="n">centroids</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">dof</span> <span class="p">{</span><span class="mi">3</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">9</span><span class="p">,</span><span class="mi">12</span><span class="p">}]</span>
-              <span class="p">[</span><span class="o">--</span><span class="n">labels</span> <span class="n">LABELS</span><span class="p">]</span>
-              <span class="p">[</span><span class="o">--</span><span class="n">label</span><span class="o">-</span><span class="nb">set</span> <span class="p">{</span><span class="n">all_shared</span><span class="p">,</span><span class="n">fsaverage_centroids</span><span class="p">,</span><span class="n">cortex_lr_pairs</span><span class="p">}]</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">segreg</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">seg</span> <span class="n">FILE</span> <span class="p">(</span><span class="o">--</span><span class="n">target</span><span class="o">-</span><span class="n">seg</span> <span class="n">FILE</span> <span class="o">|</span> <span class="o">--</span><span class="n">centroids</span> <span class="n">TARGET</span> <span class="o">|</span>
+              <span class="o">--</span><span class="n">flipped</span><span class="p">)</span> <span class="o">--</span><span class="n">lta</span> <span class="n">FILE</span> <span class="p">[</span><span class="o">--</span><span class="n">dof</span> <span class="p">{</span><span class="mi">3</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">9</span><span class="p">,</span><span class="mi">12</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">labels</span> <span class="n">LABELS</span><span class="p">]</span>
+              <span class="p">[</span><span class="o">--</span><span class="n">label</span><span class="o">-</span><span class="nb">set</span> <span class="p">{</span><span class="n">all_shared</span><span class="p">,</span><span class="n">target_centroids</span><span class="p">,</span><span class="n">cortex_lr_pairs</span><span class="p">}]</span>
               <span class="p">[</span><span class="o">--</span><span class="nb">min</span><span class="o">-</span><span class="n">common</span><span class="o">-</span><span class="n">labels</span> <span class="n">MIN_COMMON_LABELS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">midslice</span> <span class="n">MIDSLICE</span><span class="p">]</span>
-              <span class="p">[</span><span class="o">--</span><span class="n">keep</span><span class="o">-</span><span class="n">geom</span> <span class="p">{</span><span class="n">mov</span><span class="p">,</span><span class="n">ref</span><span class="p">,</span><span class="n">atlas</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
+              <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
 </pre></div>
 </div>
 <section id="neuroreg.cli.segreg-_build_parser-named-arguments">
 <h3>Named Arguments<a class="headerlink" href="#neuroreg.cli.segreg-_build_parser-named-arguments" title="Link to this heading">¶</a></h3>
 <dl class="option-list">
-<dt><kbd>--mov</kbd></dt>
+<dt><kbd>--seg</kbd></dt>
 <dd><p>Moving segmentation image (NIfTI or MGZ).</p>
 </dd>
-<dt><kbd>--ref</kbd></dt>
-<dd><p>Reference segmentation image (NIfTI or MGZ).</p>
+<dt><kbd>--target-seg</kbd></dt>
+<dd><p>Target segmentation image used to derive centroid correspondences and LTA target geometry.</p>
 </dd>
-<dt><kbd>--ref-centroids</kbd></dt>
-<dd><p>Reference centroid JSON file.</p>
-</dd>
-<dt><kbd>--atlas</kbd></dt>
-<dd><p>Possible choices: fsaverage</p>
-<p>Bundled atlas centroid target.</p>
+<dt><kbd>--centroids</kbd></dt>
+<dd><p>Target centroid JSON file or bundled target name (fsaverage, mni_icbm152_t1_tal_nlin_asym_09c).</p>
 </dd>
 <dt><kbd>--flipped</kbd></dt>
 <dd><p>Register to a left-right flipped self target.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
 </dd>
-<dt><kbd>--movimg</kbd></dt>
-<dd><p>Optional moving intensity image to map with –mapmov/–mapmovhdr. If omitted, those outputs map the moving segmentation itself.</p>
-</dd>
-<dt><kbd>--ref-geom</kbd></dt>
-<dd><p>Optional reference geometry image when using –ref-centroids.</p>
-</dd>
 <dt><kbd>--lta</kbd></dt>
 <dd><p>Output LTA transform.</p>
-</dd>
-<dt><kbd>--mapmov</kbd></dt>
-<dd><p>Write a resliced mapped image. Uses –movimg when provided; otherwise the moving segmentation itself is resliced.</p>
-</dd>
-<dt><kbd>--mapmovhdr</kbd></dt>
-<dd><p>Write a header-mapped image with no interpolation. Uses –movimg when provided; otherwise the moving segmentation itself is remapped.</p>
-</dd>
-<dt><kbd>--write-mov-centroids</kbd></dt>
-<dd><p>Export moving centroids as JSON.</p>
-</dd>
-<dt><kbd>--write-ref-centroids</kbd></dt>
-<dd><p>Export target centroids as JSON.</p>
 </dd>
 <dt><kbd>--dof</kbd></dt>
 <dd><p>Possible choices: 3, 6, 7, 9, 12</p>
@@ -743,7 +717,7 @@ Supports translation-only, rigid, similarity, no-shear anisotropic-scale, or aff
 <dd><p>Comma-separated label subset override.</p>
 </dd>
 <dt><kbd>--label-set</kbd></dt>
-<dd><p>Possible choices: all_shared, fsaverage_centroids, cortex_lr_pairs</p>
+<dd><p>Possible choices: all_shared, target_centroids, cortex_lr_pairs</p>
 <p>Named label preset. Defaults depend on the chosen target mode.</p>
 </dd>
 <dt><kbd>--min-common-labels</kbd></dt>
@@ -751,10 +725,6 @@ Supports translation-only, rigid, similarity, no-shear anisotropic-scale, or aff
 </dd>
 <dt><kbd>--midslice</kbd></dt>
 <dd><p>Mid-sagittal x position for –flipped mode.</p>
-</dd>
-<dt><kbd>--keep-geom</kbd></dt>
-<dd><p>Possible choices: mov, ref, atlas</p>
-<p>Geometry used by –mapmov. Defaults to ref for –ref, atlas for –atlas, otherwise mov.</p>
 </dd>
 <dt><kbd>--verbose</kbd></dt>
 <dd><p>Enable INFO-level logging.</p>
@@ -769,9 +739,9 @@ Supports translation-only, rigid, similarity, no-shear anisotropic-scale, or aff
 <section id="id3">
 <h3>Python module<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
 <p id="module-neuroreg.cli.segreg">Command-line interface for segmentation-based centroid registration.</p>
-<p>The CLI wraps <code class="xref py py-func docutils literal notranslate"><span class="pre">neuroreg.segreg.segreg()</span></code> and optional mapped-image output
-helpers so users can fit centroid-based transforms and immediately export LTAs,
-resliced images, header-only mappings, or centroid JSON files.</p>
+<p>The CLI fits an LTA from a moving segmentation to either a target segmentation,
+a centroid target JSON file (or bundled centroid target name), or a left-right
+flipped self target.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.cli.segreg.main">
 <span class="sig-prename descclassname"><span class="pre">neuroreg.cli.segreg.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/cli/segreg.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.cli.segreg.main" title="Link to this definition">¶</a></dt>

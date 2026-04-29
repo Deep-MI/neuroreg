@@ -251,9 +251,9 @@
 <section id="module-neuroreg.segreg.register">
 <span id="neuroreg-segreg-register"></span><h2><code class="docutils literal notranslate"><span class="pre">neuroreg.segreg.register</span></code><a class="headerlink" href="#module-neuroreg.segreg.register" title="Link to this heading">¶</a></h2>
 <p>High-level segmentation-based registration APIs.</p>
-<p>This layer ties together centroid extraction, atlas resources, label presets,
-and point-set solvers to expose one public <code class="docutils literal notranslate"><span class="pre">segreg</span></code> workflow that returns a
-transform plus the metadata needed for downstream mapping and LTA export.</p>
+<p>This layer ties together centroid extraction, bundled target resources, label
+presets, and point-set solvers to expose one public <code class="docutils literal notranslate"><span class="pre">segreg</span></code> workflow that
+returns a transform plus the metadata needed for LTA writing.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="neuroreg.segreg.register.RegistrationResult">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">neuroreg.segreg.register.</span></span><span class="sig-name descname"><span class="pre">RegistrationResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r2r</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_affine</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_shape</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/segreg/register.html#RegistrationResult"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.segreg.register.RegistrationResult" title="Link to this definition">¶</a></dt>
@@ -270,8 +270,8 @@ target space.</p>
 LTAs.</p>
 </dd>
 <dt><strong>target_geometry</strong><span class="classifier">Any or None</span></dt><dd><p>Geometry object describing the target space. This may be a nibabel image,
-a header-like dictionary for atlas resources, or <code class="docutils literal notranslate"><span class="pre">None</span></code> when the
-target geometry is unknown.</p>
+a header-like dictionary loaded from a centroid target file, or <code class="docutils literal notranslate"><span class="pre">None</span></code>
+when the target geometry is unknown.</p>
 </dd>
 <dt><strong>target_affine</strong><span class="classifier">np.ndarray or None</span></dt><dd><p>Target voxel-to-RAS affine when explicit target geometry is available.</p>
 </dd>
@@ -294,23 +294,17 @@ target geometry is unknown.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.segreg.register.segreg">
-<span class="sig-prename descclassname"><span class="pre">neuroreg.segreg.register.</span></span><span class="sig-name descname"><span class="pre">segreg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mov</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ref</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ref_centroids</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ref_geom</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">atlas</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dof</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label_set</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_common_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flipped</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">midslice</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/segreg/register.html#segreg"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.segreg.register.segreg" title="Link to this definition">¶</a></dt>
-<dd><p>Register a moving segmentation to another segmentation, an atlas, or its LR-flipped self.</p>
+<span class="sig-prename descclassname"><span class="pre">neuroreg.segreg.register.</span></span><span class="sig-name descname"><span class="pre">segreg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">seg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_seg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">centroids</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dof</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label_set</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_common_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flipped</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">midslice</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/segreg/register.html#segreg"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.segreg.register.segreg" title="Link to this definition">¶</a></dt>
+<dd><p>Register a moving segmentation to another target via label centroids.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>mov</strong><span class="classifier">ImageLike</span></dt><dd><p>Moving segmentation image. This may be a path or a nibabel-like image.</p>
+<dt><strong>seg</strong><span class="classifier">ImageLike</span></dt><dd><p>Moving segmentation image. This may be a path or a nibabel-like image.</p>
 </dd>
-<dt><strong>ref</strong><span class="classifier">ImageLike or None, optional</span></dt><dd><p>Reference segmentation image for segmentation-to-segmentation
-registration.</p>
+<dt><strong>target_seg</strong><span class="classifier">ImageLike or None, optional</span></dt><dd><p>Target segmentation image for segmentation-to-segmentation registration.</p>
 </dd>
-<dt><strong>ref_centroids</strong><span class="classifier">str or Path or None, optional</span></dt><dd><p>Path to a centroid JSON file used as the registration target.</p>
-</dd>
-<dt><strong>ref_geom</strong><span class="classifier">ImageLike or None, optional</span></dt><dd><p>Optional geometry image paired with <code class="docutils literal notranslate"><span class="pre">ref_centroids</span></code>. This lets callers
-use centroid JSON for fitting while still defining a concrete output
-grid for mapped images or LTAs.</p>
-</dd>
-<dt><strong>atlas</strong><span class="classifier">str or None, optional</span></dt><dd><p>Name of a bundled atlas resource such as <code class="docutils literal notranslate"><span class="pre">&quot;fsaverage&quot;</span></code>.</p>
+<dt><strong>centroids</strong><span class="classifier">str or Path or None, optional</span></dt><dd><p>Path to a centroid target JSON file or the name of a bundled centroid
+target such as <code class="docutils literal notranslate"><span class="pre">&quot;fsaverage&quot;</span></code>.</p>
 </dd>
 <dt><strong>dof</strong><span class="classifier">{3, 6, 7, 9, 12}, default=6</span></dt><dd><p>Degrees of freedom for the closed-form fit. <code class="docutils literal notranslate"><span class="pre">3</span></code> selects
 translation-only, <code class="docutils literal notranslate"><span class="pre">6</span></code> rigid, <code class="docutils literal notranslate"><span class="pre">7</span></code> rigid plus global scale, <code class="docutils literal notranslate"><span class="pre">9</span></code>
@@ -319,14 +313,14 @@ registration.</p>
 </dd>
 <dt><strong>labels</strong><span class="classifier">list[int] or None, optional</span></dt><dd><p>Explicit label subset override.</p>
 </dd>
-<dt><strong>label_set</strong><span class="classifier">{‘all_shared’, ‘fsaverage_centroids’, ‘cortex_lr_pairs’} or None, optional</span></dt><dd><p>Named label preset. Mode-specific defaults are used when omitted.</p>
+<dt><strong>label_set</strong><span class="classifier">{‘all_shared’, ‘target_centroids’, ‘cortex_lr_pairs’} or None, optional</span></dt><dd><p>Named label preset. Mode-specific defaults are used when omitted.</p>
 </dd>
 <dt><strong>min_common_labels</strong><span class="classifier">int or None, optional</span></dt><dd><p>Minimum number of matched labels required to proceed. When omitted, the
 default is <code class="docutils literal notranslate"><span class="pre">1</span></code> for translation-only, <code class="docutils literal notranslate"><span class="pre">3</span></code> for rigid/similarity, and
 <code class="docutils literal notranslate"><span class="pre">4</span></code> for anisotropic-scale or affine registration.</p>
 </dd>
 <dt><strong>flipped</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, ignore external targets and register the moving
-segmentation to a left-right flipped self target for upright/midspace
+segmentation to a left-right flipped self target for upright or midspace
 use cases.</p>
 </dd>
 <dt><strong>midslice</strong><span class="classifier">float or None, optional</span></dt><dd><p>Explicit sagittal mid-slice used only with <code class="docutils literal notranslate"><span class="pre">flipped=True</span></code>. When
@@ -350,14 +344,12 @@ not provide enough matched labels for the requested fit.</p>
 </dd>
 <dt class="field-even">Parameters<span class="colon">:</span></dt>
 <dd class="field-even"><ul class="simple">
-<li><p><strong>mov</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>Any</em>)</p></li>
-<li><p><strong>ref</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>Any</em><em> | </em><em>None</em>)</p></li>
-<li><p><strong>ref_centroids</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>None</em>)</p></li>
-<li><p><strong>ref_geom</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>Any</em><em> | </em><em>None</em>)</p></li>
-<li><p><strong>atlas</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>seg</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>Any</em>)</p></li>
+<li><p><strong>target_seg</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>Any</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>centroids</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>None</em>)</p></li>
 <li><p><strong>dof</strong> (<em>int</em>)</p></li>
 <li><p><strong>labels</strong> (<em>list</em><em>[</em><em>int</em><em>] </em><em>| </em><em>None</em>)</p></li>
-<li><p><strong>label_set</strong> (<em>Literal</em><em>[</em><em>'all_shared'</em><em>, </em><em>'fsaverage_centroids'</em><em>, </em><em>'cortex_lr_pairs'</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>label_set</strong> (<em>Literal</em><em>[</em><em>'all_shared'</em><em>, </em><em>'target_centroids'</em><em>, </em><em>'cortex_lr_pairs'</em><em>] </em><em>| </em><em>None</em>)</p></li>
 <li><p><strong>min_common_labels</strong> (<em>int</em><em> | </em><em>None</em>)</p></li>
 <li><p><strong>flipped</strong> (<em>bool</em>)</p></li>
 <li><p><strong>midslice</strong> (<em>float</em><em> | </em><em>None</em>)</p></li>
@@ -370,15 +362,18 @@ not provide enough matched labels for the requested fit.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="neuroreg.segreg.register.export_segmentation_centroids">
-<span class="sig-prename descclassname"><span class="pre">neuroreg.segreg.register.</span></span><span class="sig-name descname"><span class="pre">export_segmentation_centroids</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">seg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_path</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/segreg/register.html#export_segmentation_centroids"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.segreg.register.export_segmentation_centroids" title="Link to this definition">¶</a></dt>
-<dd><p>Compute segmentation centroids and write them to FastSurfer-style JSON.</p>
+<dt class="sig sig-object py" id="neuroreg.segreg.register.export_segmentation_target">
+<span class="sig-prename descclassname"><span class="pre">neuroreg.segreg.register.</span></span><span class="sig-name descname"><span class="pre">export_segmentation_target</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">seg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_path</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geometry</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/segreg/register.html#export_segmentation_target"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.segreg.register.export_segmentation_target" title="Link to this definition">¶</a></dt>
+<dd><p>Compute segmentation centroids and write a centroid target JSON file.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>seg</strong><span class="classifier">ImageLike</span></dt><dd><p>Segmentation image or path.</p>
+<dt><strong>seg</strong><span class="classifier">ImageLike</span></dt><dd><p>Segmentation image or path used to compute scanner-RAS centroids.</p>
 </dd>
 <dt><strong>out_path</strong><span class="classifier">str or Path</span></dt><dd><p>Output JSON path.</p>
+</dd>
+<dt><strong>geometry</strong><span class="classifier">ImageLike or None, optional</span></dt><dd><p>Optional image or path whose geometry metadata should be embedded in the
+target file. When omitted, the segmentation geometry is embedded.</p>
 </dd>
 <dt><strong>labels</strong><span class="classifier">list[int] or None, optional</span></dt><dd><p>Optional label subset to export. When omitted, all non-zero labels are
 written.</p>
@@ -387,7 +382,7 @@ written.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
-<dt>None</dt><dd><p>Writes the selected scanner-RAS centroids to <code class="docutils literal notranslate"><span class="pre">out_path</span></code>.</p>
+<dt>None</dt><dd><p>Writes the selected centroid target payload to <code class="docutils literal notranslate"><span class="pre">out_path</span></code>.</p>
 </dd>
 </dl>
 </dd>
@@ -395,56 +390,12 @@ written.</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>seg</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>Any</em>)</p></li>
 <li><p><strong>out_path</strong> (<em>str</em><em> | </em><em>Path</em>)</p></li>
+<li><p><strong>geometry</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>Any</em><em> | </em><em>None</em>)</p></li>
 <li><p><strong>labels</strong> (<em>list</em><em>[</em><em>int</em><em>] </em><em>| </em><em>None</em>)</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="neuroreg.segreg.register.resolve_output_geometry">
-<span class="sig-prename descclassname"><span class="pre">neuroreg.segreg.register.</span></span><span class="sig-name descname"><span class="pre">resolve_output_geometry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">result</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_geom</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mov_img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ref_img</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/segreg/register.html#resolve_output_geometry"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.segreg.register.resolve_output_geometry" title="Link to this definition">¶</a></dt>
-<dd><p>Resolve the geometry used for a resliced mapped output.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>result</strong><span class="classifier">RegistrationResult</span></dt><dd><p>Registration result returned by <a class="reference internal" href="#neuroreg.segreg.register.segreg" title="neuroreg.segreg.register.segreg"><code class="xref py py-func docutils literal notranslate"><span class="pre">segreg()</span></code></a>.</p>
-</dd>
-<dt><strong>keep_geom</strong><span class="classifier">{‘mov’, ‘ref’, ‘atlas’}</span></dt><dd><p>Output-geometry selection policy.</p>
-</dd>
-<dt><strong>mov_img</strong><span class="classifier">Any</span></dt><dd><p>Moving image that will be mapped.</p>
-</dd>
-<dt><strong>ref_img</strong><span class="classifier">Any or None</span></dt><dd><p>Reference geometry image used when <code class="docutils literal notranslate"><span class="pre">keep_geom='ref'</span></code>.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><dl class="simple">
-<dt><strong>target_affine</strong><span class="classifier">np.ndarray</span></dt><dd><p>Voxel-to-RAS affine of the output grid.</p>
-</dd>
-<dt><strong>target_shape</strong><span class="classifier">tuple[int, int, int]</span></dt><dd><p>Spatial shape of the output grid.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt>ValueError</dt><dd><p>If the requested geometry cannot be satisfied.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Parameters<span class="colon">:</span></dt>
-<dd class="field-even"><ul class="simple">
-<li><p><strong>result</strong> (<a class="reference internal" href="#neuroreg.segreg.register.RegistrationResult" title="neuroreg.segreg.register.RegistrationResult"><em>RegistrationResult</em></a>)</p></li>
-<li><p><strong>keep_geom</strong> (<em>str</em>)</p></li>
-<li><p><strong>mov_img</strong> (<em>Any</em>)</p></li>
-<li><p><strong>ref_img</strong> (<em>Any</em><em> | </em><em>None</em>)</p></li>
-</ul>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>tuple[<em>ndarray</em>, tuple[int, int, int]]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -885,10 +836,31 @@ with no matching voxels are assigned <code class="docutils literal notranslate">
 </section>
 <section id="module-neuroreg.segreg.io">
 <span id="neuroreg-segreg-io"></span><h2><code class="docutils literal notranslate"><span class="pre">neuroreg.segreg.io</span></code><a class="headerlink" href="#module-neuroreg.segreg.io" title="Link to this heading">¶</a></h2>
-<p>JSON I/O helpers for centroid-based registration.</p>
-<p>The centroid JSON format is intentionally simple: label IDs map to 3-vector
-coordinates. These helpers normalize NumPy-heavy in-memory objects to that
-portable representation and back.</p>
+<p>JSON I/O helpers for centroid target files.</p>
+<p>The on-disk target format stores required label centroids plus optional geometry
+metadata used for LTA destination volume info. These helpers also accept the
+legacy centroid-only JSON shape where the top-level object is the label-to-point
+mapping itself.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="neuroreg.segreg.io.GeometryDict">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">neuroreg.segreg.io.</span></span><span class="sig-name descname"><span class="pre">GeometryDict</span></span><a class="reference internal" href="../_modules/neuroreg/segreg/io.html#GeometryDict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.segreg.io.GeometryDict" title="Link to this definition">¶</a></dt>
+<dd><p>Minimal geometry metadata needed for LTA destination volume info.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="neuroreg.segreg.io.TargetFile">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">neuroreg.segreg.io.</span></span><span class="sig-name descname"><span class="pre">TargetFile</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">centroids</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geometry</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/segreg/io.html#TargetFile"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.segreg.io.TargetFile" title="Link to this definition">¶</a></dt>
+<dd><p>Centroid target payload loaded from or written to JSON.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>centroids</strong> (<em>dict</em><em>[</em><em>int</em><em>, </em><em>ndarray</em><em>[</em><em>tuple</em><em>[</em><em>Any</em><em>, </em><em>...</em><em>]</em><em>, </em><em>dtype</em><em>[</em><em>float64</em><em>]</em><em>]</em><em>]</em>)</p></li>
+<li><p><strong>geometry</strong> (<a class="reference internal" href="#neuroreg.segreg.io.GeometryDict" title="neuroreg.segreg.io.GeometryDict"><em>GeometryDict</em></a><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.segreg.io.convert_numpy_to_json_serializable">
 <span class="sig-prename descclassname"><span class="pre">neuroreg.segreg.io.</span></span><span class="sig-name descname"><span class="pre">convert_numpy_to_json_serializable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/segreg/io.html#convert_numpy_to_json_serializable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.segreg.io.convert_numpy_to_json_serializable" title="Link to this definition">¶</a></dt>
@@ -917,22 +889,96 @@ or NumPy scalar types.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="neuroreg.segreg.io.read_centroids_json">
-<span class="sig-prename descclassname"><span class="pre">neuroreg.segreg.io.</span></span><span class="sig-name descname"><span class="pre">read_centroids_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/segreg/io.html#read_centroids_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.segreg.io.read_centroids_json" title="Link to this definition">¶</a></dt>
-<dd><p>Read centroid coordinates from JSON.</p>
+<dt class="sig sig-object py" id="neuroreg.segreg.io.geometry_from_image">
+<span class="sig-prename descclassname"><span class="pre">neuroreg.segreg.io.</span></span><span class="sig-name descname"><span class="pre">geometry_from_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/segreg/io.html#geometry_from_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.segreg.io.geometry_from_image" title="Link to this definition">¶</a></dt>
+<dd><p>Extract LTA-relevant geometry metadata from an image or path.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>path</strong><span class="classifier">str or Path</span></dt><dd><p>Path to a centroid JSON file.</p>
+<dt><strong>image</strong><span class="classifier">Any</span></dt><dd><p>Image-like object or path accepted by <code class="docutils literal notranslate"><span class="pre">neuroreg.transforms.lta._header_info</span></code>.</p>
 </dd>
 </dl>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
-<dt>dict[int, np.ndarray]</dt><dd><p>Label-to-centroid mapping with float64 NumPy arrays.</p>
+<dt>GeometryDict</dt><dd><p>Geometry metadata compatible with bundled atlas targets and LTA writing.</p>
 </dd>
 </dl>
 </dd>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>image</strong> (<em>Any</em>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#neuroreg.segreg.io.GeometryDict" title="neuroreg.segreg.io.GeometryDict"><em>GeometryDict</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="neuroreg.segreg.io.read_target_json">
+<span class="sig-prename descclassname"><span class="pre">neuroreg.segreg.io.</span></span><span class="sig-name descname"><span class="pre">read_target_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/segreg/io.html#read_target_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.segreg.io.read_target_json" title="Link to this definition">¶</a></dt>
+<dd><p>Read a centroid target JSON file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>path</strong><span class="classifier">str or Path</span></dt><dd><p>Path to a target JSON file.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>TargetFile</dt><dd><p>Target payload with required centroids and optional geometry.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> (<em>str</em><em> | </em><em>Path</em>)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#neuroreg.segreg.io.TargetFile" title="neuroreg.segreg.io.TargetFile"><em>TargetFile</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="neuroreg.segreg.io.write_target_json">
+<span class="sig-prename descclassname"><span class="pre">neuroreg.segreg.io.</span></span><span class="sig-name descname"><span class="pre">write_target_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">centroids</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geometry</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/segreg/io.html#write_target_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.segreg.io.write_target_json" title="Link to this definition">¶</a></dt>
+<dd><p>Write a centroid target JSON file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>path</strong><span class="classifier">str or Path</span></dt><dd><p>Output JSON path.</p>
+</dd>
+<dt><strong>centroids</strong><span class="classifier">dict[int, array-like or None]</span></dt><dd><p>Label-to-centroid mapping. Entries with value <code class="docutils literal notranslate"><span class="pre">None</span></code> are skipped.</p>
+</dd>
+<dt><strong>geometry</strong><span class="classifier">GeometryDict or None, optional</span></dt><dd><p>Optional geometry metadata to embed alongside the centroid coordinates.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>None</dt><dd><p>Writes the target payload to <code class="docutils literal notranslate"><span class="pre">path</span></code>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<em>str</em><em> | </em><em>Path</em>)</p></li>
+<li><p><strong>centroids</strong> (<em>dict</em><em>[</em><em>int</em><em>, </em><em>ArrayLike</em><em> | </em><em>None</em><em>]</em>)</p></li>
+<li><p><strong>geometry</strong> (<a class="reference internal" href="#neuroreg.segreg.io.GeometryDict" title="neuroreg.segreg.io.GeometryDict"><em>GeometryDict</em></a><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="neuroreg.segreg.io.read_centroids_json">
+<span class="sig-prename descclassname"><span class="pre">neuroreg.segreg.io.</span></span><span class="sig-name descname"><span class="pre">read_centroids_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/segreg/io.html#read_centroids_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.segreg.io.read_centroids_json" title="Link to this definition">¶</a></dt>
+<dd><p>Read centroid coordinates from either rich or legacy target JSON.</p>
+<dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>path</strong> (<em>str</em><em> | </em><em>Path</em>)</p>
 </dd>
@@ -945,22 +991,8 @@ or NumPy scalar types.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.segreg.io.write_centroids_json">
 <span class="sig-prename descclassname"><span class="pre">neuroreg.segreg.io.</span></span><span class="sig-name descname"><span class="pre">write_centroids_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">centroids</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/segreg/io.html#write_centroids_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.segreg.io.write_centroids_json" title="Link to this definition">¶</a></dt>
-<dd><p>Write centroid coordinates to JSON.</p>
+<dd><p>Write centroid coordinates using the rich target JSON envelope.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>path</strong><span class="classifier">str or Path</span></dt><dd><p>Output JSON path.</p>
-</dd>
-<dt><strong>centroids</strong><span class="classifier">dict[int, array-like or None]</span></dt><dd><p>Label-to-centroid mapping. Entries with value <code class="docutils literal notranslate"><span class="pre">None</span></code> are skipped.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><dl class="simple">
-<dt>None</dt><dd><p>Writes the centroid payload to <code class="docutils literal notranslate"><span class="pre">path</span></code>.</p>
-</dd>
-</dl>
-</dd>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>path</strong> (<em>str</em><em> | </em><em>Path</em>)</p></li>
@@ -976,28 +1008,28 @@ or NumPy scalar types.</p>
 </section>
 <section id="module-neuroreg.segreg.atlas">
 <span id="neuroreg-segreg-atlas"></span><h2><code class="docutils literal notranslate"><span class="pre">neuroreg.segreg.atlas</span></code><a class="headerlink" href="#module-neuroreg.segreg.atlas" title="Link to this heading">¶</a></h2>
-<p>Bundled atlas resources for segmentation-based registration.</p>
-<p>This module ships lightweight centroid and geometry metadata for atlas-backed
-<code class="docutils literal notranslate"><span class="pre">segreg</span></code> modes so atlas registration can run without external downloads.</p>
-<dl class="py class">
-<dt class="sig sig-object py" id="neuroreg.segreg.atlas.AtlasHeaderDict">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">neuroreg.segreg.atlas.</span></span><span class="sig-name descname"><span class="pre">AtlasHeaderDict</span></span><a class="reference internal" href="../_modules/neuroreg/segreg/atlas.html#AtlasHeaderDict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.segreg.atlas.AtlasHeaderDict" title="Link to this definition">¶</a></dt>
-<dd><p>Minimal geometry metadata needed for LTA writing and atlas reslicing.</p>
-</dd></dl>
-
+<p>Bundled centroid target resources for segmentation-based registration.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.segreg.atlas.available_atlases">
 <span class="sig-prename descclassname"><span class="pre">neuroreg.segreg.atlas.</span></span><span class="sig-name descname"><span class="pre">available_atlases</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/segreg/atlas.html#available_atlases"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.segreg.atlas.available_atlases" title="Link to this definition">¶</a></dt>
-<dd><p>Return the names of bundled atlas resources.</p>
+<dd><p>Return the names of bundled centroid targets.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt>tuple[str, …]</dt><dd><p>Supported atlas names in sorted order.</p>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple[str, …]</p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="neuroreg.segreg.atlas.load_atlas_target">
+<span class="sig-prename descclassname"><span class="pre">neuroreg.segreg.atlas.</span></span><span class="sig-name descname"><span class="pre">load_atlas_target</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/segreg/atlas.html#load_atlas_target"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.segreg.atlas.load_atlas_target" title="Link to this definition">¶</a></dt>
+<dd><p>Load a supported bundled centroid target.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>name</strong> (<em>str</em>)</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>tuple[str, …]</p>
+<dd class="field-even"><p><a class="reference internal" href="#neuroreg.segreg.io.TargetFile" title="neuroreg.segreg.io.TargetFile"><em>TargetFile</em></a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -1007,14 +1039,8 @@ or NumPy scalar types.</p>
 <span class="sig-prename descclassname"><span class="pre">neuroreg.segreg.atlas.</span></span><span class="sig-name descname"><span class="pre">load_fsaverage_centroids</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/segreg/atlas.html#load_fsaverage_centroids"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.segreg.atlas.load_fsaverage_centroids" title="Link to this definition">¶</a></dt>
 <dd><p>Load bundled fsaverage centroid coordinates.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt>dict[int, np.ndarray]</dt><dd><p>Label-to-centroid mapping in scanner-RAS coordinates.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>dict[int, <em>ndarray</em>[tuple[<em>Any</em>, …], <em>dtype</em>[<em>float64</em>]]]</p>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict[int, <em>ndarray</em>[tuple[<em>Any</em>, …], <em>dtype</em>[<em>float64</em>]]]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1024,17 +1050,8 @@ or NumPy scalar types.</p>
 <span class="sig-prename descclassname"><span class="pre">neuroreg.segreg.atlas.</span></span><span class="sig-name descname"><span class="pre">load_fsaverage_data</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/segreg/atlas.html#load_fsaverage_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.segreg.atlas.load_fsaverage_data" title="Link to this definition">¶</a></dt>
 <dd><p>Load bundled fsaverage geometry metadata.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>affine</strong><span class="classifier">np.ndarray</span></dt><dd><p>Voxel-to-RAS affine stored for the bundled fsaverage geometry.</p>
-</dd>
-<dt><strong>header</strong><span class="classifier">AtlasHeaderDict</span></dt><dd><p>Minimal header-like metadata needed for LTA writing and output geometry
-reconstruction.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>tuple[<em>ndarray</em>[tuple[<em>Any</em>, …], <em>dtype</em>[<em>float64</em>]], <a class="reference internal" href="#neuroreg.segreg.atlas.AtlasHeaderDict" title="neuroreg.segreg.atlas.AtlasHeaderDict"><em>AtlasHeaderDict</em></a>]</p>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple[<em>ndarray</em>[tuple[<em>Any</em>, …], <em>dtype</em>[<em>float64</em>]], <a class="reference internal" href="#neuroreg.segreg.io.GeometryDict" title="neuroreg.segreg.io.GeometryDict"><em>GeometryDict</em></a>]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1042,31 +1059,13 @@ reconstruction.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.segreg.atlas.load_atlas_centroids">
 <span class="sig-prename descclassname"><span class="pre">neuroreg.segreg.atlas.</span></span><span class="sig-name descname"><span class="pre">load_atlas_centroids</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/segreg/atlas.html#load_atlas_centroids"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.segreg.atlas.load_atlas_centroids" title="Link to this definition">¶</a></dt>
-<dd><p>Load centroid resources for a supported bundled atlas.</p>
+<dd><p>Load centroid coordinates for a supported bundled target.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>name</strong><span class="classifier">str</span></dt><dd><p>Bundled atlas name.</p>
+<dd class="field-odd"><p><strong>name</strong> (<em>str</em>)</p>
 </dd>
-</dl>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><dl class="simple">
-<dt>dict[int, np.ndarray]</dt><dd><p>Label-to-centroid mapping for the requested atlas.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt>ValueError</dt><dd><p>If <code class="docutils literal notranslate"><span class="pre">name</span></code> does not match a bundled atlas.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Parameters<span class="colon">:</span></dt>
-<dd class="field-even"><p><strong>name</strong> (<em>str</em>)</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>dict[int, <em>ndarray</em>[tuple[<em>Any</em>, …], <em>dtype</em>[<em>float64</em>]]]</p>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict[int, <em>ndarray</em>[tuple[<em>Any</em>, …], <em>dtype</em>[<em>float64</em>]]]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1074,33 +1073,13 @@ reconstruction.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.segreg.atlas.load_atlas_data">
 <span class="sig-prename descclassname"><span class="pre">neuroreg.segreg.atlas.</span></span><span class="sig-name descname"><span class="pre">load_atlas_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/segreg/atlas.html#load_atlas_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.segreg.atlas.load_atlas_data" title="Link to this definition">¶</a></dt>
-<dd><p>Load geometry metadata for a supported bundled atlas.</p>
+<dd><p>Load geometry metadata for a supported bundled target.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>name</strong><span class="classifier">str</span></dt><dd><p>Bundled atlas name.</p>
+<dd class="field-odd"><p><strong>name</strong> (<em>str</em>)</p>
 </dd>
-</dl>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><dl class="simple">
-<dt><strong>affine</strong><span class="classifier">np.ndarray</span></dt><dd><p>Voxel-to-RAS affine for the atlas geometry.</p>
-</dd>
-<dt><strong>header</strong><span class="classifier">AtlasHeaderDict</span></dt><dd><p>Minimal atlas header metadata.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt>ValueError</dt><dd><p>If <code class="docutils literal notranslate"><span class="pre">name</span></code> does not match a bundled atlas.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Parameters<span class="colon">:</span></dt>
-<dd class="field-even"><p><strong>name</strong> (<em>str</em>)</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>tuple[<em>ndarray</em>[tuple[<em>Any</em>, …], <em>dtype</em>[<em>float64</em>]], <a class="reference internal" href="#neuroreg.segreg.atlas.AtlasHeaderDict" title="neuroreg.segreg.atlas.AtlasHeaderDict"><em>AtlasHeaderDict</em></a>]</p>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple[<em>ndarray</em>[tuple[<em>Any</em>, …], <em>dtype</em>[<em>float64</em>]], <a class="reference internal" href="#neuroreg.segreg.io.GeometryDict" title="neuroreg.segreg.io.GeometryDict"><em>GeometryDict</em></a>]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1108,23 +1087,10 @@ reconstruction.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.segreg.atlas.affine_from_header">
 <span class="sig-prename descclassname"><span class="pre">neuroreg.segreg.atlas.</span></span><span class="sig-name descname"><span class="pre">affine_from_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">header</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/segreg/atlas.html#affine_from_header"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.segreg.atlas.affine_from_header" title="Link to this definition">¶</a></dt>
-<dd><p>Reconstruct a voxel-to-RAS affine from atlas header metadata.</p>
+<dd><p>Reconstruct a voxel-to-RAS affine from header-like geometry metadata.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>header</strong><span class="classifier">AtlasHeaderDict</span></dt><dd><p>Dictionary containing <code class="docutils literal notranslate"><span class="pre">dims</span></code>, <code class="docutils literal notranslate"><span class="pre">delta</span></code>, <code class="docutils literal notranslate"><span class="pre">Mdc</span></code>, and <code class="docutils literal notranslate"><span class="pre">Pxyz_c</span></code> as
-stored in bundled atlas metadata.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><dl class="simple">
-<dt>np.ndarray</dt><dd><p>Reconstructed <code class="docutils literal notranslate"><span class="pre">(4,</span> <span class="pre">4)</span></code> voxel-to-RAS affine.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>header</strong> (<a class="reference internal" href="#neuroreg.segreg.atlas.AtlasHeaderDict" title="neuroreg.segreg.atlas.AtlasHeaderDict"><em>AtlasHeaderDict</em></a>)</p>
+<dd class="field-odd"><p><strong>header</strong> (<a class="reference internal" href="#neuroreg.segreg.io.GeometryDict" title="neuroreg.segreg.io.GeometryDict"><em>GeometryDict</em></a>)</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><em>ndarray</em>[tuple[<em>Any</em>, …], <em>dtype</em>[<em>float64</em>]]</p>
@@ -1235,8 +1201,7 @@ registration.</p>
 <li><a class="reference internal" href="#module-neuroreg.segreg.register"><code class="docutils literal notranslate"><span class="pre">neuroreg.segreg.register</span></code></a><ul>
 <li><a class="reference internal" href="#neuroreg.segreg.register.RegistrationResult"><code class="docutils literal notranslate"><span class="pre">RegistrationResult</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.segreg.register.segreg"><code class="docutils literal notranslate"><span class="pre">segreg()</span></code></a></li>
-<li><a class="reference internal" href="#neuroreg.segreg.register.export_segmentation_centroids"><code class="docutils literal notranslate"><span class="pre">export_segmentation_centroids()</span></code></a></li>
-<li><a class="reference internal" href="#neuroreg.segreg.register.resolve_output_geometry"><code class="docutils literal notranslate"><span class="pre">resolve_output_geometry()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.segreg.register.export_segmentation_target"><code class="docutils literal notranslate"><span class="pre">export_segmentation_target()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#module-neuroreg.segreg.points"><code class="docutils literal notranslate"><span class="pre">neuroreg.segreg.points</span></code></a><ul>
@@ -1257,14 +1222,19 @@ registration.</p>
 </ul>
 </li>
 <li><a class="reference internal" href="#module-neuroreg.segreg.io"><code class="docutils literal notranslate"><span class="pre">neuroreg.segreg.io</span></code></a><ul>
+<li><a class="reference internal" href="#neuroreg.segreg.io.GeometryDict"><code class="docutils literal notranslate"><span class="pre">GeometryDict</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.segreg.io.TargetFile"><code class="docutils literal notranslate"><span class="pre">TargetFile</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.segreg.io.convert_numpy_to_json_serializable"><code class="docutils literal notranslate"><span class="pre">convert_numpy_to_json_serializable()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.segreg.io.geometry_from_image"><code class="docutils literal notranslate"><span class="pre">geometry_from_image()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.segreg.io.read_target_json"><code class="docutils literal notranslate"><span class="pre">read_target_json()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.segreg.io.write_target_json"><code class="docutils literal notranslate"><span class="pre">write_target_json()</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.segreg.io.read_centroids_json"><code class="docutils literal notranslate"><span class="pre">read_centroids_json()</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.segreg.io.write_centroids_json"><code class="docutils literal notranslate"><span class="pre">write_centroids_json()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#module-neuroreg.segreg.atlas"><code class="docutils literal notranslate"><span class="pre">neuroreg.segreg.atlas</span></code></a><ul>
-<li><a class="reference internal" href="#neuroreg.segreg.atlas.AtlasHeaderDict"><code class="docutils literal notranslate"><span class="pre">AtlasHeaderDict</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.segreg.atlas.available_atlases"><code class="docutils literal notranslate"><span class="pre">available_atlases()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.segreg.atlas.load_atlas_target"><code class="docutils literal notranslate"><span class="pre">load_atlas_target()</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.segreg.atlas.load_fsaverage_centroids"><code class="docutils literal notranslate"><span class="pre">load_fsaverage_centroids()</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.segreg.atlas.load_fsaverage_data"><code class="docutils literal notranslate"><span class="pre">load_fsaverage_data()</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.segreg.atlas.load_atlas_centroids"><code class="docutils literal notranslate"><span class="pre">load_atlas_centroids()</span></code></a></li>

@@ -240,23 +240,50 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for neuroreg.segreg.io</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;JSON I/O helpers for centroid-based registration.</span>
+<span></span><span class="sd">&quot;&quot;&quot;JSON I/O helpers for centroid target files.</span>
 
-<span class="sd">The centroid JSON format is intentionally simple: label IDs map to 3-vector</span>
-<span class="sd">coordinates. These helpers normalize NumPy-heavy in-memory objects to that</span>
-<span class="sd">portable representation and back.</span>
+<span class="sd">The on-disk target format stores required label centroids plus optional geometry</span>
+<span class="sd">metadata used for LTA destination volume info. These helpers also accept the</span>
+<span class="sd">legacy centroid-only JSON shape where the top-level object is the label-to-point</span>
+<span class="sd">mapping itself.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">TypedDict</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy.typing</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">npt</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">..transforms.lta</span><span class="w"> </span><span class="kn">import</span> <span class="n">_header_info</span>
+
 <span class="n">CentroidDict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">]]</span>
+
+
+<div class="viewcode-block" id="GeometryDict">
+<a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.io.GeometryDict">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">GeometryDict</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Minimal geometry metadata needed for LTA destination volume info.&quot;&quot;&quot;</span>
+
+    <span class="n">dims</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+    <span class="n">delta</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+    <span class="n">Mdc</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">]</span>
+    <span class="n">Pxyz_c</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="TargetFile">
+<a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.io.TargetFile">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TargetFile</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Centroid target payload loaded from or written to JSON.&quot;&quot;&quot;</span>
+
+    <span class="n">centroids</span><span class="p">:</span> <span class="n">CentroidDict</span>
+    <span class="n">geometry</span><span class="p">:</span> <span class="n">GeometryDict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></div>
+
 
 
 <div class="viewcode-block" id="convert_numpy_to_json_serializable">
@@ -289,32 +316,129 @@
 
 
 
-<div class="viewcode-block" id="read_centroids_json">
-<a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.io.read_centroids_json">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">read_centroids_json</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CentroidDict</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Read centroid coordinates from JSON.</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_coerce_centroids</span><span class="p">(</span><span class="n">payload</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">CentroidDict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Normalize a decoded centroid payload to float64 NumPy arrays.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">{</span><span class="nb">int</span><span class="p">(</span><span class="n">label</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">point</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span> <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">point</span> <span class="ow">in</span> <span class="n">payload</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_coerce_geometry</span><span class="p">(</span><span class="n">payload</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">GeometryDict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Normalize decoded geometry metadata to the internal header-like shape.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;geometry must be a JSON object with keys: dims, delta, Mdc, Pxyz_c&quot;</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="n">required_keys</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;dims&quot;</span><span class="p">,</span> <span class="s2">&quot;delta&quot;</span><span class="p">,</span> <span class="s2">&quot;Mdc&quot;</span><span class="p">,</span> <span class="s2">&quot;Pxyz_c&quot;</span><span class="p">)</span>
+    <span class="n">missing_keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">key</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">required_keys</span> <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">payload</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">missing_keys</span><span class="p">:</span>
+        <span class="n">missing</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">missing_keys</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;geometry is missing required key(s): </span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">dims</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;dims&quot;</span><span class="p">]]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;geometry[&#39;dims&#39;] must be a sequence of 3 integers&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dims</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;geometry[&#39;dims&#39;] must contain exactly 3 values&quot;</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">delta</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;delta&quot;</span><span class="p">]]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;geometry[&#39;delta&#39;] must be a sequence of 3 numbers&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">delta</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;geometry[&#39;delta&#39;] must contain exactly 3 values&quot;</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">mdc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">payload</span><span class="p">[</span><span class="s2">&quot;Mdc&quot;</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;geometry[&#39;Mdc&#39;] must be a 3x3 numeric array&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+    <span class="k">if</span> <span class="n">mdc</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;geometry[&#39;Mdc&#39;] must have shape (3, 3)&quot;</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">pxyz_c</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">payload</span><span class="p">[</span><span class="s2">&quot;Pxyz_c&quot;</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;geometry[&#39;Pxyz_c&#39;] must be a numeric array with 3 values&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+    <span class="k">if</span> <span class="n">pxyz_c</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="p">(</span><span class="mi">3</span><span class="p">,):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;geometry[&#39;Pxyz_c&#39;] must have shape (3,)&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;dims&quot;</span><span class="p">:</span> <span class="n">dims</span><span class="p">,</span>
+        <span class="s2">&quot;delta&quot;</span><span class="p">:</span> <span class="n">delta</span><span class="p">,</span>
+        <span class="s2">&quot;Mdc&quot;</span><span class="p">:</span> <span class="n">mdc</span><span class="p">,</span>
+        <span class="s2">&quot;Pxyz_c&quot;</span><span class="p">:</span> <span class="n">pxyz_c</span><span class="p">,</span>
+    <span class="p">}</span>
+
+
+<div class="viewcode-block" id="geometry_from_image">
+<a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.io.geometry_from_image">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">geometry_from_image</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GeometryDict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract LTA-relevant geometry metadata from an image or path.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    image : Any</span>
+<span class="sd">        Image-like object or path accepted by ``neuroreg.transforms.lta._header_info``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    GeometryDict</span>
+<span class="sd">        Geometry metadata compatible with bundled atlas targets and LTA writing.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_coerce_geometry</span><span class="p">(</span><span class="n">_header_info</span><span class="p">(</span><span class="n">image</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="read_target_json">
+<a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.io.read_target_json">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">read_target_json</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TargetFile</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Read a centroid target JSON file.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    path : str or Path</span>
-<span class="sd">        Path to a centroid JSON file.</span>
+<span class="sd">        Path to a target JSON file.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    dict[int, np.ndarray]</span>
-<span class="sd">        Label-to-centroid mapping with float64 NumPy arrays.</span>
+<span class="sd">    TargetFile</span>
+<span class="sd">        Target payload with required centroids and optional geometry.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">centroid_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
-    <span class="k">with</span> <span class="n">centroid_path</span><span class="o">.</span><span class="n">open</span><span class="p">()</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">target_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">target_path</span><span class="o">.</span><span class="n">open</span><span class="p">()</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
         <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
-    <span class="k">return</span> <span class="p">{</span><span class="nb">int</span><span class="p">(</span><span class="n">label</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">point</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span> <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">point</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span></div>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Target JSON at &#39;</span><span class="si">{</span><span class="n">target_path</span><span class="si">}</span><span class="s2">&#39; must decode to an object.&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="s2">&quot;centroids&quot;</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+        <span class="n">raw_centroids</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;centroids&quot;</span><span class="p">]</span>
+        <span class="n">raw_geometry</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;geometry&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">raw_centroids</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="n">raw_geometry</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_centroids</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Target JSON at &#39;</span><span class="si">{</span><span class="n">target_path</span><span class="si">}</span><span class="s2">&#39; is missing a valid &#39;centroids&#39; object.&quot;</span><span class="p">)</span>
+
+    <span class="n">geometry</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">raw_geometry</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_geometry</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Target JSON at &#39;</span><span class="si">{</span><span class="n">target_path</span><span class="si">}</span><span class="s2">&#39; has a non-object &#39;geometry&#39; section.&quot;</span><span class="p">)</span>
+        <span class="n">geometry</span> <span class="o">=</span> <span class="n">_coerce_geometry</span><span class="p">(</span><span class="n">raw_geometry</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">TargetFile</span><span class="p">(</span><span class="n">centroids</span><span class="o">=</span><span class="n">_coerce_centroids</span><span class="p">(</span><span class="n">raw_centroids</span><span class="p">),</span> <span class="n">geometry</span><span class="o">=</span><span class="n">geometry</span><span class="p">)</span></div>
 
 
 
-<div class="viewcode-block" id="write_centroids_json">
-<a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.io.write_centroids_json">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">write_centroids_json</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span> <span class="n">centroids</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span> <span class="o">|</span> <span class="kc">None</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Write centroid coordinates to JSON.</span>
+<div class="viewcode-block" id="write_target_json">
+<a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.io.write_target_json">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">write_target_json</span><span class="p">(</span>
+        <span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span>
+        <span class="n">centroids</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span> <span class="o">|</span> <span class="kc">None</span><span class="p">],</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">geometry</span><span class="p">:</span> <span class="n">GeometryDict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Write a centroid target JSON file.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -322,21 +446,49 @@
 <span class="sd">        Output JSON path.</span>
 <span class="sd">    centroids : dict[int, array-like or None]</span>
 <span class="sd">        Label-to-centroid mapping. Entries with value ``None`` are skipped.</span>
+<span class="sd">    geometry : GeometryDict or None, optional</span>
+<span class="sd">        Optional geometry metadata to embed alongside the centroid coordinates.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    None</span>
-<span class="sd">        Writes the centroid payload to ``path``.</span>
+<span class="sd">        Writes the target payload to ``path``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">payload</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">payload_centroids</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">point</span> <span class="ow">in</span> <span class="n">centroids</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
         <span class="k">if</span> <span class="n">point</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">continue</span>
-        <span class="n">payload</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">label</span><span class="p">))]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">point</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">payload_centroids</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">label</span><span class="p">))]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">point</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+    <span class="n">payload</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;centroids&quot;</span><span class="p">:</span> <span class="n">payload_centroids</span><span class="p">}</span>
+    <span class="k">if</span> <span class="n">geometry</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;geometry&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;dims&quot;</span><span class="p">:</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">geometry</span><span class="p">[</span><span class="s2">&quot;dims&quot;</span><span class="p">]],</span>
+            <span class="s2">&quot;delta&quot;</span><span class="p">:</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">geometry</span><span class="p">[</span><span class="s2">&quot;delta&quot;</span><span class="p">]],</span>
+            <span class="s2">&quot;Mdc&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">geometry</span><span class="p">[</span><span class="s2">&quot;Mdc&quot;</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+            <span class="s2">&quot;Pxyz_c&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">geometry</span><span class="p">[</span><span class="s2">&quot;Pxyz_c&quot;</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+        <span class="p">}</span>
+
     <span class="n">out_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
     <span class="k">with</span> <span class="n">out_path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
         <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">convert_numpy_to_json_serializable</span><span class="p">(</span><span class="n">payload</span><span class="p">),</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
         <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="read_centroids_json">
+<a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.io.read_centroids_json">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">read_centroids_json</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CentroidDict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Read centroid coordinates from either rich or legacy target JSON.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">read_target_json</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">centroids</span></div>
+
+
+
+<div class="viewcode-block" id="write_centroids_json">
+<a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.io.write_centroids_json">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">write_centroids_json</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span> <span class="n">centroids</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span> <span class="o">|</span> <span class="kc">None</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Write centroid coordinates using the rich target JSON envelope.&quot;&quot;&quot;</span>
+    <span class="n">write_target_json</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">centroids</span><span class="p">)</span></div>
 
 </pre></div>
         </article>
