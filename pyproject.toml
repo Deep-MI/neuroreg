@@ -94,6 +94,7 @@ robreg          = "neuroreg.cli.robreg:main"
 coreg           = "neuroreg.cli.coreg:main"
 bbreg           = "neuroreg.cli.bbreg:main"
 segreg          = "neuroreg.cli.segreg:main"
+segcentroids    = "neuroreg.cli.segcentroids:main"
 lta             = "neuroreg.cli.lta:main"
 neuroreg-sys_info  = "neuroreg.cli.sys_info:run"
 

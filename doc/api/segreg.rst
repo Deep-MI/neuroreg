@@ -5,7 +5,7 @@ Segmentation registration API
 ----------------------------
 
 .. automodule:: neuroreg.segreg.register
-   :members: RegistrationResult, segreg, export_segmentation_centroids, resolve_output_geometry
+   :members: RegistrationResult, segreg, export_segmentation_target
 
 ``neuroreg.segreg.points``
 --------------------------
