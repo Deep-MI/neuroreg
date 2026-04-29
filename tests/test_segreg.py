@@ -5,10 +5,18 @@ import numpy as np
 import pytest
 from nibabel.arrayproxy import ArrayProxy
 
+from neuroreg.cli.segcentroids import main as segcentroids_main
 from neuroreg.cli.segreg import main as segreg_main
 from neuroreg.image import header_map_image
-from neuroreg.segreg.atlas import load_fsaverage_centroids, load_fsaverage_data
+from neuroreg.segreg.atlas import (
+    affine_from_header,
+    available_atlases,
+    load_atlas_target,
+    load_fsaverage_centroids,
+    load_fsaverage_data,
+)
 from neuroreg.segreg.centroids import build_flipped_centroid_targets
+from neuroreg.segreg.io import read_target_json
 from neuroreg.segreg.points import (
     find_affine,
     find_rigid,
@@ -16,8 +24,10 @@ from neuroreg.segreg.points import (
     find_similarity,
     find_translation,
 )
-from neuroreg.segreg.register import segreg
+from neuroreg.segreg.register import export_segmentation_target, segreg
 from neuroreg.transforms import LTA
+
+MNI_ATLAS_NAME = "mni_icbm152_t1_tal_nlin_asym_09c"
 
 
 def _label_volume() -> np.ndarray:
@@ -38,15 +48,16 @@ def _write_float_image(path: Path, *, affine: np.ndarray) -> None:
     nib.save(nib.Nifti1Image(data, affine=affine), path)
 
 
-def _write_uint8_image(path: Path, *, affine: np.ndarray) -> None:
-    data = np.arange(8 * 8 * 8, dtype=np.uint8).reshape(8, 8, 8)
-    nib.save(nib.Nifti1Image(data, affine=affine), path)
-
-
 def _write_single_label_seg(path: Path, *, affine: np.ndarray) -> None:
     data = np.zeros((8, 8, 8), dtype=np.int16)
     data[3, 4, 5] = 1
     nib.save(nib.Nifti1Image(data, affine=affine), path)
+
+
+def _write_legacy_centroids(path: Path) -> None:
+    path.write_text(
+        '{"1": [1.0, 1.0, 1.0], "2": [1.0, 5.0, 2.0], "3": [5.0, 2.0, 6.0], "4": [6.0, 6.0, 4.0]}\n'
+    )
 
 
 def test_find_translation_recovers_known_transform():
@@ -211,6 +222,18 @@ def test_build_flipped_centroid_targets_mirrors_and_swaps_pairs():
     )
 
 
+def test_load_bundled_atlas_targets():
+    assert available_atlases() == ("fsaverage", MNI_ATLAS_NAME)
+
+    fsaverage_target = load_atlas_target("fsaverage")
+    mni_target = load_atlas_target(MNI_ATLAS_NAME)
+
+    assert 2 in fsaverage_target.centroids
+    assert fsaverage_target.geometry is not None
+    assert 1002 in mni_target.centroids
+    assert mni_target.geometry is None
+
+
 def test_load_fsaverage_resources():
     centroids = load_fsaverage_centroids()
     affine, header = load_fsaverage_data()
@@ -221,12 +244,49 @@ def test_load_fsaverage_resources():
     assert header["dims"] == [256, 256, 256]
 
 
+def test_read_target_json_accepts_legacy_centroid_mapping(tmp_path: Path):
+    target_path = tmp_path / "legacy_centroids.json"
+    _write_legacy_centroids(target_path)
+
+    target = read_target_json(target_path)
+
+    assert set(target.centroids) == {1, 2, 3, 4}
+    assert target.geometry is None
+
+
+def test_read_target_json_rejects_incomplete_geometry(tmp_path: Path):
+    target_path = tmp_path / "bad_geometry.json"
+    target_path.write_text('{"centroids": {"1": [1.0, 2.0, 3.0]}, "geometry": {"dims": [8, 8, 8]}}\n')
+
+    with pytest.raises(ValueError, match="geometry is missing required key"):
+        read_target_json(target_path)
+
+
+def test_read_target_json_rejects_bad_geometry_shape(tmp_path: Path):
+    target_path = tmp_path / "bad_geometry_shape.json"
+    target_path.write_text(
+        '{"centroids": {"1": [1.0, 2.0, 3.0]}, "geometry": '
+        '{"dims": [8, 8, 8], "delta": [1.0, 1.0, 1.0], "Mdc": [[1, 0], [0, 1]], "Pxyz_c": [0.0, 0.0, 0.0]}}\n'
+    )
+
+    with pytest.raises(ValueError, match=r"geometry\['Mdc'\] must have shape \(3, 3\)"):
+        read_target_json(target_path)
+
+
+def test_segreg_rejects_directory_as_centroid_target(tmp_path: Path):
+    mov_path = tmp_path / "mov_seg.nii.gz"
+    _write_seg(mov_path, affine=np.eye(4))
+
+    with pytest.raises(ValueError, match="expected a JSON file"):
+        segreg(mov_path, centroids=tmp_path)
+
+
 def test_segreg_registers_segmentation_images_in_ras(tmp_path: Path):
     mov_path = tmp_path / "mov_seg.nii.gz"
-    ref_path = tmp_path / "ref_seg.nii.gz"
+    target_path = tmp_path / "target_seg.nii.gz"
 
     mov_affine = np.eye(4)
-    ref_affine = np.array(
+    target_affine = np.array(
         [
             [1.0, 0.0, 0.0, 5.0],
             [0.0, 1.0, 0.0, -3.0],
@@ -235,10 +295,10 @@ def test_segreg_registers_segmentation_images_in_ras(tmp_path: Path):
         ]
     )
     _write_seg(mov_path, affine=mov_affine)
-    _write_seg(ref_path, affine=ref_affine)
+    _write_seg(target_path, affine=target_affine)
 
-    result = segreg(mov_path, ref_path, dof=6)
-    expected = ref_affine @ np.linalg.inv(mov_affine)
+    result = segreg(mov_path, target_seg=target_path, dof=6)
+    expected = target_affine @ np.linalg.inv(mov_affine)
 
     assert result.r2r == pytest.approx(expected, abs=1e-6)
     assert result.labels == [1, 2, 3, 4]
@@ -246,10 +306,10 @@ def test_segreg_registers_segmentation_images_in_ras(tmp_path: Path):
 
 def test_segreg_translation_recovers_known_ras_transform_with_one_label(tmp_path: Path):
     mov_path = tmp_path / "mov_seg_translation.nii.gz"
-    ref_path = tmp_path / "ref_seg_translation.nii.gz"
+    target_path = tmp_path / "target_seg_translation.nii.gz"
 
     mov_affine = np.eye(4)
-    ref_affine = np.array(
+    target_affine = np.array(
         [
             [1.0, 0.0, 0.0, 5.0],
             [0.0, 1.0, 0.0, -3.0],
@@ -258,10 +318,10 @@ def test_segreg_translation_recovers_known_ras_transform_with_one_label(tmp_path
         ]
     )
     _write_single_label_seg(mov_path, affine=mov_affine)
-    _write_single_label_seg(ref_path, affine=ref_affine)
+    _write_single_label_seg(target_path, affine=target_affine)
 
-    result = segreg(mov_path, ref_path, dof=3)
-    expected = ref_affine @ np.linalg.inv(mov_affine)
+    result = segreg(mov_path, target_seg=target_path, dof=3)
+    expected = target_affine @ np.linalg.inv(mov_affine)
 
     assert result.r2r == pytest.approx(expected, abs=1e-6)
     assert result.labels == [1]
@@ -269,10 +329,10 @@ def test_segreg_translation_recovers_known_ras_transform_with_one_label(tmp_path
 
 def test_segreg_similarity_recovers_known_ras_transform(tmp_path: Path):
     mov_path = tmp_path / "mov_seg_similarity.nii.gz"
-    ref_path = tmp_path / "ref_seg_similarity.nii.gz"
+    target_path = tmp_path / "target_seg_similarity.nii.gz"
 
     mov_affine = np.eye(4)
-    ref_affine = np.array(
+    target_affine = np.array(
         [
             [0.0, -1.5, 0.0, 5.0],
             [1.5, 0.0, 0.0, -3.0],
@@ -281,10 +341,10 @@ def test_segreg_similarity_recovers_known_ras_transform(tmp_path: Path):
         ]
     )
     _write_seg(mov_path, affine=mov_affine)
-    _write_seg(ref_path, affine=ref_affine)
+    _write_seg(target_path, affine=target_affine)
 
-    result = segreg(mov_path, ref_path, dof=7)
-    expected = ref_affine @ np.linalg.inv(mov_affine)
+    result = segreg(mov_path, target_seg=target_path, dof=7)
+    expected = target_affine @ np.linalg.inv(mov_affine)
 
     assert result.r2r == pytest.approx(expected, abs=1e-6)
     assert result.labels == [1, 2, 3, 4]
@@ -292,10 +352,10 @@ def test_segreg_similarity_recovers_known_ras_transform(tmp_path: Path):
 
 def test_segreg_anisotropic_scale_recovers_known_ras_transform(tmp_path: Path):
     mov_path = tmp_path / "mov_seg_aniso.nii.gz"
-    ref_path = tmp_path / "ref_seg_aniso.nii.gz"
+    target_path = tmp_path / "target_seg_aniso.nii.gz"
 
     mov_affine = np.eye(4)
-    ref_affine = np.array(
+    target_affine = np.array(
         [
             [0.0, -0.75, 0.0, 5.0],
             [1.5, 0.0, 0.0, -3.0],
@@ -304,10 +364,10 @@ def test_segreg_anisotropic_scale_recovers_known_ras_transform(tmp_path: Path):
         ]
     )
     _write_seg(mov_path, affine=mov_affine)
-    _write_seg(ref_path, affine=ref_affine)
+    _write_seg(target_path, affine=target_affine)
 
-    result = segreg(mov_path, ref_path, dof=9)
-    expected = ref_affine @ np.linalg.inv(mov_affine)
+    result = segreg(mov_path, target_seg=target_path, dof=9)
+    expected = target_affine @ np.linalg.inv(mov_affine)
 
     assert result.r2r == pytest.approx(expected, abs=1e-6)
     assert result.r2r[:3, :3].T @ result.r2r[:3, :3] == pytest.approx(np.diag([1.5 ** 2, 0.75 ** 2, 2.0 ** 2]),
@@ -315,15 +375,127 @@ def test_segreg_anisotropic_scale_recovers_known_ras_transform(tmp_path: Path):
     assert result.labels == [1, 2, 3, 4]
 
 
-def test_cli_writes_lta_and_mapmov(tmp_path: Path):
+def test_export_segmentation_target_writes_geometry_from_seg_by_default(tmp_path: Path):
+    seg_path = tmp_path / "seg.nii.gz"
+    out_path = tmp_path / "target.json"
+    _write_seg(seg_path, affine=np.eye(4))
+
+    export_segmentation_target(seg_path, out_path)
+    target = read_target_json(out_path)
+
+    assert set(target.centroids) == {1, 2, 3, 4}
+    assert target.geometry is not None
+    assert target.geometry["dims"] == [8, 8, 8]
+
+
+def test_segcentroids_cli_uses_explicit_geometry_and_label_subset(tmp_path: Path):
+    seg_path = tmp_path / "seg.nii.gz"
+    geom_path = tmp_path / "geometry.nii.gz"
+    out_path = tmp_path / "target.json"
+    geom_affine = np.array(
+        [
+            [1.0, 0.0, 0.0, 7.0],
+            [0.0, 1.0, 0.0, -4.0],
+            [0.0, 0.0, 1.0, 3.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    _write_seg(seg_path, affine=np.eye(4))
+    _write_float_image(geom_path, affine=geom_affine)
+
+    segcentroids_main(
+        [
+            "--seg",
+            str(seg_path),
+            "--geometry",
+            str(geom_path),
+            "--labels",
+            "1,3",
+            "--out",
+            str(out_path),
+        ]
+    )
+
+    target = read_target_json(out_path)
+    assert set(target.centroids) == {1, 3}
+    assert target.geometry is not None
+    assert affine_from_header(target.geometry) == pytest.approx(geom_affine)
+
+
+def test_segcentroids_cli_can_add_geometry_to_existing_target_json(tmp_path: Path):
+    input_path = tmp_path / "legacy_target.json"
+    geom_path = tmp_path / "geometry.nii.gz"
+    out_path = tmp_path / "target_with_geometry.json"
+    geom_affine = np.array(
+        [
+            [1.0, 0.0, 0.0, 9.0],
+            [0.0, 1.0, 0.0, -6.0],
+            [0.0, 0.0, 1.0, 4.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    _write_legacy_centroids(input_path)
+    _write_float_image(geom_path, affine=geom_affine)
+
+    segcentroids_main(
+        [
+            "--input",
+            str(input_path),
+            "--geometry",
+            str(geom_path),
+            "--out",
+            str(out_path),
+        ]
+    )
+
+    target = read_target_json(out_path)
+    assert set(target.centroids) == {1, 2, 3, 4}
+    assert target.geometry is not None
+    assert affine_from_header(target.geometry) == pytest.approx(geom_affine)
+
+
+def test_segcentroids_cli_can_replace_geometry_in_existing_target_json(tmp_path: Path):
+    seg_path = tmp_path / "seg.nii.gz"
+    input_path = tmp_path / "target.json"
+    geom_path = tmp_path / "replacement_geometry.nii.gz"
+    out_path = tmp_path / "target_rewritten.json"
+    geom_affine = np.array(
+        [
+            [1.0, 0.0, 0.0, 11.0],
+            [0.0, 1.0, 0.0, -8.0],
+            [0.0, 0.0, 1.0, 5.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    _write_seg(seg_path, affine=np.eye(4))
+    export_segmentation_target(seg_path, input_path)
+    _write_float_image(geom_path, affine=geom_affine)
+
+    segcentroids_main(
+        [
+            "--input",
+            str(input_path),
+            "--geometry",
+            str(geom_path),
+            "--out",
+            str(out_path),
+        ]
+    )
+
+    rewritten = read_target_json(out_path)
+    original = read_target_json(input_path)
+    assert set(rewritten.centroids) == set(original.centroids)
+    assert rewritten.geometry is not None
+    assert affine_from_header(rewritten.geometry) == pytest.approx(geom_affine)
+
+
+def test_cli_writes_lta_for_target_seg(tmp_path: Path):
     mov_seg = tmp_path / "mov_seg.nii.gz"
-    ref_seg = tmp_path / "ref_seg.nii.gz"
-    mov_img = tmp_path / "mov_img.nii.gz"
+    target_seg = tmp_path / "target_seg.nii.gz"
     out_lta = tmp_path / "out.lta"
-    out_map = tmp_path / "mapped.nii.gz"
 
     mov_affine = np.eye(4)
-    ref_affine = np.array(
+    target_affine = np.array(
         [
             [1.0, 0.0, 0.0, 5.0],
             [0.0, 1.0, 0.0, -3.0],
@@ -332,39 +504,30 @@ def test_cli_writes_lta_and_mapmov(tmp_path: Path):
         ]
     )
     _write_seg(mov_seg, affine=mov_affine)
-    _write_seg(ref_seg, affine=ref_affine)
-    _write_uint8_image(mov_img, affine=mov_affine)
+    _write_seg(target_seg, affine=target_affine)
 
     segreg_main(
         [
-            "--mov",
+            "--seg",
             str(mov_seg),
-            "--ref",
-            str(ref_seg),
-            "--movimg",
-            str(mov_img),
+            "--target-seg",
+            str(target_seg),
             "--lta",
             str(out_lta),
-            "--mapmov",
-            str(out_map),
         ]
     )
 
     assert out_lta.exists()
-    assert out_map.exists()
-    mapped_img = nib.load(str(out_map))
-    assert mapped_img.shape[:3] == nib.load(str(ref_seg)).shape[:3]
-    assert mapped_img.affine == pytest.approx(ref_affine)
-    assert mapped_img.get_data_dtype() == np.dtype(np.float32)
+    assert LTA.read(out_lta).r2r() == pytest.approx(target_affine, abs=1e-6)
 
 
 def test_cli_accepts_translation_only_dof(tmp_path: Path):
     mov_seg = tmp_path / "mov_seg_translation_cli.nii.gz"
-    ref_seg = tmp_path / "ref_seg_translation_cli.nii.gz"
+    target_seg = tmp_path / "target_seg_translation_cli.nii.gz"
     out_lta = tmp_path / "translation_only.lta"
 
     mov_affine = np.eye(4)
-    ref_affine = np.array(
+    target_affine = np.array(
         [
             [1.0, 0.0, 0.0, 5.0],
             [0.0, 1.0, 0.0, -3.0],
@@ -373,14 +536,14 @@ def test_cli_accepts_translation_only_dof(tmp_path: Path):
         ]
     )
     _write_single_label_seg(mov_seg, affine=mov_affine)
-    _write_single_label_seg(ref_seg, affine=ref_affine)
+    _write_single_label_seg(target_seg, affine=target_affine)
 
     segreg_main(
         [
-            "--mov",
+            "--seg",
             str(mov_seg),
-            "--ref",
-            str(ref_seg),
+            "--target-seg",
+            str(target_seg),
             "--dof",
             "3",
             "--lta",
@@ -389,11 +552,11 @@ def test_cli_accepts_translation_only_dof(tmp_path: Path):
     )
 
     assert out_lta.exists()
-    assert LTA.read(out_lta).r2r() == pytest.approx(ref_affine, abs=1e-6)
+    assert LTA.read(out_lta).r2r() == pytest.approx(target_affine, abs=1e-6)
 
 
 @pytest.mark.parametrize(
-    ("dof", "ref_affine"),
+    ("dof", "target_affine"),
     [
         (
                 7,
@@ -419,21 +582,20 @@ def test_cli_accepts_translation_only_dof(tmp_path: Path):
         ),
     ],
 )
-def test_cli_accepts_similarity_and_anisotropic_dofs(tmp_path: Path, dof: int, ref_affine: np.ndarray):
+def test_cli_accepts_similarity_and_anisotropic_dofs(tmp_path: Path, dof: int, target_affine: np.ndarray):
     mov_seg = tmp_path / f"mov_seg_dof_{dof}.nii.gz"
-    ref_seg = tmp_path / f"ref_seg_dof_{dof}.nii.gz"
+    target_seg = tmp_path / f"target_seg_dof_{dof}.nii.gz"
     out_lta = tmp_path / f"out_dof_{dof}.lta"
 
-    mov_affine = np.eye(4)
-    _write_seg(mov_seg, affine=mov_affine)
-    _write_seg(ref_seg, affine=ref_affine)
+    _write_seg(mov_seg, affine=np.eye(4))
+    _write_seg(target_seg, affine=target_affine)
 
     segreg_main(
         [
-            "--mov",
+            "--seg",
             str(mov_seg),
-            "--ref",
-            str(ref_seg),
+            "--target-seg",
+            str(target_seg),
             "--dof",
             str(dof),
             "--lta",
@@ -442,7 +604,7 @@ def test_cli_accepts_similarity_and_anisotropic_dofs(tmp_path: Path, dof: int, r
     )
 
     assert out_lta.exists()
-    assert LTA.read(out_lta).r2r() == pytest.approx(ref_affine, abs=1e-6)
+    assert LTA.read(out_lta).r2r() == pytest.approx(target_affine, abs=1e-6)
 
 
 def test_cli_rejects_nonrigid_flipped_dofs(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
@@ -453,7 +615,7 @@ def test_cli_rejects_nonrigid_flipped_dofs(tmp_path: Path, capsys: pytest.Captur
     with pytest.raises(SystemExit) as exc_info:
         segreg_main(
             [
-                "--mov",
+                "--seg",
                 str(mov_seg),
                 "--flipped",
                 "--dof",
@@ -467,14 +629,50 @@ def test_cli_rejects_nonrigid_flipped_dofs(tmp_path: Path, capsys: pytest.Captur
     assert "--flipped currently supports only --dof 6." in capsys.readouterr().err
 
 
-def test_cli_writes_header_only_mapmovhdr(tmp_path: Path):
+def test_cli_bundled_fsaverage_target_writes_valid_dst_lta(tmp_path: Path):
     mov_seg = tmp_path / "mov_seg.nii.gz"
-    ref_seg = tmp_path / "ref_seg.nii.gz"
-    mov_img = tmp_path / "mov_img.nii.gz"
-    out_maphdr = tmp_path / "mapped_hdr.nii.gz"
+    out_lta = tmp_path / "fsaverage_out.lta"
+    _write_seg(mov_seg, affine=np.eye(4))
+
+    segreg_main(["--seg", str(mov_seg), "--centroids", "fsaverage", "--lta", str(out_lta)])
+
+    lta = LTA.read(out_lta)
+    assert lta.dst["valid"] == 1
+    assert lta.dst["filename"] == "fsaverage"
+    assert lta.dst["volume"] == [256, 256, 256]
+
+
+def test_cli_bundled_mni_target_writes_invalid_dst_lta(tmp_path: Path):
+    mov_seg = tmp_path / "mov_seg.nii.gz"
+    out_lta = tmp_path / "mni_out.lta"
+    _write_seg(mov_seg, affine=np.eye(4))
+
+    segreg_main([
+        "--seg",
+        str(mov_seg),
+        "--centroids",
+        MNI_ATLAS_NAME,
+        "--dof",
+        "3",
+        "--lta",
+        str(out_lta),
+    ])
+
+    lta = LTA.read(out_lta)
+    assert lta.dst["valid"] == 0
+    assert lta.dst["filename"] == MNI_ATLAS_NAME
+    with pytest.raises(ValueError, match="valid = 0"):
+        lta.v2v()
+
+
+def test_cli_external_centroid_target_with_geometry_writes_valid_dst_lta(tmp_path: Path):
+    mov_seg = tmp_path / "mov_seg.nii.gz"
+    target_seg = tmp_path / "target_seg.nii.gz"
+    target_json = tmp_path / "target.json"
+    out_lta = tmp_path / "external_target_out.lta"
 
     mov_affine = np.eye(4)
-    ref_affine = np.array(
+    target_affine = np.array(
         [
             [1.0, 0.0, 0.0, 5.0],
             [0.0, 1.0, 0.0, -3.0],
@@ -483,25 +681,32 @@ def test_cli_writes_header_only_mapmovhdr(tmp_path: Path):
         ]
     )
     _write_seg(mov_seg, affine=mov_affine)
-    _write_seg(ref_seg, affine=ref_affine)
-    _write_float_image(mov_img, affine=mov_affine)
+    _write_seg(target_seg, affine=target_affine)
 
-    segreg_main(
-        [
-            "--mov",
-            str(mov_seg),
-            "--ref",
-            str(ref_seg),
-            "--movimg",
-            str(mov_img),
-            "--mapmovhdr",
-            str(out_maphdr),
-        ]
-    )
+    segcentroids_main(["--seg", str(target_seg), "--out", str(target_json)])
+    segreg_main(["--seg", str(mov_seg), "--centroids", str(target_json), "--lta", str(out_lta)])
 
-    assert out_maphdr.exists()
-    mapped_img = nib.load(str(out_maphdr))
-    assert mapped_img.affine == pytest.approx(ref_affine)
+    lta = LTA.read(out_lta)
+    assert lta.r2r() == pytest.approx(target_affine, abs=1e-6)
+    assert lta.dst["valid"] == 1
+    assert lta.dst["filename"] == str(target_json)
+
+
+def test_cli_external_centroid_target_without_geometry_writes_invalid_dst_lta(tmp_path: Path):
+    mov_seg = tmp_path / "mov_seg.nii.gz"
+    target_json = tmp_path / "target_no_geom.json"
+    out_lta = tmp_path / "out_invalid_dst.lta"
+
+    _write_seg(mov_seg, affine=np.eye(4))
+    _write_legacy_centroids(target_json)
+
+    segreg_main(["--seg", str(mov_seg), "--centroids", str(target_json), "--lta", str(out_lta)])
+
+    lta = LTA.read(out_lta)
+    assert lta.dst["valid"] == 0
+    assert lta.dst["filename"] == str(target_json)
+    with pytest.raises(ValueError, match="valid = 0"):
+        lta.v2v()
 
 
 def test_header_map_image_preserves_lazy_proxy(tmp_path: Path):
@@ -510,56 +715,13 @@ def test_header_map_image_preserves_lazy_proxy(tmp_path: Path):
     _write_float_image(image_path, affine=affine)
 
     loaded = nib.load(str(image_path))
-    mapped = header_map_image(loaded, np.array(
-        [[1.0, 0.0, 0.0, 5.0], [0.0, 1.0, 0.0, -3.0], [0.0, 0.0, 1.0, 2.0], [0.0, 0.0, 0.0, 1.0]]))
+    mapped = header_map_image(
+        loaded,
+        np.array([[1.0, 0.0, 0.0, 5.0], [0.0, 1.0, 0.0, -3.0], [0.0, 0.0, 1.0, 2.0], [0.0, 0.0, 0.0, 1.0]]),
+    )
 
     assert isinstance(loaded.dataobj, ArrayProxy)
     assert isinstance(mapped.dataobj, ArrayProxy)
     assert mapped.affine == pytest.approx(
-        np.array([[1.0, 0.0, 0.0, 5.0], [0.0, 1.0, 0.0, -3.0], [0.0, 0.0, 1.0, 2.0], [0.0, 0.0, 0.0, 1.0]]))
-
-
-def test_cli_atlas_mode_can_export_target_centroids(tmp_path: Path):
-    mov_seg = tmp_path / "mov_seg.nii.gz"
-    out_json = tmp_path / "atlas_centroids.json"
-    _write_seg(mov_seg, affine=np.eye(4))
-
-    segreg_main([
-        "--mov",
-        str(mov_seg),
-        "--atlas",
-        "fsaverage",
-        "--write-ref-centroids",
-        str(out_json),
-    ])
-
-    assert out_json.exists()
-    exported = load_fsaverage_centroids()
-    with out_json.open() as f:
-        saved = {int(k): np.asarray(v) for k, v in __import__("json").load(f).items()}
-    assert set(saved) == set(exported)
-
-
-def test_cli_ref_centroids_without_ref_geom_writes_invalid_dst_lta(tmp_path: Path):
-    mov_seg = tmp_path / "mov_seg.nii.gz"
-    ref_centroids = tmp_path / "ref_centroids.json"
-    out_lta = tmp_path / "out_invalid_dst.lta"
-
-    _write_seg(mov_seg, affine=np.eye(4))
-    ref_centroids.write_text(
-        '{"1": [1.0, 1.0, 1.0], "2": [1.0, 5.0, 2.0], "3": [5.0, 2.0, 6.0], "4": [6.0, 6.0, 4.0]}\n')
-
-    segreg_main([
-        "--mov",
-        str(mov_seg),
-        "--ref-centroids",
-        str(ref_centroids),
-        "--lta",
-        str(out_lta),
-    ])
-
-    lta = LTA.read(out_lta)
-    assert lta.dst["valid"] == 0
-    assert lta.dst["filename"] == str(ref_centroids)
-    with pytest.raises(ValueError, match="valid = 0"):
-        lta.v2v()
+        np.array([[1.0, 0.0, 0.0, 5.0], [0.0, 1.0, 0.0, -3.0], [0.0, 0.0, 1.0, 2.0], [0.0, 0.0, 0.0, 1.0]])
+    )

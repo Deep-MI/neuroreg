@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-LabelSetName = Literal["all_shared", "fsaverage_centroids", "cortex_lr_pairs"]
+LabelSetName = Literal["all_shared", "target_centroids", "cortex_lr_pairs"]
 
 CORTEX_LH_LABELS: tuple[int, ...] = (
     1002,

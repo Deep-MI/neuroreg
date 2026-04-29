@@ -4,7 +4,7 @@ build-backend = 'setuptools.build_meta'
 
 [project]
 name = 'neuroreg'
-version = '0.5.0'
+version = '0.6.0'
 description = 'A package for 3D neuroimaging registration with PyTorch.'
 readme = 'README.md'
 license = {file = 'LICENSE'}
@@ -94,6 +94,7 @@ robreg          = "neuroreg.cli.robreg:main"
 coreg           = "neuroreg.cli.coreg:main"
 bbreg           = "neuroreg.cli.bbreg:main"
 segreg          = "neuroreg.cli.segreg:main"
+segcentroids    = "neuroreg.cli.segcentroids:main"
 lta             = "neuroreg.cli.lta:main"
 neuroreg-sys_info  = "neuroreg.cli.sys_info:run"
 

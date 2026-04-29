@@ -227,49 +227,75 @@ Run `bbreg -h` for a full argument summary with defaults.
 ### `segreg` — segmentation-based registration
 
 Registers a moving segmentation by aligning label centroids to another
-segmentation, to bundled atlas centroids such as `fsaverage`, or to a
-left-right flipped self target for upright/midspace workflows. The centroid
-fit now supports translation-only (`3`), rigid (`6`), similarity /
-global-scale (`7`), anisotropic no-shear scaling (`9`), or full affine
-(`12`) transforms.
+segmentation, to a centroid target JSON file (or bundled target name such as
+`fsaverage` or `mni_icbm152_t1_tal_nlin_asym_09c`), or to a left-right flipped
+self target for upright/midspace workflows. The centroid fit supports
+translation-only (`3`), rigid (`6`), similarity / global-scale (`7`),
+anisotropic no-shear scaling (`9`), or full affine (`12`) transforms.
 
-`segreg` can also write mapped outputs while the package does not yet have a
-separate transform-application CLI. If `--movimg` is provided, `--mapmov` and
-`--mapmovhdr` map that intensity image with the recovered transform; otherwise
-those outputs map the moving segmentation itself.
+`segreg` writes the recovered transform as an LTA. When the target is a
+segmentation, its geometry is written into the LTA destination volume info. When
+the target is a centroid target JSON file, embedded geometry is used when
+present; otherwise the destination volume info is marked invalid.
 
 ```
-segreg --mov <moving_seg.mgz> (--ref <ref_seg.mgz> | --ref-centroids <centroids.json> | --atlas fsaverage | --flipped) [options]
+segreg --seg <moving_seg.mgz> (--target-seg <target_seg.mgz> | --centroids <target.json|fsaverage> | --flipped) --lta <out.lta> [options]
 ```
 
 **Common outputs**
 
 - `--lta FILE` writes the recovered transform as an LTA.
-- `--movimg FILE` provides a separate intensity image for `--mapmov` or `--mapmovhdr`.
-- `--mapmov FILE` writes a resliced mapped output. It maps `--movimg` when provided; otherwise it reslices the moving segmentation itself.
-- `--mapmovhdr FILE` writes a header-only mapped output. It maps `--movimg` when provided; otherwise it remaps the moving segmentation itself.
 
 **Examples**
 
 ```bash
 # Register a subject segmentation to another segmentation
-segreg --mov sub-01/aparc+aseg.mgz --ref sub-02/aparc+aseg.mgz \
+segreg --seg sub-01/aparc+aseg.mgz --target-seg sub-02/aparc+aseg.mgz \
        --lta sub01_to_sub02.lta
 
-# Register a segmentation, then map a separate intensity image with the same transform
-segreg --mov subj/mri/aparc+aseg.mgz --movimg subj/mri/orig.mgz --atlas fsaverage \
-       --lta subj_to_fsaverage.lta --mapmov orig_in_fsaverage_space.mgz
+# Register to a bundled centroid target
+segreg --seg subj/mri/aparc+aseg.mgz --centroids fsaverage \
+       --lta subj_to_fsaverage.lta
 
-# If --movimg is omitted, --mapmov maps the segmentation itself
-segreg --mov subj/mri/aparc+aseg.mgz --atlas fsaverage \
-       --mapmov aparc_aseg_in_fsaverage_space.mgz
+# Register to an exported centroid target JSON file
+segreg --seg subj/mri/aparc+aseg.mgz --centroids atlas_target.json \
+       --lta subj_to_atlas_target.lta
 
-# Export centroid JSON only
-segreg --mov subj/mri/aparc+aseg.mgz --atlas fsaverage \
-       --write-mov-centroids subj_centroids.json --write-ref-centroids fsaverage_centroids.json
+# Upright a segmentation with left-right self registration
+segreg --seg subj/mri/aparc+aseg.mgz --flipped --lta subj_upright_half.lta
 ```
 
 Run `segreg -h` for a full argument summary with defaults.
+
+---
+
+### `segcentroids` — write centroid target JSON files
+
+Computes label centroids from a segmentation or reads an existing target JSON
+file, then writes a target JSON file with required centroid coordinates plus
+embedded geometry metadata. By default geometry is taken from `--seg`; use
+`--geometry` to embed geometry from a different image such as the original atlas
+intensity volume. When `--input` is used, the existing centroids are preserved
+and `--geometry` adds or replaces the geometry section.
+
+```
+segcentroids (--seg <segmentation.mgz> | --input <target.json>) --out <target.json> [--geometry <image.mgz>] [options]
+```
+
+**Examples**
+
+```bash
+# Export a target file using the segmentation geometry
+segcentroids --seg subj/mri/aparc+aseg.mgz --out subj_target.json
+
+# Export centroids from a segmentation but store geometry from the original atlas image
+segcentroids --seg atlas/aparc+aseg.mgz --geometry atlas/T1.mgz --out atlas_target.json
+
+# Add or replace geometry on an existing target JSON file without recomputing centroids
+segcentroids --input atlas_target.json --geometry atlas/T1.mgz --out atlas_target_with_geom.json
+```
+
+Run `segcentroids -h` for a full argument summary with defaults.
 
 ---
 
