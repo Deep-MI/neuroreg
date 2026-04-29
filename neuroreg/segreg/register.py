@@ -124,8 +124,13 @@ def _load_centroid_target(source: str | Path) -> tuple[str, TargetFile]:
     """Load a centroid target from either a JSON path or a bundled atlas name."""
     source_name = str(source)
     source_path = Path(source_name)
+    if source_path.is_file():
+        try:
+            return source_name, read_target_json(source_path)
+        except OSError as exc:
+            raise ValueError(f"Invalid centroid target file '{source_name}': {exc}") from exc
     if source_path.exists():
-        return source_name, read_target_json(source_path)
+        raise ValueError(f"Invalid centroid target file '{source_name}': expected a JSON file.")
     if source_name in available_atlases():
         return source_name, load_atlas_target(source_name)
     raise ValueError(

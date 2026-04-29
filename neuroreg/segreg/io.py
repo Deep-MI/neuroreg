@@ -72,11 +72,49 @@ def _coerce_centroids(payload: dict[Any, Any]) -> CentroidDict:
 
 def _coerce_geometry(payload: dict[str, Any]) -> GeometryDict:
     """Normalize decoded geometry metadata to the internal header-like shape."""
+    if not isinstance(payload, dict):
+        msg = "geometry must be a JSON object with keys: dims, delta, Mdc, Pxyz_c"
+        raise ValueError(msg)
+
+    required_keys = ("dims", "delta", "Mdc", "Pxyz_c")
+    missing_keys = [key for key in required_keys if key not in payload]
+    if missing_keys:
+        missing = ", ".join(missing_keys)
+        raise ValueError(f"geometry is missing required key(s): {missing}")
+
+    try:
+        dims = [int(v) for v in payload["dims"]]
+    except (TypeError, ValueError) as exc:
+        raise ValueError("geometry['dims'] must be a sequence of 3 integers") from exc
+    if len(dims) != 3:
+        raise ValueError("geometry['dims'] must contain exactly 3 values")
+
+    try:
+        delta = [float(v) for v in payload["delta"]]
+    except (TypeError, ValueError) as exc:
+        raise ValueError("geometry['delta'] must be a sequence of 3 numbers") from exc
+    if len(delta) != 3:
+        raise ValueError("geometry['delta'] must contain exactly 3 values")
+
+    try:
+        mdc = np.asarray(payload["Mdc"], dtype=np.float64)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("geometry['Mdc'] must be a 3x3 numeric array") from exc
+    if mdc.shape != (3, 3):
+        raise ValueError("geometry['Mdc'] must have shape (3, 3)")
+
+    try:
+        pxyz_c = np.asarray(payload["Pxyz_c"], dtype=np.float64)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("geometry['Pxyz_c'] must be a numeric array with 3 values") from exc
+    if pxyz_c.shape != (3,):
+        raise ValueError("geometry['Pxyz_c'] must have shape (3,)")
+
     return {
-        "dims": [int(v) for v in payload["dims"]],
-        "delta": [float(v) for v in payload["delta"]],
-        "Mdc": np.asarray(payload["Mdc"], dtype=np.float64),
-        "Pxyz_c": np.asarray(payload["Pxyz_c"], dtype=np.float64),
+        "dims": dims,
+        "delta": delta,
+        "Mdc": mdc,
+        "Pxyz_c": pxyz_c,
     }
 
 

@@ -4,8 +4,8 @@
 from __future__ import annotations
 
 import argparse
-
 import logging
+
 from ..segreg.io import geometry_from_image, read_target_json, write_target_json
 from ..segreg.register import export_segmentation_target
 

@@ -254,6 +254,33 @@ def test_read_target_json_accepts_legacy_centroid_mapping(tmp_path: Path):
     assert target.geometry is None
 
 
+def test_read_target_json_rejects_incomplete_geometry(tmp_path: Path):
+    target_path = tmp_path / "bad_geometry.json"
+    target_path.write_text('{"centroids": {"1": [1.0, 2.0, 3.0]}, "geometry": {"dims": [8, 8, 8]}}\n')
+
+    with pytest.raises(ValueError, match="geometry is missing required key"):
+        read_target_json(target_path)
+
+
+def test_read_target_json_rejects_bad_geometry_shape(tmp_path: Path):
+    target_path = tmp_path / "bad_geometry_shape.json"
+    target_path.write_text(
+        '{"centroids": {"1": [1.0, 2.0, 3.0]}, "geometry": '
+        '{"dims": [8, 8, 8], "delta": [1.0, 1.0, 1.0], "Mdc": [[1, 0], [0, 1]], "Pxyz_c": [0.0, 0.0, 0.0]}}\n'
+    )
+
+    with pytest.raises(ValueError, match=r"geometry\['Mdc'\] must have shape \(3, 3\)"):
+        read_target_json(target_path)
+
+
+def test_segreg_rejects_directory_as_centroid_target(tmp_path: Path):
+    mov_path = tmp_path / "mov_seg.nii.gz"
+    _write_seg(mov_path, affine=np.eye(4))
+
+    with pytest.raises(ValueError, match="expected a JSON file"):
+        segreg(mov_path, centroids=tmp_path)
+
+
 def test_segreg_registers_segmentation_images_in_ras(tmp_path: Path):
     mov_path = tmp_path / "mov_seg.nii.gz"
     target_path = tmp_path / "target_seg.nii.gz"
