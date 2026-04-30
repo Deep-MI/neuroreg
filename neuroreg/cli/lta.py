@@ -143,6 +143,8 @@ def _write_lta_as_transform(
 ) -> None:
     fmt = _infer_transform_format(output, explicit=output_format)
     if fmt == "lta":
+        if subject is not None:
+            lta.subject = subject
         lta_type = None if out_type is None else {"vox2vox": 0, "ras2ras": 1}[out_type]
         lta.write(output, lta_type=lta_type)
     elif fmt == "xfm":
@@ -350,7 +352,7 @@ def _build_parser() -> argparse.ArgumentParser:
         choices=["ras2ras", "vox2vox"],
         help="Output LTA storage type when OUTPUT ends in .lta (default: preserve the input LTA storage type).",
     )
-    conv_p.add_argument("--subject", help="Subject metadata to store when writing register.dat.")
+    conv_p.add_argument("--subject", help="Subject metadata to store when writing .lta or register.dat.")
     conv_p.add_argument(
         "--fscale",
         type=float,

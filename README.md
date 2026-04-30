@@ -452,7 +452,8 @@ lta convert INPUT OUTPUT [--in-format {lta,xfm,fsl,regdat,itk,antsmat,afni,nifty
 - Experimental AFNI support targets affine text matrices in AFNI's DICOM/LPS convention.
 - NiftyReg stores the inverse target-to-source RAS matrix in the file, matching
   FreeSurfer's `lta_convert` handling.
-- `--subject`, `--fscale`, and `--float2int` apply when writing `register.dat`.
+- `--subject` applies when writing `.lta` or `register.dat`.
+- `--fscale` and `--float2int` apply when writing `register.dat`.
 - `--out-type` applies when writing `.lta` output.
 
 **Examples**
@@ -460,6 +461,9 @@ lta convert INPUT OUTPUT [--in-format {lta,xfm,fsl,regdat,itk,antsmat,afni,nifty
 ```bash
 # XFM -> LTA with explicit image geometry
 lta convert talairach.xfm talairach.lta --src-img mov.mgz --dst-img ref.mgz
+
+# XFM -> LTA with explicit subject metadata
+lta convert talairach.xfm talairach.lta --src-img mov.mgz --dst-img ref.mgz --subject fsaverage
 
 # LTA -> XFM
 lta convert sub01_to_mni.lta sub01_to_mni.xfm
