@@ -744,6 +744,32 @@ class TestConvertCLI:
         assert reread.type == 1
         assert reread.r2r() == pytest.approx(np.eye(4), abs=1e-10)
 
+    def test_convert_lta_to_lta_defaults_missing_fscale_to_point_one(self, tmp_path: Path):
+        src_img = _make_image(tmp_path / "mov.nii.gz")
+        dst_img = _make_image(tmp_path / "ref.nii.gz")
+        lta = LTA.from_matrix(np.eye(4), src_img, src_img, dst_img, dst_img, lta_type=1)
+        lta_path = tmp_path / "input_no_fscale.lta"
+        out = tmp_path / "roundtrip_default_fscale.lta"
+        lta.write(lta_path)
+
+        main(["convert", str(lta_path), str(out)])
+
+        reread = LTA.read(out)
+        assert reread.fscale == pytest.approx(0.1)
+
+    def test_convert_lta_to_lta_respects_explicit_fscale(self, tmp_path: Path):
+        src_img = _make_image(tmp_path / "mov.nii.gz")
+        dst_img = _make_image(tmp_path / "ref.nii.gz")
+        lta = LTA.from_matrix(np.eye(4), src_img, src_img, dst_img, dst_img, lta_type=1)
+        lta_path = tmp_path / "input_custom_fscale.lta"
+        out = tmp_path / "roundtrip_custom_fscale.lta"
+        lta.write(lta_path)
+
+        main(["convert", str(lta_path), str(out), "--fscale", "0.25"])
+
+        reread = LTA.read(out)
+        assert reread.fscale == pytest.approx(0.25)
+
     def test_convert_lta_to_fsl_and_back(self, tmp_path: Path):
         src_img = _make_image(tmp_path / "mov.nii.gz", affine=np.eye(4))
         dst_img = _make_image(tmp_path / "ref.nii.gz", affine=np.eye(4))
