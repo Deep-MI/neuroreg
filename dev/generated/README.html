@@ -893,12 +893,19 @@ composite transform files.</p></li>
 <li><p>Experimental AFNI support targets affine text matrices in AFNI’s DICOM/LPS convention.</p></li>
 <li><p>NiftyReg stores the inverse target-to-source RAS matrix in the file, matching
 FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">lta_convert</span></code> handling.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--subject</span></code>, <code class="docutils literal notranslate"><span class="pre">--fscale</span></code>, and <code class="docutils literal notranslate"><span class="pre">--float2int</span></code> apply when writing <code class="docutils literal notranslate"><span class="pre">register.dat</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--subject</span></code> and <code class="docutils literal notranslate"><span class="pre">--fscale</span></code> apply when writing <code class="docutils literal notranslate"><span class="pre">.lta</span></code> or <code class="docutils literal notranslate"><span class="pre">register.dat</span></code>.</p></li>
+<li><p>When <code class="docutils literal notranslate"><span class="pre">.lta</span></code> or <code class="docutils literal notranslate"><span class="pre">register.dat</span></code> output has no incoming <code class="docutils literal notranslate"><span class="pre">fscale</span></code> metadata and you do
+not pass <code class="docutils literal notranslate"><span class="pre">--fscale</span></code>, neuroreg writes <code class="docutils literal notranslate"><span class="pre">fscale</span> <span class="pre">0.1</span></code> to match FreeSurfer’s
+<code class="docutils literal notranslate"><span class="pre">lta_convert</span></code> default.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--float2int</span></code> applies when writing <code class="docutils literal notranslate"><span class="pre">register.dat</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--out-type</span></code> applies when writing <code class="docutils literal notranslate"><span class="pre">.lta</span></code> output.</p></li>
 </ul>
 <p><strong>Examples</strong></p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># XFM -&gt; LTA with explicit image geometry</span>
 lta<span class="w"> </span>convert<span class="w"> </span>talairach.xfm<span class="w"> </span>talairach.lta<span class="w"> </span>--src-img<span class="w"> </span>mov.mgz<span class="w"> </span>--dst-img<span class="w"> </span>ref.mgz
+
+<span class="c1"># XFM -&gt; LTA with explicit subject metadata</span>
+lta<span class="w"> </span>convert<span class="w"> </span>talairach.xfm<span class="w"> </span>talairach.lta<span class="w"> </span>--src-img<span class="w"> </span>mov.mgz<span class="w"> </span>--dst-img<span class="w"> </span>ref.mgz<span class="w"> </span>--subject<span class="w"> </span>fsaverage
 
 <span class="c1"># LTA -&gt; XFM</span>
 lta<span class="w"> </span>convert<span class="w"> </span>sub01_to_mni.lta<span class="w"> </span>sub01_to_mni.xfm

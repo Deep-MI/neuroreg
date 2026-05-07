@@ -385,6 +385,12 @@
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="n">fmt</span> <span class="o">=</span> <span class="n">_infer_transform_format</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">explicit</span><span class="o">=</span><span class="n">output_format</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">fmt</span> <span class="o">==</span> <span class="s2">&quot;lta&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">subject</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">lta</span><span class="o">.</span><span class="n">subject</span> <span class="o">=</span> <span class="n">subject</span>
+        <span class="k">if</span> <span class="n">fscale</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">lta</span><span class="o">.</span><span class="n">fscale</span> <span class="o">=</span> <span class="n">fscale</span>
+        <span class="k">elif</span> <span class="n">lta</span><span class="o">.</span><span class="n">fscale</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">lta</span><span class="o">.</span><span class="n">fscale</span> <span class="o">=</span> <span class="mf">0.1</span>
         <span class="n">lta_type</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">out_type</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">{</span><span class="s2">&quot;vox2vox&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;ras2ras&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}[</span><span class="n">out_type</span><span class="p">]</span>
         <span class="n">lta</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">lta_type</span><span class="o">=</span><span class="n">lta_type</span><span class="p">)</span>
     <span class="k">elif</span> <span class="n">fmt</span> <span class="o">==</span> <span class="s2">&quot;xfm&quot;</span><span class="p">:</span>
@@ -592,11 +598,11 @@
         <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ras2ras&quot;</span><span class="p">,</span> <span class="s2">&quot;vox2vox&quot;</span><span class="p">],</span>
         <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Output LTA storage type when OUTPUT ends in .lta (default: preserve the input LTA storage type).&quot;</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">conv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--subject&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Subject metadata to store when writing register.dat.&quot;</span><span class="p">)</span>
+    <span class="n">conv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--subject&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Subject metadata to store when writing .lta or register.dat.&quot;</span><span class="p">)</span>
     <span class="n">conv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
         <span class="s2">&quot;--fscale&quot;</span><span class="p">,</span>
         <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Intensity/fscale metadata to store when writing register.dat.&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Intensity/fscale metadata to store when writing .lta or register.dat.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">conv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
         <span class="s2">&quot;--float2int&quot;</span><span class="p">,</span>
