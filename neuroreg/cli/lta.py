@@ -145,6 +145,10 @@ def _write_lta_as_transform(
     if fmt == "lta":
         if subject is not None:
             lta.subject = subject
+        if fscale is not None:
+            lta.fscale = fscale
+        elif lta.fscale is None:
+            lta.fscale = 0.1
         lta_type = None if out_type is None else {"vox2vox": 0, "ras2ras": 1}[out_type]
         lta.write(output, lta_type=lta_type)
     elif fmt == "xfm":
@@ -356,7 +360,7 @@ def _build_parser() -> argparse.ArgumentParser:
     conv_p.add_argument(
         "--fscale",
         type=float,
-        help="Intensity/fscale metadata to store when writing register.dat.",
+        help="Intensity/fscale metadata to store when writing .lta or register.dat.",
     )
     conv_p.add_argument(
         "--float2int",

@@ -452,8 +452,11 @@ lta convert INPUT OUTPUT [--in-format {lta,xfm,fsl,regdat,itk,antsmat,afni,nifty
 - Experimental AFNI support targets affine text matrices in AFNI's DICOM/LPS convention.
 - NiftyReg stores the inverse target-to-source RAS matrix in the file, matching
   FreeSurfer's `lta_convert` handling.
-- `--subject` applies when writing `.lta` or `register.dat`.
-- `--fscale` and `--float2int` apply when writing `register.dat`.
+- `--subject` and `--fscale` apply when writing `.lta` or `register.dat`.
+- When `.lta` or `register.dat` output has no incoming `fscale` metadata and you do
+  not pass `--fscale`, neuroreg writes `fscale 0.1` to match FreeSurfer's
+  `lta_convert` default.
+- `--float2int` applies when writing `register.dat`.
 - `--out-type` applies when writing `.lta` output.
 
 **Examples**
