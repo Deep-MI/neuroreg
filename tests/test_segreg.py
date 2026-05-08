@@ -16,7 +16,7 @@ from neuroreg.segreg.atlas import (
     load_fsaverage_data,
 )
 from neuroreg.segreg.centroids import build_flipped_centroid_targets
-from neuroreg.segreg.io import read_target_json
+from neuroreg.segreg.io import geometry_from_image, read_target_json
 from neuroreg.segreg.points import (
     find_affine,
     find_rigid,
@@ -46,6 +46,11 @@ def _write_seg(path: Path, *, affine: np.ndarray) -> None:
 def _write_float_image(path: Path, *, affine: np.ndarray) -> None:
     data = np.arange(8 * 8 * 8, dtype=np.float32).reshape(8, 8, 8)
     nib.save(nib.Nifti1Image(data, affine=affine), path)
+
+
+def _write_mgh_image(path: Path, *, affine: np.ndarray, shape: tuple[int, int, int] = (7, 9, 11)) -> None:
+    data = np.arange(np.prod(shape), dtype=np.float32).reshape(shape)
+    nib.save(nib.MGHImage(data, affine=affine), path)
 
 
 def _write_single_label_seg(path: Path, *, affine: np.ndarray) -> None:
@@ -242,6 +247,61 @@ def test_load_fsaverage_resources():
     assert centroids[2].shape == (3,)
     assert affine.shape == (4, 4)
     assert header["dims"] == [256, 256, 256]
+
+
+def test_geometry_from_mgh_image_matches_freesurfer_mdc_semantics(tmp_path: Path):
+    path = tmp_path / "geom.mgz"
+    affine = np.array(
+        [
+            [0.0, -1.5, 0.0, 10.0],
+            [1.0, 0.0, 0.0, -20.0],
+            [0.0, 0.0, 2.0, 30.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    _write_mgh_image(path, affine=affine)
+
+    img = nib.load(path)
+    geometry = geometry_from_image(img)
+
+    assert geometry["Mdc"] == pytest.approx(np.asarray(img.header["Mdc"], dtype=np.float64))
+
+
+def test_affine_from_header_roundtrips_mgh_geometry(tmp_path: Path):
+    path = tmp_path / "geom_roundtrip.mgz"
+    affine = np.array(
+        [
+            [0.0, -1.5, 0.0, 10.0],
+            [1.0, 0.0, 0.0, -20.0],
+            [0.0, 0.0, 2.0, 30.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    _write_mgh_image(path, affine=affine)
+
+    img = nib.load(path)
+    geometry = geometry_from_image(img)
+    reconstructed = affine_from_header(geometry)
+
+    assert reconstructed == pytest.approx(img.affine)
+    assert reconstructed == pytest.approx(img.header.get_affine())
+    assert reconstructed == pytest.approx(img.header.get_vox2ras())
+
+
+def test_affine_from_header_reconstructs_fsaverage_vox2ras():
+    target = load_atlas_target("fsaverage")
+    assert target.geometry is not None
+
+    expected = np.array(
+        [
+            [-1.0, 0.0, 0.0, 128.0],
+            [0.0, 0.0, 1.0, -128.0],
+            [0.0, -1.0, 0.0, 128.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+
+    assert affine_from_header(target.geometry) == pytest.approx(expected)
 
 
 def test_read_target_json_accepts_legacy_centroid_mapping(tmp_path: Path):

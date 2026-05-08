@@ -65,6 +65,6 @@ def affine_from_header(header: GeometryDict) -> npt.NDArray[np.float64]:
     pxyz_c = np.asarray(header["Pxyz_c"], dtype=np.float64)
 
     affine = np.eye(4, dtype=np.float64)
-    affine[:3, :3] = mdc * delta
+    affine[:3, :3] = mdc.T * delta
     affine[:3, 3] = pxyz_c - affine[:3, :3] @ (dims / 2.0)
     return affine
