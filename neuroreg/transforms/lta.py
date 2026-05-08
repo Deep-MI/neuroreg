@@ -52,9 +52,11 @@ def _header_info(src: _AnyHeader) -> dict:
 
     Convention
     ----------
-    ``Mdc`` columns are the unit direction cosines of the x/y/z voxel axes in
-    scanner-RAS (``affine[:3,:3] / zooms``).  ``Pxyz_c`` uses FreeSurfer's
-    ``shape/2`` centre-voxel convention.
+    ``Mdc`` follows FreeSurfer / nibabel ``MGHHeader['Mdc']`` semantics, where
+    each *row* stores the unit direction cosines of a voxel axis in
+    scanner-RAS. The voxel-to-RAS linear part is therefore reconstructed as
+    ``Mdc.T * delta``. ``Pxyz_c`` uses FreeSurfer's ``shape/2`` centre-voxel
+    convention.
     """
     if isinstance(src, dict):
         return src
@@ -75,7 +77,7 @@ def _header_info(src: _AnyHeader) -> dict:
     return {
         "dims": shape,
         "delta": zooms.tolist(),
-        "Mdc": affine[:3, :3] / zooms,
+        "Mdc": (affine[:3, :3] / zooms).T,
         "Pxyz_c": affine[:3, :3] @ (np.array(shape) / 2.0) + affine[:3, 3],
     }
 
@@ -120,10 +122,10 @@ def _affine_from_info(info: dict) -> np.ndarray:
 def _header_to_vol_info(hdr: dict, fname: str = "") -> dict:
     """Convert a :func:`_header_info` dict to LTA volume-info format.
 
-    Maps the ``Mdc`` / ``Pxyz_c`` / ``dims`` / ``delta`` keys produced by
-    :func:`_header_info` to the ``xras`` / ``yras`` / ``zras`` / ``cras`` /
-    ``voxelsize`` / ``volume`` keys expected by :func:`_affine_from_info` and
-    stored in ``.lta`` files.
+    Maps the FreeSurfer-style ``Mdc`` / ``Pxyz_c`` / ``dims`` / ``delta`` keys
+    produced by :func:`_header_info` to the ``xras`` / ``yras`` / ``zras`` /
+    ``cras`` / ``voxelsize`` / ``volume`` keys expected by
+    :func:`_affine_from_info` and stored in ``.lta`` files.
     """
     Mdc = np.asarray(hdr["Mdc"])
     Pxyz_c = np.asarray(hdr["Pxyz_c"])
@@ -131,9 +133,9 @@ def _header_to_vol_info(hdr: dict, fname: str = "") -> dict:
         "filename": fname,
         "volume": list(hdr["dims"]),
         "voxelsize": list(hdr["delta"]),
-        "xras": Mdc[:, 0].tolist(),
-        "yras": Mdc[:, 1].tolist(),
-        "zras": Mdc[:, 2].tolist(),
+        "xras": Mdc[0, :].tolist(),
+        "yras": Mdc[1, :].tolist(),
+        "zras": Mdc[2, :].tolist(),
         "cras": Pxyz_c.tolist(),
     }
 
@@ -582,4 +584,3 @@ class LTA:
         the transform, not source/dst geometry.  Delegates to :func:`sphere_dist`.
         """
         return sphere_dist(self.r2r(), other.r2r() if other is not None else None, radius=radius)
-
