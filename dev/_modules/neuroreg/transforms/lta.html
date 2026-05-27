@@ -243,6 +243,7 @@
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TypeAlias</span>
 
@@ -336,6 +337,18 @@
         <span class="s2">&quot;zras&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
         <span class="s2">&quot;cras&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
     <span class="p">}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_safe_getuser</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a username-like value even when the UID lacks a passwd entry.&quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">getpass</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">getpass</span><span class="o">.</span><span class="n">getuser</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;getpass.getuser() failed; falling back to numeric uid&quot;</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">getuid</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">os</span><span class="p">,</span> <span class="s2">&quot;getuid&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">getuid</span><span class="p">())</span> <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">getuid</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;UNKNOWN&quot;</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_affine_from_info</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
@@ -649,7 +662,6 @@
 <span class="sd">            written as stored.  When given and different from the stored type,</span>
 <span class="sd">            the matrix is converted before writing; ``self`` is not mutated.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">getpass</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
 
         <span class="k">if</span> <span class="n">lta_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">lta_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
@@ -676,7 +688,7 @@
 
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
             <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;# transform file </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;# created by </span><span class="si">{</span><span class="n">getpass</span><span class="o">.</span><span class="n">getuser</span><span class="p">()</span><span class="si">}</span><span class="s2"> on </span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">ctime</span><span class="p">()</span><span class="si">}</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;# created by </span><span class="si">{</span><span class="n">_safe_getuser</span><span class="p">()</span><span class="si">}</span><span class="s2"> on </span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">ctime</span><span class="p">()</span><span class="si">}</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;type      = </span><span class="si">{</span><span class="n">out_type</span><span class="si">}</span><span class="s2"> # </span><span class="si">{</span><span class="n">type_name</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;nxforms   = 1</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;mean      = 0.0 0.0 0.0</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
