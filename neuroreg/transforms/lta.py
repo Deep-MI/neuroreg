@@ -106,7 +106,7 @@ def _safe_getuser() -> str:
     except Exception:
         logger.debug("getpass.getuser() failed; falling back to numeric uid", exc_info=True)
         getuid = getattr(os, "getuid", None)
-        return f"uid={getuid()}" if getuid is not None else "UNKNOWN"
+        return str(getuid()) if callable(getuid) else "UNKNOWN"
 
 
 def _affine_from_info(info: dict) -> np.ndarray:
