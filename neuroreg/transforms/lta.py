@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 from typing import TypeAlias
 
@@ -94,6 +95,18 @@ def _invalid_vol_info(fname: str = "") -> dict:
         "zras": [0.0, 0.0, 1.0],
         "cras": [0.0, 0.0, 0.0],
     }
+
+
+def _safe_getuser() -> str:
+    """Return a username-like value even when the UID lacks a passwd entry."""
+    import getpass
+
+    try:
+        return getpass.getuser()
+    except Exception:
+        logger.debug("getpass.getuser() failed; falling back to numeric uid", exc_info=True)
+        getuid = getattr(os, "getuid", None)
+        return str(getuid()) if callable(getuid) else "UNKNOWN"
 
 
 def _affine_from_info(info: dict) -> np.ndarray:
@@ -397,7 +410,6 @@ class LTA:
             written as stored.  When given and different from the stored type,
             the matrix is converted before writing; ``self`` is not mutated.
         """
-        import getpass
         from datetime import datetime
 
         if lta_type is not None and lta_type not in (0, 1):
@@ -424,7 +436,7 @@ class LTA:
 
         with open(filename, "w") as f:
             f.write(f"# transform file {filename}\n")
-            f.write(f"# created by {getpass.getuser()} on {datetime.now().ctime()}\n\n")
+            f.write(f"# created by {_safe_getuser()} on {datetime.now().ctime()}\n\n")
             f.write(f"type      = {out_type} # {type_name}\n")
             f.write("nxforms   = 1\n")
             f.write("mean      = 0.0 0.0 0.0\n")
