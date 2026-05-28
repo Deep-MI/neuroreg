@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 
 from ..image.geometry import vox2tkras_from_volume_info
-from .lta import LTA, _affine_from_info, _AnyHeader, _header_info, _header_to_vol_info
+from .lta import LTA, _AnyHeader, _header_info, _header_to_vol_info, affine_from_volume_info
 
 _VALID_FLOAT2INT = {"tkregister", "round", "floor"}
 
@@ -95,8 +95,8 @@ class RegisterDat:
         RegisterDat
             Wrapper containing the equivalent tkregister transform.
         """
-        src_affine = _affine_from_info(lta.src)
-        dst_affine = _affine_from_info(lta.dst)
+        src_affine = affine_from_volume_info(lta.src)
+        dst_affine = affine_from_volume_info(lta.dst)
         src_vox2tkras = vox2tkras_from_volume_info(lta.src)
         dst_vox2tkras = vox2tkras_from_volume_info(lta.dst)
         src_ras2tkras = src_vox2tkras @ np.linalg.inv(src_affine)
@@ -143,8 +143,8 @@ class RegisterDat:
         """
         src = _header_to_vol_info(_header_info(src_img), src_fname)
         dst = _header_to_vol_info(_header_info(dst_img), dst_fname)
-        src_affine = _affine_from_info(src)
-        dst_affine = _affine_from_info(dst)
+        src_affine = affine_from_volume_info(src)
+        dst_affine = affine_from_volume_info(dst)
         src_vox2tkras = vox2tkras_from_volume_info(src)
         dst_vox2tkras = vox2tkras_from_volume_info(dst)
         src_ras2tkras = src_vox2tkras @ np.linalg.inv(src_affine)

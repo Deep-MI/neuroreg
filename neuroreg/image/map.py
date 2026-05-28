@@ -58,6 +58,7 @@ def map(
         target_shape: tuple[int, int, int] | None = None,
         mode: str = "linear",
         padding_mode: str = "zeros",
+        padding_value: float | None = None,
 ) -> torch.Tensor:
     """Map an input image to another space using the inverse transformation matrix.
 
@@ -81,6 +82,9 @@ def map(
     padding_mode : {'zeros', 'border', 'reflection'}, optional
         Padding strategy for out-of-bounds coordinates, passed directly to
         :func:`torch.nn.functional.grid_sample`.  Default is ``'zeros'``.
+    padding_value : float, optional
+        Constant value used for out-of-bounds samples when ``padding_mode`` is
+        ``"zeros"``. When omitted, PyTorch's standard zero padding is used.
 
     Returns
     -------
@@ -93,11 +97,14 @@ def map(
     ValueError
         If *mode* is not ``'linear'`` or ``'nearest'``, or if
         *padding_mode* is not one of ``'zeros'``, ``'border'``, or
-        ``'reflection'``.
+        ``'reflection'``. Also raised when *padding_value* is supplied with a
+        non-``"zeros"`` padding mode.
     """
     torch_mode = _normalize_interpolation_mode(mode)
     if padding_mode not in ("zeros", "border", "reflection"):
         raise ValueError(f"padding_mode must be 'zeros', 'border', or 'reflection', got '{padding_mode}'.")
+    if padding_value is not None and padding_mode != "zeros":
+        raise ValueError("padding_value may only be used with padding_mode='zeros'.")
     if not is_torch_mat:
         torch_transform = trans.convert_v2v_to_torch(transform, image.shape, target_shape)
     else:
@@ -106,8 +113,25 @@ def map(
     out_shape = target_shape if target_shape is not None else image.shape
     grid_size = (1, 1) + tuple(out_shape)
     grid = nn.functional.affine_grid(torch_transform.unsqueeze(0).float(), grid_size, align_corners=False)
-    return nn.functional.grid_sample(
-        image.unsqueeze(0).unsqueeze(0), grid, mode=torch_mode, padding_mode=padding_mode, align_corners=False
+    input_image = image.unsqueeze(0).unsqueeze(0)
+    if padding_value is None or padding_value == 0.0:
+        return nn.functional.grid_sample(
+            input_image,
+            grid,
+            mode=torch_mode,
+            padding_mode=padding_mode,
+            align_corners=False,
+        ).squeeze()
+    padding_value_t = torch.as_tensor(padding_value, dtype=input_image.dtype, device=input_image.device)
+    shifted = input_image - padding_value_t
+    return (
+        nn.functional.grid_sample(
+            shifted,
+            grid,
+            mode=torch_mode,
+            padding_mode="zeros",
+            align_corners=False,
+        ) + padding_value_t
     ).squeeze()
 
 
@@ -119,6 +143,7 @@ def map_r2r(
         target_shape: tuple[int, int, int] | None = None,
         mode: str = "linear",
         padding_mode: str = "zeros",
+        padding_value: float | None = None,
 ) -> torch.Tensor:
     """Map an image using a RAS-to-RAS transform without a v2v intermediate.
 
@@ -149,6 +174,9 @@ def map_r2r(
         ``'bilinear'`` name. Default is ``'linear'``.
     padding_mode : {'zeros', 'border', 'reflection'}, optional
         Out-of-bounds padding.  Default is ``'zeros'``.
+    padding_value : float, optional
+        Constant value used for out-of-bounds samples when ``padding_mode`` is
+        ``"zeros"``.
 
     Returns
     -------
@@ -158,7 +186,15 @@ def map_r2r(
     if target_shape is None:
         target_shape = image.shape
     torch_mat = trans.convert_r2r_to_torch(r2r, image.shape, source_affine, target_shape, target_affine)
-    return map(image, torch_mat, is_torch_mat=True, target_shape=target_shape, mode=mode, padding_mode=padding_mode)
+    return map(
+        image,
+        torch_mat,
+        is_torch_mat=True,
+        target_shape=target_shape,
+        mode=mode,
+        padding_mode=padding_mode,
+        padding_value=padding_value,
+    )
 
 
 def resample_isotropic(
@@ -371,6 +407,7 @@ def reslice_r2r_image(
         target_shape: tuple[int, int, int],
         mode: str = "linear",
         padding_mode: str = "zeros",
+        padding_value: float | None = None,
         keep_dtype: bool = False,
 ) -> Any:
     """Reslice an image with a RAS-to-RAS transform into a target geometry.
@@ -391,6 +428,9 @@ def reslice_r2r_image(
         translated internally to PyTorch's ``'bilinear'`` backend name.
     padding_mode : {'zeros', 'border', 'reflection'}, default='zeros'
         Out-of-bounds padding mode.
+    padding_value : float, optional
+        Constant out-of-bounds fill value used when ``padding_mode`` is
+        ``"zeros"``.
     keep_dtype : bool, default=False
         If ``True``, cast the final mapped output back to the source image data
         type. This mirrors FreeSurfer's ``mri_vol2vol --keep-precision`` and
@@ -418,6 +458,7 @@ def reslice_r2r_image(
         target_shape=target_shape,
         mode=mode,
         padding_mode=padding_mode,
+        padding_value=padding_value,
     ).detach()
     mapped_np = mapped.cpu().numpy()
     source_dtype = np.dtype(image.get_data_dtype())
@@ -464,6 +505,7 @@ def save_resliced_r2r_image(
         target_shape: tuple[int, int, int],
         mode: str | None = None,
         padding_mode: str = "zeros",
+        padding_value: float | None = None,
         keep_dtype: bool = False,
 ) -> Any:
     """Reslice and write an image using a shared RAS-to-RAS mapping path.
@@ -485,6 +527,9 @@ def save_resliced_r2r_image(
         the source image data type via :func:`infer_image_reslice_mode`.
     padding_mode : {'zeros', 'border', 'reflection'}, default='zeros'
         Out-of-bounds padding mode.
+    padding_value : float, optional
+        Constant out-of-bounds fill value used when ``padding_mode`` is
+        ``"zeros"``.
     keep_dtype : bool, default=False
         If ``True``, cast the final written mapped image back to the source data
         type after interpolation. This matches FreeSurfer's
@@ -511,6 +556,7 @@ def save_resliced_r2r_image(
         target_shape=target_shape,
         mode=resolved_mode,
         padding_mode=padding_mode,
+        padding_value=padding_value,
         keep_dtype=keep_dtype,
     )
     mapped_img.to_filename(output_path)

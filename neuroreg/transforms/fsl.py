@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 
 from ..image.geometry import vox2tkras_from_volume_info
-from .lta import LTA, _affine_from_info, _AnyHeader, _header_info, _header_to_vol_info
+from .lta import LTA, _AnyHeader, _header_info, _header_to_vol_info, affine_from_volume_info
 from .regdat import RegisterDat
 
 
@@ -70,8 +70,8 @@ def _apply_fsl_nifti_convention(
         Possibly adjusted ``(d_ref, d_mov)`` pair following FSL's NIfTI
         convention for positive-determinant affines.
     """
-    ref_aff = _affine_from_info(ref)
-    mov_aff = _affine_from_info(mov)
+    ref_aff = affine_from_volume_info(ref)
+    mov_aff = affine_from_volume_info(mov)
 
     if np.linalg.det(mov_aff[:3, :3]) > 0:
         d_mov = d_mov.copy()
