@@ -212,6 +212,43 @@ class TestRobregCli:
         expected_affine[2, 3] = -2.0
         assert mapped_hdr.affine == pytest.approx(expected_affine)
 
+    def test_main_writes_mapmov_in_input_dtype_with_keep_dtype(
+            self,
+            monkeypatch: pytest.MonkeyPatch,
+            tmp_path: Path,
+    ):
+        mov_path = tmp_path / "mov.nii.gz"
+        ref_path = tmp_path / "ref.nii.gz"
+        out_path = tmp_path / "out.lta"
+        out_map = tmp_path / "mapped_keep_dtype.nii.gz"
+
+        _write_uint8_image(mov_path)
+        _write_zero_image(ref_path)
+
+        class _DummyLTA:
+            def write(self, path):
+                Path(path).write_text("dummy")
+
+        monkeypatch.setattr("neuroreg.imreg.robreg.robreg", lambda *args, **kwargs: _TensorRequiringCpu(torch.eye(4)))
+        monkeypatch.setattr("neuroreg.transforms.LTA.from_matrix", lambda *args, **kwargs: _DummyLTA())
+
+        robreg_main(
+            [
+                "--mov",
+                str(mov_path),
+                "--ref",
+                str(ref_path),
+                "--out",
+                str(out_path),
+                "--mapmov",
+                str(out_map),
+                "--keep-dtype",
+            ]
+        )
+
+        mapped = nib.load(str(out_map))
+        assert mapped.get_data_dtype() == np.dtype(np.uint8)
+
     def test_main_forwards_mask_images(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         mov_path = tmp_path / "mov.nii.gz"
         ref_path = tmp_path / "ref.nii.gz"
@@ -537,6 +574,7 @@ class TestCoregCli:
         expected_v2v = np.linalg.inv(ref_affine) @ expected_r2r @ mov_affine
 
         assert captured["mapped_name"] == str(out_map)
+        assert captured["keep_dtype"] is False
         assert captured["return_v2v"] is False
         assert np.asarray(captured["lta_matrix"]) == pytest.approx(expected_v2v)
         assert out_path.exists()
@@ -544,3 +582,44 @@ class TestCoregCli:
         assert out_hdr.exists()
         mapped_hdr = nib.load(str(out_hdr))
         assert mapped_hdr.affine == pytest.approx(expected_r2r @ mov_affine)
+
+    def test_main_forwards_keep_dtype_for_mapmov(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        mov_path = tmp_path / "mov.nii.gz"
+        ref_path = tmp_path / "ref.nii.gz"
+        out_path = tmp_path / "out.lta"
+        out_map = tmp_path / "mapped_keep_dtype.nii.gz"
+
+        _write_uint8_image(mov_path)
+        _write_zero_image(ref_path)
+
+        captured: dict[str, object] = {}
+
+        def fake_coreg(*args, **kwargs):
+            captured.update(kwargs)
+            ref_img = cast(Any, args[1])
+            zeros = torch.zeros(tuple(int(v) for v in ref_img.shape[:3]), dtype=torch.uint8).numpy()
+            nib.save(nib.Nifti1Image(zeros, affine=ref_img.affine), str(kwargs["mapped_name"]))
+            return _TensorRequiringCpu(torch.eye(4))
+
+        class _DummyLTA:
+            def write(self, path):
+                Path(path).write_text("dummy")
+
+        monkeypatch.setattr("neuroreg.imreg.coreg.coreg", fake_coreg)
+        monkeypatch.setattr("neuroreg.transforms.LTA.from_matrix", lambda matrix, *args, **kwargs: _DummyLTA())
+
+        coreg_main(
+            [
+                "--mov",
+                str(mov_path),
+                "--ref",
+                str(ref_path),
+                "--out",
+                str(out_path),
+                "--mapmov",
+                str(out_map),
+                "--keep-dtype",
+            ]
+        )
+
+        assert captured["keep_dtype"] is True

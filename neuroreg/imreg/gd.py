@@ -192,6 +192,7 @@ def register_gd_pyramid(
     trg_mask: str | nib.spatialimages.SpatialImage | Tensor | None = None,
     lta_name: str | None = None,
     mapped_name: str | None = None,
+    keep_dtype: bool = False,
     return_v2v: bool = False,
     init_type: InitType = "image_center",
     init_lta: str | None = None,
@@ -230,6 +231,10 @@ def register_gd_pyramid(
         excluded from the similarity objective instead of being zero-filled.
     lta_name, mapped_name : str or None, optional
         Optional output paths for the final LTA and resampled moving image.
+    keep_dtype : bool, default=False
+        If ``True``, cast the final mapped output back to the source image
+        dtype when ``mapped_name`` is requested. When ``False``, mapped output
+        is written as ``float32``.
     return_v2v : bool, default=False
         Return voxel-to-voxel instead of RAS-to-RAS when ``True``.
     init_type : {"header", "centroid", "image_center"}, default="image_center"
@@ -259,6 +264,12 @@ def register_gd_pyramid(
     Tensor
         The final transform as RAS-to-RAS by default, or voxel-to-voxel when
         ``return_v2v=True``.
+
+    Raises
+    ------
+    ValueError
+        If pyramid construction produces no levels for the source or target
+        image.
     """
     start = time.perf_counter()
     run_device = resolve_torch_device(device)
@@ -652,6 +663,7 @@ def register_gd_pyramid(
             target_affine=trg.affine,
             target_shape=_shape3(trg.shape),
             mode="linear",
+            keep_dtype=keep_dtype,
         )
 
     logger.info("register_gd_pyramid total time: %.2f s", time.perf_counter() - start)

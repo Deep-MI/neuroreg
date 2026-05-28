@@ -714,6 +714,7 @@ def register_powell_coreg(
         trg_mask: str | nib.spatialimages.SpatialImage | None = None,
         lta_name: str | None = None,
         mapped_name: str | None = None,
+        keep_dtype: bool = False,
         return_v2v: bool = False,
         init_type: InitType = "image_center",
         init_lta: str | None = None,
@@ -742,6 +743,10 @@ def register_powell_coreg(
         excluded from the NMI sample set rather than zero-filled.
     lta_name, mapped_name : str or None, optional
         Optional output paths for the final LTA and mapped moving volume.
+    keep_dtype : bool, default=False
+        If ``True``, cast the final mapped output back to the source image
+        dtype when ``mapped_name`` is requested. When ``False``, mapped output
+        is written as ``float32``.
     return_v2v : bool, default=False
         Return voxel-to-voxel instead of RAS-to-RAS when requested.
     init_type : {"header", "centroid", "image_center"}, default="image_center"
@@ -768,6 +773,11 @@ def register_powell_coreg(
     torch.Tensor
         Final RAS-to-RAS transform by default, or voxel-to-voxel when
         ``return_v2v=True``.
+
+    Raises
+    ------
+    ValueError
+        If ``dof`` is not one of ``6``, ``9``, or ``12``.
     """
     if dof not in (6, 9, 12):
         raise ValueError("method='powell' currently supports dof=6, 9, or 12")
@@ -860,6 +870,7 @@ def register_powell_coreg(
             target_affine=trg.affine,
             target_shape=_shape3(trg.shape),
             mode="linear",
+            keep_dtype=keep_dtype,
         )
 
     logger.info("register_powell_coreg total time: %.2f s", time.perf_counter() - start)

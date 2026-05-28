@@ -235,6 +235,41 @@ class TestBbregCli:
         expected_affine[1, 3] = -3.0
         assert mapped_hdr.affine == pytest.approx(expected_affine)
 
+    def test_main_writes_mapmov_in_input_dtype_with_keep_dtype(
+            self,
+            monkeypatch: pytest.MonkeyPatch,
+            tmp_path: Path,
+    ):
+        mov_path = tmp_path / "mov.nii.gz"
+        ref_path = tmp_path / "ref.nii.gz"
+        out_path = tmp_path / "out.lta"
+        out_map = tmp_path / "mapped_keep_dtype.nii.gz"
+
+        _write_uint8_image(mov_path)
+        _write_zero_image(ref_path)
+
+        def fake_register_surface(**kwargs):
+            return torch.eye(4, dtype=torch.float64)
+
+        def fail_register_pyramid(*args, **kwargs):
+            raise AssertionError("prealignment should not run")
+
+        monkeypatch.setattr(bbreg_register_module, "register_surface", fake_register_surface)
+        monkeypatch.setattr("neuroreg.imreg.coreg.coreg", fail_register_pyramid)
+
+        bbreg_main([
+            "--mov", str(mov_path),
+            "--ref", str(ref_path),
+            "--lh_surf", str(tmp_path / "lh.white"),
+            "--out", str(out_path),
+            "--init-header",
+            "--mapmov", str(out_map),
+            "--keep-dtype",
+        ])
+
+        mapped = nib.load(str(out_map))
+        assert mapped.get_data_dtype() == np.dtype(np.uint8)
+
 
 class TestBbregRegister:
     def test_register_surface_returns_best_iterate_and_stops_early(

@@ -371,6 +371,7 @@ def reslice_r2r_image(
         target_shape: tuple[int, int, int],
         mode: str = "linear",
         padding_mode: str = "zeros",
+        keep_dtype: bool = False,
 ) -> Any:
     """Reslice an image with a RAS-to-RAS transform into a target geometry.
 
@@ -390,11 +391,22 @@ def reslice_r2r_image(
         translated internally to PyTorch's ``'bilinear'`` backend name.
     padding_mode : {'zeros', 'border', 'reflection'}, default='zeros'
         Out-of-bounds padding mode.
+    keep_dtype : bool, default=False
+        If ``True``, cast the final mapped output back to the source image data
+        type. This mirrors FreeSurfer's ``mri_vol2vol --keep-precision`` and
+        can lose interpolation precision. Nearest-neighbor resampling of
+        integer- or boolean-valued inputs always preserves the source dtype.
+        Otherwise, when ``False``, the written mapped output uses ``float32``.
 
     Returns
     -------
     Any
         Resampled image in the requested target geometry.
+
+    Raises
+    ------
+    ValueError
+        If *mode* or *padding_mode* is invalid for :func:`map_r2r`.
     """
     image_data = np.asarray(image.get_fdata(), dtype=np.float32)
     r2r_t = torch.from_numpy(np.asarray(r2r, dtype=np.float64)).float() if not hasattr(r2r, "detach") else r2r.float()
@@ -409,8 +421,17 @@ def reslice_r2r_image(
     ).detach()
     mapped_np = mapped.cpu().numpy()
     source_dtype = np.dtype(image.get_data_dtype())
-    if mode == "nearest" and np.issubdtype(source_dtype, np.integer):
-        mapped_np = np.rint(mapped_np).astype(source_dtype)
+    preserve_discrete_dtype = mode == "nearest" and (
+        np.issubdtype(source_dtype, np.bool_) or np.issubdtype(source_dtype, np.integer)
+    )
+    if preserve_discrete_dtype or keep_dtype:
+        if np.issubdtype(source_dtype, np.bool_):
+            mapped_np = np.clip(np.rint(mapped_np), 0, 1).astype(source_dtype)
+        elif np.issubdtype(source_dtype, np.integer):
+            source_info = np.iinfo(source_dtype)
+            mapped_np = np.clip(np.rint(mapped_np), source_info.min, source_info.max).astype(source_dtype)
+        else:
+            mapped_np = mapped_np.astype(source_dtype, copy=False)
     else:
         mapped_np = mapped_np.astype(np.float32, copy=False)
     return create_image_like(image, mapped_np, np.asarray(target_affine, dtype=np.float64))
@@ -443,6 +464,7 @@ def save_resliced_r2r_image(
         target_shape: tuple[int, int, int],
         mode: str | None = None,
         padding_mode: str = "zeros",
+        keep_dtype: bool = False,
 ) -> Any:
     """Reslice and write an image using a shared RAS-to-RAS mapping path.
 
@@ -463,11 +485,23 @@ def save_resliced_r2r_image(
         the source image data type via :func:`infer_image_reslice_mode`.
     padding_mode : {'zeros', 'border', 'reflection'}, default='zeros'
         Out-of-bounds padding mode.
+    keep_dtype : bool, default=False
+        If ``True``, cast the final written mapped image back to the source data
+        type after interpolation. This matches FreeSurfer's
+        ``mri_vol2vol --keep-precision`` behavior. Nearest-neighbor resampling
+        of integer- or boolean-valued inputs always preserves the source dtype.
+        Otherwise, when ``False``, the written mapped output uses ``float32``.
 
     Returns
     -------
     Any
         Written mapped image object.
+
+    Raises
+    ------
+    ValueError
+        If the resolved interpolation or padding mode is invalid for
+        :func:`reslice_r2r_image`.
     """
     resolved_mode = infer_image_reslice_mode(image) if mode is None else mode
     mapped_img = reslice_r2r_image(
@@ -477,6 +511,7 @@ def save_resliced_r2r_image(
         target_shape=target_shape,
         mode=resolved_mode,
         padding_mode=padding_mode,
+        keep_dtype=keep_dtype,
     )
     mapped_img.to_filename(output_path)
     return mapped_img
