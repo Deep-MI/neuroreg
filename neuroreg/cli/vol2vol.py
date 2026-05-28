@@ -243,9 +243,7 @@ def _resolve_target_dtype(ns: argparse.Namespace, source_dtype: np.dtype) -> np.
 def _resolve_target_geometry(
         mov_img: Any,
         ref_img: Any | None,
-        lta: Any | None,
-        *,
-        inverse: bool,
+        effective_lta: Any | None,
 ) -> tuple[np.ndarray, tuple[int, int, int]]:
     """Resolve the target affine and shape for resampled output.
 
@@ -255,10 +253,9 @@ def _resolve_target_geometry(
         Loaded moving/source image.
     ref_img : Any or None
         Loaded reference image, if supplied.
-    lta : Any or None
-        Loaded transform as an LTA, if supplied.
-    inverse : bool
-        Whether the effective transform direction is inverted.
+    effective_lta : Any or None
+        Effective transform as an LTA after applying any inversion requested by
+        the user.
 
     Returns
     -------
@@ -272,9 +269,9 @@ def _resolve_target_geometry(
     """
     if ref_img is not None:
         return np.asarray(ref_img.affine, dtype=np.float64), tuple(int(v) for v in ref_img.shape[:3])
-    if lta is None:
+    if effective_lta is None:
         return np.asarray(mov_img.affine, dtype=np.float64), tuple(int(v) for v in mov_img.shape[:3])
-    info = lta.src if inverse else lta.dst
+    info = effective_lta.dst
     affine = affine_from_volume_info(info)
     return affine, tuple(int(v) for v in info["volume"])
 
@@ -475,13 +472,12 @@ def main(args=None) -> None:
             dst_img=ns.ref,
             fmt=ns.transform_format,
         )
-        r2r = np.eye(4, dtype=np.float64) if lta is None else lta.r2r()
-        if ns.inverse:
-            r2r = np.linalg.inv(r2r)
+        effective_lta = None if lta is None else (lta.invert() if ns.inverse else lta)
+        r2r = np.eye(4, dtype=np.float64) if effective_lta is None else effective_lta.r2r()
         if ns.header_only:
             mapped_img = header_map_image(mov_img, r2r)
         else:
-            target_affine, target_shape = _resolve_target_geometry(mov_img, ref_img, lta, inverse=ns.inverse)
+            target_affine, target_shape = _resolve_target_geometry(mov_img, ref_img, effective_lta)
             padding_mode, padding_value = _resolve_padding(ns.pad, mov_img)
             target_dtype = _resolve_target_dtype(ns, np.dtype(mov_img.get_data_dtype()))
             mapped_img = reslice_r2r_image(

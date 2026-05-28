@@ -86,16 +86,28 @@ class TestVol2VolCli:
         assert data[1, 1, 1] == 7
 
     def test_transform_geometry_fallback_uses_dst_and_inverse_uses_src(self, tmp_path: Path):
-        mov_path = _write_image(tmp_path / "mov.nii.gz", np.ones((3, 3, 3), dtype=np.float32))
-        lta_path = _write_lta(tmp_path / "geom.lta", np.eye(4), (3, 3, 3), (5, 5, 5))
+        src_affine = np.array(
+            [[2.0, 0.0, 0.0, 10.0], [0.0, 2.0, 0.0, 20.0], [0.0, 0.0, 2.0, 30.0], [0.0, 0.0, 0.0, 1.0]]
+        )
+        dst_affine = np.array(
+            [[1.0, 0.0, 0.0, -1.0], [0.0, 1.5, 0.0, 5.0], [0.0, 0.0, 2.0, 7.0], [0.0, 0.0, 0.0, 1.0]]
+        )
+        mov_path = _write_image(tmp_path / "mov.nii.gz", np.ones((3, 3, 3), dtype=np.float32), affine=src_affine)
+        ref_path = _write_image(tmp_path / "ref.nii.gz", np.zeros((5, 5, 5), dtype=np.float32), affine=dst_affine)
+        lta_path = tmp_path / "geom.lta"
+        LTA.from_matrix(np.eye(4), str(mov_path), str(mov_path), str(ref_path), str(ref_path)).write(lta_path)
         out_dst = tmp_path / "out_dst.nii.gz"
         out_src = tmp_path / "out_src.nii.gz"
 
         vol2vol_main(["--mov", str(mov_path), "--transform", str(lta_path), "--out", str(out_dst)])
         vol2vol_main(["--mov", str(mov_path), "--transform", str(lta_path), "--inverse", "--out", str(out_src)])
 
-        assert nib.load(str(out_dst)).shape == (5, 5, 5)
-        assert nib.load(str(out_src)).shape == (3, 3, 3)
+        mapped_dst = nib.load(str(out_dst))
+        mapped_src = nib.load(str(out_src))
+        assert mapped_dst.shape == (5, 5, 5)
+        assert mapped_dst.affine == pytest.approx(dst_affine)
+        assert mapped_src.shape == (3, 3, 3)
+        assert mapped_src.affine == pytest.approx(src_affine)
 
     def test_header_only_updates_affine_and_preserves_payload(self, tmp_path: Path):
         data = np.arange(8, dtype=np.uint8).reshape(2, 2, 2)
