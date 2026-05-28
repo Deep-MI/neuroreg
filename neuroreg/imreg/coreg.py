@@ -15,6 +15,7 @@ def coreg(
         trg_mask: str | nib.spatialimages.SpatialImage | Tensor | None = None,
         lta_name: str | None = None,
         mapped_name: str | None = None,
+        keep_dtype: bool = False,
         return_v2v: bool = False,
         init_type: InitType = "image_center",
         init_lta: str | None = None,
@@ -54,6 +55,10 @@ def coreg(
         outside these masks are excluded from the similarity objective.
     lta_name, mapped_name : str or None, optional
         Optional output paths for the final transform and mapped moving image.
+    keep_dtype : bool, default=False
+        If ``True``, cast the final mapped moving image back to the source
+        image dtype when ``mapped_name`` is requested. When ``False``, mapped
+        output is written as ``float32``.
     return_v2v : bool, default=False
         Return the final transform in voxel coordinates instead of RAS.
     init_type : {"header", "centroid", "image_center"}, default="image_center"
@@ -86,6 +91,11 @@ def coreg(
     Tensor
         Final RAS-to-RAS transform by default, or voxel-to-voxel when
         ``return_v2v=True``.
+
+    Raises
+    ------
+    ValueError
+        If ``method`` is not ``"powell"`` or ``"gd"``.
     """
     resolved_method = method.lower()
     if resolved_method == "powell":
@@ -96,6 +106,7 @@ def coreg(
             trg_mask=trg_mask,
             lta_name=lta_name,
             mapped_name=mapped_name,
+            keep_dtype=keep_dtype,
             return_v2v=return_v2v,
             init_type=init_type,
             init_lta=init_lta,
@@ -117,6 +128,7 @@ def coreg(
         trg_mask=trg_mask,
         lta_name=lta_name,
         mapped_name=mapped_name,
+        keep_dtype=keep_dtype,
         return_v2v=return_v2v,
         init_type=init_type,
         init_lta=init_lta,

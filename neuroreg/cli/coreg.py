@@ -46,6 +46,14 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Save a header-only mapped moving image with no interpolation.",
     )
     p.add_argument(
+        "--keep-dtype",
+        action="store_true",
+        help=(
+            "Write --mapmov output in the moving-image dtype instead of float32. "
+            "Equivalent to FreeSurfer mri_vol2vol --keep-precision."
+        ),
+    )
+    p.add_argument(
         "--mov-mask",
         metavar="FILE",
         help="Optional moving/source mask. Voxels outside the mask are ignored during registration.",
@@ -185,6 +193,23 @@ def main(args=None) -> None:
     style brute-force plus Powell path and keeps the legacy gradient-descent
     backend available via ``--method gd``. The written output LTA is a
     voxel-to-voxel transform in public ``moving -> reference`` direction.
+
+    Parameters
+    ----------
+    args : list of str or None, optional
+        Command-line arguments. When ``None``, arguments are read from
+        :data:`sys.argv`.
+
+    Returns
+    -------
+    None
+        This function is invoked for its side effects: registration, optional
+        mapped-image export, and writing the output transform.
+
+    Raises
+    ------
+    SystemExit
+        If argument parsing fails or image loading raises an exception.
     """
     from ..image import load_image, save_header_mapped_image
     from ..imreg.coreg import coreg
@@ -224,6 +249,7 @@ def main(args=None) -> None:
         device=ns.device,
         return_v2v=False,
         mapped_name=ns.mapmov,
+        keep_dtype=ns.keep_dtype,
         init_lta=ns.init_lta,
         symmetric=ns.symmetric,
         isotropic=ns.isotropic,

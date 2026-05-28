@@ -111,6 +111,14 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Save a header-only mapped moving image with no interpolation.",
     )
     p.add_argument(
+        "--keep-dtype",
+        action="store_true",
+        help=(
+            "Write --mapmov output in the moving-image dtype instead of float32. "
+            "Equivalent to FreeSurfer mri_vol2vol --keep-precision."
+        ),
+    )
+    p.add_argument(
         "--outliers",
         metavar="FILE",
         help=(
@@ -129,7 +137,25 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main(args=None) -> None:
-    """Entry point for the ``robreg`` command."""
+    """Entry point for the ``robreg`` command.
+
+    Parameters
+    ----------
+    args : list of str or None, optional
+        Command-line arguments. When ``None``, arguments are read from
+        :data:`sys.argv`.
+
+    Returns
+    -------
+    None
+        This function is invoked for its side effects: registration, optional
+        mapped-image export, and writing the output transform.
+
+    Raises
+    ------
+    SystemExit
+        If argument parsing fails or image loading raises an exception.
+    """
 
     from ..image import load_image, save_header_mapped_image, save_resliced_r2r_image
     from ..imreg.robreg import robreg
@@ -215,6 +241,7 @@ def main(args=None) -> None:
             target_affine=ref_img.affine,
             target_shape=target_shape,
             mode="linear",
+            keep_dtype=ns.keep_dtype,
         )
         logger.info("Wrote resliced mapped image: %s", ns.mapmov)
         print(f"MapMov:    {ns.mapmov}")

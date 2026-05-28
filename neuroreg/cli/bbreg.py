@@ -148,6 +148,14 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="FILE",
         help="Save a header-only mapped moving image with no interpolation.",
     )
+    p.add_argument(
+        "--keep-dtype",
+        action="store_true",
+        help=(
+            "Write --mapmov output in the moving-image dtype instead of float32. "
+            "Equivalent to FreeSurfer mri_vol2vol --keep-precision."
+        ),
+    )
     p.add_argument("--verbose", action="store_true", help="Enable INFO-level logging.")
     p.add_argument("--debug", action="store_true", help="Enable DEBUG-level logging.")
 
@@ -300,6 +308,24 @@ def main(args=None) -> None:
     transform direction. When requested, it also exports resliced or header-only
     mapped versions of the moving image using the same shared mapping helpers as
     the other registration CLIs.
+
+    Parameters
+    ----------
+    args : list of str or None, optional
+        Command-line arguments. When ``None``, arguments are read from
+        :data:`sys.argv`.
+
+    Returns
+    -------
+    None
+        This function is invoked for its side effects: registration, optional
+        mapped-image export, and writing the output transform.
+
+    Raises
+    ------
+    SystemExit
+        If argument parsing fails, registration raises an exception, or the CLI
+        exits after reporting an error.
     """
     from ..bbreg.register import register_surface
     from ..image import save_header_mapped_image, save_resliced_r2r_image
@@ -388,6 +414,7 @@ def main(args=None) -> None:
                 target_affine=target_img.affine,
                 target_shape=target_shape,
                 mode="linear",
+                keep_dtype=ns.keep_dtype,
             )
             logger.info("Wrote resliced mapped image: %s", ns.mapmov)
             print(f"MapMov:    {ns.mapmov}")
