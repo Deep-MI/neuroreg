@@ -121,7 +121,7 @@ def map(
             mode=torch_mode,
             padding_mode=padding_mode,
             align_corners=False,
-        ).squeeze()
+        ).squeeze(0).squeeze(0)
     padding_value_t = torch.as_tensor(padding_value, dtype=input_image.dtype, device=input_image.device)
     shifted = input_image - padding_value_t
     return (
@@ -132,7 +132,7 @@ def map(
             padding_mode="zeros",
             align_corners=False,
         ) + padding_value_t
-    ).squeeze()
+    ).squeeze(0).squeeze(0)
 
 
 def map_r2r(

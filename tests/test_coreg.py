@@ -82,6 +82,21 @@ class TestRegisterPyramidSynthetic:
 
         assert mapped.get_data_dtype() == np.dtype(np.float32)
 
+    def test_reslice_r2r_image_preserves_singleton_spatial_dimensions(self):
+        img = nib.Nifti1Image(np.arange(20, dtype=np.float32).reshape(1, 4, 5), np.eye(4, dtype=np.float32))
+
+        mapped = reslice_r2r_image(
+            img,
+            np.eye(4, dtype=np.float64),
+            target_affine=np.eye(4, dtype=np.float64),
+            target_shape=(1, 4, 5),
+            mode="linear",
+            keep_dtype=False,
+        )
+
+        assert mapped.shape == (1, 4, 5)
+        assert mapped.get_fdata(dtype=np.float32) == pytest.approx(np.arange(20, dtype=np.float32).reshape(1, 4, 5))
+
     def test_register_pyramid_returns_v2v_on_identical_images(self):
         img = _make_img()
         v2v = register_gd_pyramid(

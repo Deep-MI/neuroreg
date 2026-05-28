@@ -297,8 +297,10 @@ def _resolve_padding(pad: str | float, mov_img: Any) -> tuple[str, float | None]
     if pad == "zero":
         return "zeros", None
     if pad == "brightest":
-        image_data = np.asarray(mov_img.get_fdata(), dtype=np.float32)
-        return "zeros", float(np.max(image_data))
+        image_max = _finite_max(np.asarray(mov_img.dataobj, dtype=np.float32))
+        if image_max is None:
+            raise ValueError("--pad brightest requires at least one finite source intensity.")
+        return "zeros", image_max
     return pad, None
 
 
@@ -322,6 +324,32 @@ def _infer_target_max(target_dtype: np.dtype | None) -> float | None:
     if np.issubdtype(target_dtype, np.integer):
         return float(np.iinfo(target_dtype).max)
     return None
+
+
+def _finite_max(data: np.ndarray, *, positive_only: bool = False) -> float | None:
+    """Return the maximum finite value, optionally restricted to positives.
+
+    Parameters
+    ----------
+    data : np.ndarray
+        Source values to inspect.
+    positive_only : bool, default=False
+        If ``True``, ignore zero and negative values in addition to non-finite
+        samples.
+
+    Returns
+    -------
+    float or None
+        Maximum finite value satisfying the requested filter, or ``None`` when
+        no such value exists.
+    """
+    values = np.asarray(data, dtype=np.float32)
+    mask = np.isfinite(values)
+    if positive_only:
+        mask &= values > 0
+    if not np.any(mask):
+        return None
+    return float(values[mask].max())
 
 
 def _robust_upper_bound(data: np.ndarray, low: float, high: float) -> float:
@@ -412,8 +440,8 @@ def _convert_output_image(
 
     mapped_np = np.asarray(mapped_img.dataobj, dtype=np.float32)
     if effective_mode == "rescale":
-        source_upper = float(np.max(np.asarray(source_img.dataobj, dtype=np.float32)))
-        scale = 0.0 if source_upper <= 0.0 else float(resolved_target_max) / source_upper
+        source_upper = _finite_max(np.asarray(source_img.dataobj, dtype=np.float32), positive_only=True)
+        scale = 0.0 if source_upper is None or source_upper <= 0.0 else float(resolved_target_max) / source_upper
         mapped_np = np.clip(mapped_np * scale, 0.0, float(resolved_target_max))
     elif effective_mode == "robust":
         source_upper = _robust_upper_bound(np.asarray(source_img.dataobj, dtype=np.float32), robust_low, robust_high)

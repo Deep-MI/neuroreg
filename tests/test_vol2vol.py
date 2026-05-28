@@ -153,3 +153,55 @@ class TestVol2VolCli:
         expected = np.array([[[0, 50], [100, 0]], [[50, 100], [0, 100]]], dtype=np.uint8)
         assert mapped.get_data_dtype() == np.dtype(np.uint8)
         assert mapped_data == pytest.approx(expected)
+
+    def test_brightest_padding_ignores_non_finite_source_values(self, tmp_path: Path):
+        mov = np.zeros((2, 2, 2), dtype=np.float32)
+        mov[0, 0, 0] = np.nan
+        mov[1, 1, 1] = 7.0
+        mov_path = _write_image(tmp_path / "mov_nan.nii.gz", mov)
+        ref_path = _write_image(tmp_path / "ref_big.nii.gz", np.zeros((4, 4, 4), dtype=np.float32))
+        out_path = tmp_path / "out_brightest.nii.gz"
+
+        vol2vol_main(
+            [
+                "--mov",
+                str(mov_path),
+                "--ref",
+                str(ref_path),
+                "--out",
+                str(out_path),
+                "--interp",
+                "nearest",
+                "--pad",
+                "brightest",
+            ]
+        )
+
+        mapped = nib.load(str(out_path))
+        mapped_data = np.asarray(mapped.dataobj, dtype=np.float32)
+        assert mapped_data[3, 3, 3] == pytest.approx(7.0)
+        assert np.isfinite(mapped_data[3, 3, 3])
+
+    def test_rescale_ignores_non_finite_values_when_estimating_source_upper_bound(self, tmp_path: Path):
+        data = np.array([[[np.nan, 1.0], [2.0, 0.0]], [[1.0, 2.0], [0.0, 2.0]]], dtype=np.float32)
+        mov_path = _write_image(tmp_path / "mov_nan_rescale.nii.gz", data)
+        out_path = tmp_path / "out_nan_rescale.nii.gz"
+
+        vol2vol_main(
+            [
+                "--mov",
+                str(mov_path),
+                "--out",
+                str(out_path),
+                "--scale-mode",
+                "rescale",
+                "--target-max",
+                "100",
+            ]
+        )
+
+        mapped = nib.load(str(out_path))
+        mapped_data = np.asarray(mapped.dataobj, dtype=np.float32)
+        assert mapped.get_data_dtype() == np.dtype(np.float32)
+        assert mapped_data[0, 0, 1] == pytest.approx(50.0)
+        assert mapped_data[0, 1, 0] == pytest.approx(100.0)
