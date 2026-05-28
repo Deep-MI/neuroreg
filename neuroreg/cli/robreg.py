@@ -114,7 +114,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--keep-dtype",
         action="store_true",
         help=(
-            "Write --mapmov output in the moving-image dtype instead of float32. "
+            "Write trilinear --mapmov output in the moving-image dtype instead of float32. "
             "Equivalent to FreeSurfer mri_vol2vol --keep-precision."
         ),
     )

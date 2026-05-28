@@ -394,8 +394,9 @@ def reslice_r2r_image(
     keep_dtype : bool, default=False
         If ``True``, cast the final mapped output back to the source image data
         type. This mirrors FreeSurfer's ``mri_vol2vol --keep-precision`` and
-        can lose interpolation precision. When ``False``, the written mapped
-        output uses ``float32`` regardless of the source dtype.
+        can lose interpolation precision. Nearest-neighbor resampling of
+        integer- or boolean-valued inputs always preserves the source dtype.
+        Otherwise, when ``False``, the written mapped output uses ``float32``.
 
     Returns
     -------
@@ -420,7 +421,10 @@ def reslice_r2r_image(
     ).detach()
     mapped_np = mapped.cpu().numpy()
     source_dtype = np.dtype(image.get_data_dtype())
-    if keep_dtype:
+    preserve_discrete_dtype = mode == "nearest" and (
+        np.issubdtype(source_dtype, np.bool_) or np.issubdtype(source_dtype, np.integer)
+    )
+    if preserve_discrete_dtype or keep_dtype:
         if np.issubdtype(source_dtype, np.bool_):
             mapped_np = np.clip(np.rint(mapped_np), 0, 1).astype(source_dtype)
         elif np.issubdtype(source_dtype, np.integer):
@@ -484,8 +488,9 @@ def save_resliced_r2r_image(
     keep_dtype : bool, default=False
         If ``True``, cast the final written mapped image back to the source data
         type after interpolation. This matches FreeSurfer's
-        ``mri_vol2vol --keep-precision`` behavior. When ``False``, the written
-        mapped output uses ``float32``.
+        ``mri_vol2vol --keep-precision`` behavior. Nearest-neighbor resampling
+        of integer- or boolean-valued inputs always preserves the source dtype.
+        Otherwise, when ``False``, the written mapped output uses ``float32``.
 
     Returns
     -------
