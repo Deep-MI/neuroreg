@@ -15,6 +15,20 @@ Example::
 
    robreg --mov moving.nii.gz --ref fixed.nii.gz --out moving_to_fixed.lta
 
+multireg
+--------
+
+Longitudinal multi-timepoint template construction with reusable LTAs for later
+template rebuilds.
+
+Examples::
+
+   multireg --mov tp1.mgz tp2.mgz tp3.mgz --template subject_template.mgz \
+            --lta tp1.lta tp2.lta tp3.lta --average median
+   multireg --mov tp1_orig.mgz tp2_orig.mgz tp3_orig.mgz \
+            --template subject_template_orig.mgz \
+            --ixforms tp1.lta tp2.lta tp3.lta --noit --average median
+
 coreg
 -----
 
