@@ -172,6 +172,7 @@ def register_irls_pyramid(
         epsit: float = 0.01,
         max_irls: int = 20,
         isotropic: bool = True,
+        isotropic_size: float | None = None,
         symmetric: bool = True,
         adaptive_sat: bool = False,
         target_outlier_pct: float = 5.0,
@@ -217,6 +218,10 @@ def register_irls_pyramid(
     isotropic : bool, default=True
         If ``True``, resample both images to a shared isotropic grid before
         registration.
+    isotropic_size : float, optional
+        Explicit isotropic voxel size in millimeters. When omitted, the shared
+        isotropic size is derived from the source/target voxel sizes as
+        ``max(min(src_voxsize), min(trg_voxsize))``.
     symmetric : bool, default=True
         If ``True``, use symmetric (midspace) mode.
     adaptive_sat : bool, default=False
@@ -271,7 +276,7 @@ def register_irls_pyramid(
         trg_affine_np = trg_affine.detach().cpu().numpy()
         src_zooms = np.linalg.norm(src_affine_np[:3, :3], axis=0)
         trg_zooms = np.linalg.norm(trg_affine_np[:3, :3], axis=0)
-        isosize = float(max(src_zooms.min(), trg_zooms.min()))
+        isosize = float(isotropic_size) if isotropic_size is not None else float(max(src_zooms.min(), trg_zooms.min()))
 
         if verbose:
             logger.info("Isotropic resampling: isosize=%.4f mm", isosize)
@@ -491,6 +496,7 @@ def robreg(
         sat: float = 6.0,
         symmetric: bool = True,
         isotropic: bool = True,
+        isotropic_size: float | None = None,
         adaptive_sat: bool = False,
         target_outlier_pct: float = 5.0,
         outliers_name: str | None = None,
@@ -538,6 +544,10 @@ def robreg(
         default/public robreg behavior.
     isotropic : bool, default=True
         If ``True``, resample to isotropic voxels before building the pyramid.
+    isotropic_size : float, optional
+        Explicit isotropic voxel size in millimeters. When omitted, the public
+        robreg path derives a shared isotropic size from the source and target
+        voxel sizes.
     adaptive_sat : bool, default=False
         Whether to adapt the Tukey saturation threshold based on the observed
         outlier fraction.
@@ -620,6 +630,7 @@ def robreg(
         sat=sat,
         symmetric=symmetric,
         isotropic=isotropic,
+        isotropic_size=isotropic_size,
         adaptive_sat=adaptive_sat,
         target_outlier_pct=target_outlier_pct,
         outliers_name=outliers_name,

@@ -334,22 +334,25 @@ def validate_input_geometries(images: Sequence[Any]) -> None:
     None
         This function returns ``None`` when all input geometries are accepted.
 
-    Raises
-    ------
-    ValueError
-        If the images do not share identical voxel sizes.
+    Warns
+    -----
     RuntimeWarning
-        Warns when image orientations differ and will be averaged for the
-        template geometry.
+        Warns when voxel sizes differ and multireg will rely on the underlying
+        pairwise resampling path, or when image orientations differ and will be
+        averaged for the template geometry.
     """
     ref_voxel_sizes = voxel_sizes(images[0])
     for idx, image in enumerate(images[1:], start=1):
         sizes = voxel_sizes(image)
         if not np.allclose(sizes, ref_voxel_sizes, atol=1e-6):
-            raise ValueError(
-                "All input images must have identical voxel sizes for rigid multireg mean-space initialization; "
-                f"image 0 has voxel sizes {ref_voxel_sizes.tolist()} and image {idx} has {sizes.tolist()}."
+            warnings.warn(
+                "Input voxel sizes differ; multireg will rely on pairwise isotropic resampling during registration "
+                f"and template construction. Image 0 has voxel sizes {ref_voxel_sizes.tolist()} and image {idx} "
+                f"has {sizes.tolist()}.",
+                RuntimeWarning,
+                stacklevel=2,
             )
+            break
     if any(not np.allclose(direction_cosines(image), direction_cosines(images[0]), atol=1e-9) for image in images[1:]):
         warnings.warn(
             "Input direction cosines differ; multireg will average them when constructing the template geometry.",
