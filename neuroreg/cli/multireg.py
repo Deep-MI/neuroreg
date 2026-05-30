@@ -8,6 +8,9 @@ import sys
 from pathlib import Path
 from typing import Any, cast
 
+import nibabel as nib
+import numpy as np
+
 from ..image import load_image
 from ..multireg import multireg
 from ..transforms import LTA
@@ -194,6 +197,36 @@ def _mapped_output_path(directory: Path, input_path: str, index: int) -> Path:
     return directory / f"tp{index + 1}.nii.gz"
 
 
+def _save_image(image: Any, output_path: str | Path) -> None:
+    """Save an image while honoring the requested output format.
+
+    Parameters
+    ----------
+    image : Any
+        Image-like object returned by ``multireg``.
+    output_path : str or pathlib.Path
+        Destination filename.
+
+    Returns
+    -------
+    None
+        This function returns ``None`` after writing the image.
+    """
+    path = Path(output_path)
+    if path.suffix.lower() not in {".mgz", ".mgh"}:
+        image.to_filename(path)
+        return
+
+    if isinstance(image, nib.MGHImage):
+        image.to_filename(path)
+        return
+
+    data = np.asanyarray(image.dataobj)
+    if data.dtype not in {np.dtype(np.uint8), np.dtype(np.int16), np.dtype(np.int32), np.dtype(np.float32)}:
+        data = data.astype(np.float32, copy=False)
+    nib.MGHImage(data, np.asarray(image.affine, dtype=np.float64)).to_filename(path)
+
+
 def main(args=None) -> None:
     """Run the ``multireg`` command-line interface.
 
@@ -257,7 +290,7 @@ def main(args=None) -> None:
         mapped_keep_dtype=ns.keep_dtype,
         verbose=ns.verbose or ns.debug,
     )
-    result.template_image.to_filename(ns.template)
+    _save_image(result.template_image, ns.template)
     print(f"InitialTP:   {result.initial_target_index + 1}")
     print(f"Seed:        {result.seed}")
     print(f"Iterations:  {result.template_iterations_run}")
@@ -273,7 +306,7 @@ def main(args=None) -> None:
         mapmov_dir.mkdir(parents=True, exist_ok=True)
         mapped_images = result.mapped_images if result.mapped_images is not None else []
         for index, (mov_path, mapped_image) in enumerate(zip(ns.mov, mapped_images, strict=False)):
-            mapped_image.to_filename(_mapped_output_path(mapmov_dir, mov_path, index))
+            _save_image(mapped_image, _mapped_output_path(mapmov_dir, mov_path, index))
         print(f"MapMovDir:   {mapmov_dir}")
 
 
