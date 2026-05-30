@@ -3,6 +3,7 @@ from ._sys_info import sys_info  # noqa: F401
 from .bbreg.register import register_surface as bbreg  # noqa: F401
 from .imreg.coreg import coreg  # noqa: F401
 from .imreg.robreg import robreg  # noqa: F401
+from .multireg import multireg  # noqa: F401
 from .segreg import segreg  # noqa: F401
 from .transforms import (  # noqa: F401
     LINEAR_RAS_TO_RAS,
@@ -14,6 +15,7 @@ from .transforms import (  # noqa: F401
 __all__ = [
     "bbreg",
     "coreg",
+    "multireg",
     "robreg",
     "segreg",
     "sys_info",

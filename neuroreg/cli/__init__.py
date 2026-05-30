@@ -3,6 +3,7 @@
 Available commands
 ------------------
 robreg       Robust image-to-image registration (analogous to mri_robust_register).
+multireg     Multi-timepoint robust registration with initial mean-space construction and iterative refinement.
 coreg        Image-based cross-modal registration (analogous to mri_coreg).
 bbreg        Boundary-based registration using cortical surfaces (analogous to bbregister).
 segreg       Segmentation-centroid registration that writes LTAs.

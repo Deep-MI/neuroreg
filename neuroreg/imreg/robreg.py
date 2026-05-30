@@ -153,6 +153,7 @@ def register_irls_pyramid(
         epsit: float = 0.01,
         max_irls: int = 20,
         isotropic: bool = True,
+        isotropic_size: float | None = None,
         symmetric: bool = True,
         adaptive_sat: bool = False,
         target_outlier_pct: float = 5.0,
@@ -198,6 +199,10 @@ def register_irls_pyramid(
     isotropic : bool, default=True
         If ``True``, resample both images to a shared isotropic grid before
         registration.
+    isotropic_size : float, optional
+        Explicit isotropic voxel size in millimeters. When omitted, the shared
+        isotropic size is derived from the source/target voxel sizes as
+        ``max(min(src_voxsize), min(trg_voxsize))``.
     symmetric : bool, default=True
         If ``True``, use symmetric (midspace) mode.
     adaptive_sat : bool, default=False
@@ -252,7 +257,7 @@ def register_irls_pyramid(
         trg_affine_np = trg_affine.detach().cpu().numpy()
         src_zooms = np.linalg.norm(src_affine_np[:3, :3], axis=0)
         trg_zooms = np.linalg.norm(trg_affine_np[:3, :3], axis=0)
-        isosize = float(max(src_zooms.min(), trg_zooms.min()))
+        isosize = float(isotropic_size) if isotropic_size is not None else float(max(src_zooms.min(), trg_zooms.min()))
 
         if verbose:
             logger.info("Isotropic resampling: isosize=%.4f mm", isosize)
@@ -441,11 +446,13 @@ def robreg(
         return_v2v: bool = False,
         init_type: InitType = "centroid",
         init_lta: str | None = None,
+        initial_r2r: Tensor | np.ndarray | None = None,
         dof: int = 6,
         nmax: int = 5,
         sat: float = 6.0,
         symmetric: bool = True,
         isotropic: bool = True,
+        isotropic_size: float | None = None,
         adaptive_sat: bool = False,
         target_outlier_pct: float = 5.0,
         outliers_name: str | None = None,
@@ -477,6 +484,10 @@ def robreg(
     init_lta : str, optional
         Existing LTA used for initialization. When provided, it overrides the
         requested ``init_type``.
+    initial_r2r : Tensor or ndarray, optional
+        Existing source-to-target RAS transform used for initialization. This is
+        the in-memory alternative to ``init_lta`` and is converted internally to
+        the voxel-to-voxel initialization required by the IRLS solver.
     dof : int, default=6
         Degrees of freedom. The public IRLS path currently supports rigid
         registration only, so this must remain ``6``.
@@ -489,6 +500,10 @@ def robreg(
         default/public robreg behavior.
     isotropic : bool, default=True
         If ``True``, resample to isotropic voxels before building the pyramid.
+    isotropic_size : float, optional
+        Explicit isotropic voxel size in millimeters. When omitted, the public
+        robreg path derives a shared isotropic size from the source and target
+        voxel sizes.
     adaptive_sat : bool, default=False
         Whether to adapt the Tukey saturation threshold based on the observed
         outlier fraction.
@@ -519,12 +534,28 @@ def robreg(
     trg_data, trg_aff = _as_tensor_and_affine(trg, trg_affine)
     src_mask_data, _ = as_mask_tensor_and_affine(src_mask, affine=src_affine, name="moving mask")
     trg_mask_data, _ = as_mask_tensor_and_affine(trg_mask, affine=trg_affine, name="reference mask")
+    if init_lta is not None and initial_r2r is not None:
+        raise ValueError("Specify at most one of init_lta and initial_r2r.")
     initial_transform = None
     if init_lta is not None:
         logger.info("Loading init transform from LTA: %s", init_lta)
         initial_transform = torch.from_numpy(
             convert_transform_type(
                 LTA.read(init_lta).r2r(),
+                src_affine=src_aff.detach().cpu().numpy(),
+                dst_affine=trg_aff.detach().cpu().numpy(),
+                from_type=LINEAR_RAS_TO_RAS,
+                to_type=LINEAR_VOX_TO_VOX,
+            )
+        ).to(dtype=src_data.dtype)
+    elif initial_r2r is not None:
+        initial_r2r_np = np.asarray(
+            initial_r2r.detach().cpu().numpy() if hasattr(initial_r2r, "detach") else initial_r2r,
+            dtype=np.float64,
+        )
+        initial_transform = torch.from_numpy(
+            convert_transform_type(
+                initial_r2r_np,
                 src_affine=src_aff.detach().cpu().numpy(),
                 dst_affine=trg_aff.detach().cpu().numpy(),
                 from_type=LINEAR_RAS_TO_RAS,
@@ -555,6 +586,7 @@ def robreg(
         sat=sat,
         symmetric=symmetric,
         isotropic=isotropic,
+        isotropic_size=isotropic_size,
         adaptive_sat=adaptive_sat,
         target_outlier_pct=target_outlier_pct,
         outliers_name=outliers_name,

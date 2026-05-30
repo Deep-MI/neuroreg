@@ -11,6 +11,8 @@ The main user-facing tools are:
 
 - **`robreg`** – Highly accurate and robust same modality image-to-image registration
   (IRLS based, analogous to FreeSurfer's `mri_robust_register`)
+- **`multireg`** – longitudinal multi-timepoint template construction with reusable LTAs
+  (analogous to the core `mri_robust_template` workflow)
 - **`coreg`** – Image-to-image cross-modal registration
   (Powell-based by default, analogous to FreeSurfer/SPM `mri_coreg`)
 - **`bbreg`** – boundary-based registration using cortical WM surfaces or segmentations
@@ -79,6 +81,52 @@ Run `robreg -h` for a full argument summary with defaults.
 
 ```bash
 robreg --mov T1_repeat.nii.gz --ref T1_baseline.mgz --out T1_repeat_to_T1_baseline.lta --verbose
+```
+
+---
+
+### `multireg` — longitudinal multi-timepoint template building
+
+Builds a within-subject template from multiple same-contrast time points using
+the robust pairwise `robreg` path as its registration kernel.
+
+This command supports two key workflows:
+
+- full multi-timepoint registration and template construction
+- template rebuilding from precomputed LTAs via `--ixforms`, which is useful for
+  the later FastSurfer-style "reuse transforms and just rebuild the template"
+  pass
+
+```
+multireg --mov <tp1.nii.gz> <tp2.nii.gz> ... --template <template.nii.gz> [options]
+```
+
+**Key options**
+
+| Argument            | Default    | Description                                                                    |
+|---------------------|------------|--------------------------------------------------------------------------------|
+| `--template FILE`   | required   | Output template image.                                                         |
+| `--lta FILE ...`    | —          | Optional output LTAs, one per input time point.                                |
+| `--ixforms FILE ...`| —          | Reuse precomputed LTAs as input transforms into template space.                |
+| `--average MODE`    | `median`   | Template aggregation mode: `mean`, `median`, `0` (=mean), or `1` (=median).   |
+| `--noit`            | off        | Stop after the initial template build instead of running iterative refinement.  |
+| `--iterate N`       | auto       | Maximum number of refinement iterations (`0` for 2 TPs, `6` for 3+ by default).|
+| `--template-eps F`  | `0.03`     | Stop iterative refinement when the maximum transform update falls below this.   |
+| `--inittp N`        | auto       | 1-based initial target time point.                                             |
+| `--mapmov-dir DIR`  | —          | Optional directory for mapped input images in template space.                  |
+| `--keep-dtype`      | off        | Preserve source dtype for mapped images instead of writing float32.            |
+
+**Examples**
+
+```bash
+# Full longitudinal template construction
+multireg --mov tp1.mgz tp2.mgz tp3.mgz --template subject_template.mgz \
+         --lta tp1.lta tp2.lta tp3.lta --average median
+
+# Rebuild a template from existing LTAs without another registration pass
+multireg --mov tp1_orig.mgz tp2_orig.mgz tp3_orig.mgz \
+         --template subject_template_orig.mgz \
+         --ixforms tp1.lta tp2.lta tp3.lta --noit --average median
 ```
 
 ---
