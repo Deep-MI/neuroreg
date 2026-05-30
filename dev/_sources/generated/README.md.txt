@@ -15,6 +15,8 @@ The main user-facing tools are:
   (Powell-based by default, analogous to FreeSurfer/SPM `mri_coreg`)
 - **`bbreg`** – boundary-based registration using cortical WM surfaces or segmentations
   (extending FreeSurfer's `bbregister`)
+- **`vol2vol`** – apply a linear transform to an image, reslice to a target geometry,
+  or update the header only
 - **`segreg`** – segmentation-based registration via label centroids
   (rigid/affine, including atlas-centroid and upright/self-flip modes)
 - **`lta`** – transform comparison, inversion, concatenation, and conversion utilities
@@ -221,6 +223,64 @@ bbreg --mov fMRI.nii.gz --seg /data/subjects/sub-01/mri/aparc+aseg.mgz \
 ```
 
 Run `bbreg -h` for a full argument summary with defaults.
+
+---
+
+### `vol2vol` — apply transforms and reslice images
+
+Applies a stored linear transform to an image, reslices into a target geometry,
+or updates the header only without interpolation. This is the package's
+project-native analogue of FreeSurfer's `mri_vol2vol` for linear transforms.
+
+The command can also run without a transform file, which is useful for
+identity-reslicing to `--ref`, dtype conversion, or final intensity remapping.
+Transform files are read through the same shared backend as `lta convert`, so
+`.lta`, `.xfm`, FSL `.mat`, tkregister `.dat`/`.reg`, ITK/ANTs text affines,
+ANTs `*GenericAffine.mat`, AFNI `.aff12.1D`, and NiftyReg text matrices are
+supported.
+
+```
+vol2vol --mov <moving.nii.gz> --out <output.nii.gz> [options]
+```
+
+**Common options**
+
+| Argument                                     | Default  | Description                                                                 |
+|----------------------------------------------|----------|-----------------------------------------------------------------------------|
+| `--transform FILE`                           | identity | Optional linear transform to apply.                                         |
+| `--transform-format {lta,xfm,fsl,...}`       | infer    | Override transform-format inference for ambiguous suffixes.                 |
+| `--ref FILE`                                 | —        | Optional target/reference geometry. Overrides geometry stored in the LTA.   |
+| `--interp {linear,nearest}`                  | `linear` | Interpolation mode for resampled output.                                    |
+| `--pad {zero,border,reflection,brightest,N}` | `zero`   | Out-of-bounds fill mode or numeric constant.                                |
+| `--inverse`                                  | off      | Apply the inverse transform.                                                |
+| `--header-only`                              | off      | Update the affine/header only and skip interpolation.                       |
+| `--out-dtype DTYPE`                          | auto     | Explicit final dtype such as `uint8`, `int16`, `float32`, or `input`.       |
+| `--keep-dtype`                               | off      | Alias for `--out-dtype input`.                                              |
+| `--scale-mode {clamp,rescale,robust}`        | auto     | Final intensity handling before discrete dtype conversion.                  |
+| `--target-max FLOAT`                         | inferred | Upper target value for `rescale` / `robust`.                                |
+| `--robust-low FLOAT`                         | `0.0`    | Lower robust quantile for `--scale-mode robust`.                            |
+| `--robust-high FLOAT`                        | `0.999`  | Upper robust quantile for `--scale-mode robust`.                            |
+
+**Examples**
+
+```bash
+# Apply an LTA and resample to a reference image grid
+vol2vol --mov bold.nii.gz --transform bold_to_t1.lta --ref T1.mgz --out bold_in_t1.nii.gz
+
+# Invert a transform and use the swapped LTA geometry when no --ref is given
+vol2vol --mov T1.mgz --transform bold_to_t1.lta --inverse --out T1_in_bold_space.nii.gz
+
+# Identity reslice to a reference grid while preserving the input dtype
+vol2vol --mov aseg.mgz --ref orig.mgz --out aseg_in_orig.mgz --interp nearest --keep-dtype
+
+# Convert float data to uint8 with zero-anchored robust rescaling
+vol2vol --mov image.mgz --out image_uchar.mgz --out-dtype uint8 --scale-mode robust --target-max 255
+
+# Apply the transform to the header only
+vol2vol --mov bold.nii.gz --transform bold_to_t1.lta --header-only --out bold_header_in_t1.nii.gz
+```
+
+Run `vol2vol -h` for a full argument summary with defaults.
 
 ---
 

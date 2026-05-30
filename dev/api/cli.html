@@ -751,6 +751,126 @@ exits after reporting an error.</p>
 
 </section>
 </section>
+<section id="vol2vol">
+<h2><code class="docutils literal notranslate"><span class="pre">vol2vol</span></code><a class="headerlink" href="#vol2vol" title="Link to this heading">¶</a></h2>
+<p><p>Apply a linear transform to an image, reslice into a target geometry,
+or update the header only. This is the project-native analogue of
+FreeSurfer’s mri_vol2vol for linear transforms.</p>
+</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">vol2vol</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">mov</span> <span class="n">FILE</span> <span class="p">[</span><span class="o">--</span><span class="n">transform</span> <span class="n">FILE</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">transform</span><span class="o">-</span><span class="nb">format</span> <span class="p">{</span><span class="n">lta</span><span class="p">,</span><span class="n">xfm</span><span class="p">,</span><span class="n">fsl</span><span class="p">,</span><span class="n">regdat</span><span class="p">,</span><span class="n">itk</span><span class="p">,</span><span class="n">antsmat</span><span class="p">,</span><span class="n">afni</span><span class="p">,</span><span class="n">niftyreg</span><span class="p">}]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">ref</span> <span class="n">FILE</span><span class="p">]</span> <span class="o">--</span><span class="n">out</span> <span class="n">FILE</span> <span class="p">[</span><span class="o">--</span><span class="n">interp</span> <span class="p">{</span><span class="n">linear</span><span class="p">,</span><span class="n">nearest</span><span class="p">}]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">pad</span> <span class="n">MODE</span><span class="o">|</span><span class="n">VALUE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">header</span><span class="o">-</span><span class="n">only</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">inverse</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">out</span><span class="o">-</span><span class="n">dtype</span> <span class="n">DTYPE</span> <span class="o">|</span> <span class="o">--</span><span class="n">keep</span><span class="o">-</span><span class="n">dtype</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">scale</span><span class="o">-</span><span class="n">mode</span> <span class="p">{</span><span class="n">clamp</span><span class="p">,</span><span class="n">rescale</span><span class="p">,</span><span class="n">robust</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">target</span><span class="o">-</span><span class="nb">max</span> <span class="n">TARGET_MAX</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">robust</span><span class="o">-</span><span class="n">low</span> <span class="n">FRAC</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">robust</span><span class="o">-</span><span class="n">high</span> <span class="n">FRAC</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
+</pre></div>
+</div>
+<section id="neuroreg.cli.vol2vol-_build_parser-named-arguments">
+<h3>Named Arguments<a class="headerlink" href="#neuroreg.cli.vol2vol-_build_parser-named-arguments" title="Link to this heading">¶</a></h3>
+<dl class="option-list">
+<dt><kbd>--mov</kbd></dt>
+<dd><p>Moving/source image to map.</p>
+</dd>
+<dt><kbd>--transform</kbd></dt>
+<dd><p>Optional linear transform to apply.</p>
+</dd>
+<dt><kbd>--transform-format</kbd></dt>
+<dd><p>Possible choices: lta, xfm, fsl, regdat, itk, antsmat, afni, niftyreg</p>
+<p>Override transform format inference for ambiguous files such as .txt or .mat.</p>
+</dd>
+<dt><kbd>--ref</kbd></dt>
+<dd><p>Optional target/reference image geometry. Overrides geometry stored in the transform.</p>
+</dd>
+<dt><kbd>--out</kbd></dt>
+<dd><p>Output mapped image filename.</p>
+</dd>
+<dt><kbd>--interp</kbd></dt>
+<dd><p>Possible choices: linear, nearest</p>
+<p>Interpolation mode for resampled output.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">'linear'</span></code></p>
+</dd>
+<dt><kbd>--pad</kbd></dt>
+<dd><p>Out-of-bounds padding: zero, border, reflection, brightest, or a numeric constant.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">zero</span></code></p>
+</dd>
+<dt><kbd>--header-only</kbd></dt>
+<dd><p>Apply the transform to the header only and skip interpolation.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--inverse</kbd></dt>
+<dd><p>Apply the inverse of the supplied transform.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--out-dtype</kbd></dt>
+<dd><p>Explicit final output dtype, or ‘input’ to preserve the moving-image dtype.</p>
+</dd>
+<dt><kbd>--keep-dtype</kbd></dt>
+<dd><p>Write interpolated output in the moving-image dtype. Equivalent to –out-dtype input.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--scale-mode</kbd></dt>
+<dd><p>Possible choices: clamp, rescale, robust</p>
+<p>Optional final intensity policy before dtype conversion.</p>
+</dd>
+<dt><kbd>--target-max</kbd></dt>
+<dd><p>Upper target value for zero-anchored rescale or robust-rescale output.</p>
+</dd>
+<dt><kbd>--robust-low</kbd></dt>
+<dd><p>Lower robust quantile used to trim the source intensity distribution.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.0</span></code></p>
+</dd>
+<dt><kbd>--robust-high</kbd></dt>
+<dd><p>Upper robust quantile used to estimate the source intensity ceiling.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.999</span></code></p>
+</dd>
+<dt><kbd>--verbose</kbd></dt>
+<dd><p>Enable INFO-level logging.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--debug</kbd></dt>
+<dd><p>Enable DEBUG-level logging.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+</dl>
+</section>
+<section id="id3">
+<h3>Python module<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
+<p id="module-neuroreg.cli.vol2vol">Command-line image mapping and reslicing utility.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="neuroreg.cli.vol2vol.main">
+<span class="sig-prename descclassname"><span class="pre">neuroreg.cli.vol2vol.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/cli/vol2vol.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.cli.vol2vol.main" title="Link to this definition">¶</a></dt>
+<dd><p>Entry point for the <code class="docutils literal notranslate"><span class="pre">vol2vol</span></code> command-line interface.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>args</strong><span class="classifier">list of str or None, optional</span></dt><dd><p>Command-line arguments. When <code class="docutils literal notranslate"><span class="pre">None</span></code>, arguments are read from
+<code class="xref py py-data docutils literal notranslate"><span class="pre">sys.argv</span></code>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>None</dt><dd><p>This function is invoked for its side effects: loading images and
+transforms, mapping the image, and writing the output volume.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>SystemExit</dt><dd><p>If argument parsing fails, required geometry is unavailable, or image /
+transform loading or writing raises an exception.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
 <section id="segreg">
 <h2><code class="docutils literal notranslate"><span class="pre">segreg</span></code><a class="headerlink" href="#segreg" title="Link to this heading">¶</a></h2>
 <p><p>Segmentation-based registration via label centroids.
@@ -810,8 +930,8 @@ Fits translation-only, rigid, similarity, no-shear anisotropic-scale, or affine 
 </dd>
 </dl>
 </section>
-<section id="id3">
-<h3>Python module<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
+<section id="id4">
+<h3>Python module<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h3>
 <p id="module-neuroreg.cli.segreg">Command-line interface for segmentation-based centroid registration.</p>
 <p>The CLI fits an LTA from a moving segmentation to either a target segmentation,
 a centroid target JSON file (or bundled centroid target name), or a left-right
@@ -1251,8 +1371,8 @@ NiftyReg affine text matrices store the inverse target-to-source RAS matrix.</p>
 </dl>
 </section>
 </section>
-<section id="id4">
-<h3>Python module<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h3>
+<section id="id5">
+<h3>Python module<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h3>
 <p id="module-neuroreg.cli.lta">Unified LTA transform manipulation CLI.</p>
 <p>Available subcommands are <code class="docutils literal notranslate"><span class="pre">diff</span></code> to compare transforms, <code class="docutils literal notranslate"><span class="pre">invert</span></code> to invert
 an LTA, <code class="docutils literal notranslate"><span class="pre">concat</span></code> to chain two LTAs, and <code class="docutils literal notranslate"><span class="pre">convert</span></code> to translate between
@@ -1289,8 +1409,8 @@ tkregister <code class="docutils literal notranslate"><span class="pre">register
 </dd>
 </dl>
 </section>
-<section id="id5">
-<h3>Python module<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h3>
+<section id="id6">
+<h3>Python module<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h3>
 <span class="target" id="module-neuroreg.cli.sys_info"></span><dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.cli.sys_info.main">
 <span class="sig-prename descclassname"><span class="pre">neuroreg.cli.sys_info.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/cli/sys_info.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.cli.sys_info.main" title="Link to this definition">¶</a></dt>
@@ -1400,9 +1520,17 @@ tkregister <code class="docutils literal notranslate"><span class="pre">register
 </li>
 </ul>
 </li>
+<li><a class="reference internal" href="#vol2vol"><code class="docutils literal notranslate"><span class="pre">vol2vol</span></code></a><ul>
+<li><a class="reference internal" href="#neuroreg.cli.vol2vol-_build_parser-named-arguments">Named Arguments</a></li>
+<li><a class="reference internal" href="#id3">Python module</a><ul>
+<li><a class="reference internal" href="#neuroreg.cli.vol2vol.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li><a class="reference internal" href="#segreg"><code class="docutils literal notranslate"><span class="pre">segreg</span></code></a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.segreg-_build_parser-named-arguments">Named Arguments</a></li>
-<li><a class="reference internal" href="#id3">Python module</a><ul>
+<li><a class="reference internal" href="#id4">Python module</a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.segreg.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 </ul>
 </li>
@@ -1449,7 +1577,7 @@ tkregister <code class="docutils literal notranslate"><span class="pre">register
 <li><a class="reference internal" href="#neuroreg.cli.lta-_build_parser-named-arguments">Named Arguments</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#id4">Python module</a><ul>
+<li><a class="reference internal" href="#id5">Python module</a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.lta.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 </ul>
 </li>
@@ -1457,7 +1585,7 @@ tkregister <code class="docutils literal notranslate"><span class="pre">register
 </li>
 <li><a class="reference internal" href="#neuroreg-sys-info"><code class="docutils literal notranslate"><span class="pre">neuroreg-sys_info</span></code></a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.sys_info-_build_parser-named-arguments">Named Arguments</a></li>
-<li><a class="reference internal" href="#id5">Python module</a><ul>
+<li><a class="reference internal" href="#id6">Python module</a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.sys_info.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.cli.sys_info.run"><code class="docutils literal notranslate"><span class="pre">run()</span></code></a></li>
 </ul>

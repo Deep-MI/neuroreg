@@ -277,6 +277,19 @@ surface pair.</p>
 </pre></div>
 </div>
 </section>
+<section id="vol2vol">
+<h2>vol2vol<a class="headerlink" href="#vol2vol" title="Link to this heading">¶</a></h2>
+<p>Apply a linear transform to an image, reslice to a target geometry, or update
+the header only without interpolation. The transform argument is optional, so
+the command also covers identity reslicing, dtype conversion, and final output
+intensity remapping.</p>
+<p>Examples:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vol2vol</span> <span class="o">--</span><span class="n">mov</span> <span class="n">bold</span><span class="o">.</span><span class="n">nii</span><span class="o">.</span><span class="n">gz</span> <span class="o">--</span><span class="n">transform</span> <span class="n">bold_to_t1</span><span class="o">.</span><span class="n">lta</span> <span class="o">--</span><span class="n">ref</span> <span class="n">T1</span><span class="o">.</span><span class="n">mgz</span> <span class="o">--</span><span class="n">out</span> <span class="n">bold_in_t1</span><span class="o">.</span><span class="n">nii</span><span class="o">.</span><span class="n">gz</span>
+<span class="n">vol2vol</span> <span class="o">--</span><span class="n">mov</span> <span class="n">aseg</span><span class="o">.</span><span class="n">mgz</span> <span class="o">--</span><span class="n">ref</span> <span class="n">orig</span><span class="o">.</span><span class="n">mgz</span> <span class="o">--</span><span class="n">interp</span> <span class="n">nearest</span> <span class="o">--</span><span class="n">keep</span><span class="o">-</span><span class="n">dtype</span> <span class="o">--</span><span class="n">out</span> <span class="n">aseg_in_orig</span><span class="o">.</span><span class="n">mgz</span>
+<span class="n">vol2vol</span> <span class="o">--</span><span class="n">mov</span> <span class="n">bold</span><span class="o">.</span><span class="n">nii</span><span class="o">.</span><span class="n">gz</span> <span class="o">--</span><span class="n">transform</span> <span class="n">bold_to_t1</span><span class="o">.</span><span class="n">lta</span> <span class="o">--</span><span class="n">header</span><span class="o">-</span><span class="n">only</span> <span class="o">--</span><span class="n">out</span> <span class="n">bold_header_in_t1</span><span class="o">.</span><span class="n">nii</span><span class="o">.</span><span class="n">gz</span>
+</pre></div>
+</div>
+</section>
 <section id="lta">
 <h2>lta<a class="headerlink" href="#lta" title="Link to this heading">¶</a></h2>
 <p>Utilities for comparing, concatenating, inverting, and converting
@@ -368,6 +381,7 @@ installations and CI environments.</p>
 <li><a class="reference internal" href="#robreg">robreg</a></li>
 <li><a class="reference internal" href="#coreg">coreg</a></li>
 <li><a class="reference internal" href="#bbreg">bbreg</a></li>
+<li><a class="reference internal" href="#vol2vol">vol2vol</a></li>
 <li><a class="reference internal" href="#lta">lta</a></li>
 <li><a class="reference internal" href="#neuroreg-sys-info">neuroreg-sys_info</a></li>
 </ul>

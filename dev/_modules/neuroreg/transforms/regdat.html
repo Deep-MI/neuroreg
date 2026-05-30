@@ -248,7 +248,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..image.geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">vox2tkras_from_volume_info</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.lta</span><span class="w"> </span><span class="kn">import</span> <span class="n">LTA</span><span class="p">,</span> <span class="n">_affine_from_info</span><span class="p">,</span> <span class="n">_AnyHeader</span><span class="p">,</span> <span class="n">_header_info</span><span class="p">,</span> <span class="n">_header_to_vol_info</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.lta</span><span class="w"> </span><span class="kn">import</span> <span class="n">LTA</span><span class="p">,</span> <span class="n">_AnyHeader</span><span class="p">,</span> <span class="n">_header_info</span><span class="p">,</span> <span class="n">_header_to_vol_info</span><span class="p">,</span> <span class="n">affine_from_volume_info</span>
 
 <span class="n">_VALID_FLOAT2INT</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;tkregister&quot;</span><span class="p">,</span> <span class="s2">&quot;round&quot;</span><span class="p">,</span> <span class="s2">&quot;floor&quot;</span><span class="p">}</span>
 
@@ -344,8 +344,8 @@
 <span class="sd">        RegisterDat</span>
 <span class="sd">            Wrapper containing the equivalent tkregister transform.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">src_affine</span> <span class="o">=</span> <span class="n">_affine_from_info</span><span class="p">(</span><span class="n">lta</span><span class="o">.</span><span class="n">src</span><span class="p">)</span>
-        <span class="n">dst_affine</span> <span class="o">=</span> <span class="n">_affine_from_info</span><span class="p">(</span><span class="n">lta</span><span class="o">.</span><span class="n">dst</span><span class="p">)</span>
+        <span class="n">src_affine</span> <span class="o">=</span> <span class="n">affine_from_volume_info</span><span class="p">(</span><span class="n">lta</span><span class="o">.</span><span class="n">src</span><span class="p">)</span>
+        <span class="n">dst_affine</span> <span class="o">=</span> <span class="n">affine_from_volume_info</span><span class="p">(</span><span class="n">lta</span><span class="o">.</span><span class="n">dst</span><span class="p">)</span>
         <span class="n">src_vox2tkras</span> <span class="o">=</span> <span class="n">vox2tkras_from_volume_info</span><span class="p">(</span><span class="n">lta</span><span class="o">.</span><span class="n">src</span><span class="p">)</span>
         <span class="n">dst_vox2tkras</span> <span class="o">=</span> <span class="n">vox2tkras_from_volume_info</span><span class="p">(</span><span class="n">lta</span><span class="o">.</span><span class="n">dst</span><span class="p">)</span>
         <span class="n">src_ras2tkras</span> <span class="o">=</span> <span class="n">src_vox2tkras</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">src_affine</span><span class="p">)</span>
@@ -395,8 +395,8 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">src</span> <span class="o">=</span> <span class="n">_header_to_vol_info</span><span class="p">(</span><span class="n">_header_info</span><span class="p">(</span><span class="n">src_img</span><span class="p">),</span> <span class="n">src_fname</span><span class="p">)</span>
         <span class="n">dst</span> <span class="o">=</span> <span class="n">_header_to_vol_info</span><span class="p">(</span><span class="n">_header_info</span><span class="p">(</span><span class="n">dst_img</span><span class="p">),</span> <span class="n">dst_fname</span><span class="p">)</span>
-        <span class="n">src_affine</span> <span class="o">=</span> <span class="n">_affine_from_info</span><span class="p">(</span><span class="n">src</span><span class="p">)</span>
-        <span class="n">dst_affine</span> <span class="o">=</span> <span class="n">_affine_from_info</span><span class="p">(</span><span class="n">dst</span><span class="p">)</span>
+        <span class="n">src_affine</span> <span class="o">=</span> <span class="n">affine_from_volume_info</span><span class="p">(</span><span class="n">src</span><span class="p">)</span>
+        <span class="n">dst_affine</span> <span class="o">=</span> <span class="n">affine_from_volume_info</span><span class="p">(</span><span class="n">dst</span><span class="p">)</span>
         <span class="n">src_vox2tkras</span> <span class="o">=</span> <span class="n">vox2tkras_from_volume_info</span><span class="p">(</span><span class="n">src</span><span class="p">)</span>
         <span class="n">dst_vox2tkras</span> <span class="o">=</span> <span class="n">vox2tkras_from_volume_info</span><span class="p">(</span><span class="n">dst</span><span class="p">)</span>
         <span class="n">src_ras2tkras</span> <span class="o">=</span> <span class="n">src_vox2tkras</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">src_affine</span><span class="p">)</span>

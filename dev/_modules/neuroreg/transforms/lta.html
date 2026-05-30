@@ -351,12 +351,24 @@
         <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">getuid</span><span class="p">())</span> <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">getuid</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;UNKNOWN&quot;</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_affine_from_info</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reconstruct a 4×4 voxel-to-RAS affine from an LTA volume-info dict.</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">affine_from_volume_info</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reconstruct a 4×4 voxel-to-RAS affine from LTA volume-info metadata.</span>
 
-<span class="sd">    Expects keys: ``xras``, ``yras``, ``zras``, ``cras``, ``voxelsize``,</span>
-<span class="sd">    ``volume``.  These are the fields written by :meth:`LTA.write` and parsed</span>
-<span class="sd">    by :meth:`LTA.read`.</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    info : dict</span>
+<span class="sd">        LTA volume-info mapping containing ``xras``, ``yras``, ``zras``,</span>
+<span class="sd">        ``cras``, ``voxelsize``, and ``volume`` fields.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    np.ndarray</span>
+<span class="sd">        Reconstructed 4 × 4 voxel-to-RAS affine.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If the volume-info block is marked invalid or lacks required fields.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;valid&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;LTA volume info is marked invalid (valid = 0); geometry-dependent conversion is unavailable.&quot;</span><span class="p">)</span>
@@ -374,13 +386,14 @@
     <span class="k">return</span> <span class="n">A</span>
 
 
+
 <span class="k">def</span><span class="w"> </span><span class="nf">_header_to_vol_info</span><span class="p">(</span><span class="n">hdr</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">fname</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert a :func:`_header_info` dict to LTA volume-info format.</span>
 
 <span class="sd">    Maps the FreeSurfer-style ``Mdc`` / ``Pxyz_c`` / ``dims`` / ``delta`` keys</span>
 <span class="sd">    produced by :func:`_header_info` to the ``xras`` / ``yras`` / ``zras`` /</span>
 <span class="sd">    ``cras`` / ``voxelsize`` / ``volume`` keys expected by</span>
-<span class="sd">    :func:`_affine_from_info` and stored in ``.lta`` files.</span>
+<span class="sd">    :func:`affine_from_volume_info` and stored in ``.lta`` files.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">Mdc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">hdr</span><span class="p">[</span><span class="s2">&quot;Mdc&quot;</span><span class="p">])</span>
     <span class="n">Pxyz_c</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">hdr</span><span class="p">[</span><span class="s2">&quot;Pxyz_c&quot;</span><span class="p">])</span>
@@ -597,8 +610,8 @@
             <span class="n">lta</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">(</span>
                 <span class="n">convert_transform_type</span><span class="p">(</span>
                     <span class="n">lta</span><span class="o">.</span><span class="n">matrix</span><span class="p">,</span>
-                    <span class="n">_affine_from_info</span><span class="p">(</span><span class="n">src</span><span class="p">),</span>
-                    <span class="n">_affine_from_info</span><span class="p">(</span><span class="n">dst</span><span class="p">),</span>
+                    <span class="n">affine_from_volume_info</span><span class="p">(</span><span class="n">src</span><span class="p">),</span>
+                    <span class="n">affine_from_volume_info</span><span class="p">(</span><span class="n">dst</span><span class="p">),</span>
                     <span class="n">from_type</span><span class="o">=</span><span class="n">stored_type</span><span class="p">,</span>
                     <span class="n">to_type</span><span class="o">=</span><span class="n">lta_type</span><span class="p">,</span>
                 <span class="p">),</span>
@@ -673,8 +686,8 @@
             <span class="k">if</span> <span class="n">out_type</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span>
             <span class="k">else</span> <span class="n">convert_transform_type</span><span class="p">(</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">,</span>
-                <span class="n">_affine_from_info</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="p">),</span>
-                <span class="n">_affine_from_info</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dst</span><span class="p">),</span>
+                <span class="n">affine_from_volume_info</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="p">),</span>
+                <span class="n">affine_from_volume_info</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dst</span><span class="p">),</span>
                 <span class="n">from_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="p">,</span>
                 <span class="n">to_type</span><span class="o">=</span><span class="n">out_type</span><span class="p">,</span>
             <span class="p">)</span>
@@ -735,8 +748,8 @@
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">convert_transform_type</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">,</span>
-            <span class="n">_affine_from_info</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="p">),</span>
-            <span class="n">_affine_from_info</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dst</span><span class="p">),</span>
+            <span class="n">affine_from_volume_info</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="p">),</span>
+            <span class="n">affine_from_volume_info</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dst</span><span class="p">),</span>
             <span class="n">from_type</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
             <span class="n">to_type</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
         <span class="p">)</span></div>
@@ -750,8 +763,8 @@
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">convert_transform_type</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">,</span>
-            <span class="n">_affine_from_info</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="p">),</span>
-            <span class="n">_affine_from_info</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dst</span><span class="p">),</span>
+            <span class="n">affine_from_volume_info</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="p">),</span>
+            <span class="n">affine_from_volume_info</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dst</span><span class="p">),</span>
             <span class="n">from_type</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
             <span class="n">to_type</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
         <span class="p">)</span></div>
@@ -862,7 +875,7 @@
         <span class="n">src_volume</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="p">[</span><span class="s2">&quot;volume&quot;</span><span class="p">]</span>
         <span class="n">src_shape</span> <span class="o">=</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">src_volume</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">src_volume</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">src_volume</span><span class="p">[</span><span class="mi">2</span><span class="p">]))</span>
         <span class="n">M2</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">r2r</span><span class="p">()</span> <span class="k">if</span> <span class="n">other</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
-        <span class="k">return</span> <span class="n">corner_dist</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">r2r</span><span class="p">(),</span> <span class="n">src_shape</span><span class="p">,</span> <span class="n">M2</span><span class="o">=</span><span class="n">M2</span><span class="p">,</span> <span class="n">src_affine</span><span class="o">=</span><span class="n">_affine_from_info</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="p">))</span></div>
+        <span class="k">return</span> <span class="n">corner_dist</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">r2r</span><span class="p">(),</span> <span class="n">src_shape</span><span class="p">,</span> <span class="n">M2</span><span class="o">=</span><span class="n">M2</span><span class="p">,</span> <span class="n">src_affine</span><span class="o">=</span><span class="n">affine_from_volume_info</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="p">))</span></div>
 
 
 <div class="viewcode-block" id="LTA.sphere_dist">

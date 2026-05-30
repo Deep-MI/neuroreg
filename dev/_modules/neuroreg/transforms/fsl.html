@@ -248,7 +248,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..image.geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">vox2tkras_from_volume_info</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.lta</span><span class="w"> </span><span class="kn">import</span> <span class="n">LTA</span><span class="p">,</span> <span class="n">_affine_from_info</span><span class="p">,</span> <span class="n">_AnyHeader</span><span class="p">,</span> <span class="n">_header_info</span><span class="p">,</span> <span class="n">_header_to_vol_info</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.lta</span><span class="w"> </span><span class="kn">import</span> <span class="n">LTA</span><span class="p">,</span> <span class="n">_AnyHeader</span><span class="p">,</span> <span class="n">_header_info</span><span class="p">,</span> <span class="n">_header_to_vol_info</span><span class="p">,</span> <span class="n">affine_from_volume_info</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.regdat</span><span class="w"> </span><span class="kn">import</span> <span class="n">RegisterDat</span>
 
 
@@ -312,8 +312,8 @@
 <span class="sd">        Possibly adjusted ``(d_ref, d_mov)`` pair following FSL&#39;s NIfTI</span>
 <span class="sd">        convention for positive-determinant affines.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">ref_aff</span> <span class="o">=</span> <span class="n">_affine_from_info</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span>
-    <span class="n">mov_aff</span> <span class="o">=</span> <span class="n">_affine_from_info</span><span class="p">(</span><span class="n">mov</span><span class="p">)</span>
+    <span class="n">ref_aff</span> <span class="o">=</span> <span class="n">affine_from_volume_info</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span>
+    <span class="n">mov_aff</span> <span class="o">=</span> <span class="n">affine_from_volume_info</span><span class="p">(</span><span class="n">mov</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">mov_aff</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
         <span class="n">d_mov</span> <span class="o">=</span> <span class="n">d_mov</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
