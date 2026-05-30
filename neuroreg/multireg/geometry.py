@@ -233,7 +233,9 @@ def mean_mapped_centroid(
     centroid_sum = np.zeros(4, dtype=np.float64)
     for image, r2r in zip(images, pairwise_r2r, strict=False):
         centroid_h = np.ones(4, dtype=np.float64)
-        centroid_h[:3] = image_centroid_voxel(image)
+        # FreeSurfer's mean-coordinate path maps the centroid through voxel space
+        # using 1-based CRS coordinates before converting back to RAS.
+        centroid_h[:3] = image_centroid_voxel(image) + 1.0
         centroid_sum += r2r_to_v2v(image, target_image, r2r) @ centroid_h
     centroid_target = centroid_sum / float(len(images))
     target_affine = np.asarray(target_image.affine, dtype=np.float64)

@@ -117,6 +117,44 @@ class TestMultiregCli:
                 ]
             )
 
+    def test_main_writes_mgz_template_from_nifti_result(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        mov1 = tmp_path / "tp1.nii.gz"
+        mov2 = tmp_path / "tp2.nii.gz"
+        template = tmp_path / "template.mgz"
+        _write_zero_image(mov1)
+        _write_zero_image(mov2)
+
+        def fake_multireg(*args, **kwargs):
+            template_img = nib.Nifti1Image(np.ones((8, 8, 8), dtype=np.float32), np.eye(4, dtype=np.float32))
+            identity = np.eye(4, dtype=np.float64)
+            return MultiRegResult(
+                template_image=template_img,
+                transforms_r2r=[identity, identity],
+                ltas=[],
+                initial_target_index=0,
+                seed=123,
+                mapped_images=None,
+                template_iterations_run=0,
+                iteration_distances=[],
+            )
+
+        monkeypatch.setattr("neuroreg.cli.multireg.multireg", fake_multireg)
+
+        multireg_main(
+            [
+                "--mov",
+                str(mov1),
+                str(mov2),
+                "--template",
+                str(template),
+            ]
+        )
+
+        written = nib.load(str(template))
+        assert template.exists()
+        assert isinstance(written, nib.MGHImage)
+        assert written.shape == (8, 8, 8)
+
     def test_main_forwards_ixforms(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         mov1 = tmp_path / "tp1.nii.gz"
         mov2 = tmp_path / "tp2.nii.gz"
