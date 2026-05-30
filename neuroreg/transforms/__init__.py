@@ -3,8 +3,9 @@
 from .afni import AFNIAffine
 from .antsmat import ANTsMatTransform
 from .fsl import FSLMat
+from .io import TRANSFORM_FORMATS, infer_transform_format, read_transform_as_lta, write_lta_as_transform
 from .itk import ITKTransform
-from .lta import LTA
+from .lta import LTA, affine_from_volume_info
 from .matrices import (
     LINEAR_RAS_TO_RAS,
     LINEAR_VOX_TO_VOX,
@@ -36,17 +37,22 @@ __all__ = [
     # lta
     "AFNIAffine",
     "ANTsMatTransform",
+    "affine_from_volume_info",
     "FSLMat",
     "ITKTransform",
     "LTA",
     "NiftyRegTransform",
     "RegisterDat",
+    "TRANSFORM_FORMATS",
     "XFM",
     "affine_dist",
     "corner_dist",
     "decompose_transform",
+    "infer_transform_format",
+    "read_transform_as_lta",
     "rigid_dist",
     "sphere_dist",
+    "write_lta_as_transform",
     # matrices
     "LINEAR_RAS_TO_RAS",
     "LINEAR_VOX_TO_VOX",

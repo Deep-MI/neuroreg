@@ -34,6 +34,20 @@ Example::
 
    bbreg --mov bold.nii.gz --subject_dir /path/to/subject --out bold_to_t1.lta
 
+vol2vol
+-------
+
+Apply a linear transform to an image, reslice to a target geometry, or update
+the header only without interpolation. The transform argument is optional, so
+the command also covers identity reslicing, dtype conversion, and final output
+intensity remapping.
+
+Examples::
+
+   vol2vol --mov bold.nii.gz --transform bold_to_t1.lta --ref T1.mgz --out bold_in_t1.nii.gz
+   vol2vol --mov aseg.mgz --ref orig.mgz --interp nearest --keep-dtype --out aseg_in_orig.mgz
+   vol2vol --mov bold.nii.gz --transform bold_to_t1.lta --header-only --out bold_header_in_t1.nii.gz
+
 lta
 ---
 
@@ -66,4 +80,3 @@ installations and CI environments.
 Example::
 
    neuroreg-sys_info --developer
-

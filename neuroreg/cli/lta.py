@@ -11,20 +11,15 @@ tkregister ``register.dat`` transforms. Run ``lta --help`` or
 
 import argparse
 import sys
-from pathlib import Path
 
 import numpy as np
 
 from ..transforms import (
     LTA,
-    XFM,
-    AFNIAffine,
-    ANTsMatTransform,
-    FSLMat,
-    ITKTransform,
-    NiftyRegTransform,
-    RegisterDat,
+    TRANSFORM_FORMATS,
     decompose_transform,
+    read_transform_as_lta,
+    write_lta_as_transform,
 )
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -66,105 +61,6 @@ def _needs_vol_info(lta: LTA, dist: int) -> bool:
     both src and dst volume info.
     """
     return dist == 3 or lta.type == 0
-
-
-_FORMATS = ("lta", "xfm", "fsl", "regdat", "itk", "antsmat", "afni", "niftyreg")
-
-
-def _infer_transform_format(path: str, explicit: str | None = None) -> str:
-    if explicit is not None:
-        return explicit
-
-    lower = path.lower()
-    suffix = Path(lower).suffix
-    if suffix == ".lta":
-        return "lta"
-    if suffix == ".xfm":
-        return "xfm"
-    if lower.endswith("genericaffine.mat"):
-        return "antsmat"
-    if suffix in {".mat", ".fslmat"}:
-        return "fsl"
-    if suffix in {".dat", ".reg"}:
-        return "regdat"
-    if suffix == ".tfm" or lower.endswith(".itk.txt") or lower.endswith(".ants.txt"):
-        return "itk"
-    if lower.endswith(".aff12.1d"):
-        return "afni"
-    if lower.endswith(".niftyreg.txt"):
-        return "niftyreg"
-    raise ValueError(
-        f"Unsupported transform format for {path!r}; expected .lta, .xfm, .mat, .fslmat, "
-        ".dat, .reg, .tfm, .aff12.1D, \\*GenericAffine.mat, or .niftyreg.txt. "
-        "Use --in-format/--out-format for ambiguous text formats such as .txt, .1D, or .mat"
-    )
-
-
-def _read_transform_as_lta(
-        path: str,
-        src_img: str | None = None,
-        dst_img: str | None = None,
-        fmt: str | None = None,
-) -> LTA:
-    fmt = _infer_transform_format(path, explicit=fmt)
-    if fmt == "lta":
-        return LTA.read(path)
-    if fmt == "xfm":
-        return XFM.read(path).to_lta(src_fname=src_img, src_img=src_img, dst_fname=dst_img, dst_img=dst_img)
-    if fmt == "itk":
-        return ITKTransform.read(path).to_lta(src_fname=src_img, src_img=src_img, dst_fname=dst_img, dst_img=dst_img)
-    if fmt == "antsmat":
-        return ANTsMatTransform.read(path).to_lta(
-            src_fname=src_img, src_img=src_img, dst_fname=dst_img, dst_img=dst_img
-        )
-    if fmt == "afni":
-        return AFNIAffine.read(path).to_lta(src_fname=src_img, src_img=src_img, dst_fname=dst_img, dst_img=dst_img)
-    if fmt == "niftyreg":
-        return NiftyRegTransform.read(path).to_lta(
-            src_fname=src_img, src_img=src_img, dst_fname=dst_img, dst_img=dst_img
-        )
-    if src_img is None or dst_img is None:
-        kind = "FSL" if fmt == "fsl" else "register.dat"
-        raise ValueError(f"{kind} conversion requires both --src-img and --dst-img")
-    if fmt == "fsl":
-        return FSLMat.read(path).to_lta(src_fname=src_img, src_img=src_img, dst_fname=dst_img, dst_img=dst_img)
-    return RegisterDat.read(path).to_lta(src_fname=src_img, src_img=src_img, dst_fname=dst_img, dst_img=dst_img)
-
-
-def _write_lta_as_transform(
-        lta: LTA,
-        output: str,
-        *,
-        output_format: str | None = None,
-        out_type: str | None = None,
-        subject: str | None = None,
-        fscale: float | None = None,
-        float2int: str = "round",
-) -> None:
-    fmt = _infer_transform_format(output, explicit=output_format)
-    if fmt == "lta":
-        if subject is not None:
-            lta.subject = subject
-        if fscale is not None:
-            lta.fscale = fscale
-        elif lta.fscale is None:
-            lta.fscale = 0.1
-        lta_type = None if out_type is None else {"vox2vox": 0, "ras2ras": 1}[out_type]
-        lta.write(output, lta_type=lta_type)
-    elif fmt == "xfm":
-        XFM.from_lta(lta).write(output)
-    elif fmt == "fsl":
-        FSLMat.from_lta(lta).write(output)
-    elif fmt == "itk":
-        ITKTransform.from_lta(lta).write(output)
-    elif fmt == "antsmat":
-        ANTsMatTransform.from_lta(lta).write(output)
-    elif fmt == "afni":
-        AFNIAffine.from_lta(lta).write(output)
-    elif fmt == "niftyreg":
-        NiftyRegTransform.from_lta(lta).write(output)
-    else:
-        RegisterDat.from_lta(lta, subject=subject, intensity=fscale, float2int=float2int).write(output)
 
 
 def _run_dist(ns: argparse.Namespace, lta1: LTA, lta2: LTA | None) -> None:
@@ -347,8 +243,16 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     conv_p.add_argument("input", metavar="INPUT", help="Input transform file.")
     conv_p.add_argument("output", metavar="OUTPUT", help="Output transform file.")
-    conv_p.add_argument("--in-format", choices=_FORMATS, help="Override input format inference for ambiguous files.")
-    conv_p.add_argument("--out-format", choices=_FORMATS, help="Override output format inference for ambiguous files.")
+    conv_p.add_argument(
+        "--in-format",
+        choices=TRANSFORM_FORMATS,
+        help="Override input format inference for ambiguous files.",
+    )
+    conv_p.add_argument(
+        "--out-format",
+        choices=TRANSFORM_FORMATS,
+        help="Override output format inference for ambiguous files.",
+    )
     conv_p.add_argument("--src-img", help="Moving/source image geometry for conversion when needed.")
     conv_p.add_argument("--dst-img", help="Reference/target image geometry for conversion when needed.")
     conv_p.add_argument(
@@ -446,13 +350,13 @@ def _main_concat(ns: argparse.Namespace) -> None:
 
 def _main_convert(ns: argparse.Namespace) -> None:
     try:
-        lta = _read_transform_as_lta(ns.input, src_img=ns.src_img, dst_img=ns.dst_img, fmt=ns.in_format)
+        lta = read_transform_as_lta(ns.input, src_img=ns.src_img, dst_img=ns.dst_img, fmt=ns.in_format)
     except Exception as e:
         print(f"ERROR: cannot read {ns.input}: {e}", file=sys.stderr)
         sys.exit(1)
 
     try:
-        _write_lta_as_transform(
+        write_lta_as_transform(
             lta,
             ns.output,
             output_format=ns.out_format,

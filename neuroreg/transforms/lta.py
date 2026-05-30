@@ -109,12 +109,24 @@ def _safe_getuser() -> str:
         return str(getuid()) if callable(getuid) else "UNKNOWN"
 
 
-def _affine_from_info(info: dict) -> np.ndarray:
-    """Reconstruct a 4×4 voxel-to-RAS affine from an LTA volume-info dict.
+def affine_from_volume_info(info: dict) -> np.ndarray:
+    """Reconstruct a 4×4 voxel-to-RAS affine from LTA volume-info metadata.
 
-    Expects keys: ``xras``, ``yras``, ``zras``, ``cras``, ``voxelsize``,
-    ``volume``.  These are the fields written by :meth:`LTA.write` and parsed
-    by :meth:`LTA.read`.
+    Parameters
+    ----------
+    info : dict
+        LTA volume-info mapping containing ``xras``, ``yras``, ``zras``,
+        ``cras``, ``voxelsize``, and ``volume`` fields.
+
+    Returns
+    -------
+    np.ndarray
+        Reconstructed 4 × 4 voxel-to-RAS affine.
+
+    Raises
+    ------
+    ValueError
+        If the volume-info block is marked invalid or lacks required fields.
     """
     if info.get("valid", 1) == 0:
         raise ValueError("LTA volume info is marked invalid (valid = 0); geometry-dependent conversion is unavailable.")
@@ -132,13 +144,14 @@ def _affine_from_info(info: dict) -> np.ndarray:
     return A
 
 
+
 def _header_to_vol_info(hdr: dict, fname: str = "") -> dict:
     """Convert a :func:`_header_info` dict to LTA volume-info format.
 
     Maps the FreeSurfer-style ``Mdc`` / ``Pxyz_c`` / ``dims`` / ``delta`` keys
     produced by :func:`_header_info` to the ``xras`` / ``yras`` / ``zras`` /
     ``cras`` / ``voxelsize`` / ``volume`` keys expected by
-    :func:`_affine_from_info` and stored in ``.lta`` files.
+    :func:`affine_from_volume_info` and stored in ``.lta`` files.
     """
     Mdc = np.asarray(hdr["Mdc"])
     Pxyz_c = np.asarray(hdr["Pxyz_c"])
@@ -351,8 +364,8 @@ class LTA:
             lta = cls(
                 convert_transform_type(
                     lta.matrix,
-                    _affine_from_info(src),
-                    _affine_from_info(dst),
+                    affine_from_volume_info(src),
+                    affine_from_volume_info(dst),
                     from_type=stored_type,
                     to_type=lta_type,
                 ),
@@ -421,8 +434,8 @@ class LTA:
             if out_type == self.type
             else convert_transform_type(
                 self.matrix,
-                _affine_from_info(self.src),
-                _affine_from_info(self.dst),
+                affine_from_volume_info(self.src),
+                affine_from_volume_info(self.dst),
                 from_type=self.type,
                 to_type=out_type,
             )
@@ -480,8 +493,8 @@ class LTA:
             return self.matrix.copy()
         return convert_transform_type(
             self.matrix,
-            _affine_from_info(self.src),
-            _affine_from_info(self.dst),
+            affine_from_volume_info(self.src),
+            affine_from_volume_info(self.dst),
             from_type=0,
             to_type=1,
         )
@@ -492,8 +505,8 @@ class LTA:
             return self.matrix.copy()
         return convert_transform_type(
             self.matrix,
-            _affine_from_info(self.src),
-            _affine_from_info(self.dst),
+            affine_from_volume_info(self.src),
+            affine_from_volume_info(self.dst),
             from_type=1,
             to_type=0,
         )
@@ -586,7 +599,7 @@ class LTA:
         src_volume = self.src["volume"]
         src_shape = (int(src_volume[0]), int(src_volume[1]), int(src_volume[2]))
         M2 = other.r2r() if other is not None else None
-        return corner_dist(self.r2r(), src_shape, M2=M2, src_affine=_affine_from_info(self.src))
+        return corner_dist(self.r2r(), src_shape, M2=M2, src_affine=affine_from_volume_info(self.src))
 
     def sphere_dist(self, other: LTA | None = None, radius: float = 100.0) -> float:
         """Max displacement on a sphere of given radius in RAS mm.

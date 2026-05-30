@@ -46,6 +46,20 @@ Python module
 .. automodule:: neuroreg.cli.bbreg
    :members: main
 
+``vol2vol``
+------------
+
+.. argparse::
+   :module: neuroreg.cli.vol2vol
+   :func: _build_parser
+   :prog: vol2vol
+
+Python module
+~~~~~~~~~~~~~
+
+.. automodule:: neuroreg.cli.vol2vol
+   :members: main
+
 ``segreg``
 ----------
 
