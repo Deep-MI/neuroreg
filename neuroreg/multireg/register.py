@@ -12,7 +12,7 @@ from typing import Any
 
 import numpy as np
 
-from ..image import load_image
+from ..image import load_image, reslice_r2r_image
 from ..image.map import coerce_image_data_3d
 from ..imreg.init import InitType, resolve_init_type
 from ..imreg.robreg import robreg
@@ -521,25 +521,55 @@ def multireg(
             zip(images, loaded_masks, current_transforms, strict=False)
         ):
             logger.info("Registering TP %d to current template.", index + 1)
-            updated_result = robreg(
+            mapped_image = reslice_r2r_image(
                 image,
+                previous_r2r,
+                target_affine=np.asarray(current_template.affine, dtype=np.float64),
+                target_shape=tuple(int(v) for v in current_template.shape[:3]),
+                mode="linear",
+                keep_dtype=False,
+            )
+            mapped_mask = (
+                reslice_r2r_image(
+                    mask,
+                    previous_r2r,
+                    target_affine=np.asarray(current_template.affine, dtype=np.float64),
+                    target_shape=tuple(int(v) for v in current_template.shape[:3]),
+                    mode="nearest",
+                    keep_dtype=True,
+                )
+                if mask is not None
+                else None
+            )
+            updated_result = robreg(
+                mapped_image,
                 current_template,
                 return_v2v=False,
-                src_mask=mask,
+                src_mask=mapped_mask,
                 trg_mask=None,
                 init_type=resolved_init_type,
                 nmax=nmax,
                 sat=sat,
                 symmetric=symmetric,
-                isotropic=True,
+                isotropic=False,
                 device=device,
                 verbose=verbose,
-                initial_r2r=previous_r2r,
+                initial_r2r=np.eye(4, dtype=np.float64),
             )
             if hasattr(updated_result, "detach"):
-                updated_r2r = np.asarray(updated_result.detach().cpu().numpy(), dtype=np.float64)
+                residual_r2r = np.asarray(updated_result.detach().cpu().numpy(), dtype=np.float64)
             else:
-                updated_r2r = np.asarray(updated_result, dtype=np.float64)
+                residual_r2r = np.asarray(updated_result, dtype=np.float64)
+            updated_r2r = residual_r2r @ previous_r2r
+            projected = project_to_rotation(updated_r2r[:3, :3])
+            projection_error = np.linalg.norm(projected - updated_r2r[:3, :3], ord="fro")
+            if projection_error > 0.0:
+                logger.debug(
+                    "Projecting TP %d iterative update back to rigid rotation (error=%.6g).",
+                    index + 1,
+                    projection_error,
+                )
+            updated_r2r[:3, :3] = projected
             next_transforms.append(updated_r2r)
             distances.append(float(affine_dist(previous_r2r, updated_r2r, radius=100.0)))
         current_transforms = next_transforms

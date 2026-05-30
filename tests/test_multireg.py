@@ -62,13 +62,22 @@ def test_seed_and_initial_target_choice_are_deterministic():
     assert choice1[1] == seed1
 
 
-def test_multireg_rejects_voxel_size_mismatch():
+def test_multireg_warns_on_voxel_size_mismatch(monkeypatch: pytest.MonkeyPatch):
     images = [
         _make_img(affine=np.diag([1.0, 1.0, 1.0, 1.0])),
         _make_img(affine=np.diag([1.2, 1.0, 1.0, 1.0])),
     ]
-    with pytest.raises(ValueError, match="identical voxel sizes"):
-        multireg(images, init_target_index=0, nmax=1)
+    register_module = importlib.import_module("neuroreg.multireg.register")
+
+    def fake_robreg(src, trg, **kwargs):
+        return _fake_tensor(np.eye(4, dtype=np.float64))
+
+    monkeypatch.setattr(register_module, "robreg", fake_robreg)
+
+    with pytest.warns(RuntimeWarning, match="Input voxel sizes differ"):
+        result = multireg(images, init_target_index=0, nmax=1, template_iterations=0)
+
+    assert len(result.transforms_r2r) == 2
 
 
 def test_multireg_builds_template_and_expected_transforms(monkeypatch: pytest.MonkeyPatch):
@@ -104,9 +113,13 @@ def test_multireg_iterative_refinement_reuses_previous_transforms(monkeypatch: p
     images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0)), _make_img(shift=(-2, 0, 0))]
     register_module = importlib.import_module("neuroreg.multireg.register")
     captured_initial_r2r: list[np.ndarray | None] = []
+    captured_isotropic_sizes: list[float | None] = []
+    captured_shapes: list[tuple[tuple[int, ...], tuple[int, ...]]] = []
 
     def fake_robreg(src, trg, **kwargs):
         initial_r2r = kwargs.get("initial_r2r")
+        captured_isotropic_sizes.append(kwargs.get("isotropic_size"))
+        captured_shapes.append((tuple(src.shape), tuple(trg.shape)))
         if initial_r2r is not None:
             matrix = np.asarray(initial_r2r, dtype=np.float64)
             captured_initial_r2r.append(matrix.copy())
@@ -126,29 +139,10 @@ def test_multireg_iterative_refinement_reuses_previous_transforms(monkeypatch: p
 
     assert len(captured_initial_r2r) == 5
     assert captured_initial_r2r[:2] == [None, None]
-    assert captured_initial_r2r[2] == pytest.approx(np.eye(4, dtype=np.float64))
-    assert captured_initial_r2r[3] == pytest.approx(
-        np.array(
-            [
-                [1.0, 0.0, 0.0, -2.0],
-                [0.0, 1.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0, 0.0],
-                [0.0, 0.0, 0.0, 1.0],
-            ],
-            dtype=np.float64,
-        )
-    )
-    assert captured_initial_r2r[4] == pytest.approx(
-        np.array(
-            [
-                [1.0, 0.0, 0.0, 2.0],
-                [0.0, 1.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0, 0.0],
-                [0.0, 0.0, 0.0, 1.0],
-            ],
-            dtype=np.float64,
-        )
-    )
+    assert captured_isotropic_sizes == [None, None, None, None, None]
+    for matrix in captured_initial_r2r[2:]:
+        assert matrix == pytest.approx(np.eye(4, dtype=np.float64))
+    assert captured_shapes[2:] == [((21, 21, 21), (21, 21, 21))] * 3
     assert result.template_iterations_run == 1
     assert result.iteration_distances == pytest.approx([0.0])
 
