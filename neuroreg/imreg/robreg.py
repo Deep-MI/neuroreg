@@ -285,10 +285,13 @@ def register_irls_pyramid(
             logger.info("  Trg resampled: %s → %s", trg.shape, trg_iso.shape)
 
         if initial_transform is not None:
+            # FreeSurfer stores explicit init transforms in the original voxel grids.
+            # Move that source→target vox2vox transform into the resampled isotropic
+            # grids before optimization.
             T_iso = (
-                    move_tensor(Rtrg, device=src.device, dtype=src.dtype)
+                    torch.inverse(move_tensor(Rtrg, device=src.device, dtype=src.dtype))
                     @ move_tensor(initial_transform, device=src.device, dtype=src.dtype)
-                    @ torch.inverse(move_tensor(Rsrc, device=src.device, dtype=src.dtype))
+                    @ move_tensor(Rsrc, device=src.device, dtype=src.dtype)
             )
         else:
             T_iso = move_tensor(

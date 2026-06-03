@@ -333,6 +333,33 @@ class TestRegisterIrlsPyramid:
         )
         assert torch.allclose(T, init)
 
+    def test_isotropic_explicit_initial_transform_is_mapped_into_resampled_space(self):
+        img = torch.rand(20, 20, 20)
+        src_aff = torch.eye(4)
+        src_aff[0, 0] = 2.0
+        src_aff[1, 1] = 1.5
+        trg_aff = torch.eye(4)
+        trg_aff[0, 0] = 1.0
+        trg_aff[1, 1] = 1.0
+        trg_aff[2, 2] = 1.0
+        init = torch.eye(4)
+        init[0, 3] = 3.0
+        init[1, 3] = -4.0
+
+        T, _ = register_irls_pyramid(
+            img,
+            img.clone(),
+            src_affine=src_aff,
+            trg_affine=trg_aff,
+            initial_transform=init,
+            min_voxels=8,
+            max_voxels=16,
+            nmax=0,
+            isotropic=True,
+        )
+
+        assert torch.allclose(T, init, atol=1e-6)
+
     def test_max_voxels_none_keeps_original_resolution(self):
         img = torch.zeros(31, 27, 19)
         T, all_info = register_irls_pyramid(
