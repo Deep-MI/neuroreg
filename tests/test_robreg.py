@@ -187,6 +187,56 @@ class TestPublicRobregWrapper:
         assert captured["init_type"] == "header"
         assert mr2r.shape == (4, 4)
 
+    def test_robreg_accepts_init_transform_matrix(self, monkeypatch: pytest.MonkeyPatch):
+        captured: dict[str, object] = {}
+        init_r2r = np.array(
+            [[1.0, 0.0, 0.0, 2.5], [0.0, 1.0, 0.0, -1.5], [0.0, 0.0, 1.0, 0.75], [0.0, 0.0, 0.0, 1.0]],
+            dtype=np.float64,
+        )
+
+        def fake_register_irls_pyramid(**kwargs):
+            captured.update(kwargs)
+            return torch.eye(4), []
+
+        monkeypatch.setattr("neuroreg.imreg.robreg.register_irls_pyramid", fake_register_irls_pyramid)
+
+        src = _make_img()
+        trg_affine = np.array(
+            [[1.5, 0.0, 0.0, -2.0], [0.0, 1.5, 0.0, 4.0], [0.0, 0.0, 1.5, 1.0], [0.0, 0.0, 0.0, 1.0]],
+            dtype=np.float32,
+        )
+        trg = nib.Nifti1Image(src.get_fdata().astype(np.float32), trg_affine)
+
+        mr2r = robreg(src, trg, return_v2v=False, init_type="header", init_transform=init_r2r, dof=6, nmax=1)
+
+        expected_v2v = torch.from_numpy(
+            convert_transform_type(
+                init_r2r,
+                src_affine=src.affine,
+                dst_affine=trg.affine,
+                from_type=LINEAR_RAS_TO_RAS,
+                to_type=LINEAR_VOX_TO_VOX,
+            )
+        ).to(dtype=torch.float32)
+
+        assert torch.allclose(cast(torch.Tensor, captured["initial_transform"]), expected_v2v)
+        assert captured["init_type"] == "header"
+        assert mr2r.shape == (4, 4)
+
+    def test_robreg_rejects_multiple_explicit_init_transforms(self):
+        img = _make_img()
+        with pytest.raises(ValueError, match="at most one explicit initialization transform"):
+            robreg(
+                img,
+                img,
+                return_v2v=False,
+                init_type="header",
+                init_transform=np.eye(4, dtype=np.float64),
+                init_lta="init.lta",
+                dof=6,
+                nmax=1,
+            )
+
     def test_robreg_squeezes_singleton_4d_inputs(self, monkeypatch: pytest.MonkeyPatch):
         captured: dict[str, object] = {}
 

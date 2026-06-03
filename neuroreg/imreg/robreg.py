@@ -21,6 +21,7 @@ from .init import InitType, get_init_vox2vox, resolve_init_type
 from .irls import move_tensor, register_irls
 
 ImageLike = str | Path | Any | Tensor
+InitTransformLike = str | Path | LTA | Tensor | np.ndarray
 
 logger = logging.getLogger(__name__)
 
@@ -40,8 +41,8 @@ def _resolve_robreg_device(device: str | torch.device) -> torch.device:
 
 
 def _as_tensor_and_affine(
-        image: ImageLike,
-        affine: Tensor | None = None,
+    image: ImageLike,
+    affine: Tensor | None = None,
 ) -> tuple[Tensor, Tensor]:
     """Convert a supported image input into tensor data and a voxel-to-RAS affine.
 
@@ -120,7 +121,7 @@ def _save_outlier_map(all_info: list[dict[str, Any]], outliers_name: str, verbos
     if torch.is_tensor(reg_affine):
         reg_affine = reg_affine.detach().cpu().numpy()
 
-    weights = weights_sqrt ** 2
+    weights = weights_sqrt**2
     weight_volume = torch.zeros(reg_shape, dtype=torch.float32, device=weights.device)
     weight_volume.view(-1)[valid_mask] = weights
     outlier_volume = (1.0 - weight_volume).detach().cpu()
@@ -138,11 +139,11 @@ def _save_outlier_map(all_info: list[dict[str, Any]], outliers_name: str, verbos
 
 
 def _convert_vox_transform_between_grids(
-        transform: Tensor,
-        src_affine_from: Tensor,
-        trg_affine_from: Tensor,
-        src_affine_to: Tensor,
-        trg_affine_to: Tensor,
+    transform: Tensor,
+    src_affine_from: Tensor,
+    trg_affine_from: Tensor,
+    src_affine_to: Tensor,
+    trg_affine_to: Tensor,
 ) -> Tensor:
     """Re-express a source→target vox2vox transform in different voxel grids."""
     calc_dtype = torch.float64
@@ -156,28 +157,103 @@ def _convert_vox_transform_between_grids(
     return (torch.inverse(trg_to) @ ras_to_ras @ src_to).to(dtype=transform.dtype)
 
 
+def _resolve_initial_transform(
+    *,
+    src_affine: Tensor,
+    trg_affine: Tensor,
+    dtype: torch.dtype,
+    init_transform: InitTransformLike | None = None,
+    init_lta: str | None = None,
+    initial_r2r: Tensor | np.ndarray | None = None,
+) -> Tensor | None:
+    """Resolve explicit transform initialization into voxel coordinates.
+
+    Parameters
+    ----------
+    src_affine, trg_affine : Tensor
+        Source and target voxel-to-RAS affines used to convert a RAS-to-RAS
+        initialization transform into the voxel-to-voxel form expected by the
+        IRLS solver.
+    dtype : torch.dtype
+        Output dtype of the returned voxel-to-voxel transform tensor.
+    init_transform : InitTransformLike, optional
+        Unified explicit transform specification. This may be an LTA filename,
+        an in-memory :class:`LTA`, or a 4 x 4 RAS-to-RAS matrix stored as a
+        NumPy array or torch tensor.
+    init_lta : str, optional
+        Backward-compatible alias for file-based initialization.
+    initial_r2r : Tensor or ndarray, optional
+        Backward-compatible alias for in-memory RAS-to-RAS initialization.
+
+    Returns
+    -------
+    Tensor or None
+        Voxel-to-voxel initialization transform, or ``None`` when no explicit
+        transform was supplied.
+
+    Raises
+    ------
+    ValueError
+        If more than one explicit initialization input is provided.
+    TypeError
+        If the provided transform specification is unsupported.
+    """
+    provided = [
+        ("init_transform", init_transform),
+        ("init_lta", init_lta),
+        ("initial_r2r", initial_r2r),
+    ]
+    non_null = [(name, value) for name, value in provided if value is not None]
+    if len(non_null) > 1:
+        names = ", ".join(name for name, _ in non_null)
+        raise ValueError(f"Specify at most one explicit initialization transform, got: {names}.")
+    if not non_null:
+        return None
+
+    _, spec = non_null[0]
+    if isinstance(spec, (str, Path)):
+        logger.info("Loading init transform from LTA: %s", spec)
+        init_r2r = LTA.read(spec).r2r()
+    elif isinstance(spec, LTA):
+        init_r2r = spec.r2r()
+    elif hasattr(spec, "detach") or isinstance(spec, np.ndarray):
+        init_r2r = spec.detach().cpu().numpy() if hasattr(spec, "detach") else spec
+    else:
+        raise TypeError(f"Unsupported init_transform specification: {type(spec)!r}")
+
+    return torch.from_numpy(
+        convert_transform_type(
+            np.asarray(init_r2r, dtype=np.float64),
+            src_affine=src_affine.detach().cpu().numpy(),
+            dst_affine=trg_affine.detach().cpu().numpy(),
+            from_type=LINEAR_RAS_TO_RAS,
+            to_type=LINEAR_VOX_TO_VOX,
+        )
+    ).to(dtype=dtype)
+
+
 def register_irls_pyramid(
-        src: Tensor,
-        trg: Tensor,
-        src_mask: Tensor | None = None,
-        trg_mask: Tensor | None = None,
-        src_affine: Tensor | None = None,
-        trg_affine: Tensor | None = None,
-        initial_transform: Tensor | None = None,
-        init_type: InitType = "centroid",
-        min_voxels: int = 16,
-        max_voxels: int | None = None,
-        nmax: int = 5,
-        sat: float = 6.0,
-        epsit: float = 0.01,
-        max_irls: int = 20,
-        isotropic: bool = True,
-        isotropic_size: float | None = None,
-        symmetric: bool = True,
-        adaptive_sat: bool = False,
-        target_outlier_pct: float = 5.0,
-        outliers_name: str | None = None,
-        verbose: bool = False,
+    src: Tensor,
+    trg: Tensor,
+    src_mask: Tensor | None = None,
+    trg_mask: Tensor | None = None,
+    src_affine: Tensor | None = None,
+    trg_affine: Tensor | None = None,
+    initial_transform: Tensor | None = None,
+    init_type: InitType = "centroid",
+    min_voxels: int = 16,
+    max_voxels: int | None = None,
+    nmax: int = 5,
+    sat: float = 6.0,
+    epsit: float = 0.01,
+    max_irls: int = 20,
+    isotropic: bool = True,
+    isotropic_size: float | None = None,
+    symmetric: bool = True,
+    adaptive_sat: bool = False,
+    target_outlier_pct: float = 5.0,
+    outliers_name: str | None = None,
+    verbose: bool = False,
 ) -> tuple[Tensor, list[dict[str, Any]]]:
     """Run the tensor-level IRLS pyramid registration pipeline.
 
@@ -315,9 +391,9 @@ def register_irls_pyramid(
             # Move that source→target vox2vox transform into the resampled isotropic
             # grids before optimization.
             T_iso = (
-                    torch.inverse(move_tensor(Rtrg, device=src.device, dtype=src.dtype))
-                    @ move_tensor(initial_transform, device=src.device, dtype=src.dtype)
-                    @ move_tensor(Rsrc, device=src.device, dtype=src.dtype)
+                torch.inverse(move_tensor(Rtrg, device=src.device, dtype=src.dtype))
+                @ move_tensor(initial_transform, device=src.device, dtype=src.dtype)
+                @ move_tensor(Rsrc, device=src.device, dtype=src.dtype)
             )
         else:
             T_iso = move_tensor(
@@ -467,11 +543,7 @@ def register_irls_pyramid(
     )
 
     if isotropic:
-        T = (
-                Rtrg.to(device=T.device, dtype=T.dtype)
-                @ T
-                @ torch.inverse(Rsrc.to(device=T.device, dtype=T.dtype))
-        )
+        T = Rtrg.to(device=T.device, dtype=T.dtype) @ T @ torch.inverse(Rsrc.to(device=T.device, dtype=T.dtype))
 
     if outliers_name is not None:
         _save_outlier_map(all_info, outliers_name, verbose=verbose)
@@ -480,28 +552,29 @@ def register_irls_pyramid(
 
 
 def robreg(
-        src: ImageLike,
-        trg: ImageLike,
-        *,
-        src_affine: Tensor | None = None,
-        trg_affine: Tensor | None = None,
-        src_mask: ImageLike | None = None,
-        trg_mask: ImageLike | None = None,
-        return_v2v: bool = False,
-        init_type: InitType = "centroid",
-        init_lta: str | None = None,
-        initial_r2r: Tensor | np.ndarray | None = None,
-        dof: int = 6,
-        nmax: int = 5,
-        sat: float = 6.0,
-        symmetric: bool = True,
-        isotropic: bool = True,
-        isotropic_size: float | None = None,
-        adaptive_sat: bool = False,
-        target_outlier_pct: float = 5.0,
-        outliers_name: str | None = None,
-        verbose: bool = False,
-        device: str = "cpu",
+    src: ImageLike,
+    trg: ImageLike,
+    *,
+    src_affine: Tensor | None = None,
+    trg_affine: Tensor | None = None,
+    src_mask: ImageLike | None = None,
+    trg_mask: ImageLike | None = None,
+    return_v2v: bool = False,
+    init_type: InitType = "centroid",
+    init_transform: InitTransformLike | None = None,
+    init_lta: str | None = None,
+    initial_r2r: Tensor | np.ndarray | None = None,
+    dof: int = 6,
+    nmax: int = 5,
+    sat: float = 6.0,
+    symmetric: bool = True,
+    isotropic: bool = True,
+    isotropic_size: float | None = None,
+    adaptive_sat: bool = False,
+    target_outlier_pct: float = 5.0,
+    outliers_name: str | None = None,
+    verbose: bool = False,
+    device: str = "cpu",
 ) -> Tensor:
     """Register two images with the public IRLS robust-registration path.
 
@@ -523,15 +596,19 @@ def robreg(
         If ``True``, return the estimated transform in voxel coordinates. If
         ``False``, return the corresponding RAS-to-RAS transform.
     init_type : {"header", "centroid", "image_center"}, default="centroid"
-        Explicit initialization mode used when no ``init_lta`` is supplied.
+        Explicit initialization mode used when no explicit transform is
+        supplied.
         ``"image_center"`` matches FreeSurfer's cras0-style center start.
+    init_transform : InitTransformLike, optional
+        Unified explicit initialization transform. This may be an LTA filename,
+        an in-memory :class:`LTA`, or a 4 x 4 RAS-to-RAS matrix stored as a
+        NumPy array or torch tensor. When provided, it overrides ``init_type``.
     init_lta : str, optional
-        Existing LTA used for initialization. When provided, it overrides the
-        requested ``init_type``.
+        Backward-compatible alias for file-based initialization. Prefer
+        ``init_transform``.
     initial_r2r : Tensor or ndarray, optional
-        Existing source-to-target RAS transform used for initialization. This is
-        the in-memory alternative to ``init_lta`` and is converted internally to
-        the voxel-to-voxel initialization required by the IRLS solver.
+        Backward-compatible alias for in-memory RAS-to-RAS initialization.
+        Prefer ``init_transform``.
     dof : int, default=6
         Degrees of freedom. The public IRLS path currently supports rigid
         registration only, so this must remain ``6``.
@@ -569,7 +646,8 @@ def robreg(
     Raises
     ------
     ValueError
-        If ``dof`` is anything other than ``6``.
+        If ``dof`` is anything other than ``6``, or if multiple explicit
+        initialization transforms are provided.
     """
     if dof != 6:
         raise ValueError("IRLS robreg currently supports rigid registration only (dof=6).")
@@ -578,34 +656,14 @@ def robreg(
     trg_data, trg_aff = _as_tensor_and_affine(trg, trg_affine)
     src_mask_data, _ = as_mask_tensor_and_affine(src_mask, affine=src_affine, name="moving mask")
     trg_mask_data, _ = as_mask_tensor_and_affine(trg_mask, affine=trg_affine, name="reference mask")
-    if init_lta is not None and initial_r2r is not None:
-        raise ValueError("Specify at most one of init_lta and initial_r2r.")
-    initial_transform = None
-    if init_lta is not None:
-        logger.info("Loading init transform from LTA: %s", init_lta)
-        initial_transform = torch.from_numpy(
-            convert_transform_type(
-                LTA.read(init_lta).r2r(),
-                src_affine=src_aff.detach().cpu().numpy(),
-                dst_affine=trg_aff.detach().cpu().numpy(),
-                from_type=LINEAR_RAS_TO_RAS,
-                to_type=LINEAR_VOX_TO_VOX,
-            )
-        ).to(dtype=src_data.dtype)
-    elif initial_r2r is not None:
-        initial_r2r_np = np.asarray(
-            initial_r2r.detach().cpu().numpy() if hasattr(initial_r2r, "detach") else initial_r2r,
-            dtype=np.float64,
-        )
-        initial_transform = torch.from_numpy(
-            convert_transform_type(
-                initial_r2r_np,
-                src_affine=src_aff.detach().cpu().numpy(),
-                dst_affine=trg_aff.detach().cpu().numpy(),
-                from_type=LINEAR_RAS_TO_RAS,
-                to_type=LINEAR_VOX_TO_VOX,
-            )
-        ).to(dtype=src_data.dtype)
+    initial_transform = _resolve_initial_transform(
+        src_affine=src_aff,
+        trg_affine=trg_aff,
+        dtype=src_data.dtype,
+        init_transform=init_transform,
+        init_lta=init_lta,
+        initial_r2r=initial_r2r,
+    )
 
     run_device = _resolve_robreg_device(device)
     src_data = src_data.to(run_device)
@@ -643,9 +701,9 @@ def robreg(
     work_device = T_v2v.device
     work_dtype = T_v2v.dtype
     return (
-            move_tensor(trg_aff, device=work_device, dtype=work_dtype)
-            @ move_tensor(T_v2v, device=work_device, dtype=work_dtype)
-            @ torch.inverse(move_tensor(src_aff, device=work_device, dtype=work_dtype))
+        move_tensor(trg_aff, device=work_device, dtype=work_dtype)
+        @ move_tensor(T_v2v, device=work_device, dtype=work_dtype)
+        @ torch.inverse(move_tensor(src_aff, device=work_device, dtype=work_dtype))
     )
 
 

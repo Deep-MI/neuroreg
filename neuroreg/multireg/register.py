@@ -554,7 +554,7 @@ def multireg(
                 isotropic=False,
                 device=device,
                 verbose=verbose,
-                initial_r2r=np.eye(4, dtype=np.float64),
+                init_transform=np.eye(4, dtype=np.float64),
             )
             if hasattr(updated_result, "detach"):
                 residual_r2r = np.asarray(updated_result.detach().cpu().numpy(), dtype=np.float64)

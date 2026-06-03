@@ -112,19 +112,19 @@ def test_multireg_builds_template_and_expected_transforms(monkeypatch: pytest.Mo
 def test_multireg_iterative_refinement_reuses_previous_transforms(monkeypatch: pytest.MonkeyPatch):
     images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0)), _make_img(shift=(-2, 0, 0))]
     register_module = importlib.import_module("neuroreg.multireg.register")
-    captured_initial_r2r: list[np.ndarray | None] = []
+    captured_init_transforms: list[np.ndarray | None] = []
     captured_isotropic_sizes: list[float | None] = []
     captured_shapes: list[tuple[tuple[int, ...], tuple[int, ...]]] = []
 
     def fake_robreg(src, trg, **kwargs):
-        initial_r2r = kwargs.get("initial_r2r")
+        init_transform = kwargs.get("init_transform")
         captured_isotropic_sizes.append(kwargs.get("isotropic_size"))
         captured_shapes.append((tuple(src.shape), tuple(trg.shape)))
-        if initial_r2r is not None:
-            matrix = np.asarray(initial_r2r, dtype=np.float64)
-            captured_initial_r2r.append(matrix.copy())
+        if init_transform is not None:
+            matrix = np.asarray(init_transform, dtype=np.float64)
+            captured_init_transforms.append(matrix.copy())
             return _fake_tensor(matrix)
-        captured_initial_r2r.append(None)
+        captured_init_transforms.append(None)
         src_data = np.asarray(src.dataobj)
         trg_data = np.asarray(trg.dataobj)
         src_peak = np.unravel_index(np.argmax(src_data), src_data.shape)
@@ -137,10 +137,10 @@ def test_multireg_iterative_refinement_reuses_previous_transforms(monkeypatch: p
     monkeypatch.setattr(register_module, "robreg", fake_robreg)
     result = multireg(images, init_target_index=0, nmax=1, template_iterations=3, template_eps=0.03)
 
-    assert len(captured_initial_r2r) == 5
-    assert captured_initial_r2r[:2] == [None, None]
+    assert len(captured_init_transforms) == 5
+    assert captured_init_transforms[:2] == [None, None]
     assert captured_isotropic_sizes == [None, None, None, None, None]
-    for matrix in captured_initial_r2r[2:]:
+    for matrix in captured_init_transforms[2:]:
         assert matrix == pytest.approx(np.eye(4, dtype=np.float64))
     assert captured_shapes[2:] == [((21, 21, 21), (21, 21, 21))] * 3
     assert result.template_iterations_run == 1
