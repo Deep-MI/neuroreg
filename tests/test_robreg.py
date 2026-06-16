@@ -9,8 +9,12 @@ import pytest
 import torch
 
 from neuroreg import robreg
-from neuroreg.image import load_image
-from neuroreg.imreg.robreg import _save_outlier_map
+from neuroreg.image import build_gaussian_pyramid, get_pyramid_limits, load_image
+from neuroreg.imreg.robreg import (
+    _convert_vox_transform_between_grids,
+    _save_outlier_map,
+    register_irls_pyramid,
+)
 from neuroreg.transforms import LINEAR_RAS_TO_RAS, LINEAR_VOX_TO_VOX, convert_transform_type
 
 
@@ -198,3 +202,94 @@ class TestPublicRobregWrapper:
         assert cast(torch.Tensor, captured["src"]).ndim == 3
         assert cast(torch.Tensor, captured["trg"]).ndim == 3
         assert mr2r.shape == (4, 4)
+
+
+def test_register_irls_pyramid_regrids_between_level_affines(monkeypatch: pytest.MonkeyPatch):
+    src = torch.zeros((80, 72, 64), dtype=torch.float32)
+    trg = torch.zeros((80, 72, 64), dtype=torch.float32)
+    src_affine = torch.tensor(
+        [
+            [1.25, 0.0, 0.0, -20.0],
+            [0.0, 1.5, 0.0, 12.0],
+            [0.0, 0.0, 1.75, 4.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ],
+        dtype=torch.float32,
+    )
+    trg_affine = torch.tensor(
+        [
+            [1.1, 0.0, 0.0, 5.0],
+            [0.0, 1.4, 0.0, -8.0],
+            [0.0, 0.0, 1.6, 10.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ],
+        dtype=torch.float32,
+    )
+
+    theta = np.deg2rad(7.0)
+    initial_transform = torch.tensor(
+        [
+            [np.cos(theta), -np.sin(theta), 0.0, 4.0],
+            [np.sin(theta), np.cos(theta), 0.0, -3.0],
+            [0.0, 0.0, 1.0, 1.5],
+            [0.0, 0.0, 0.0, 1.0],
+        ],
+        dtype=torch.float32,
+    )
+
+    captured_initials: list[torch.Tensor] = []
+
+    def fake_register_irls(
+            src: torch.Tensor,
+            trg: torch.Tensor,
+            *,
+            initial_transform: torch.Tensor | None = None,
+            **_: object,
+    ) -> tuple[torch.Tensor, dict[str, object]]:
+        assert initial_transform is not None
+        captured_initials.append(initial_transform.clone())
+        return initial_transform.clone(), {"weights": None, "valid_mask": None, "image_shape": tuple(trg.shape)}
+
+    monkeypatch.setattr("neuroreg.imreg.robreg.register_irls", fake_register_irls)
+
+    result, _ = register_irls_pyramid(
+        src=src,
+        trg=trg,
+        src_affine=src_affine,
+        trg_affine=trg_affine,
+        initial_transform=initial_transform,
+        isotropic=False,
+        min_voxels=16,
+        nmax=1,
+        verbose=False,
+    )
+
+    limits = get_pyramid_limits(src.shape, trg.shape, minsize=16)
+    _, src_level_affines = build_gaussian_pyramid(src, src_affine, limits=limits)
+    _, trg_level_affines = build_gaussian_pyramid(trg, trg_affine, limits=limits)
+
+    expected_initials: list[torch.Tensor] = []
+    expected_transform = initial_transform.clone()
+    expected_src_affine = src_affine
+    expected_trg_affine = trg_affine
+    for lvl in range(len(src_level_affines) - 1, -1, -1):
+        expected_transform = _convert_vox_transform_between_grids(
+            expected_transform,
+            expected_src_affine,
+            expected_trg_affine,
+            src_level_affines[lvl],
+            trg_level_affines[lvl],
+        )
+        expected_initials.append(expected_transform.clone())
+        expected_src_affine = src_level_affines[lvl]
+        expected_trg_affine = trg_level_affines[lvl]
+
+    assert len(captured_initials) == len(expected_initials)
+    for observed, expected in zip(captured_initials, expected_initials, strict=True):
+        assert torch.allclose(observed, expected, atol=1e-5, rtol=1e-5)
+
+    legacy_coarsest = initial_transform.clone()
+    legacy_scale = float(2 ** (len(src_level_affines) - 1))
+    legacy_coarsest[:3, 3] = legacy_coarsest[:3, 3] / legacy_scale
+    assert not torch.allclose(captured_initials[0], legacy_coarsest, atol=1e-4, rtol=1e-4)
+    assert torch.allclose(result, initial_transform, atol=1e-5, rtol=1e-5)
