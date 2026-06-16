@@ -20,33 +20,22 @@ from neuroreg.transforms import affine_dist, params_to_rigid_matrix
 # _sqrt_tukey
 # ---------------------------------------------------------------------------
 
+
 class TestSqrtTukey:
-    def test_zero_residual_gives_one(self):
-        r = torch.zeros(10)
-        w = _sqrt_tukey(r, sat=4.685)
-        assert torch.allclose(w, torch.ones(10))
-
-    def test_large_residual_gives_zero(self):
-        r = torch.full((5,), 10.0)
-        w = _sqrt_tukey(r, sat=4.685)
-        assert torch.all(w == 0)
-
-    def test_intermediate_value(self):
+    def test_sqrt_tukey_weights(self):
         sat = 4.0
-        r = torch.tensor([2.0])
+        # zero→1, intermediate, at boundary→0, beyond→0 (clamped), symmetric
+        r = torch.tensor([0.0, 2.0, 4.0, 10.0, -2.0])
         w = _sqrt_tukey(r, sat=sat)
-        expected = 1.0 - (2.0 / 4.0) ** 2  # = 0.75
-        assert abs(w.item() - expected) < 1e-5
-
-    def test_no_negative_outputs(self):
-        r = torch.linspace(-10, 10, 100)
-        w = _sqrt_tukey(r, sat=4.685)
+        expected = torch.tensor([1.0, 0.75, 0.0, 0.0, 0.75])
+        assert torch.allclose(w, expected, atol=1e-5)
         assert torch.all(w >= 0)
 
 
 # ---------------------------------------------------------------------------
 # params_to_rigid_matrix
 # ---------------------------------------------------------------------------
+
 
 class TestParamsToRigidMatrix:
     def test_zero_params_is_identity(self):
@@ -70,6 +59,7 @@ class TestParamsToRigidMatrix:
 # ---------------------------------------------------------------------------
 # construct_Ab
 # ---------------------------------------------------------------------------
+
 
 class TestConstructAb:
     def test_output_shapes(self):
@@ -95,7 +85,7 @@ class TestConstructAb:
             torch.arange(d, dtype=torch.float32),
             torch.arange(h, dtype=torch.float32),
             torch.arange(w, dtype=torch.float32),
-            indexing='ij',
+            indexing="ij",
         )
 
         fx, fy, fz, _ = compute_partials(xx)
@@ -131,8 +121,8 @@ class TestConstructAb:
 # irls_inner_loop
 # ---------------------------------------------------------------------------
 
-class TestIrlsInnerLoop:
 
+class TestIrlsInnerLoop:
     def test_near_zero_system(self):
         A = torch.randn(300, 6)
         b = torch.zeros(300)
@@ -151,6 +141,7 @@ class TestIrlsInnerLoop:
 # register_irls  (single-level)
 # ---------------------------------------------------------------------------
 
+
 class TestRegisterIrls:
     def _make_images(self, size=24):
         torch.manual_seed(0)
@@ -160,7 +151,7 @@ class TestRegisterIrls:
     def test_info_keys_present(self):
         src, trg = self._make_images()
         _, info = register_irls(src, trg, nmax=2)
-        for key in ('iterations', 'converged', 'dists', 'weights', 'valid_mask', 'sigma_hist'):
+        for key in ("iterations", "converged", "dists", "weights", "valid_mask", "sigma_hist"):
             assert key in info
 
     def test_identical_images_near_identity(self):
@@ -172,18 +163,18 @@ class TestRegisterIrls:
         src, trg = self._make_images()
         T, info = register_irls(src, trg, nmax=2, symmetric=True)
         assert T.shape == (4, 4)
-        assert info['iterations'] >= 1
+        assert info["iterations"] >= 1
 
     def test_iterations_respect_nmax(self):
         src, trg = self._make_images()
         _, info = register_irls(src, trg, nmax=2)
-        assert info['iterations'] <= 2
+        assert info["iterations"] <= 2
 
     def test_weights_shape_matches_valid_mask(self):
         src, trg = self._make_images()
         _, info = register_irls(src, trg, nmax=2)
-        w = info['weights']
-        vm = info['valid_mask']
+        w = info["weights"]
+        vm = info["valid_mask"]
         assert w is not None and vm is not None
         assert w.shape == (vm.sum().item(),)
 
@@ -196,8 +187,8 @@ class TestRegisterIrls:
         monkeypatch.setattr("neuroreg.imreg.irls.irls_inner_loop", fake_irls_inner_loop)
 
         _, info = register_irls(src, trg, nmax=1)
-        w = info['weights']
-        vm = info['valid_mask']
+        w = info["weights"]
+        vm = info["valid_mask"]
         assert w is not None and vm is not None
         assert w.shape == (vm.sum().item(),)
         assert torch.all(w == 1)
@@ -212,8 +203,8 @@ class TestRegisterIrls:
             target_outlier_pct=5.0,
         )
         assert T.shape == (4, 4)
-        assert len(info['sigma_hist']) == info['iterations']
-        assert all(isinstance(v, float) for v in info['sigma_hist'])
+        assert len(info["sigma_hist"]) == info["iterations"]
+        assert all(isinstance(v, float) for v in info["sigma_hist"])
 
     def test_empty_mask_intersection_returns_empty_weights(self):
         src, trg = self._make_images()
@@ -234,6 +225,7 @@ class TestRegisterIrls:
 # register_irls_pyramid
 # ---------------------------------------------------------------------------
 
+
 class TestRegisterIrlsPyramid:
     def _aff(self):
         return torch.eye(4)  # 1mm isotropic
@@ -243,23 +235,43 @@ class TestRegisterIrlsPyramid:
         img = torch.rand(20, 20, 20)
         aff = self._aff()
         _, all_info = register_irls_pyramid(
-            img, img.clone(), src_affine=aff, trg_affine=aff,
-            min_voxels=8, max_voxels=16, nmax=2, isotropic=True,
+            img,
+            img.clone(),
+            src_affine=aff,
+            trg_affine=aff,
+            min_voxels=8,
+            max_voxels=16,
+            nmax=2,
+            isotropic=True,
         )
         for info in all_info:
-            assert 'iso_affine' in info
+            assert "iso_affine" in info
 
     def test_symmetric_and_directed_both_run(self):
         torch.manual_seed(3)
         img = torch.rand(20, 20, 20)
         aff = self._aff()
         T_dir, _ = register_irls_pyramid(
-            img, img.clone(), src_affine=aff, trg_affine=aff,
-            min_voxels=8, max_voxels=16, nmax=2, isotropic=False, symmetric=False,
+            img,
+            img.clone(),
+            src_affine=aff,
+            trg_affine=aff,
+            min_voxels=8,
+            max_voxels=16,
+            nmax=2,
+            isotropic=False,
+            symmetric=False,
         )
         T_sym, _ = register_irls_pyramid(
-            img, img.clone(), src_affine=aff, trg_affine=aff,
-            min_voxels=8, max_voxels=16, nmax=2, isotropic=False, symmetric=True,
+            img,
+            img.clone(),
+            src_affine=aff,
+            trg_affine=aff,
+            min_voxels=8,
+            max_voxels=16,
+            nmax=2,
+            isotropic=False,
+            symmetric=True,
         )
         assert T_dir.shape == (4, 4)
         assert T_sym.shape == (4, 4)
@@ -332,6 +344,33 @@ class TestRegisterIrlsPyramid:
             isotropic=False,
         )
         assert torch.allclose(T, init)
+
+    def test_isotropic_explicit_initial_transform_is_mapped_into_resampled_space(self):
+        img = torch.rand(20, 20, 20)
+        src_aff = torch.eye(4)
+        src_aff[0, 0] = 2.0
+        src_aff[1, 1] = 1.5
+        trg_aff = torch.eye(4)
+        trg_aff[0, 0] = 1.0
+        trg_aff[1, 1] = 1.0
+        trg_aff[2, 2] = 1.0
+        init = torch.eye(4)
+        init[0, 3] = 3.0
+        init[1, 3] = -4.0
+
+        T, _ = register_irls_pyramid(
+            img,
+            img.clone(),
+            src_affine=src_aff,
+            trg_affine=trg_aff,
+            initial_transform=init,
+            min_voxels=8,
+            max_voxels=16,
+            nmax=0,
+            isotropic=True,
+        )
+
+        assert torch.allclose(T, init, atol=1e-6)
 
     def test_max_voxels_none_keeps_original_resolution(self):
         img = torch.zeros(31, 27, 19)

@@ -1,5 +1,6 @@
 """Image utilities: smoothing, pyramid, centroid, mapping, segmentation."""
 
+from .bspline import downsample2_bspline
 from .centroid import compute_centroid
 from .geometry import get_ras2tkras, get_tkras2ras, get_vox2tkras, vox2tkras_from_volume_info
 from .io import load_image
@@ -34,6 +35,7 @@ __all__ = [
     "reslice_r2r_image",
     "save_resliced_r2r_image",
     "save_header_mapped_image",
+    "downsample2_bspline",
     "build_gaussian_pyramid",
     "get_pyramid_limits",
     "get_gaussian_kernel",

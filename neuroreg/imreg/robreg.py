@@ -137,6 +137,25 @@ def _save_outlier_map(all_info: list[dict[str, Any]], outliers_name: str, verbos
         logger.info("Saved outlier map: %s (%.1f%% high outliers)", outliers_name, outlier_pct)
 
 
+def _convert_vox_transform_between_grids(
+        transform: Tensor,
+        src_affine_from: Tensor,
+        trg_affine_from: Tensor,
+        src_affine_to: Tensor,
+        trg_affine_to: Tensor,
+) -> Tensor:
+    """Re-express a source→target vox2vox transform in different voxel grids."""
+    calc_dtype = torch.float64
+    T = transform.to(device=transform.device, dtype=calc_dtype)
+    src_from = move_tensor(src_affine_from, device=transform.device, dtype=calc_dtype)
+    trg_from = move_tensor(trg_affine_from, device=transform.device, dtype=calc_dtype)
+    src_to = move_tensor(src_affine_to, device=transform.device, dtype=calc_dtype)
+    trg_to = move_tensor(trg_affine_to, device=transform.device, dtype=calc_dtype)
+
+    ras_to_ras = trg_from @ T @ torch.inverse(src_from)
+    return (torch.inverse(trg_to) @ ras_to_ras @ src_to).to(dtype=transform.dtype)
+
+
 def register_irls_pyramid(
         src: Tensor,
         trg: Tensor,
@@ -257,8 +276,10 @@ def register_irls_pyramid(
         if verbose:
             logger.info("Isotropic resampling: isosize=%.4f mm", isosize)
 
-        src_iso, src_iso_aff, Rsrc = resample_isotropic_tensor(src, src_affine_np, isosize, mode="linear")
-        trg_iso, trg_iso_aff, Rtrg = resample_isotropic_tensor(trg, trg_affine_np, isosize, mode="linear")
+        # FreeSurfer's Registration::makeIsotropic resamples to the common isotropic
+        # grid with SAMPLE_CUBIC_BSPLINE (not trilinear); match that here.
+        src_iso, src_iso_aff, Rsrc = resample_isotropic_tensor(src, src_affine_np, isosize, mode="cubic")
+        trg_iso, trg_iso_aff, Rtrg = resample_isotropic_tensor(trg, trg_affine_np, isosize, mode="cubic")
         src_mask_iso = None
         trg_mask_iso = None
         if src_mask is not None:
@@ -285,10 +306,13 @@ def register_irls_pyramid(
             logger.info("  Trg resampled: %s → %s", trg.shape, trg_iso.shape)
 
         if initial_transform is not None:
+            # FreeSurfer stores explicit init transforms in the original voxel grids.
+            # Move that source→target vox2vox transform into the resampled isotropic
+            # grids before optimization.
             T_iso = (
-                    move_tensor(Rtrg, device=src.device, dtype=src.dtype)
+                    torch.inverse(move_tensor(Rtrg, device=src.device, dtype=src.dtype))
                     @ move_tensor(initial_transform, device=src.device, dtype=src.dtype)
-                    @ torch.inverse(move_tensor(Rsrc, device=src.device, dtype=src.dtype))
+                    @ move_tensor(Rsrc, device=src.device, dtype=src.dtype)
             )
         else:
             T_iso = move_tensor(
@@ -313,8 +337,8 @@ def register_irls_pyramid(
                 )
 
         shared_limits = get_pyramid_limits(src_iso.shape, trg_iso.shape, minsize=min_voxels, maxsize=max_voxels)
-        pyramid_src, _ = build_gaussian_pyramid(src_iso, src_iso_aff, limits=shared_limits)
-        pyramid_trg, _ = build_gaussian_pyramid(trg_iso, trg_iso_aff, limits=shared_limits)
+        pyramid_src, pyramid_src_affines = build_gaussian_pyramid(src_iso, src_iso_aff, limits=shared_limits)
+        pyramid_trg, pyramid_trg_affines = build_gaussian_pyramid(trg_iso, trg_iso_aff, limits=shared_limits)
         src_mask_levels = (
             build_binary_mask_pyramid(src_mask_iso, [tuple(int(v) for v in level.shape) for level in pyramid_src])
             if src_mask_iso is not None
@@ -326,6 +350,8 @@ def register_irls_pyramid(
             else None
         )
         iso_affine = trg_iso_aff
+        src_reg_affine = torch.as_tensor(src_iso_aff, dtype=src.dtype, device=src.device)
+        trg_reg_affine = torch.as_tensor(trg_iso_aff, dtype=trg.dtype, device=trg.device)
     else:
         src_affine_for_pyramid = (
             src_affine if src_affine is not None else torch.eye(4, dtype=src.dtype, device=src.device)
@@ -334,8 +360,8 @@ def register_irls_pyramid(
             trg_affine if trg_affine is not None else torch.eye(4, dtype=trg.dtype, device=trg.device)
         )
         shared_limits = get_pyramid_limits(src.shape, trg.shape, minsize=min_voxels, maxsize=max_voxels)
-        pyramid_src, _ = build_gaussian_pyramid(src, src_affine_for_pyramid, limits=shared_limits)
-        pyramid_trg, _ = build_gaussian_pyramid(trg, trg_affine_for_pyramid, limits=shared_limits)
+        pyramid_src, pyramid_src_affines = build_gaussian_pyramid(src, src_affine_for_pyramid, limits=shared_limits)
+        pyramid_trg, pyramid_trg_affines = build_gaussian_pyramid(trg, trg_affine_for_pyramid, limits=shared_limits)
         src_mask_levels = (
             build_binary_mask_pyramid(
                 (src_mask > 0).float(),
@@ -372,6 +398,8 @@ def register_irls_pyramid(
         Rsrc = torch.eye(4, dtype=torch.float32)
         Rtrg = torch.eye(4, dtype=torch.float32)
         iso_affine = trg_affine.detach().cpu().numpy() if trg_affine is not None else None
+        src_reg_affine = src_affine_for_pyramid
+        trg_reg_affine = trg_affine_for_pyramid
 
     if not pyramid_src or not pyramid_trg:
         raise ValueError(
@@ -382,19 +410,26 @@ def register_irls_pyramid(
 
     T = T_iso if T_iso is not None else torch.eye(4, dtype=src.dtype, device=src.device)
     all_info: list[dict[str, Any]] = []
+    current_src_affine = src_reg_affine
+    current_trg_affine = trg_reg_affine
 
     for lvl in range(len(pyramid_src) - 1, -1, -1):
         s = pyramid_src[lvl].float()
         t = pyramid_trg[lvl].float()
         sm = src_mask_levels[lvl].float() if src_mask_levels is not None else None
         tm = trg_mask_levels[lvl].float() if trg_mask_levels is not None else None
-        scale = float(2 ** lvl)
-
-        T_lvl = T.clone()
-        T_lvl[:3, 3] = T[:3, 3] / scale
+        src_level_affine = pyramid_src_affines[lvl]
+        trg_level_affine = pyramid_trg_affines[lvl]
+        T_lvl = _convert_vox_transform_between_grids(
+            T,
+            current_src_affine,
+            current_trg_affine,
+            src_level_affine,
+            trg_level_affine,
+        )
 
         if verbose:
-            logger.info("Pyramid level %d  shape=%s  (scale ×1/%d)", lvl, list(s.shape), int(scale))
+            logger.info("Pyramid level %d  shape=%s", lvl, list(s.shape))
 
         T_lvl, info = register_irls(
             s,
@@ -412,10 +447,19 @@ def register_irls_pyramid(
             verbose=verbose,
         )
 
-        T_lvl[:3, 3] = T_lvl[:3, 3] * scale
         T = T_lvl
+        current_src_affine = src_level_affine
+        current_trg_affine = trg_level_affine
         info["iso_affine"] = iso_affine
         all_info.append(info)
+
+    T = _convert_vox_transform_between_grids(
+        T,
+        current_src_affine,
+        current_trg_affine,
+        src_reg_affine,
+        trg_reg_affine,
+    )
 
     if isotropic:
         T = (

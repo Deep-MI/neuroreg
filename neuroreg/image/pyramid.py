@@ -1,5 +1,7 @@
 import torch
 
+from .bspline import downsample2_bspline
+
 _PYRAMID_FILTER = torch.tensor([0.0625, 0.25, 0.375, 0.25, 0.0625])
 """FreeSurfer's saved-multiresolution smoothing kernel (Registration::buildGPLimits)."""
 
@@ -43,34 +45,12 @@ def _smooth3d(vol: torch.Tensor, kernel: torch.Tensor, padding_mode: str = "repl
     )
 
 
-def _downsample2_trilinear(vol: torch.Tensor) -> torch.Tensor:
-    """Downsample a volume by approximately 2x using trilinear interpolation.
-
-    Notes
-    -----
-    FreeSurfer's multiresolution pyramid uses ``MRIdownsample2BSpline``;
-    we instead downsample the already smoothed image via trilinear interpolation.
-    """
-    D, H, W = vol.shape
-    out_shape = (
-        max(1, D // 2) if D > 1 else 1,
-        max(1, H // 2) if H > 1 else 1,
-        max(1, W // 2) if W > 1 else 1,
-    )
-    return torch.nn.functional.interpolate(
-        vol.unsqueeze(0).unsqueeze(0),
-        size=out_shape,
-        mode="trilinear",
-        align_corners=False,
-    ).squeeze(0).squeeze(0)
-
-
 def _downsample_affine(
     affine: torch.Tensor,
     in_shape: torch.Size,
     out_shape: tuple[int, int, int],
 ) -> torch.Tensor:
-    """Update a voxel-to-RAS affine after trilinear resizing to ``out_shape``."""
+    """Update a voxel-to-RAS affine after centered half-resolution reduction."""
     out_affine = affine.clone()
     downM = torch.eye(4, dtype=affine.dtype, device=affine.device)
     for axis, (n_in, n_out) in enumerate(zip(in_shape[:3], out_shape, strict=True)):
@@ -78,8 +58,13 @@ def _downsample_affine(
             scale = 1.0
             offset = 0.0
         else:
-            scale = float(n_in) / float(n_out)
-            offset = 0.5 * scale - 0.5
+            expected_n_out = max(1, int(n_in) // 2)
+            if n_out != expected_n_out:
+                raise ValueError(
+                    f"Expected centered 2x reduction along axis {axis} to produce {expected_n_out} voxels, got {n_out}"
+                )
+            scale = 2.0
+            offset = 0.5
         downM[axis, axis] = scale
         downM[axis, 3] = offset
     out_affine = out_affine @ downM
@@ -161,9 +146,9 @@ def build_gaussian_pyramid(
     Build a Gaussian pyramid for a 3D image, including its downsampled versions.
 
     The smoothing step uses the same 5-tap kernel FreeSurfer uses for its
-    multiresolution pyramid. FreeSurfer then downsamples with
-    ``MRIdownsample2BSpline``; we instead apply trilinear downsampling to
-    the smoothed image.
+    multiresolution pyramid. Each smoothed level is then reduced with a
+    centered cubic B-spline half-resolution reducer matching
+    ``MRIdownsample2BSpline``.
 
     Parameters
     ----------
@@ -206,7 +191,7 @@ def build_gaussian_pyramid(
 
     for _ in range(max_steps):
         blurred = _smooth3d(current, _PYRAMID_FILTER, padding_mode="replicate")
-        next_level = _downsample2_trilinear(blurred)
+        next_level = downsample2_bspline(blurred)
         next_shape = (int(next_level.shape[0]), int(next_level.shape[1]), int(next_level.shape[2]))
         next_affine = _downsample_affine(current_affine, current.shape, next_shape)
         current = next_level
@@ -214,4 +199,4 @@ def build_gaussian_pyramid(
         imgs.append(current)
         affines.append(current_affine)
 
-    return imgs[min_steps:max_steps + 1], affines[min_steps:max_steps + 1]
+    return imgs[min_steps : max_steps + 1], affines[min_steps : max_steps + 1]

@@ -51,7 +51,7 @@ def _make_img(
 
 class TestRegisterPyramidSynthetic:
     def test_map_rejects_public_bilinear_alias(self):
-        with pytest.raises(ValueError, match="mode must be 'linear' or 'nearest'"):
+        with pytest.raises(ValueError, match="mode must be 'linear', 'cubic', or 'nearest'"):
             map_image(torch.zeros((4, 4, 4), dtype=torch.float32), torch.eye(4, dtype=torch.float32), mode="bilinear")
 
     def test_reslice_r2r_image_keeps_integer_dtype_for_nearest(self):
@@ -127,11 +127,12 @@ class TestRegisterPyramidSynthetic:
             dtype=torch.float32,
         )
 
-        def fake_resample_isotropic(_img, _isosize, mode="linear"):
+        def fake_resample_isotropic(_img, _isosize, mode="cubic"):
+            _ = mode
             return (
                 torch.ones((16, 16, 16), dtype=torch.float32),
                 torch.eye(4, dtype=torch.float32),
-                rsrc if mode == "linear" and _img is img else rtrg,
+                rsrc if _img is img else rtrg,
             )
 
         def fake_register_level(simg, timg, **kwargs):
@@ -662,7 +663,7 @@ class TestPublicCoregWrapper:
         assert captured["src_mask"] is src_mask
         assert captured["trg_mask"] is trg_mask
 
-    def test_register_gd_pyramid_writes_mapped_image_with_linear_mode(self, monkeypatch: pytest.MonkeyPatch):
+    def test_register_gd_pyramid_writes_mapped_image_with_cubic_mode(self, monkeypatch: pytest.MonkeyPatch):
         captured: dict[str, object] = {}
 
         def fake_register_level(simg, timg, **kwargs):
@@ -693,9 +694,9 @@ class TestPublicCoregWrapper:
         )
 
         assert captured["path"] == out_path
-        assert captured["mode"] == "linear"
+        assert captured["mode"] == "cubic"
 
-    def test_register_powell_coreg_writes_mapped_image_with_linear_mode(self, monkeypatch: pytest.MonkeyPatch):
+    def test_register_powell_coreg_writes_mapped_image_with_cubic_mode(self, monkeypatch: pytest.MonkeyPatch):
         captured: dict[str, object] = {}
 
         class DummyEvaluator:
@@ -723,7 +724,7 @@ class TestPublicCoregWrapper:
         _ = register_powell_coreg(img, img, mapped_name=out_path, init_type="header", dof=6)
 
         assert captured["path"] == out_path
-        assert captured["mode"] == "linear"
+        assert captured["mode"] == "cubic"
 
     def test_register_powell_coreg_warns_and_falls_back_to_cpu(self, monkeypatch: pytest.MonkeyPatch):
         class DummyEvaluator:

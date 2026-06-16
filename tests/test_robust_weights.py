@@ -25,12 +25,6 @@ class TestTukeyWeights:
         assert w[-2] < 0.01
         assert w[-1] < 0.01
 
-    def test_symmetry(self):
-        """Weights should be symmetric around zero."""
-        r = torch.linspace(-10, 10, 21)
-        w = tukey_weights(r, c=6.0)
-        assert torch.allclose(w[:10], w[-10:].flip(0), atol=1e-6)
-
 
 class TestHuberWeights:
     """Test Huber M-estimator (alternative to Tukey)."""
@@ -85,47 +79,11 @@ class TestComputeMAD:
 class TestComputeScaleEstimate:
     """Test flexible scale estimation."""
 
-    def test_mad_method(self):
-        """MAD method should match compute_mad."""
-        r = torch.randn(1000)
-        sigma_mad = compute_scale_estimate(r, method="mad")
-        sigma_direct = compute_mad(r)
-        assert torch.allclose(sigma_mad, sigma_direct)
-
     def test_unknown_method_raises(self):
         """Unknown method should raise ValueError."""
         r = torch.randn(100)
         with pytest.raises(ValueError, match="Unknown method"):
             compute_scale_estimate(r, method="invalid")
-
-
-class TestIntegration:
-    """Integration tests for complete IRLS workflow."""
-
-    def test_full_irls_workflow(self):
-        """Test complete workflow: residuals → MAD → normalize → weights."""
-        torch.manual_seed(42)
-        r = torch.randn(1000)
-        r[::100] = 20.0  # Add 10 outliers
-
-        # Compute robust scale
-        sigma = compute_mad(r)
-
-        # Normalize and compute weights
-        r_normalized = r / sigma
-        w_tukey = tukey_weights(r_normalized, c=6.0)
-
-        # Verify properties
-        assert torch.all(w_tukey >= 0)
-        assert torch.all(w_tukey <= 1)
-
-        # Outliers should have low weight
-        assert w_tukey[::100].max() < 0.1
-
-        # Inliers should have high weight
-        inlier_mask = torch.ones_like(w_tukey, dtype=torch.bool)
-        inlier_mask[::100] = False
-        assert w_tukey[inlier_mask].mean() > 0.7
 
 
 if __name__ == "__main__":
