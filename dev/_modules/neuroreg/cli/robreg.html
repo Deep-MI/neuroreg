@@ -356,7 +356,7 @@
         <span class="s2">&quot;--keep-dtype&quot;</span><span class="p">,</span>
         <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="p">(</span>
-            <span class="s2">&quot;Write trilinear --mapmov output in the moving-image dtype instead of float32. &quot;</span>
+            <span class="s2">&quot;Write cubic --mapmov output in the moving-image dtype instead of float32. &quot;</span>
             <span class="s2">&quot;Equivalent to FreeSurfer mri_vol2vol --keep-precision.&quot;</span>
         <span class="p">),</span>
     <span class="p">)</span>
@@ -484,7 +484,7 @@
             <span class="n">ns</span><span class="o">.</span><span class="n">mapmov</span><span class="p">,</span>
             <span class="n">target_affine</span><span class="o">=</span><span class="n">ref_img</span><span class="o">.</span><span class="n">affine</span><span class="p">,</span>
             <span class="n">target_shape</span><span class="o">=</span><span class="n">target_shape</span><span class="p">,</span>
-            <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span>
+            <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;cubic&quot;</span><span class="p">,</span>
             <span class="n">keep_dtype</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">keep_dtype</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Wrote resliced mapped image: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">mapmov</span><span class="p">)</span>
