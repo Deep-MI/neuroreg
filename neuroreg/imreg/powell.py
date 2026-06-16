@@ -869,7 +869,7 @@ def register_powell_coreg(
             mapped_name,
             target_affine=trg.affine,
             target_shape=_shape3(trg.shape),
-            mode="linear",
+            mode="cubic",
             keep_dtype=keep_dtype,
         )
 

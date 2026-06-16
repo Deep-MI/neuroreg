@@ -110,7 +110,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--out", required=True, metavar="FILE", help="Output mapped image filename.")
     parser.add_argument(
         "--interp",
-        choices=["linear", "nearest"],
+        choices=["linear", "cubic", "nearest"],
         default="linear",
         help="Interpolation mode for resampled output.",
     )

@@ -341,11 +341,13 @@ def register_gd_pyramid(
                 int(max(s_dim[2], t_dim[2])),
             )
             logger.info("Isotropic grid: src_dim=%s  trg_dim=%s  mid_dim=%s", s_dim, t_dim, mid_dim)
-            sdata, src_iso_aff, Rsrc = resample_isotropic(src, isosize, out_shape=mid_dim, mode="linear")
-            tdata, trg_iso_aff, Rtrg = resample_isotropic(trg, isosize, out_shape=mid_dim, mode="linear")
+            # FreeSurfer's Registration::makeIsotropic resamples to the common
+            # isotropic grid with SAMPLE_CUBIC_BSPLINE (not trilinear); match that here.
+            sdata, src_iso_aff, Rsrc = resample_isotropic(src, isosize, out_shape=mid_dim, mode="cubic")
+            tdata, trg_iso_aff, Rtrg = resample_isotropic(trg, isosize, out_shape=mid_dim, mode="cubic")
         else:
-            sdata, src_iso_aff, Rsrc = resample_isotropic(src, isosize, mode="linear")
-            tdata, trg_iso_aff, Rtrg = resample_isotropic(trg, isosize, mode="linear")
+            sdata, src_iso_aff, Rsrc = resample_isotropic(src, isosize, mode="cubic")
+            tdata, trg_iso_aff, Rtrg = resample_isotropic(trg, isosize, mode="cubic")
             logger.info("  Src resampled: %s -> %s", src.shape[:3], sdata.shape)
             logger.info("  Trg resampled: %s -> %s", trg.shape[:3], tdata.shape)
 
@@ -662,7 +664,7 @@ def register_gd_pyramid(
             mapped_name,
             target_affine=trg.affine,
             target_shape=_shape3(trg.shape),
-            mode="linear",
+            mode="cubic",
             keep_dtype=keep_dtype,
         )
 

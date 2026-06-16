@@ -276,8 +276,10 @@ def register_irls_pyramid(
         if verbose:
             logger.info("Isotropic resampling: isosize=%.4f mm", isosize)
 
-        src_iso, src_iso_aff, Rsrc = resample_isotropic_tensor(src, src_affine_np, isosize, mode="linear")
-        trg_iso, trg_iso_aff, Rtrg = resample_isotropic_tensor(trg, trg_affine_np, isosize, mode="linear")
+        # FreeSurfer's Registration::makeIsotropic resamples to the common isotropic
+        # grid with SAMPLE_CUBIC_BSPLINE (not trilinear); match that here.
+        src_iso, src_iso_aff, Rsrc = resample_isotropic_tensor(src, src_affine_np, isosize, mode="cubic")
+        trg_iso, trg_iso_aff, Rtrg = resample_isotropic_tensor(trg, trg_affine_np, isosize, mode="cubic")
         src_mask_iso = None
         trg_mask_iso = None
         if src_mask is not None:
