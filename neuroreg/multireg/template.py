@@ -94,7 +94,7 @@ def build_template(
             matrix,
             target_affine=template_affine,
             target_shape=template_shape,
-            mode="linear",
+            mode="cubic",
             keep_dtype=False,
         )
         mapped_data = np.asarray(mapped_float.dataobj, dtype=np.float32)
@@ -107,7 +107,7 @@ def build_template(
                         matrix,
                         target_affine=template_affine,
                         target_shape=template_shape,
-                        mode="linear",
+                        mode="cubic",
                         keep_dtype=True,
                     )
                 )

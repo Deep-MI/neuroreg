@@ -46,6 +46,7 @@ class MultiRegResult:
     template_iterations_run: int = 0
     iteration_distances: list[float] = field(default_factory=list)
 
+
 def _c_rand_choice(start: int, end: int, seed: int) -> int:
     """Match FreeSurfer's libc-backed pseudo-random choice helper.
 
@@ -462,8 +463,7 @@ def multireg(
         if len(masks) != len(images):
             raise ValueError("Number of masks must match the number of input images.")
         loaded_masks = [
-            (load_image(mask) if isinstance(mask, str | Path) else mask) if mask is not None else None
-            for mask in masks
+            (load_image(mask) if isinstance(mask, str | Path) else mask) if mask is not None else None for mask in masks
         ]
 
     if init_ltas is not None and len(init_ltas) != len(images):
@@ -526,7 +526,7 @@ def multireg(
                 previous_r2r,
                 target_affine=np.asarray(current_template.affine, dtype=np.float64),
                 target_shape=tuple(int(v) for v in current_template.shape[:3]),
-                mode="linear",
+                mode="cubic",
                 keep_dtype=False,
             )
             mapped_mask = (
