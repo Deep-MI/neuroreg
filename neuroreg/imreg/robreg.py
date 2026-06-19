@@ -253,6 +253,7 @@ def register_irls_pyramid(
     adaptive_sat: bool = False,
     target_outlier_pct: float = 5.0,
     outliers_name: str | None = None,
+    stop_level: int = 0,
     verbose: bool = False,
 ) -> tuple[Tensor, list[dict[str, Any]]]:
     """Run the tensor-level IRLS pyramid registration pipeline.
@@ -307,6 +308,11 @@ def register_irls_pyramid(
         Target outlier fraction used when ``adaptive_sat`` is enabled.
     outliers_name : str, optional
         Output filename for the final outlier map.
+    stop_level : int, default=0
+        Finest pyramid level to process. ``0`` processes all levels including
+        full resolution. ``1`` skips the finest level; ``3`` skips the three
+        finest levels. Mirrors FreeSurfer's ``stopres`` parameter in
+        ``computeMultiresRegistration``. Clamped to the available range.
     verbose : bool, default=False
         If ``True``, emit progress logging.
 
@@ -359,8 +365,15 @@ def register_irls_pyramid(
 
         # FreeSurfer's Registration::makeIsotropic resamples to the common isotropic
         # grid with SAMPLE_CUBIC_BSPLINE (not trilinear); match that here.
-        src_iso, src_iso_aff, Rsrc = resample_isotropic_tensor(src, src_affine_np, isosize, mode="cubic")
-        trg_iso, trg_iso_aff, Rtrg = resample_isotropic_tensor(trg, trg_affine_np, isosize, mode="cubic")
+        # padding_mode="border" keeps the spline's mirror-extrapolated value just past
+        # the source FOV (as FreeSurfer does) instead of zeroing it, which would delete
+        # a brain slab when the iso grid extends slightly beyond the moving image.
+        src_iso, src_iso_aff, Rsrc = resample_isotropic_tensor(
+            src, src_affine_np, isosize, mode="cubic", padding_mode="border"
+        )
+        trg_iso, trg_iso_aff, Rtrg = resample_isotropic_tensor(
+            trg, trg_affine_np, isosize, mode="cubic", padding_mode="border"
+        )
         src_mask_iso = None
         trg_mask_iso = None
         if src_mask is not None:
@@ -494,7 +507,8 @@ def register_irls_pyramid(
     current_src_affine = src_reg_affine
     current_trg_affine = trg_reg_affine
 
-    for lvl in range(len(pyramid_src) - 1, -1, -1):
+    effective_stop = max(0, min(stop_level, len(pyramid_src) - 1))
+    for lvl in range(len(pyramid_src) - 1, effective_stop - 1, -1):
         s = pyramid_src[lvl].float()
         t = pyramid_trg[lvl].float()
         sm = src_mask_levels[lvl].float() if src_mask_levels is not None else None
@@ -573,6 +587,7 @@ def robreg(
     adaptive_sat: bool = False,
     target_outlier_pct: float = 5.0,
     outliers_name: str | None = None,
+    stop_level: int = 0,
     verbose: bool = False,
     device: str = "cpu",
 ) -> Tensor:
@@ -632,6 +647,10 @@ def robreg(
         Target outlier percentage used when ``adaptive_sat`` is enabled.
     outliers_name : str, optional
         Output filename for the final outlier map.
+    stop_level : int, default=0
+        Finest pyramid level to process. ``0`` processes all levels. Higher
+        values skip the finest levels for faster coarse-only registration.
+        Mirrors FreeSurfer's ``stopres`` in ``computeMultiresRegistration``.
     verbose : bool, default=False
         If ``True``, emit progress logging from the IRLS implementation.
     device : str, default="cpu"
@@ -692,6 +711,7 @@ def robreg(
         adaptive_sat=adaptive_sat,
         target_outlier_pct=target_outlier_pct,
         outliers_name=outliers_name,
+        stop_level=stop_level,
         verbose=verbose,
     )
 

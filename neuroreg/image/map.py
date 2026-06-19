@@ -37,8 +37,8 @@ def _normalize_interpolation_mode(mode: str) -> str:
 
 
 def _grid_sample_grid_to_source_voxels(
-        grid: torch.Tensor,
-        source_shape: tuple[int, int, int],
+    grid: torch.Tensor,
+    source_shape: tuple[int, int, int],
 ) -> torch.Tensor:
     """Convert an ``affine_grid`` (align_corners=False) grid to absolute source-voxel coordinates.
 
@@ -68,11 +68,11 @@ def _grid_sample_grid_to_source_voxels(
 
 
 def _cubic_sample(
-        input_image: torch.Tensor,
-        grid: torch.Tensor,
-        source_shape: tuple[int, int, int],
-        padding_mode: str,
-        padding_value_t: torch.Tensor | None,
+    input_image: torch.Tensor,
+    grid: torch.Tensor,
+    source_shape: tuple[int, int, int],
+    padding_mode: str,
+    padding_value_t: torch.Tensor | None,
 ) -> torch.Tensor:
     """Sample with FreeSurfer-matching cubic B-spline interpolation.
 
@@ -98,9 +98,12 @@ def _cubic_sample(
         src_d, src_h, src_w = source_shape
         vd, vh, vw = voxel_coords[..., 0], voxel_coords[..., 1], voxel_coords[..., 2]
         in_bounds = (
-                (vd >= -eps) & (vd <= src_d - 1 + eps)
-                & (vh >= -eps) & (vh <= src_h - 1 + eps)
-                & (vw >= -eps) & (vw <= src_w - 1 + eps)
+            (vd >= -eps)
+            & (vd <= src_d - 1 + eps)
+            & (vh >= -eps)
+            & (vh <= src_h - 1 + eps)
+            & (vw >= -eps)
+            & (vw <= src_w - 1 + eps)
         ).unsqueeze(1)
         fill = (
             torch.zeros((), dtype=sampled.dtype, device=sampled.device) if padding_value_t is None else padding_value_t
@@ -142,13 +145,13 @@ def coerce_image_data_3d(data: Any, *, name: str = "image") -> np.ndarray:
 
 
 def map(
-        image: torch.Tensor,
-        transform: torch.Tensor,
-        is_torch_mat: bool = True,
-        target_shape: tuple[int, int, int] | None = None,
-        mode: str = "linear",
-        padding_mode: str = "zeros",
-        padding_value: float | None = None,
+    image: torch.Tensor,
+    transform: torch.Tensor,
+    is_torch_mat: bool = True,
+    target_shape: tuple[int, int, int] | None = None,
+    mode: str = "linear",
+    padding_mode: str = "zeros",
+    padding_value: float | None = None,
 ) -> torch.Tensor:
     """Map an input image to another space using the inverse transformation matrix.
 
@@ -223,34 +226,43 @@ def map(
         source_shape = (int(image.shape[0]), int(image.shape[1]), int(image.shape[2]))
         return _cubic_sample(input_image, grid, source_shape, padding_mode, padding_value_t).squeeze(0).squeeze(0)
     if padding_value_t is None:
-        return nn.functional.grid_sample(
-            input_image,
-            grid,
-            mode=torch_mode,
-            padding_mode=padding_mode,
-            align_corners=False,
-        ).squeeze(0).squeeze(0)
+        return (
+            nn.functional.grid_sample(
+                input_image,
+                grid,
+                mode=torch_mode,
+                padding_mode=padding_mode,
+                align_corners=False,
+            )
+            .squeeze(0)
+            .squeeze(0)
+        )
     shifted = input_image - padding_value_t
     return (
-        nn.functional.grid_sample(
-            shifted,
-            grid,
-            mode=torch_mode,
-            padding_mode="zeros",
-            align_corners=False,
-        ) + padding_value_t
-    ).squeeze(0).squeeze(0)
+        (
+            nn.functional.grid_sample(
+                shifted,
+                grid,
+                mode=torch_mode,
+                padding_mode="zeros",
+                align_corners=False,
+            )
+            + padding_value_t
+        )
+        .squeeze(0)
+        .squeeze(0)
+    )
 
 
 def map_r2r(
-        image: torch.Tensor,
-        r2r: torch.Tensor,
-        source_affine: torch.Tensor,
-        target_affine: torch.Tensor,
-        target_shape: tuple[int, int, int] | None = None,
-        mode: str = "linear",
-        padding_mode: str = "zeros",
-        padding_value: float | None = None,
+    image: torch.Tensor,
+    r2r: torch.Tensor,
+    source_affine: torch.Tensor,
+    target_affine: torch.Tensor,
+    target_shape: tuple[int, int, int] | None = None,
+    mode: str = "linear",
+    padding_mode: str = "zeros",
+    padding_value: float | None = None,
 ) -> torch.Tensor:
     """Map an image using a RAS-to-RAS transform without a v2v intermediate.
 
@@ -305,10 +317,10 @@ def map_r2r(
 
 
 def resample_isotropic(
-        img: nib.Nifti1Image,
-        iso: float,
-        out_shape: tuple[int, int, int] | None = None,
-        mode: str = "linear",
+    img: nib.Nifti1Image,
+    iso: float,
+    out_shape: tuple[int, int, int] | None = None,
+    mode: str = "linear",
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Resample a NIfTI image to an isotropic grid.
 
@@ -369,7 +381,9 @@ def resample_isotropic(
     if out_shape is None:
         zooms = np.linalg.norm(img.affine[:3, :3], axis=0)  # column norms = voxel sizes
         shape = np.array(img.shape[:3])
-        out_shape = tuple(max(1, int(np.ceil(s * z / iso))) for s, z in zip(shape, zooms, strict=False))
+        # eps=1e-4 matches FreeSurfer's findRightSize: prevents ceil from adding a phantom
+        # voxel when (s * z / iso) is an integer but rounds up due to floating-point noise.
+        out_shape = tuple(max(1, int(np.ceil(s * z / iso - 1e-4))) for s, z in zip(shape, zooms, strict=False))
 
     # Resample using identity RAS-to-RAS transform
     identity_r2r = torch.eye(4, dtype=torch.float64)
@@ -391,11 +405,12 @@ def resample_isotropic(
 
 
 def resample_isotropic_tensor(
-        img: torch.Tensor,
-        affine: np.ndarray,
-        iso: float,
-        out_shape: tuple[int, int, int] | None = None,
-        mode: str = "linear",
+    img: torch.Tensor,
+    affine: np.ndarray,
+    iso: float,
+    out_shape: tuple[int, int, int] | None = None,
+    mode: str = "linear",
+    padding_mode: str = "zeros",
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Resample a torch tensor to an isotropic grid.
 
@@ -425,18 +440,30 @@ def resample_isotropic_tensor(
     """
     orig_affine = torch.from_numpy(affine).double()
 
-    # Build isotropic affine: same origin, isotropic voxels
-    iso_affine = orig_affine.clone()
+    # Build rotation/scale part: same direction cosines, isotropic voxel size
+    iso_rot_scale = orig_affine.clone()
     for i in range(3):
         col_norm = orig_affine[:3, i].norm()
         if col_norm > 0:
-            iso_affine[:3, i] = orig_affine[:3, i] / col_norm * iso
+            iso_rot_scale[:3, i] = orig_affine[:3, i] / col_norm * iso
 
     # Compute output shape if not provided
     if out_shape is None:
         zooms = np.linalg.norm(affine[:3, :3], axis=0)
         shape = np.array(img.shape[:3])
-        out_shape = tuple(max(1, int(np.ceil(s * z / iso))) for s, z in zip(shape, zooms, strict=False))
+        # eps=1e-4 matches FreeSurfer's findRightSize: prevents ceil from adding a phantom
+        # voxel when (s * z / iso) is an integer but rounds up due to floating-point noise.
+        out_shape = tuple(max(1, int(np.ceil(s * z / iso - 1e-4))) for s, z in zip(shape, zooms, strict=False))
+
+    # FreeSurfer's makeIsotropic preserves the image center (c_r, c_a, c_s), not voxel-0.
+    # Match that: set origin so the center voxel maps to the same RAS position as before.
+    orig_shape = img.shape[:3]
+    orig_center = torch.tensor([orig_shape[0] // 2, orig_shape[1] // 2, orig_shape[2] // 2, 1], dtype=torch.float64)
+    c_ras = orig_affine @ orig_center  # RAS of original center voxel
+
+    iso_center = torch.tensor([out_shape[0] // 2, out_shape[1] // 2, out_shape[2] // 2], dtype=torch.float64)
+    iso_affine = iso_rot_scale.clone()
+    iso_affine[:3, 3] = c_ras[:3] - iso_rot_scale[:3, :3] @ iso_center
 
     # Resample using identity RAS-to-RAS transform
     identity_r2r = torch.eye(4, dtype=torch.float64)
@@ -448,6 +475,7 @@ def resample_isotropic_tensor(
         target_affine=iso_affine.float(),
         target_shape=out_shape,
         mode=mode,
+        padding_mode=padding_mode,
     )
 
     # Rvox: isotropic vox → original vox
@@ -507,15 +535,15 @@ def header_map_image(image: Any, r2r: torch.Tensor | np.ndarray) -> Any:
 
 
 def reslice_r2r_image(
-        image: Any,
-        r2r: torch.Tensor | np.ndarray,
-        *,
-        target_affine: np.ndarray,
-        target_shape: tuple[int, int, int],
-        mode: str = "linear",
-        padding_mode: str = "zeros",
-        padding_value: float | None = None,
-        keep_dtype: bool = False,
+    image: Any,
+    r2r: torch.Tensor | np.ndarray,
+    *,
+    target_affine: np.ndarray,
+    target_shape: tuple[int, int, int],
+    mode: str = "linear",
+    padding_mode: str = "zeros",
+    padding_value: float | None = None,
+    keep_dtype: bool = False,
 ) -> Any:
     """Reslice an image with a RAS-to-RAS transform into a target geometry.
 
@@ -608,16 +636,16 @@ def infer_image_reslice_mode(image: Any) -> str:
 
 
 def save_resliced_r2r_image(
-        image: Any,
-        r2r: torch.Tensor | np.ndarray,
-        output_path: str,
-        *,
-        target_affine: np.ndarray,
-        target_shape: tuple[int, int, int],
-        mode: str | None = None,
-        padding_mode: str = "zeros",
-        padding_value: float | None = None,
-        keep_dtype: bool = False,
+    image: Any,
+    r2r: torch.Tensor | np.ndarray,
+    output_path: str,
+    *,
+    target_affine: np.ndarray,
+    target_shape: tuple[int, int, int],
+    mode: str | None = None,
+    padding_mode: str = "zeros",
+    padding_value: float | None = None,
+    keep_dtype: bool = False,
 ) -> Any:
     """Reslice and write an image using a shared RAS-to-RAS mapping path.
 
@@ -675,9 +703,9 @@ def save_resliced_r2r_image(
 
 
 def save_header_mapped_image(
-        image: Any,
-        r2r: torch.Tensor | np.ndarray,
-        output_path: str,
+    image: Any,
+    r2r: torch.Tensor | np.ndarray,
+    output_path: str,
 ) -> Any:
     """Write a header-only mapped image using a shared helper.
 
