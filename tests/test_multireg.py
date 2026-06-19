@@ -24,10 +24,10 @@ def _make_blob(shape: tuple[int, int, int] = (21, 21, 21), shift: tuple[float, f
 
 
 def _make_img(
-        shape: tuple[int, int, int] = (21, 21, 21),
-        shift: tuple[float, float, float] = (0, 0, 0),
-        *,
-        affine: np.ndarray | None = None,
+    shape: tuple[int, int, int] = (21, 21, 21),
+    shift: tuple[float, float, float] = (0, 0, 0),
+    *,
+    affine: np.ndarray | None = None,
 ) -> nib.Nifti1Image:
     img_affine = np.eye(4, dtype=np.float32) if affine is None else affine.astype(np.float32)
     return nib.Nifti1Image(_make_blob(shape, shift), img_affine)
@@ -140,8 +140,15 @@ def test_multireg_iterative_refinement_reuses_previous_transforms(monkeypatch: p
     assert len(captured_init_transforms) == 5
     assert captured_init_transforms[:2] == [None, None]
     assert captured_isotropic_sizes == [None, None, None, None, None]
-    for matrix in captured_init_transforms[2:]:
-        assert matrix == pytest.approx(np.eye(4, dtype=np.float64))
+    # Template iterations pass the previously accumulated transform as init_transform.
+    # image[0] is the initial target so it holds identity; image[1]/[2] carry pairwise offsets.
+    t1 = np.eye(4, dtype=np.float64)
+    t1[0, 3] = -2.0
+    t2 = np.eye(4, dtype=np.float64)
+    t2[0, 3] = 2.0
+    assert captured_init_transforms[2] == pytest.approx(np.eye(4, dtype=np.float64))
+    assert captured_init_transforms[3] == pytest.approx(t1)
+    assert captured_init_transforms[4] == pytest.approx(t2)
     assert captured_shapes[2:] == [((21, 21, 21), (21, 21, 21))] * 3
     assert result.template_iterations_run == 1
     assert result.iteration_distances == pytest.approx([0.0])
