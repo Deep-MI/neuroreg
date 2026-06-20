@@ -5,6 +5,8 @@ Top-level functions exposed from :mod:`neuroreg`.
 
 .. autofunction:: neuroreg.robreg
 
+.. autofunction:: neuroreg.multireg
+
 .. autofunction:: neuroreg.coreg
 
 .. autofunction:: neuroreg.bbreg

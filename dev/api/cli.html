@@ -368,6 +368,145 @@ mapped-image export, and writing the output transform.</p>
 
 </section>
 </section>
+<section id="multireg">
+<h2><code class="docutils literal notranslate"><span class="pre">multireg</span></code><a class="headerlink" href="#multireg" title="Link to this heading">¶</a></h2>
+<p><p>FreeSurfer-style multi-timepoint robust registration.
+Registers all time points to a deterministic initial target,
+constructs an unbiased mean space, and iteratively refines the template.</p>
+</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">multireg</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">mov</span> <span class="n">FILE</span> <span class="p">[</span><span class="n">FILE</span> <span class="o">...</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">mov</span><span class="o">-</span><span class="n">mask</span> <span class="p">[</span><span class="n">FILE</span> <span class="o">...</span><span class="p">]]</span>
+                <span class="o">--</span><span class="n">template</span> <span class="n">FILE</span> <span class="p">[</span><span class="o">--</span><span class="n">lta</span> <span class="p">[</span><span class="n">FILE</span> <span class="o">...</span><span class="p">]]</span> <span class="p">[</span><span class="o">--</span><span class="n">mapmov</span><span class="o">-</span><span class="nb">dir</span> <span class="n">DIR</span><span class="p">]</span>
+                <span class="p">[</span><span class="o">--</span><span class="n">ixforms</span> <span class="p">[</span><span class="n">FILE</span> <span class="o">...</span><span class="p">]]</span> <span class="p">[</span><span class="o">--</span><span class="n">average</span> <span class="n">MODE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">inittp</span> <span class="n">N</span><span class="p">]</span>
+                <span class="p">[</span><span class="o">--</span><span class="n">seed</span> <span class="n">INT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">fixtp</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">cras</span><span class="o">-</span><span class="n">center</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">noit</span> <span class="o">|</span> <span class="o">--</span><span class="n">iterate</span> <span class="n">N</span><span class="p">]</span>
+                <span class="p">[</span><span class="o">--</span><span class="n">template</span><span class="o">-</span><span class="n">eps</span> <span class="n">FLOAT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">nmax</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">sat</span> <span class="n">FLOAT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">nosym</span><span class="p">]</span>
+                <span class="p">[</span><span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">header</span> <span class="o">|</span> <span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">centroid</span> <span class="o">|</span> <span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">center</span><span class="p">]</span>
+                <span class="p">[</span><span class="o">--</span><span class="n">device</span> <span class="n">DEVICE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">keep</span><span class="o">-</span><span class="n">dtype</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
+</pre></div>
+</div>
+<section id="neuroreg.cli.multireg-_build_parser-named-arguments">
+<h3>Named Arguments<a class="headerlink" href="#neuroreg.cli.multireg-_build_parser-named-arguments" title="Link to this heading">¶</a></h3>
+<dl class="option-list">
+<dt><kbd>--mov</kbd></dt>
+<dd><p>Input time-point images (NIfTI or MGZ).</p>
+</dd>
+<dt><kbd>--mov-mask</kbd></dt>
+<dd><p>Optional per-time-point masks. When given, provide one mask per –mov image.</p>
+</dd>
+<dt><kbd>--template</kbd></dt>
+<dd><p>Output template image.</p>
+</dd>
+<dt><kbd>--lta</kbd></dt>
+<dd><p>Optional output LTAs. When given, provide one output path per –mov image.</p>
+</dd>
+<dt><kbd>--mapmov-dir</kbd></dt>
+<dd><p>Optional directory for writing mapped per-time-point images in template space.</p>
+</dd>
+<dt><kbd>--ixforms</kbd></dt>
+<dd><p>Optional input LTAs, one per –mov image. When given, reuse these transforms as the template-space mapping.</p>
+</dd>
+<dt><kbd>--average</kbd></dt>
+<dd><p>Template aggregation mode: mean, median, 0 (=mean), or 1 (=median).</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">'median'</span></code></p>
+</dd>
+<dt><kbd>--inittp</kbd></dt>
+<dd><p>1-based initial target time point. When omitted, choose a deterministic pseudo-random target from the inputs.</p>
+</dd>
+<dt><kbd>--seed</kbd></dt>
+<dd><p>Seed used for the deterministic pseudo-random initial target selection. 0 recomputes it from the inputs.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0</span></code></p>
+</dd>
+<dt><kbd>--fixtp</kbd></dt>
+<dd><p>Keep the chosen initial target as the output space instead of constructing an unbiased mean space.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--cras-center</kbd></dt>
+<dd><p>Center the template geometry at the average CRAS instead of the average mapped centroid.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--noit</kbd></dt>
+<dd><p>Stop after the initial mean-space pass instead of iteratively refining the template.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--iterate</kbd></dt>
+<dd><p>Maximum number of template-refinement iterations. Defaults to 6 for 3+ time points and 0 for 2 time points.</p>
+</dd>
+<dt><kbd>--template-eps</kbd></dt>
+<dd><p>Stop template refinement when the maximum transform change falls below this threshold.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.03</span></code></p>
+</dd>
+<dt><kbd>--nmax</kbd></dt>
+<dd><p>Maximum number of outer IRLS iterations per pairwise registration pyramid level.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">5</span></code></p>
+</dd>
+<dt><kbd>--sat</kbd></dt>
+<dd><p>Tukey biweight saturation threshold for the pairwise robust registrations.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">6.0</span></code></p>
+</dd>
+<dt><kbd>--nosym</kbd></dt>
+<dd><p>Disable symmetric halfway-space pairwise registration.</p>
+</dd>
+<dt><kbd>--init-header</kbd></dt>
+<dd><p>Use header alignment only for the pairwise registrations.</p>
+</dd>
+<dt><kbd>--init-centroid</kbd></dt>
+<dd><p>Initialize the pairwise registrations by aligning intensity centroids in RAS.</p>
+</dd>
+<dt><kbd>--init-center</kbd></dt>
+<dd><p>Initialize the pairwise registrations by aligning geometric image centers in RAS.</p>
+</dd>
+<dt><kbd>--device</kbd></dt>
+<dd><p>Torch device string, e.g. ‘cpu’, ‘cuda’, ‘mps’, or ‘gpu’.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">'gpu'</span></code></p>
+</dd>
+<dt><kbd>--keep-dtype</kbd></dt>
+<dd><p>Write –mapmov-dir outputs in the source-image dtype instead of float32.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--verbose</kbd></dt>
+<dd><p>Enable INFO-level logging.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--debug</kbd></dt>
+<dd><p>Enable DEBUG-level logging.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+</dl>
+</section>
+<section id="id1">
+<h3>Python module<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h3>
+<p id="module-neuroreg.cli.multireg">Command-line interface for FreeSurfer-style multi-timepoint robust registration.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="neuroreg.cli.multireg.main">
+<span class="sig-prename descclassname"><span class="pre">neuroreg.cli.multireg.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/cli/multireg.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.cli.multireg.main" title="Link to this definition">¶</a></dt>
+<dd><p>Run the <code class="docutils literal notranslate"><span class="pre">multireg</span></code> command-line interface.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>args</strong><span class="classifier">sequence of str or None, optional</span></dt><dd><p>Explicit argument list. When <code class="docutils literal notranslate"><span class="pre">None</span></code>, parse arguments from
+<code class="docutils literal notranslate"><span class="pre">sys.argv</span></code>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>None</dt><dd><p>This function returns <code class="docutils literal notranslate"><span class="pre">None</span></code> after writing requested outputs.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>SystemExit</dt><dd><p>If argument parsing fails or an input image cannot be loaded.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
 <section id="coreg">
 <h2><code class="docutils literal notranslate"><span class="pre">coreg</span></code><a class="headerlink" href="#coreg" title="Link to this heading">¶</a></h2>
 <p><p>3-D image-to-image registration.
@@ -494,8 +633,8 @@ Defaults to the MRI_coreg-style Powell path; use –method gd for the legacy PyT
 </dd>
 </dl>
 </section>
-<section id="id1">
-<h3>Python module<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h3>
+<section id="id2">
+<h3>Python module<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
 <p id="module-neuroreg.cli.coreg">Command-line interface for image-based cross-modal registration (coreg).</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.cli.coreg.main">
@@ -708,8 +847,8 @@ surface files needed)</p>
 </dd>
 </dl>
 </section>
-<section id="id2">
-<h3>Python module<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
+<section id="id3">
+<h3>Python module<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
 <p id="module-neuroreg.cli.bbreg">Command-line interface for boundary-based registration (bbreg).</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.cli.bbreg.main">
@@ -834,8 +973,8 @@ FreeSurfer’s mri_vol2vol for linear transforms.</p>
 </dd>
 </dl>
 </section>
-<section id="id3">
-<h3>Python module<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
+<section id="id4">
+<h3>Python module<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h3>
 <p id="module-neuroreg.cli.vol2vol">Command-line image mapping and reslicing utility.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.cli.vol2vol.main">
@@ -930,8 +1069,8 @@ Fits translation-only, rigid, similarity, no-shear anisotropic-scale, or affine 
 </dd>
 </dl>
 </section>
-<section id="id4">
-<h3>Python module<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h3>
+<section id="id5">
+<h3>Python module<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h3>
 <p id="module-neuroreg.cli.segreg">Command-line interface for segmentation-based centroid registration.</p>
 <p>The CLI fits an LTA from a moving segmentation to either a target segmentation,
 a centroid target JSON file (or bundled centroid target name), or a left-right
@@ -1371,8 +1510,8 @@ NiftyReg affine text matrices store the inverse target-to-source RAS matrix.</p>
 </dl>
 </section>
 </section>
-<section id="id5">
-<h3>Python module<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h3>
+<section id="id6">
+<h3>Python module<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h3>
 <p id="module-neuroreg.cli.lta">Unified LTA transform manipulation CLI.</p>
 <p>Available subcommands are <code class="docutils literal notranslate"><span class="pre">diff</span></code> to compare transforms, <code class="docutils literal notranslate"><span class="pre">invert</span></code> to invert
 an LTA, <code class="docutils literal notranslate"><span class="pre">concat</span></code> to chain two LTAs, and <code class="docutils literal notranslate"><span class="pre">convert</span></code> to translate between
@@ -1409,8 +1548,8 @@ tkregister <code class="docutils literal notranslate"><span class="pre">register
 </dd>
 </dl>
 </section>
-<section id="id6">
-<h3>Python module<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h3>
+<section id="id7">
+<h3>Python module<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h3>
 <span class="target" id="module-neuroreg.cli.sys_info"></span><dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.cli.sys_info.main">
 <span class="sig-prename descclassname"><span class="pre">neuroreg.cli.sys_info.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/cli/sys_info.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.cli.sys_info.main" title="Link to this definition">¶</a></dt>
@@ -1501,9 +1640,17 @@ tkregister <code class="docutils literal notranslate"><span class="pre">register
 </li>
 </ul>
 </li>
+<li><a class="reference internal" href="#multireg"><code class="docutils literal notranslate"><span class="pre">multireg</span></code></a><ul>
+<li><a class="reference internal" href="#neuroreg.cli.multireg-_build_parser-named-arguments">Named Arguments</a></li>
+<li><a class="reference internal" href="#id1">Python module</a><ul>
+<li><a class="reference internal" href="#neuroreg.cli.multireg.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li><a class="reference internal" href="#coreg"><code class="docutils literal notranslate"><span class="pre">coreg</span></code></a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.coreg-_build_parser-named-arguments">Named Arguments</a></li>
-<li><a class="reference internal" href="#id1">Python module</a><ul>
+<li><a class="reference internal" href="#id2">Python module</a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.coreg.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 </ul>
 </li>
@@ -1514,7 +1661,7 @@ tkregister <code class="docutils literal notranslate"><span class="pre">register
 <li><a class="reference internal" href="#neuroreg.cli.bbreg-_build_parser-mode-a-–-freesurfer-subject-directory">Mode A – FreeSurfer subject directory</a></li>
 <li><a class="reference internal" href="#neuroreg.cli.bbreg-_build_parser-mode-b-–-explicit-surface-files">Mode B – explicit surface files</a></li>
 <li><a class="reference internal" href="#neuroreg.cli.bbreg-_build_parser-mode-c-–-segmentation-(aparc+aseg-/-aseg)">Mode C – segmentation (aparc+aseg / aseg)</a></li>
-<li><a class="reference internal" href="#id2">Python module</a><ul>
+<li><a class="reference internal" href="#id3">Python module</a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.bbreg.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 </ul>
 </li>
@@ -1522,7 +1669,7 @@ tkregister <code class="docutils literal notranslate"><span class="pre">register
 </li>
 <li><a class="reference internal" href="#vol2vol"><code class="docutils literal notranslate"><span class="pre">vol2vol</span></code></a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.vol2vol-_build_parser-named-arguments">Named Arguments</a></li>
-<li><a class="reference internal" href="#id3">Python module</a><ul>
+<li><a class="reference internal" href="#id4">Python module</a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.vol2vol.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 </ul>
 </li>
@@ -1530,7 +1677,7 @@ tkregister <code class="docutils literal notranslate"><span class="pre">register
 </li>
 <li><a class="reference internal" href="#segreg"><code class="docutils literal notranslate"><span class="pre">segreg</span></code></a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.segreg-_build_parser-named-arguments">Named Arguments</a></li>
-<li><a class="reference internal" href="#id4">Python module</a><ul>
+<li><a class="reference internal" href="#id5">Python module</a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.segreg.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 </ul>
 </li>
@@ -1577,7 +1724,7 @@ tkregister <code class="docutils literal notranslate"><span class="pre">register
 <li><a class="reference internal" href="#neuroreg.cli.lta-_build_parser-named-arguments">Named Arguments</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#id5">Python module</a><ul>
+<li><a class="reference internal" href="#id6">Python module</a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.lta.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 </ul>
 </li>
@@ -1585,7 +1732,7 @@ tkregister <code class="docutils literal notranslate"><span class="pre">register
 </li>
 <li><a class="reference internal" href="#neuroreg-sys-info"><code class="docutils literal notranslate"><span class="pre">neuroreg-sys_info</span></code></a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.sys_info-_build_parser-named-arguments">Named Arguments</a></li>
-<li><a class="reference internal" href="#id6">Python module</a><ul>
+<li><a class="reference internal" href="#id7">Python module</a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.sys_info.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.cli.sys_info.run"><code class="docutils literal notranslate"><span class="pre">run()</span></code></a></li>
 </ul>

@@ -259,6 +259,8 @@ and speed.</p>
 <ul class="simple">
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">robreg</span></code></strong> – Highly accurate and robust same modality image-to-image registration
 (IRLS based, analogous to FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">mri_robust_register</span></code>)</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">multireg</span></code></strong> – longitudinal multi-timepoint template construction with reusable LTAs
+(analogous to the core <code class="docutils literal notranslate"><span class="pre">mri_robust_template</span></code> workflow)</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">coreg</span></code></strong> – Image-to-image cross-modal registration
 (Powell-based by default, analogous to FreeSurfer/SPM <code class="docutils literal notranslate"><span class="pre">mri_coreg</span></code>)</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">bbreg</span></code></strong> – boundary-based registration using cortical WM surfaces or segmentations
@@ -374,6 +376,86 @@ to lack of double precision support on MPS.</p>
 </div>
 <p><strong>Example</strong></p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>robreg<span class="w"> </span>--mov<span class="w"> </span>T1_repeat.nii.gz<span class="w"> </span>--ref<span class="w"> </span>T1_baseline.mgz<span class="w"> </span>--out<span class="w"> </span>T1_repeat_to_T1_baseline.lta<span class="w"> </span>--verbose
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="multireg-longitudinal-multi-timepoint-template-building">
+<h3><code class="docutils literal notranslate"><span class="pre">multireg</span></code> — longitudinal multi-timepoint template building<a class="headerlink" href="#multireg-longitudinal-multi-timepoint-template-building" title="Link to this heading">¶</a></h3>
+<p>Builds a within-subject template from multiple same-contrast time points using
+the robust pairwise <code class="docutils literal notranslate"><span class="pre">robreg</span></code> path as its registration kernel.</p>
+<p>This command supports two key workflows:</p>
+<ul class="simple">
+<li><p>full multi-timepoint registration and template construction</p></li>
+<li><p>template rebuilding from precomputed LTAs via <code class="docutils literal notranslate"><span class="pre">--ixforms</span></code>, which is useful for
+the later FastSurfer-style “reuse transforms and just rebuild the template”
+pass</p></li>
+</ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">multireg</span> <span class="o">--</span><span class="n">mov</span> <span class="o">&lt;</span><span class="n">tp1</span><span class="o">.</span><span class="n">nii</span><span class="o">.</span><span class="n">gz</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">tp2</span><span class="o">.</span><span class="n">nii</span><span class="o">.</span><span class="n">gz</span><span class="o">&gt;</span> <span class="o">...</span> <span class="o">--</span><span class="n">template</span> <span class="o">&lt;</span><span class="n">template</span><span class="o">.</span><span class="n">nii</span><span class="o">.</span><span class="n">gz</span><span class="o">&gt;</span> <span class="p">[</span><span class="n">options</span><span class="p">]</span>
+</pre></div>
+</div>
+<p><strong>Key options</strong></p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Argument</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--template</span> <span class="pre">FILE</span></code></p></td>
+<td><p>required</p></td>
+<td><p>Output template image.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--lta</span> <span class="pre">FILE</span> <span class="pre">...</span></code></p></td>
+<td><p>—</p></td>
+<td><p>Optional output LTAs, one per input time point.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--ixforms</span> <span class="pre">FILE</span> <span class="pre">...</span></code></p></td>
+<td><p>—</p></td>
+<td><p>Reuse precomputed LTAs as input transforms into template space.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--average</span> <span class="pre">MODE</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">median</span></code></p></td>
+<td><p>Template aggregation mode: <code class="docutils literal notranslate"><span class="pre">mean</span></code>, <code class="docutils literal notranslate"><span class="pre">median</span></code>, <code class="docutils literal notranslate"><span class="pre">0</span></code> (=mean), or <code class="docutils literal notranslate"><span class="pre">1</span></code> (=median).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--noit</span></code></p></td>
+<td><p>off</p></td>
+<td><p>Stop after the initial template build instead of running iterative refinement.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--iterate</span> <span class="pre">N</span></code></p></td>
+<td><p>auto</p></td>
+<td><p>Maximum number of refinement iterations (<code class="docutils literal notranslate"><span class="pre">0</span></code> for 2 TPs, <code class="docutils literal notranslate"><span class="pre">6</span></code> for 3+ by default).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--template-eps</span> <span class="pre">F</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.03</span></code></p></td>
+<td><p>Stop iterative refinement when the maximum transform update falls below this.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--inittp</span> <span class="pre">N</span></code></p></td>
+<td><p>auto</p></td>
+<td><p>1-based initial target time point.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--mapmov-dir</span> <span class="pre">DIR</span></code></p></td>
+<td><p>—</p></td>
+<td><p>Optional directory for mapped input images in template space.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--keep-dtype</span></code></p></td>
+<td><p>off</p></td>
+<td><p>Preserve source dtype for mapped images instead of writing float32.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Examples</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Full longitudinal template construction</span>
+multireg<span class="w"> </span>--mov<span class="w"> </span>tp1.mgz<span class="w"> </span>tp2.mgz<span class="w"> </span>tp3.mgz<span class="w"> </span>--template<span class="w"> </span>subject_template.mgz<span class="w"> </span><span class="se">\</span>
+<span class="w">         </span>--lta<span class="w"> </span>tp1.lta<span class="w"> </span>tp2.lta<span class="w"> </span>tp3.lta<span class="w"> </span>--average<span class="w"> </span>median
+
+<span class="c1"># Rebuild a template from existing LTAs without another registration pass</span>
+multireg<span class="w"> </span>--mov<span class="w"> </span>tp1_orig.mgz<span class="w"> </span>tp2_orig.mgz<span class="w"> </span>tp3_orig.mgz<span class="w"> </span><span class="se">\</span>
+<span class="w">         </span>--template<span class="w"> </span>subject_template_orig.mgz<span class="w"> </span><span class="se">\</span>
+<span class="w">         </span>--ixforms<span class="w"> </span>tp1.lta<span class="w"> </span>tp2.lta<span class="w"> </span>tp3.lta<span class="w"> </span>--noit<span class="w"> </span>--average<span class="w"> </span>median
 </pre></div>
 </div>
 </section>

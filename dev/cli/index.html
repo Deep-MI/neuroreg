@@ -260,6 +260,19 @@ closely-related contrast pairs.</p>
 </pre></div>
 </div>
 </section>
+<section id="multireg">
+<h2>multireg<a class="headerlink" href="#multireg" title="Link to this heading">¶</a></h2>
+<p>Longitudinal multi-timepoint template construction with reusable LTAs for later
+template rebuilds.</p>
+<p>Examples:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">multireg</span> <span class="o">--</span><span class="n">mov</span> <span class="n">tp1</span><span class="o">.</span><span class="n">mgz</span> <span class="n">tp2</span><span class="o">.</span><span class="n">mgz</span> <span class="n">tp3</span><span class="o">.</span><span class="n">mgz</span> <span class="o">--</span><span class="n">template</span> <span class="n">subject_template</span><span class="o">.</span><span class="n">mgz</span> \
+         <span class="o">--</span><span class="n">lta</span> <span class="n">tp1</span><span class="o">.</span><span class="n">lta</span> <span class="n">tp2</span><span class="o">.</span><span class="n">lta</span> <span class="n">tp3</span><span class="o">.</span><span class="n">lta</span> <span class="o">--</span><span class="n">average</span> <span class="n">median</span>
+<span class="n">multireg</span> <span class="o">--</span><span class="n">mov</span> <span class="n">tp1_orig</span><span class="o">.</span><span class="n">mgz</span> <span class="n">tp2_orig</span><span class="o">.</span><span class="n">mgz</span> <span class="n">tp3_orig</span><span class="o">.</span><span class="n">mgz</span> \
+         <span class="o">--</span><span class="n">template</span> <span class="n">subject_template_orig</span><span class="o">.</span><span class="n">mgz</span> \
+         <span class="o">--</span><span class="n">ixforms</span> <span class="n">tp1</span><span class="o">.</span><span class="n">lta</span> <span class="n">tp2</span><span class="o">.</span><span class="n">lta</span> <span class="n">tp3</span><span class="o">.</span><span class="n">lta</span> <span class="o">--</span><span class="n">noit</span> <span class="o">--</span><span class="n">average</span> <span class="n">median</span>
+</pre></div>
+</div>
+</section>
 <section id="coreg">
 <h2>coreg<a class="headerlink" href="#coreg" title="Link to this heading">¶</a></h2>
 <p>Image-based cross-modal registration when only images are available.</p>
@@ -379,6 +392,7 @@ installations and CI environments.</p>
             <ul>
 <li><a class="reference internal" href="#">CLI reference</a><ul>
 <li><a class="reference internal" href="#robreg">robreg</a></li>
+<li><a class="reference internal" href="#multireg">multireg</a></li>
 <li><a class="reference internal" href="#coreg">coreg</a></li>
 <li><a class="reference internal" href="#bbreg">bbreg</a></li>
 <li><a class="reference internal" href="#vol2vol">vol2vol</a></li>

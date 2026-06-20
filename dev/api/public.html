@@ -251,7 +251,7 @@
 <p>Top-level functions exposed from <code class="xref py py-mod docutils literal notranslate"><span class="pre">neuroreg</span></code>.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.robreg">
-<span class="sig-prename descclassname"><span class="pre">neuroreg.</span></span><span class="sig-name descname"><span class="pre">robreg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trg</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src_affine</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trg_affine</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src_mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trg_mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_v2v</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'centroid'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init_lta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dof</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sat</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symmetric</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">isotropic</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adaptive_sat</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_outlier_pct</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outliers_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/imreg/robreg.html#robreg"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.robreg" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">neuroreg.</span></span><span class="sig-name descname"><span class="pre">robreg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trg</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src_affine</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trg_affine</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src_mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trg_mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_v2v</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'centroid'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init_transform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init_lta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_r2r</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dof</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sat</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symmetric</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">isotropic</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">isotropic_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adaptive_sat</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_outlier_pct</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outliers_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stop_level</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/imreg/robreg.html#robreg"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.robreg" title="Link to this definition">¶</a></dt>
 <dd><p>Register two images with the public IRLS robust-registration path.</p>
 <p>Parameters are intentionally close to the tensor-level IRLS pyramid
 implementation, but this wrapper also accepts filenames and nibabel images.</p>
@@ -270,11 +270,19 @@ ignored during IRLS fitting.</p>
 <dt><strong>return_v2v</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, return the estimated transform in voxel coordinates. If
 <code class="docutils literal notranslate"><span class="pre">False</span></code>, return the corresponding RAS-to-RAS transform.</p>
 </dd>
-<dt><strong>init_type</strong><span class="classifier">{“header”, “centroid”, “image_center”}, default=”centroid”</span></dt><dd><p>Explicit initialization mode used when no <code class="docutils literal notranslate"><span class="pre">init_lta</span></code> is supplied.
+<dt><strong>init_type</strong><span class="classifier">{“header”, “centroid”, “image_center”}, default=”centroid”</span></dt><dd><p>Explicit initialization mode used when no explicit transform is
+supplied.
 <code class="docutils literal notranslate"><span class="pre">&quot;image_center&quot;</span></code> matches FreeSurfer’s cras0-style center start.</p>
 </dd>
-<dt><strong>init_lta</strong><span class="classifier">str, optional</span></dt><dd><p>Existing LTA used for initialization. When provided, it overrides the
-requested <code class="docutils literal notranslate"><span class="pre">init_type</span></code>.</p>
+<dt><strong>init_transform</strong><span class="classifier">InitTransformLike, optional</span></dt><dd><p>Unified explicit initialization transform. This may be an LTA filename,
+an in-memory <code class="xref py py-class docutils literal notranslate"><span class="pre">LTA</span></code>, or a 4 x 4 RAS-to-RAS matrix stored as a
+NumPy array or torch tensor. When provided, it overrides <code class="docutils literal notranslate"><span class="pre">init_type</span></code>.</p>
+</dd>
+<dt><strong>init_lta</strong><span class="classifier">str, optional</span></dt><dd><p>Backward-compatible alias for file-based initialization. Prefer
+<code class="docutils literal notranslate"><span class="pre">init_transform</span></code>.</p>
+</dd>
+<dt><strong>initial_r2r</strong><span class="classifier">Tensor or ndarray, optional</span></dt><dd><p>Backward-compatible alias for in-memory RAS-to-RAS initialization.
+Prefer <code class="docutils literal notranslate"><span class="pre">init_transform</span></code>.</p>
 </dd>
 <dt><strong>dof</strong><span class="classifier">int, default=6</span></dt><dd><p>Degrees of freedom. The public IRLS path currently supports rigid
 registration only, so this must remain <code class="docutils literal notranslate"><span class="pre">6</span></code>.</p>
@@ -288,12 +296,20 @@ default/public robreg behavior.</p>
 </dd>
 <dt><strong>isotropic</strong><span class="classifier">bool, default=True</span></dt><dd><p>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, resample to isotropic voxels before building the pyramid.</p>
 </dd>
+<dt><strong>isotropic_size</strong><span class="classifier">float, optional</span></dt><dd><p>Explicit isotropic voxel size in millimeters. When omitted, the public
+robreg path derives a shared isotropic size from the source and target
+voxel sizes.</p>
+</dd>
 <dt><strong>adaptive_sat</strong><span class="classifier">bool, default=False</span></dt><dd><p>Whether to adapt the Tukey saturation threshold based on the observed
 outlier fraction.</p>
 </dd>
 <dt><strong>target_outlier_pct</strong><span class="classifier">float, default=5.0</span></dt><dd><p>Target outlier percentage used when <code class="docutils literal notranslate"><span class="pre">adaptive_sat</span></code> is enabled.</p>
 </dd>
 <dt><strong>outliers_name</strong><span class="classifier">str, optional</span></dt><dd><p>Output filename for the final outlier map.</p>
+</dd>
+<dt><strong>stop_level</strong><span class="classifier">int, default=0</span></dt><dd><p>Finest pyramid level to process. <code class="docutils literal notranslate"><span class="pre">0</span></code> processes all levels. Higher
+values skip the finest levels for faster coarse-only registration.
+Mirrors FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">stopres</span></code> in <code class="docutils literal notranslate"><span class="pre">computeMultiresRegistration</span></code>.</p>
 </dd>
 <dt><strong>verbose</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, emit progress logging from the IRLS implementation.</p>
 </dd>
@@ -310,7 +326,8 @@ outlier fraction.</p>
 </dd>
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
-<dt>ValueError</dt><dd><p>If <code class="docutils literal notranslate"><span class="pre">dof</span></code> is anything other than <code class="docutils literal notranslate"><span class="pre">6</span></code>.</p>
+<dt>ValueError</dt><dd><p>If <code class="docutils literal notranslate"><span class="pre">dof</span></code> is anything other than <code class="docutils literal notranslate"><span class="pre">6</span></code>, or if multiple explicit
+initialization transforms are provided.</p>
 </dd>
 </dl>
 </dd>
@@ -324,21 +341,119 @@ outlier fraction.</p>
 <li><p><strong>trg_mask</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>Any</em><em> | </em><em>Tensor</em><em> | </em><em>None</em>)</p></li>
 <li><p><strong>return_v2v</strong> (<em>bool</em>)</p></li>
 <li><p><strong>init_type</strong> (<em>Literal</em><em>[</em><em>'header'</em><em>, </em><em>'centroid'</em><em>, </em><em>'image_center'</em><em>]</em>)</p></li>
+<li><p><strong>init_transform</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><a class="reference internal" href="transforms.html#neuroreg.transforms.LTA" title="neuroreg.transforms.lta.LTA"><em>LTA</em></a><em> | </em><em>Tensor</em><em> | </em><em>ndarray</em><em> | </em><em>None</em>)</p></li>
 <li><p><strong>init_lta</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>initial_r2r</strong> (<em>Tensor</em><em> | </em><em>ndarray</em><em> | </em><em>None</em>)</p></li>
 <li><p><strong>dof</strong> (<em>int</em>)</p></li>
 <li><p><strong>nmax</strong> (<em>int</em>)</p></li>
 <li><p><strong>sat</strong> (<em>float</em>)</p></li>
 <li><p><strong>symmetric</strong> (<em>bool</em>)</p></li>
 <li><p><strong>isotropic</strong> (<em>bool</em>)</p></li>
+<li><p><strong>isotropic_size</strong> (<em>float</em><em> | </em><em>None</em>)</p></li>
 <li><p><strong>adaptive_sat</strong> (<em>bool</em>)</p></li>
 <li><p><strong>target_outlier_pct</strong> (<em>float</em>)</p></li>
 <li><p><strong>outliers_name</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>stop_level</strong> (<em>int</em>)</p></li>
 <li><p><strong>verbose</strong> (<em>bool</em>)</p></li>
 <li><p><strong>device</strong> (<em>str</em>)</p></li>
 </ul>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><em>Tensor</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="neuroreg.multireg">
+<span class="sig-prename descclassname"><span class="pre">neuroreg.</span></span><span class="sig-name descname"><span class="pre">multireg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">movables</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">masks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init_ltas</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">average</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'median'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init_target_index</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fix_target</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sat</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symmetric</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_cras_center</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">template_iterations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">template_eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.03</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_mapped</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mapped_keep_dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/multireg/register.html#multireg"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.multireg" title="Link to this definition">¶</a></dt>
+<dd><p>Run the FreeSurfer-style multi-timepoint registration pipeline.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>movables</strong><span class="classifier">sequence of ImageLike</span></dt><dd><p>Input time-point images or paths to them.</p>
+</dd>
+<dt><strong>masks</strong><span class="classifier">sequence of ImageLike or None, optional</span></dt><dd><p>Optional per-timepoint masks aligned with <code class="docutils literal notranslate"><span class="pre">movables</span></code>.</p>
+</dd>
+<dt><strong>init_ltas</strong><span class="classifier">sequence of TransformLike or None, optional</span></dt><dd><p>Optional precomputed LTAs defining the initial timepoint-to-template
+mappings and template geometry.</p>
+</dd>
+<dt><strong>average</strong><span class="classifier">{“mean”, “median”, 0, 1}, default=”median”</span></dt><dd><p>Template aggregation mode. Integer aliases match the FreeSurfer CLI.</p>
+</dd>
+<dt><strong>init_target_index</strong><span class="classifier">int or None, optional</span></dt><dd><p>Zero-based initial target index. If omitted, select one deterministically
+from image content.</p>
+</dd>
+<dt><strong>seed</strong><span class="classifier">int or None, optional</span></dt><dd><p>Seed override for initial target selection. <code class="docutils literal notranslate"><span class="pre">None</span></code> and <code class="docutils literal notranslate"><span class="pre">0</span></code> recompute
+the seed from image content.</p>
+</dd>
+<dt><strong>fix_target</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, keep the initial target geometry instead of constructing an
+unbiased mean-space template grid.</p>
+</dd>
+<dt><strong>init_type</strong><span class="classifier">InitType or None, optional</span></dt><dd><p>Pairwise registration initialization mode.</p>
+</dd>
+<dt><strong>nmax</strong><span class="classifier">int, default=5</span></dt><dd><p>Maximum number of outer IRLS iterations per pairwise registration.</p>
+</dd>
+<dt><strong>sat</strong><span class="classifier">float, default=6.0</span></dt><dd><p>Tukey biweight saturation threshold for robust pairwise registration.</p>
+</dd>
+<dt><strong>symmetric</strong><span class="classifier">bool, default=True</span></dt><dd><p>Whether pairwise registrations should use symmetric halfway-space updates.</p>
+</dd>
+<dt><strong>device</strong><span class="classifier">str, default=”gpu”</span></dt><dd><p>Torch device string forwarded to the pairwise kernel.</p>
+</dd>
+<dt><strong>use_cras_center</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, center the template geometry on the average CRAS instead of
+the average mapped intensity centroid.</p>
+</dd>
+<dt><strong>template_iterations</strong><span class="classifier">int or None, optional</span></dt><dd><p>Maximum number of global template-refinement passes. <code class="docutils literal notranslate"><span class="pre">None</span></code> uses the
+built-in defaults for two versus three-or-more time points.</p>
+</dd>
+<dt><strong>template_eps</strong><span class="classifier">float, default=0.03</span></dt><dd><p>Convergence threshold in millimeters for the maximum per-iteration
+transform change.</p>
+</dd>
+<dt><strong>return_mapped</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, include mapped images in the returned result.</p>
+</dd>
+<dt><strong>mapped_keep_dtype</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, preserve source dtypes for returned mapped images.</p>
+</dd>
+<dt><strong>verbose</strong><span class="classifier">bool, default=False</span></dt><dd><p>Whether to enable verbose pairwise-registration logging.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>MultiRegResult</dt><dd><p>Template image, final transforms, LTAs, iteration metadata, and optional
+mapped images.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>ValueError</dt><dd><p>If the inputs are invalid, incompatible in geometry, or the requested
+iteration settings are inconsistent.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>movables</strong> (<em>Sequence</em><em>[</em><em>str</em><em> | </em><em>Path</em><em> | </em><em>Any</em><em>]</em>)</p></li>
+<li><p><strong>masks</strong> (<em>Sequence</em><em>[</em><em>str</em><em> | </em><em>Path</em><em> | </em><em>Any</em><em> | </em><em>None</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>init_ltas</strong> (<em>Sequence</em><em>[</em><em>str</em><em> | </em><em>Path</em><em> | </em><a class="reference internal" href="transforms.html#neuroreg.transforms.LTA" title="neuroreg.transforms.lta.LTA"><em>LTA</em></a><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>average</strong> (<em>str</em><em> | </em><em>int</em>)</p></li>
+<li><p><strong>init_target_index</strong> (<em>int</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>seed</strong> (<em>int</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>fix_target</strong> (<em>bool</em>)</p></li>
+<li><p><strong>init_type</strong> (<em>Literal</em><em>[</em><em>'header'</em><em>, </em><em>'centroid'</em><em>, </em><em>'image_center'</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>nmax</strong> (<em>int</em>)</p></li>
+<li><p><strong>sat</strong> (<em>float</em>)</p></li>
+<li><p><strong>symmetric</strong> (<em>bool</em>)</p></li>
+<li><p><strong>device</strong> (<em>str</em>)</p></li>
+<li><p><strong>use_cras_center</strong> (<em>bool</em>)</p></li>
+<li><p><strong>template_iterations</strong> (<em>int</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>template_eps</strong> (<em>float</em>)</p></li>
+<li><p><strong>return_mapped</strong> (<em>bool</em>)</p></li>
+<li><p><strong>mapped_keep_dtype</strong> (<em>bool</em>)</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><em>MultiRegResult</em></p>
 </dd>
 </dl>
 </dd></dl>
@@ -704,6 +819,7 @@ not provide enough matched labels for the requested fit.</p>
             <ul>
 <li><a class="reference internal" href="#">Public entry points</a><ul>
 <li><a class="reference internal" href="#neuroreg.robreg"><code class="docutils literal notranslate"><span class="pre">robreg()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.multireg"><code class="docutils literal notranslate"><span class="pre">multireg()</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.coreg"><code class="docutils literal notranslate"><span class="pre">coreg()</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.bbreg"><code class="docutils literal notranslate"><span class="pre">bbreg()</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.segreg"><code class="docutils literal notranslate"><span class="pre">segreg()</span></code></a></li>
