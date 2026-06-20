@@ -385,7 +385,6 @@ def multireg(
     use_cras_center: bool = False,
     template_iterations: int | None = None,
     template_eps: float = 0.03,
-    fast_schedule: bool = False,
     return_mapped: bool = False,
     mapped_keep_dtype: bool = False,
     verbose: bool = False,
@@ -431,16 +430,6 @@ def multireg(
     template_eps : float, default=0.03
         Convergence threshold in millimeters for the maximum per-iteration
         transform change.
-    fast_schedule : bool, default=False
-        If ``False`` (default), every template-refinement iteration registers at
-        full multi-resolution, matching FreeSurfer's ``computeTemplate`` behavior
-        when initial transforms exist (which is always the case here). This both
-        converges in fewer global iterations (~2) and keeps the template pose
-        stable. If ``True``, apply a coarse-to-fine ramp instead (iteration 1
-        stops at pyramid level 3, iteration 2 at level 2, iteration 3 at level 1,
-        iterations 4+ full): this only emulates FreeSurfer's cold-start
-        ``noxformits`` ramp, needs more global iterations, is slower in practice,
-        and lets the global pose drift, so it is not recommended.
     return_mapped : bool, default=False
         If ``True``, include mapped images in the returned result.
     mapped_keep_dtype : bool, default=False
@@ -527,7 +516,6 @@ def multireg(
     iteration_distances: list[float] = []
     for iteration in range(1, resolved_template_iterations + 1):
         logger.info("Refining multireg template: iteration %d/%d.", iteration, resolved_template_iterations)
-        stop_level = max(0, 4 - iteration) if fast_schedule else 0
         next_transforms: list[np.ndarray] = []
         distances: list[float] = []
         for index, (image, mask, previous_r2r) in enumerate(
@@ -548,7 +536,6 @@ def multireg(
                 device=device,
                 verbose=verbose,
                 init_transform=previous_r2r,
-                stop_level=stop_level,
             )
             if hasattr(updated_result, "detach"):
                 updated_r2r = np.asarray(updated_result.detach().cpu().numpy(), dtype=np.float64)
