@@ -385,7 +385,7 @@ def multireg(
     use_cras_center: bool = False,
     template_iterations: int | None = None,
     template_eps: float = 0.03,
-    fast_schedule: bool = True,
+    fast_schedule: bool = False,
     return_mapped: bool = False,
     mapped_keep_dtype: bool = False,
     verbose: bool = False,
@@ -431,11 +431,16 @@ def multireg(
     template_eps : float, default=0.03
         Convergence threshold in millimeters for the maximum per-iteration
         transform change.
-    fast_schedule : bool, default=True
-        If ``True``, apply FreeSurfer's coarse-to-fine iteration schedule:
-        iteration 1 stops at pyramid level 3, iteration 2 at level 2, iteration
-        3 at level 1, and iterations 4+ use full resolution. Matches the
-        ``stopres`` ramp in ``MultiRegistration::computeTemplate``.
+    fast_schedule : bool, default=False
+        If ``False`` (default), every template-refinement iteration registers at
+        full multi-resolution, matching FreeSurfer's ``computeTemplate`` behavior
+        when initial transforms exist (which is always the case here). This both
+        converges in fewer global iterations (~2) and keeps the template pose
+        stable. If ``True``, apply a coarse-to-fine ramp instead (iteration 1
+        stops at pyramid level 3, iteration 2 at level 2, iteration 3 at level 1,
+        iterations 4+ full): this only emulates FreeSurfer's cold-start
+        ``noxformits`` ramp, needs more global iterations, is slower in practice,
+        and lets the global pose drift, so it is not recommended.
     return_mapped : bool, default=False
         If ``True``, include mapped images in the returned result.
     mapped_keep_dtype : bool, default=False
