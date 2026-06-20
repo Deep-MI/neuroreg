@@ -18,6 +18,20 @@ Python module
 .. automodule:: neuroreg.cli.robreg
    :members: main
 
+``multireg``
+------------
+
+.. argparse::
+   :module: neuroreg.cli.multireg
+   :func: _build_parser
+   :prog: multireg
+
+Python module
+~~~~~~~~~~~~~
+
+.. automodule:: neuroreg.cli.multireg
+   :members: main
+
 ``coreg``
 ---------
 

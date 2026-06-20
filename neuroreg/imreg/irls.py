@@ -48,10 +48,10 @@ _DERFILTER = torch.tensor([-0.10689, -0.28461, 0.0, 0.28461, 0.10689])
 
 
 def _conv1d_along(
-        vol: torch.Tensor,
-        kernel: torch.Tensor,
-        dim: int,
-        padding_mode: str = 'replicate',
+    vol: torch.Tensor,
+    kernel: torch.Tensor,
+    dim: int,
+    padding_mode: str = "replicate",
 ) -> torch.Tensor:
     """Convolve a 3-D volume with a 1-D kernel along one spatial dimension.
 
@@ -85,8 +85,8 @@ def _conv1d_along(
         w = k.view(1, 1, 1, 1, K)
         pads = (pad, pad, 0, 0, 0, 0)
 
-    if padding_mode == 'zeros':
-        padded = F.pad(x, pads, mode='constant', value=0.0)
+    if padding_mode == "zeros":
+        padded = F.pad(x, pads, mode="constant", value=0.0)
     else:
         padded = F.pad(x, pads, mode=padding_mode)
     return F.conv3d(padded, w).squeeze(0).squeeze(0)
@@ -129,11 +129,12 @@ def compute_partials(img: torch.Tensor) -> tuple[torch.Tensor, ...]:
 # Build the linear system  A p = b  for rigid 6-DOF registration
 # ---------------------------------------------------------------------------
 
+
 def construct_Ab(
-        src_warped: torch.Tensor,
-        trg: torch.Tensor,
-        valid_mask: torch.Tensor | None = None,
-        eps: float = 1e-5,
+    src_warped: torch.Tensor,
+    trg: torch.Tensor,
+    valid_mask: torch.Tensor | None = None,
+    eps: float = 1e-5,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Build gradient matrix A and residual vector b.
 
@@ -182,7 +183,7 @@ def construct_Ab(
     y_idx = torch.arange(H, dtype=src_warped.dtype, device=src_warped.device)
     x_idx = torch.arange(W, dtype=src_warped.dtype, device=src_warped.device)
     # meshgrid: z[D], y[H], x[W] → each [D, H, W]
-    gz, gy, gx = torch.meshgrid(z_idx, y_idx, x_idx, indexing='ij')
+    gz, gy, gx = torch.meshgrid(z_idx, y_idx, x_idx, indexing="ij")
 
     # Flatten everything
     fxf = fx.flatten()
@@ -203,8 +204,14 @@ def construct_Ab(
 
     # Check for outside/background values (typically 0)
     # FreeSurfer uses: fabs(val - outside_val) > eps
-    # For typical images, outside_val = 0, so this checks |val| > eps
-    outside_eps = 1e-5
+    # For typical images, outside_val = 0, so this checks |val| > eps.
+    # NOTE: this threshold must be on the SAME intensity scale as ``eps`` so that
+    # callers which pre-normalise the images (e.g. register_irls divides by ~the
+    # 99.5th percentile) can pass a scale-adjusted ``eps`` and keep the same
+    # voxel set FreeSurfer uses on raw intensities.  A fixed 1e-5 here silently
+    # culled ~900 low-intensity brain-edge voxels on normalised images, biasing
+    # the rigid solve.
+    outside_eps = eps
     valid = (src_flat.abs() > outside_eps) & (trg_flat.abs() > outside_eps)
 
     # Non-zero gradient
@@ -223,23 +230,32 @@ def construct_Ab(
             )
         valid &= mask_flat
 
-    fxv = fxf[valid]
-    fyv = fyf[valid]
-    fzv = fzf[valid]
-    xv = xf[valid]
-    yv = yf[valid]
-    zv = zf[valid]
-    bv = bf[valid]
+    # Build the linear system in float64. The rotation moments below (fz*y - fy*z)
+    # multiply gradients (~hundreds) by corner-origin coordinates (0..N), so at the
+    # finer pyramid levels (N up to ~200) the normal equations lose float32 precision
+    # and the recovered rotation collapses toward zero. FreeSurfer solves in double;
+    # matching that here is essential (verified: float32 gives 0.00deg vs FS 0.11deg at
+    # 50^3, float64 matches FS to <2e-4 deg at every level).
+    fxv = fxf[valid].double()
+    fyv = fyf[valid].double()
+    fzv = fzf[valid].double()
+    xv = xf[valid].double()
+    yv = yf[valid].double()
+    zv = zf[valid].double()
+    bv = bf[valid].double()
 
     # Rigid Jacobian: [tx, ty, tz, rx, ry, rz]
-    A = torch.stack([
-        fxv,
-        fyv,
-        fzv,
-        fzv * yv - fyv * zv,  # ∂/∂rx
-        fxv * zv - fzv * xv,  # ∂/∂ry
-        fyv * xv - fxv * yv,  # ∂/∂rz
-    ], dim=1)  # [N, 6]
+    A = torch.stack(
+        [
+            fxv,
+            fyv,
+            fzv,
+            fzv * yv - fyv * zv,  # ∂/∂rx
+            fxv * zv - fzv * xv,  # ∂/∂ry
+            fyv * xv - fxv * yv,  # ∂/∂rz
+        ],
+        dim=1,
+    )  # [N, 6]
 
     return A, bv, valid
 
@@ -248,10 +264,11 @@ def construct_Ab(
 # Weighted least squares solve (QR, matching FreeSurfer's getWeightedLSEst)
 # ---------------------------------------------------------------------------
 
+
 def solve_wls(
-        A: torch.Tensor,
-        b: torch.Tensor,
-        w_sqrt: torch.Tensor,
+    A: torch.Tensor,
+    b: torch.Tensor,
+    w_sqrt: torch.Tensor,
 ) -> torch.Tensor:
     """Solve  (√W A) p = √W b  via QR / least-squares.
 
@@ -269,7 +286,7 @@ def solve_wls(
     bw = b * w_sqrt  # [N]
     # torch.linalg.lstsq is QR-backed, equivalent to vnl_qr.
     # On MPS this may fall back to CPU, so move the solution back to Aw's device.
-    result = torch.linalg.lstsq(Aw, bw, driver='gelsd')
+    result = torch.linalg.lstsq(Aw, bw, driver="gelsd")
     return result.solution.to(device=Aw.device)
 
 
@@ -288,6 +305,7 @@ def move_tensor(tensor: torch.Tensor, device: torch.device, dtype: torch.dtype) 
 # These are the SQUARE-ROOT of the standard Tukey biweights.
 # ---------------------------------------------------------------------------
 
+
 def _sqrt_tukey(r: torch.Tensor, sat: float) -> torch.Tensor:
     t = r / sat
     w = torch.clamp(1.0 - t * t, min=0.0)
@@ -298,13 +316,14 @@ def _sqrt_tukey(r: torch.Tensor, sat: float) -> torch.Tensor:
 # IRLS inner loop  (matches Regression::getRobustEstWAB)
 # ---------------------------------------------------------------------------
 
+
 def irls_inner_loop(
-        A: torch.Tensor,
-        b: torch.Tensor,
-        sat: float = 4.685,
-        max_iterations: int = 20,
-        eps: float = 2e-12,
-        verbose: bool = False,
+    A: torch.Tensor,
+    b: torch.Tensor,
+    sat: float = 4.685,
+    max_iterations: int = 20,
+    eps: float = 2e-12,
+    verbose: bool = False,
 ) -> tuple[torch.Tensor, torch.Tensor, float, float]:
     """IRLS inner loop: iteratively re-weighted least squares.
 
@@ -337,8 +356,8 @@ def irls_inner_loop(
 
     p = b.new_zeros(A.shape[1])
     w_sqrt = b.new_ones(N)
-    err_prev = float('inf')
-    err_cur = float('inf')
+    err_prev = float("inf")
+    err_cur = float("inf")
     sigma = torch.tensor(1.0)  # fallback
 
     p_last = p.clone()
@@ -370,15 +389,17 @@ def irls_inner_loop(
         if sw > 0:
             err_cur = (swr / sw).item()
         else:
-            err_cur = float('inf')
+            err_cur = float("inf")
 
         if verbose:
             zero_frac = (w_sqrt == 0).float().mean().item()
             logger.debug(
-                "    IRLS iter %2d: err=%.6e  sigma=%.4f  "
-                "mean_w=%.4f  outliers=%.1f%%",
-                iteration + 1, err_cur, sigma.item(),
-                w_sqrt.mean().item(), zero_frac * 100,
+                "    IRLS iter %2d: err=%.6e  sigma=%.4f  mean_w=%.4f  outliers=%.1f%%",
+                iteration + 1,
+                err_cur,
+                sigma.item(),
+                w_sqrt.mean().item(),
+                zero_frac * 100,
             )
 
         # --- 6. Stop if error increased ---
@@ -407,17 +428,17 @@ def irls_inner_loop(
 # One full registration step (build Ab + IRLS)
 # ---------------------------------------------------------------------------
 
+
 def register_step(
-        src_warped: torch.Tensor,
-        trg: torch.Tensor,
-        sat: float = 4.685,
-        max_irls: int = 20,
-        verbose: bool = False,
+    src_warped: torch.Tensor,
+    trg: torch.Tensor,
+    sat: float = 4.685,
+    max_irls: int = 20,
+    verbose: bool = False,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, float, float]:
     """Build A, b then run IRLS.  Returns (p, w_sqrt, valid_mask, sigma, err)."""
     A, b, valid = construct_Ab(src_warped, trg)
-    p, w_sqrt, sigma, err = irls_inner_loop(A, b, sat=sat, max_iterations=max_irls,
-                                            verbose=verbose)
+    p, w_sqrt, sigma, err = irls_inner_loop(A, b, sat=sat, max_iterations=max_irls, verbose=verbose)
     return p, w_sqrt, valid, sigma, err
 
 
@@ -425,20 +446,21 @@ def register_step(
 # Full IRLS registration with image warping and convergence check
 # ---------------------------------------------------------------------------
 
+
 def register_irls(
-        src: torch.Tensor,
-        trg: torch.Tensor,
-        src_mask: torch.Tensor | None = None,
-        trg_mask: torch.Tensor | None = None,
-        initial_transform: torch.Tensor | None = None,
-        nmax: int = 5,
-        sat: float = 4.685,
-        epsit: float = 0.01,
-        max_irls: int = 20,
-        symmetric: bool = True,
-        adaptive_sat: bool = False,
-        target_outlier_pct: float = 5.0,
-        verbose: bool = False,
+    src: torch.Tensor,
+    trg: torch.Tensor,
+    src_mask: torch.Tensor | None = None,
+    trg_mask: torch.Tensor | None = None,
+    initial_transform: torch.Tensor | None = None,
+    nmax: int = 5,
+    sat: float = 4.685,
+    epsit: float = 0.01,
+    max_irls: int = 20,
+    symmetric: bool = True,
+    adaptive_sat: bool = False,
+    target_outlier_pct: float = 5.0,
+    verbose: bool = False,
 ) -> tuple[torch.Tensor, dict]:
     """IRLS rigid registration at a single resolution level.
 
@@ -481,13 +503,19 @@ def register_irls(
     scale = torch.quantile(trg.reshape(-1).abs(), 0.995).clamp(min=1.0)
     src_n = src / scale
     trg_n = trg / scale
+    # construct_Ab's background/zero-gradient thresholds are calibrated for raw
+    # intensities (FreeSurfer uses 1e-5 on raw values). Since we divide by `scale`
+    # above, pass the equivalent normalised threshold so the kept-voxel set matches
+    # FreeSurfer instead of culling ~900 low-intensity brain-edge voxels.
+    valid_eps = 1e-5 / float(scale)
     src_mask_n = (src_mask > 0).float() if src_mask is not None else None
     trg_mask_n = (trg_mask > 0).float() if trg_mask is not None else None
 
     src_shape: tuple[int, int, int] = (int(src_n.shape[0]), int(src_n.shape[1]), int(src_n.shape[2]))
     trg_shape: tuple[int, int, int] = (int(trg_n.shape[0]), int(trg_n.shape[1]), int(trg_n.shape[2]))
-    info = dict(iterations=0, converged=False, dists=[], weights=None,
-                valid_mask=None, image_shape=trg_shape, sigma_hist=[])
+    info = dict(
+        iterations=0, converged=False, dists=[], weights=None, valid_mask=None, image_shape=trg_shape, sigma_hist=[]
+    )
 
     # Track the T with the lowest inner-loop weighted cost across all outer
     # iterations.  At coarse levels the cost steadily falls; at the finest
@@ -496,7 +524,7 @@ def register_irls(
     best_T = T.clone()
     best_w_sqrt = None
     best_valid = None
-    best_err = float('inf')
+    best_err = float("inf")
 
     # Adaptive sat: start with provided value, increase if outliers too high
     current_sat = sat
@@ -514,53 +542,58 @@ def register_irls(
             mhi_warp = mhi.to(device=src.device, dtype=src.dtype)
 
             src_warped = map_image(
-                src_n, mh_warp,
+                src_n,
+                mh_warp,
                 is_torch_mat=False,
                 target_shape=src_shape,
-                mode='linear',
-                padding_mode='zeros',
+                mode="linear",
+                padding_mode="zeros",
             ).float()
 
             trg_warped = map_image(
-                trg_n, mhi_warp,
+                trg_n,
+                mhi_warp,
                 is_torch_mat=False,
                 target_shape=src_shape,
-                mode='linear',
-                padding_mode='zeros',
+                mode="linear",
+                padding_mode="zeros",
             ).float()
 
             valid_user_mask = None
             if src_mask_n is not None:
                 src_mask_warped = map_image(
-                    src_mask_n, mh_warp,
+                    src_mask_n,
+                    mh_warp,
                     is_torch_mat=False,
                     target_shape=src_shape,
-                    mode='nearest',
-                    padding_mode='zeros',
+                    mode="nearest",
+                    padding_mode="zeros",
                 ).float()
                 valid_user_mask = src_mask_warped > 0.5
             if trg_mask_n is not None:
                 trg_mask_warped = map_image(
-                    trg_mask_n, mhi_warp,
+                    trg_mask_n,
+                    mhi_warp,
                     is_torch_mat=False,
                     target_shape=src_shape,
-                    mode='nearest',
-                    padding_mode='zeros',
+                    mode="nearest",
+                    padding_mode="zeros",
                 ).float()
                 valid_user_mask = (
                     trg_mask_warped > 0.5 if valid_user_mask is None else valid_user_mask & (trg_mask_warped > 0.5)
                 )
 
             # Build system in midspace
-            A, b, valid = construct_Ab(src_warped, trg_warped, valid_mask=valid_user_mask)
+            A, b, valid = construct_Ab(src_warped, trg_warped, valid_mask=valid_user_mask, eps=valid_eps)
         else:
             # Directed mode: warp source to target space
             src_warped = map_image(
-                src_n, T.to(device=src.device, dtype=src.dtype),
+                src_n,
+                T.to(device=src.device, dtype=src.dtype),
                 is_torch_mat=False,
                 target_shape=trg_shape,
-                mode='linear',
-                padding_mode='zeros',
+                mode="linear",
+                padding_mode="zeros",
             ).float()
 
             valid_user_mask = None
@@ -570,31 +603,28 @@ def register_irls(
                     T.to(device=src.device, dtype=src.dtype),
                     is_torch_mat=False,
                     target_shape=trg_shape,
-                    mode='nearest',
-                    padding_mode='zeros',
+                    mode="nearest",
+                    padding_mode="zeros",
                 ).float()
                 valid_user_mask = src_mask_warped > 0.5
             if trg_mask_n is not None:
                 trg_mask_bool = trg_mask_n > 0.5
-                valid_user_mask = (
-                    trg_mask_bool
-                    if valid_user_mask is None
-                    else valid_user_mask & trg_mask_bool
-                )
+                valid_user_mask = trg_mask_bool if valid_user_mask is None else valid_user_mask & trg_mask_bool
 
             # Build system in target space
-            A, b, valid = construct_Ab(src_warped, trg_n, valid_mask=valid_user_mask)
+            A, b, valid = construct_Ab(src_warped, trg_n, valid_mask=valid_user_mask, eps=valid_eps)
 
         # Solve IRLS on normalised images
         if A.shape[0] == 0:
             p = torch.zeros(6, dtype=src.dtype, device=src.device)
             w_sqrt = torch.zeros(0, dtype=src.dtype, device=src.device)
             sigma_val = 0.0
-            err_val = float('inf')
+            err_val = float("inf")
         else:
             p, w_sqrt, sigma_val, err_val = irls_inner_loop(
-                A, b, sat=current_sat, max_iterations=max_irls, verbose=verbose)
-        info['sigma_hist'].append(sigma_val)
+                A, b, sat=current_sat, max_iterations=max_irls, verbose=verbose
+            )
+        info["sigma_hist"].append(sigma_val)
 
         # Check outlier percentage for adaptive sat adjustment
         zero_pct = (w_sqrt == 0).float().mean().item() * 100
@@ -620,45 +650,52 @@ def register_irls(
                 if verbose:
                     direction = "increasing" if current_sat > old_sat else "decreasing"
                     logger.info(
-                        "  Adaptive sat: outliers %.1f%% vs target %.1f%% (error %+.1f%%), "
-                        "%s sat %.2f → %.2f",
-                        zero_pct, target_outlier_pct, error, direction, old_sat, current_sat
+                        "  Adaptive sat: outliers %.1f%% vs target %.1f%% (error %+.1f%%), %s sat %.2f → %.2f",
+                        zero_pct,
+                        target_outlier_pct,
+                        error,
+                        direction,
+                        old_sat,
+                        current_sat,
                     )
             # Re-solve with new sat (A, b already built above)
             if A.shape[0] == 0:
                 p = torch.zeros(6, dtype=src.dtype, device=src.device)
                 w_sqrt = torch.zeros(0, dtype=src.dtype, device=src.device)
                 sigma_val = 0.0
-                err_new = float('inf')
+                err_new = float("inf")
             else:
                 p, w_sqrt, sigma_val, err_new = irls_inner_loop(
-                    A, b, sat=current_sat, max_iterations=max_irls,
-                    verbose=verbose
+                    A, b, sat=current_sat, max_iterations=max_irls, verbose=verbose
                 )
-            info['sigma_hist'][-1] = sigma_val
+            info["sigma_hist"][-1] = sigma_val
             err_val = err_new
             zero_pct = (w_sqrt == 0).float().mean().item() * 100
 
         if symmetric:
             # Symmetric mode: M_new = inv(mhi) @ δ @ mh
             assert mh is not None and mhi is not None
-            delta = params_to_rigid_matrix(p)
+            delta = params_to_rigid_matrix(p).to(dtype=mh.dtype, device=mh.device)
             mh2 = torch.inverse(mhi)  # = mh (by construction)
             T = mh2 @ delta @ mh
         else:
             # Directed mode: T_new = T_delta @ T_old
-            T_delta = params_to_rigid_matrix(p)
+            T_delta = params_to_rigid_matrix(p).to(dtype=T_prev.dtype, device=T_prev.device)
             T = T_delta @ T_prev
 
         # Convergence metric (Jenkinson affine RMS distance on successive updates)
         dist = affine_dist(T, T_prev, radius=100.0)
-        info['dists'].append(dist)
-        info['iterations'] = i + 1
+        info["dists"].append(dist)
+        info["iterations"] = i + 1
 
         if verbose:
             logger.info(
                 "  Iter %2d: AffineTransDist=%.4f  sigma=%.4f  outliers=%.1f%%  sat=%.2f",
-                i + 1, dist, sigma_val, zero_pct, current_sat,
+                i + 1,
+                dist,
+                sigma_val,
+                zero_pct,
+                current_sat,
             )
 
         # Keep best T by minimum inner-loop cost (no early stopping —
@@ -673,7 +710,7 @@ def register_irls(
             best_valid = valid.clone()
 
         if dist <= epsit:
-            info['converged'] = True
+            info["converged"] = True
             if verbose:
                 logger.info("  Converged after %d iterations (dist=%.4f)", i + 1, dist)
             break
@@ -681,6 +718,6 @@ def register_irls(
     # Return the best T found (usually the same as final, guards against
     # minor oscillation at the finest level).
     T = best_T
-    info['weights'] = best_w_sqrt
-    info['valid_mask'] = best_valid
+    info["weights"] = best_w_sqrt
+    info["valid_mask"] = best_valid
     return T, info
