@@ -22,6 +22,7 @@ from .geometry import (
     mean_mapped_centroid,
     project_to_rotation,
     ras_center,
+    rotation_mean,
     template_geometry_from_lta,
     validate_input_geometries,
 )
@@ -245,16 +246,16 @@ def _build_initial_space(
         )
 
     target_to_each = [np.linalg.inv(matrix) for matrix in pairwise_r2r]
+    # Build the unbiased mean space exactly as FreeSurfer's MultiRegistration:
+    # average the translation parts arithmetically and average the rotation parts
+    # via their axis-angle rotation vectors (log-Euclidean mean on SO(3)).
+    # Averaging the rotation matrices directly and SVD-projecting (the previous
+    # approach) biases the template pose by a small fixed rotation (~0.1 deg).
     mean_translation = np.mean(
         np.stack([matrix[:3, 3] for matrix in target_to_each], axis=0),
         axis=0,
     )
-    mean_rotation = project_to_rotation(
-        np.mean(
-            np.stack([matrix[:3, :3] for matrix in target_to_each], axis=0),
-            axis=0,
-        )
-    )
+    mean_rotation = rotation_mean([matrix[:3, :3] for matrix in target_to_each])
     mean_space_from_target_r2r = np.eye(4, dtype=np.float64)
     mean_space_from_target_r2r[:3, :3] = mean_rotation
     mean_space_from_target_r2r[:3, 3] = mean_translation

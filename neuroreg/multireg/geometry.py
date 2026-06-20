@@ -8,6 +8,7 @@ from typing import Any
 
 import numpy as np
 import torch
+from scipy.spatial.transform import Rotation
 
 from ..image import compute_centroid
 from ..image.map import coerce_image_data_3d
@@ -84,6 +85,40 @@ def project_to_rotation(matrix: np.ndarray) -> np.ndarray:
         u[:, -1] *= -1.0
         rotation = u @ vt
     return rotation
+
+
+def rotation_mean(rotations: Sequence[np.ndarray]) -> np.ndarray:
+    """Average rotation matrices via their axis-angle rotation vectors.
+
+    Each rotation is converted to a rotation vector (axis scaled by angle), the
+    vectors are averaged arithmetically, and the mean vector is converted back
+    to a matrix. This is the log-Euclidean mean on ``SO(3)`` and matches
+    FreeSurfer's ``MyMatrix::RotationMean`` used for the rigid mean-space
+    construction in ``mri_robust_template``. It differs from an arithmetic mean
+    of the rotation matrices followed by polar/SVD projection, which biases the
+    result by a small fixed rotation (~0.1 deg here) when the inputs span
+    several degrees.
+
+    Parameters
+    ----------
+    rotations : sequence of numpy.ndarray
+        ``3 x 3`` rotation matrices to average. Must be non-empty.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``3 x 3`` mean rotation matrix.
+
+    Raises
+    ------
+    ValueError
+        If ``rotations`` is empty.
+    """
+    mats = [project_to_rotation(rotation) for rotation in rotations]
+    if not mats:
+        raise ValueError("rotation_mean requires at least one rotation.")
+    rotvecs = np.stack([Rotation.from_matrix(rotation).as_rotvec() for rotation in mats], axis=0)
+    return Rotation.from_rotvec(rotvecs.mean(axis=0)).as_matrix()
 
 
 def reorder_cosines(reference: np.ndarray, current: np.ndarray) -> np.ndarray:
