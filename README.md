@@ -103,18 +103,18 @@ multireg --mov <tp1.nii.gz> <tp2.nii.gz> ... --template <template.nii.gz> [optio
 
 **Key options**
 
-| Argument            | Default    | Description                                                                    |
-|---------------------|------------|--------------------------------------------------------------------------------|
-| `--template FILE`   | required   | Output template image.                                                         |
-| `--lta FILE ...`    | —          | Optional output LTAs, one per input time point.                                |
-| `--ixforms FILE ...`| —          | Reuse precomputed LTAs as input transforms into template space.                |
-| `--average MODE`    | `median`   | Template aggregation mode: `mean`, `median`, `0` (=mean), or `1` (=median).   |
-| `--noit`            | off        | Stop after the initial template build instead of running iterative refinement.  |
-| `--iterate N`       | auto       | Maximum number of refinement iterations (`0` for 2 TPs, `6` for 3+ by default).|
-| `--template-eps F`  | `0.03`     | Stop iterative refinement when the maximum transform update falls below this.   |
-| `--inittp N`        | auto       | 1-based initial target time point.                                             |
-| `--mapmov-dir DIR`  | —          | Optional directory for mapped input images in template space.                  |
-| `--keep-dtype`      | off        | Preserve source dtype for mapped images instead of writing float32.            |
+| Argument             | Default  | Description                                                                     |
+|----------------------|----------|---------------------------------------------------------------------------------|
+| `--template FILE`    | required | Output template image.                                                          |
+| `--lta FILE ...`     | —        | Optional output LTAs, one per input time point.                                 |
+| `--ixforms FILE ...` | —        | Reuse precomputed LTAs as input transforms into template space.                 |
+| `--average MODE`     | `median` | Template aggregation mode: `mean`, `median`, `0` (=mean), or `1` (=median).     |
+| `--noit`             | off      | Stop after the initial template build instead of running iterative refinement.  |
+| `--iterate N`        | auto     | Maximum number of refinement iterations (`0` for 2 TPs, `6` for 3+ by default). |
+| `--template-eps F`   | `0.03`   | Stop iterative refinement when the maximum transform update falls below this.   |
+| `--inittp N`         | auto     | 1-based initial target time point.                                              |
+| `--mapmov-dir DIR`   | —        | Optional directory for mapped input images in template space.                   |
+| `--keep-dtype`       | off      | Preserve source dtype for mapped images instead of writing float32.             |
 
 **Examples**
 
@@ -293,21 +293,21 @@ vol2vol --mov <moving.nii.gz> --out <output.nii.gz> [options]
 
 **Common options**
 
-| Argument                                     | Default  | Description                                                                 |
-|----------------------------------------------|----------|-----------------------------------------------------------------------------|
-| `--transform FILE`                           | identity | Optional linear transform to apply.                                         |
-| `--transform-format {lta,xfm,fsl,...}`       | infer    | Override transform-format inference for ambiguous suffixes.                 |
-| `--ref FILE`                                 | —        | Optional target/reference geometry. Overrides geometry stored in the LTA.   |
-| `--interp {linear,nearest}`                  | `linear` | Interpolation mode for resampled output.                                    |
-| `--pad {zero,border,reflection,brightest,N}` | `zero`   | Out-of-bounds fill mode or numeric constant.                                |
-| `--inverse`                                  | off      | Apply the inverse transform.                                                |
-| `--header-only`                              | off      | Update the affine/header only and skip interpolation.                       |
-| `--out-dtype DTYPE`                          | auto     | Explicit final dtype such as `uint8`, `int16`, `float32`, or `input`.       |
-| `--keep-dtype`                               | off      | Alias for `--out-dtype input`.                                              |
-| `--scale-mode {clamp,rescale,robust}`        | auto     | Final intensity handling before discrete dtype conversion.                  |
-| `--target-max FLOAT`                         | inferred | Upper target value for `rescale` / `robust`.                                |
-| `--robust-low FLOAT`                         | `0.0`    | Lower robust quantile for `--scale-mode robust`.                            |
-| `--robust-high FLOAT`                        | `0.999`  | Upper robust quantile for `--scale-mode robust`.                            |
+| Argument                                     | Default  | Description                                                               |
+|----------------------------------------------|----------|---------------------------------------------------------------------------|
+| `--transform FILE`                           | identity | Optional linear transform to apply.                                       |
+| `--transform-format {lta,xfm,fsl,...}`       | infer    | Override transform-format inference for ambiguous suffixes.               |
+| `--ref FILE`                                 | —        | Optional target/reference geometry. Overrides geometry stored in the LTA. |
+| `--interp {linear,cubic,nearest}`            | `linear` | Interpolation mode for resampled output.                                  |
+| `--pad {zero,border,reflection,brightest,N}` | `zero`   | Out-of-bounds fill mode or numeric constant.                              |
+| `--inverse`                                  | off      | Apply the inverse transform.                                              |
+| `--header-only`                              | off      | Update the affine/header only and skip interpolation.                     |
+| `--out-dtype DTYPE`                          | auto     | Explicit final dtype such as `uint8`, `int16`, `float32`, or `input`.     |
+| `--keep-dtype`                               | off      | Alias for `--out-dtype input`.                                            |
+| `--scale-mode {clamp,rescale,robust}`        | auto     | Final intensity handling before discrete dtype conversion.                |
+| `--target-max FLOAT`                         | inferred | Upper target value for `rescale` / `robust`.                              |
+| `--robust-low FLOAT`                         | `0.0`    | Lower robust quantile for `--scale-mode robust`.                          |
+| `--robust-high FLOAT`                        | `0.999`  | Upper robust quantile for `--scale-mode robust`.                          |
 
 **Examples**
 
@@ -518,7 +518,9 @@ lta concat moving_to_intermediate.lta intermediate_to_fixed.lta moving_to_fixed.
 
 #### `lta convert` — Convert between transform formats
 
-Converts between `.lta`, `.xfm`, volumetric tkregister `.dat`/`.reg`, FSL `.mat`/`.fslmat`, ITK/ANTs 3D affine text transforms, experimental ANTs Matlab-format affine transforms, experimental AFNI affine text transforms, and NiftyReg affine text matrices by normalizing through an internal RAS-to-RAS `LTA`.
+Converts between `.lta`, `.xfm`, volumetric tkregister `.dat`/`.reg`, FSL `.mat`/`.fslmat`, ITK/ANTs 3D affine text
+transforms, experimental ANTs Matlab-format affine transforms, experimental AFNI affine text transforms, and NiftyReg
+affine text matrices by normalizing through an internal RAS-to-RAS `LTA`.
 
 **Usage**
 
