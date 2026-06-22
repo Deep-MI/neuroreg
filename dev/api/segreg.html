@@ -431,7 +431,7 @@ full affine fits between paired 3-D point sets.</p>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><em>ndarray</em>[tuple[<em>Any</em>, …], <em>dtype</em>[<em>float64</em>]]</p>
+<dd class="field-even"><p>NDArray[<em>float64</em>]</p>
 </dd>
 </dl>
 <p class="rubric">Notes</p>
@@ -470,7 +470,7 @@ translation equal to the centroid offset between the point sets.</p>
 </ul>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><em>ndarray</em>[tuple[<em>Any</em>, …], <em>dtype</em>[<em>float64</em>]]</p>
+<dd class="field-odd"><p>NDArray[<em>float64</em>]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -507,7 +507,7 @@ degenerate/collinear.</p>
 </ul>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><em>ndarray</em>[tuple[<em>Any</em>, …], <em>dtype</em>[<em>float64</em>]]</p>
+<dd class="field-odd"><p>NDArray[<em>float64</em>]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -543,7 +543,7 @@ non-positive isotropic scale.</p>
 </ul>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><em>ndarray</em>[tuple[<em>Any</em>, …], <em>dtype</em>[<em>float64</em>]]</p>
+<dd class="field-odd"><p>NDArray[<em>float64</em>]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -586,7 +586,7 @@ span 3-D space, or if the fitted axis scales become non-positive.</p>
 </ul>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><em>ndarray</em>[tuple[<em>Any</em>, …], <em>dtype</em>[<em>float64</em>]]</p>
+<dd class="field-odd"><p>NDArray[<em>float64</em>]</p>
 </dd>
 </dl>
 <p class="rubric">Notes</p>
@@ -626,7 +626,7 @@ span affine 3-D space.</p>
 </ul>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><em>ndarray</em>[tuple[<em>Any</em>, …], <em>dtype</em>[<em>float64</em>]]</p>
+<dd class="field-odd"><p>NDArray[<em>float64</em>]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -664,7 +664,7 @@ span affine 3-D space.</p>
 </ul>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><em>ndarray</em>[tuple[<em>Any</em>, …], <em>dtype</em>[<em>float64</em>]]</p>
+<dd class="field-odd"><p>NDArray[<em>float64</em>]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -704,7 +704,7 @@ matching voxels are assigned <code class="docutils literal notranslate"><span cl
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>dict[int, <em>ndarray</em>[tuple[<em>Any</em>, …], <em>dtype</em>[<em>float64</em>]] | None]</p>
+<dd class="field-even"><p>dict[int, NDArray[<em>float64</em>] | None]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -737,7 +737,7 @@ with no matching voxels are assigned <code class="docutils literal notranslate">
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>dict[int, <em>ndarray</em>[tuple[<em>Any</em>, …], <em>dtype</em>[<em>float64</em>]] | None]</p>
+<dd class="field-even"><p>dict[int, NDArray[<em>float64</em>] | None]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -775,13 +775,13 @@ with no matching voxels are assigned <code class="docutils literal notranslate">
 </dd>
 <dt class="field-even">Parameters<span class="colon">:</span></dt>
 <dd class="field-even"><ul class="simple">
-<li><p><strong>mov_centroids</strong> (<em>dict</em><em>[</em><em>int</em><em>, </em><em>ndarray</em><em>[</em><em>tuple</em><em>[</em><em>Any</em><em>, </em><em>...</em><em>]</em><em>, </em><em>dtype</em><em>[</em><em>float64</em><em>]</em><em>] </em><em>| </em><em>None</em><em>]</em>)</p></li>
-<li><p><strong>ref_centroids</strong> (<em>dict</em><em>[</em><em>int</em><em>, </em><em>ndarray</em><em>[</em><em>tuple</em><em>[</em><em>Any</em><em>, </em><em>...</em><em>]</em><em>, </em><em>dtype</em><em>[</em><em>float64</em><em>]</em><em>]</em><em>] </em><em>| </em><em>dict</em><em>[</em><em>int</em><em>, </em><em>ndarray</em><em>[</em><em>tuple</em><em>[</em><em>Any</em><em>, </em><em>...</em><em>]</em><em>, </em><em>dtype</em><em>[</em><em>float64</em><em>]</em><em>] </em><em>| </em><em>None</em><em>]</em>)</p></li>
+<li><p><strong>mov_centroids</strong> (<em>dict</em><em>[</em><em>int</em><em>, </em><em>NDArray</em><em>[</em><em>float64</em><em>] </em><em>| </em><em>None</em><em>]</em>)</p></li>
+<li><p><strong>ref_centroids</strong> (<em>dict</em><em>[</em><em>int</em><em>, </em><em>NDArray</em><em>[</em><em>float64</em><em>]</em><em>] </em><em>| </em><em>dict</em><em>[</em><em>int</em><em>, </em><em>NDArray</em><em>[</em><em>float64</em><em>] </em><em>| </em><em>None</em><em>]</em>)</p></li>
 <li><p><strong>min_common_labels</strong> (<em>int</em>)</p></li>
 </ul>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>tuple[<em>ndarray</em>[tuple[<em>Any</em>, …], <em>dtype</em>[<em>float64</em>]], <em>ndarray</em>[tuple[<em>Any</em>, …], <em>dtype</em>[<em>float64</em>]], list[int]]</p>
+<dd class="field-odd"><p>tuple[NDArray[<em>float64</em>], NDArray[<em>float64</em>], list[int]]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -821,14 +821,14 @@ with no matching voxels are assigned <code class="docutils literal notranslate">
 </dd>
 <dt class="field-even">Parameters<span class="colon">:</span></dt>
 <dd class="field-even"><ul class="simple">
-<li><p><strong>voxel_centroids</strong> (<em>dict</em><em>[</em><em>int</em><em>, </em><em>ndarray</em><em>[</em><em>tuple</em><em>[</em><em>Any</em><em>, </em><em>...</em><em>]</em><em>, </em><em>dtype</em><em>[</em><em>float64</em><em>]</em><em>] </em><em>| </em><em>None</em><em>]</em>)</p></li>
+<li><p><strong>voxel_centroids</strong> (<em>dict</em><em>[</em><em>int</em><em>, </em><em>NDArray</em><em>[</em><em>float64</em><em>] </em><em>| </em><em>None</em><em>]</em>)</p></li>
 <li><p><strong>lr_pairs</strong> (<em>tuple</em><em>[</em><em>tuple</em><em>[</em><em>int</em><em>, </em><em>int</em><em>]</em><em>, </em><em>...</em><em>]</em>)</p></li>
 <li><p><strong>mid_slice</strong> (<em>float</em>)</p></li>
 <li><p><strong>min_common_labels</strong> (<em>int</em>)</p></li>
 </ul>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>tuple[<em>ndarray</em>[tuple[<em>Any</em>, …], <em>dtype</em>[<em>float64</em>]], <em>ndarray</em>[tuple[<em>Any</em>, …], <em>dtype</em>[<em>float64</em>]], list[int]]</p>
+<dd class="field-odd"><p>tuple[NDArray[<em>float64</em>], NDArray[<em>float64</em>], list[int]]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -854,7 +854,7 @@ mapping itself.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>centroids</strong> (<em>dict</em><em>[</em><em>int</em><em>, </em><em>ndarray</em><em>[</em><em>tuple</em><em>[</em><em>Any</em><em>, </em><em>...</em><em>]</em><em>, </em><em>dtype</em><em>[</em><em>float64</em><em>]</em><em>]</em><em>]</em>)</p></li>
+<li><p><strong>centroids</strong> (<em>dict</em><em>[</em><em>int</em><em>, </em><em>NDArray</em><em>[</em><em>float64</em><em>]</em><em>]</em>)</p></li>
 <li><p><strong>geometry</strong> (<a class="reference internal" href="#neuroreg.segreg.io.GeometryDict" title="neuroreg.segreg.io.GeometryDict"><em>GeometryDict</em></a><em> | </em><em>None</em>)</p></li>
 </ul>
 </dd>
@@ -983,7 +983,7 @@ or NumPy scalar types.</p>
 <dd class="field-odd"><p><strong>path</strong> (<em>str</em><em> | </em><em>Path</em>)</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>dict[int, <em>ndarray</em>[tuple[<em>Any</em>, …], <em>dtype</em>[<em>float64</em>]]]</p>
+<dd class="field-even"><p>dict[int, NDArray[<em>float64</em>]]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1040,7 +1040,7 @@ or NumPy scalar types.</p>
 <dd><p>Load bundled fsaverage centroid coordinates.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>dict[int, <em>ndarray</em>[tuple[<em>Any</em>, …], <em>dtype</em>[<em>float64</em>]]]</p>
+<dd class="field-odd"><p>dict[int, NDArray[<em>float64</em>]]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1051,7 +1051,7 @@ or NumPy scalar types.</p>
 <dd><p>Load bundled fsaverage geometry metadata.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>tuple[<em>ndarray</em>[tuple[<em>Any</em>, …], <em>dtype</em>[<em>float64</em>]], <a class="reference internal" href="#neuroreg.segreg.io.GeometryDict" title="neuroreg.segreg.io.GeometryDict"><em>GeometryDict</em></a>]</p>
+<dd class="field-odd"><p>tuple[NDArray[<em>float64</em>], <a class="reference internal" href="#neuroreg.segreg.io.GeometryDict" title="neuroreg.segreg.io.GeometryDict"><em>GeometryDict</em></a>]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1065,7 +1065,7 @@ or NumPy scalar types.</p>
 <dd class="field-odd"><p><strong>name</strong> (<em>str</em>)</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>dict[int, <em>ndarray</em>[tuple[<em>Any</em>, …], <em>dtype</em>[<em>float64</em>]]]</p>
+<dd class="field-even"><p>dict[int, NDArray[<em>float64</em>]]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1079,7 +1079,7 @@ or NumPy scalar types.</p>
 <dd class="field-odd"><p><strong>name</strong> (<em>str</em>)</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>tuple[<em>ndarray</em>[tuple[<em>Any</em>, …], <em>dtype</em>[<em>float64</em>]], <a class="reference internal" href="#neuroreg.segreg.io.GeometryDict" title="neuroreg.segreg.io.GeometryDict"><em>GeometryDict</em></a>]</p>
+<dd class="field-even"><p>tuple[NDArray[<em>float64</em>], <a class="reference internal" href="#neuroreg.segreg.io.GeometryDict" title="neuroreg.segreg.io.GeometryDict"><em>GeometryDict</em></a>]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1093,7 +1093,7 @@ or NumPy scalar types.</p>
 <dd class="field-odd"><p><strong>header</strong> (<a class="reference internal" href="#neuroreg.segreg.io.GeometryDict" title="neuroreg.segreg.io.GeometryDict"><em>GeometryDict</em></a>)</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><em>ndarray</em>[tuple[<em>Any</em>, …], <em>dtype</em>[<em>float64</em>]]</p>
+<dd class="field-even"><p>NDArray[<em>float64</em>]</p>
 </dd>
 </dl>
 </dd></dl>
