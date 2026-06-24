@@ -289,6 +289,51 @@ class TestVol2VolCli:
         mapped = np.asarray(nib.load(str(out_path)).dataobj, dtype=np.float32)
         assert mapped == pytest.approx(np.where(mask > 1, 9.0, -1.0))
 
+    def test_mask_fill_out_of_range_clamps_for_integer_dtype(self, tmp_path: Path):
+        # fill=-1 with uint8 image: should clamp to 0, not wrap to 255.
+        mov = np.full((2, 2, 2), 10, dtype=np.uint8)
+        mask = np.zeros((2, 2, 2), dtype=np.uint8)
+        mask[0, 0, 0] = 1  # keep only one voxel
+        mov_path = _write_image(tmp_path / "mov.nii.gz", mov)
+        mask_path = _write_image(tmp_path / "mask.nii.gz", mask)
+        out_path = tmp_path / "out_clamp.nii.gz"
+
+        vol2vol_main(
+            [
+                "--in",
+                str(mov_path),
+                "--mask",
+                str(mask_path),
+                "--out",
+                str(out_path),
+                "--keep-dtype",
+                "--mask-fill",
+                "-1",
+            ]
+        )
+
+        result = np.asarray(nib.load(str(out_path)).dataobj)
+        assert result[0, 0, 0] == 10  # kept voxel unchanged
+        assert result[1, 1, 1] == 0  # fill=-1 clamped to uint8 min, not wrapped to 255
+
+    def test_mask_bool_image_clamps_fill_to_false(self):
+        # NIfTI round-trips don't reliably preserve bool dtype, so call the
+        # function directly. fill=-1 must clamp to 0 (False), not stay True.
+        from neuroreg.image import reslice_and_apply_mask
+
+        data = np.array([[[True, False], [True, False]], [[True, False], [True, False]]], dtype=np.bool_)
+        mask_data = np.zeros((2, 2, 2), dtype=np.uint8)
+        mask_data[0, 0, 0] = 1
+        img = nib.Nifti1Image(data, np.eye(4))
+        mask_img = nib.Nifti1Image(mask_data, np.eye(4))
+
+        result = reslice_and_apply_mask(img, mask_img, fill=-1)
+        result_data = np.asarray(result.dataobj)
+
+        assert result.get_data_dtype() == np.dtype(np.bool_)
+        assert result_data[0, 0, 0]  # kept voxel: True stays True
+        assert not result_data[1, 1, 1]  # fill=-1 clamped to 0 → False
+
     def test_mask_different_geometry_is_resampled(self, tmp_path: Path, capsys):
         mov = np.full((3, 3, 3), 5.0, dtype=np.float32)
         mask = np.ones((2, 2, 2), dtype=np.uint8)  # covers RAS voxels 0,1 only

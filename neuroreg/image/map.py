@@ -779,8 +779,11 @@ def reslice_and_apply_mask(
     source_dtype = np.dtype(image.get_data_dtype())
     data = np.asarray(image.get_fdata(), dtype=np.float64).copy()
     data[~keep] = float(fill)
-    if np.issubdtype(source_dtype, np.integer):
-        data = np.rint(data).astype(source_dtype)
+    if np.issubdtype(source_dtype, np.bool_):
+        data = np.clip(np.rint(data), 0, 1).astype(source_dtype)
+    elif np.issubdtype(source_dtype, np.integer):
+        source_info = np.iinfo(source_dtype)
+        data = np.clip(np.rint(data), source_info.min, source_info.max).astype(source_dtype)
     else:
         data = data.astype(source_dtype, copy=False)
     return create_image_like(image, data, target_affine)
