@@ -487,7 +487,8 @@ def _convert_output_image(
     if effective_mode is None and target_dtype is None:
         return mapped_img
 
-    mapped_np = np.asarray(mapped_img.dataobj, dtype=np.float32)
+    working_dtype = np.float32 if effective_mode in {"rescale", "robust"} else np.float64
+    mapped_np = np.asarray(mapped_img.dataobj, dtype=working_dtype)
     if effective_mode == "rescale":
         source_upper = _finite_max(np.asarray(source_img.dataobj, dtype=np.float32), positive_only=True)
         scale = 0.0 if source_upper is None or source_upper <= 0.0 else float(resolved_target_max) / source_upper
