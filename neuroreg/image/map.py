@@ -726,3 +726,74 @@ def save_header_mapped_image(
     mapped_img = header_map_image(image, r2r)
     mapped_img.to_filename(output_path)
     return mapped_img
+
+
+def reslice_and_apply_mask(
+    image: Any,
+    mask: Any,
+    *,
+    threshold: float = 0.0,
+    fill: float = 0.0,
+) -> Any:
+    """Apply a binary mask to an image, reslicing the mask onto the image grid.
+
+    Voxels where the mask value is less than or equal to ``threshold`` are set
+    to ``fill``. The mask is resampled with nearest-neighbor interpolation into
+    the image geometry (out-of-bounds treated as outside the mask), so a mask
+    given in a different geometry is handled like FreeSurfer's ``mri_mask``. When
+    the mask already shares the image grid the nearest resample is exact.
+
+    Parameters
+    ----------
+    image : Any
+        Nibabel-like image to be masked. Its geometry defines the output grid.
+    mask : Any
+        Nibabel-like mask image.
+    threshold : float, default=0.0
+        Voxels with mask value strictly greater than this are kept.
+    fill : float, default=0.0
+        Value assigned to voxels outside the mask.
+
+    Returns
+    -------
+    Any
+        Masked image in the input image geometry (float32 payload).
+    """
+    target_affine = np.asarray(image.affine, dtype=np.float64)
+    target_shape = tuple(int(v) for v in image.shape[:3])
+    mask_resliced = reslice_r2r_image(
+        mask,
+        np.eye(4, dtype=np.float64),
+        target_affine=target_affine,
+        target_shape=target_shape,
+        mode="nearest",
+        padding_mode="zeros",
+        padding_value=0.0,
+    )
+    keep = np.asarray(mask_resliced.dataobj) > threshold
+    data = np.asarray(image.get_fdata(), dtype=np.float32).copy()
+    data[~keep] = float(fill)
+    return create_image_like(image, data, target_affine)
+
+
+def mask_geometry_differs(mask: Any, target_affine: np.ndarray, target_shape: tuple[int, int, int]) -> bool:
+    """Return ``True`` when a mask does not already share the target grid.
+
+    Parameters
+    ----------
+    mask : Any
+        Nibabel-like mask image.
+    target_affine : np.ndarray, shape (4, 4)
+        Voxel-to-RAS affine of the target grid.
+    target_shape : tuple of int
+        Spatial shape of the target grid.
+
+    Returns
+    -------
+    bool
+        ``True`` when the mask shape or affine differs from the target grid and
+        a resample is therefore required.
+    """
+    same_shape = tuple(int(v) for v in mask.shape[:3]) == tuple(int(v) for v in target_shape)
+    same_affine = np.allclose(np.asarray(mask.affine, dtype=np.float64), target_affine, atol=1e-4)
+    return not (same_shape and same_affine)

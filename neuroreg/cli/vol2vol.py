@@ -10,7 +10,14 @@ from typing import Any
 
 import numpy as np
 
-from ..image import create_image_like, header_map_image, load_image, reslice_r2r_image
+from ..image import (
+    create_image_like,
+    header_map_image,
+    load_image,
+    mask_geometry_differs,
+    reslice_and_apply_mask,
+    reslice_r2r_image,
+)
 from ..transforms import TRANSFORM_FORMATS, affine_from_volume_info, read_transform_as_lta
 
 
@@ -131,6 +138,30 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Apply the inverse of the supplied transform.",
     )
+    parser.add_argument(
+        "--mask",
+        metavar="FILE",
+        help=(
+            "Optional binary mask. After reslicing, keep voxels where mask > --mask-threshold "
+            "and set the rest to --mask-fill. The mask is resampled (nearest neighbor) into the "
+            "output geometry when its grid differs. With no --transform/--ref this reduces to "
+            "FreeSurfer mri_mask."
+        ),
+    )
+    parser.add_argument(
+        "--mask-threshold",
+        type=float,
+        default=0.0,
+        metavar="T",
+        help="Voxels with mask value strictly greater than this are kept (default: 0).",
+    )
+    parser.add_argument(
+        "--mask-fill",
+        type=float,
+        default=0.0,
+        metavar="V",
+        help="Value assigned to voxels outside the mask (default: 0).",
+    )
     dtype_group = parser.add_mutually_exclusive_group()
     dtype_group.add_argument(
         "--out-dtype",
@@ -206,6 +237,10 @@ def _validate_args(ns: argparse.Namespace, parser: argparse.ArgumentParser) -> N
             parser.error("--header-only cannot be combined with scaling flags.")
         if ns.robust_low != 0.0 or ns.robust_high != 0.999:
             parser.error("--header-only cannot be combined with robust scaling flags.")
+        if ns.mask is not None:
+            parser.error("--header-only cannot be combined with --mask.")
+    if ns.mask is None and (ns.mask_threshold != 0.0 or ns.mask_fill != 0.0):
+        parser.error("--mask-threshold and --mask-fill require --mask.")
     if ns.scale_mode is None:
         if ns.target_max is not None:
             parser.error("--target-max requires --scale-mode rescale or --scale-mode robust.")
@@ -241,9 +276,9 @@ def _resolve_target_dtype(ns: argparse.Namespace, source_dtype: np.dtype) -> np.
 
 
 def _resolve_target_geometry(
-        mov_img: Any,
-        ref_img: Any | None,
-        effective_lta: Any | None,
+    mov_img: Any,
+    ref_img: Any | None,
+    effective_lta: Any | None,
 ) -> tuple[np.ndarray, tuple[int, int, int]]:
     """Resolve the target affine and shape for resampled output.
 
@@ -383,13 +418,13 @@ def _robust_upper_bound(data: np.ndarray, low: float, high: float) -> float:
 
 
 def _convert_output_image(
-        mapped_img: Any,
-        source_img: Any,
-        target_dtype: np.dtype | None,
-        scale_mode: str | None,
-        target_max: float | None,
-        robust_low: float,
-        robust_high: float,
+    mapped_img: Any,
+    source_img: Any,
+    target_dtype: np.dtype | None,
+    scale_mode: str | None,
+    target_max: float | None,
+    robust_low: float,
+    robust_high: float,
 ) -> Any:
     """Apply final dtype conversion and optional intensity scaling.
 
@@ -424,8 +459,10 @@ def _convert_output_image(
         target-range information.
     """
     effective_mode = scale_mode
-    if effective_mode is None and target_dtype is not None and (
-            np.issubdtype(target_dtype, np.bool_) or np.issubdtype(target_dtype, np.integer)
+    if (
+        effective_mode is None
+        and target_dtype is not None
+        and (np.issubdtype(target_dtype, np.bool_) or np.issubdtype(target_dtype, np.integer))
     ):
         effective_mode = "clamp"
     if effective_mode == "clamp" and target_dtype is None:
@@ -494,11 +531,15 @@ def main(args=None) -> None:
     try:
         mov_img = load_image(ns.mov)
         ref_img = load_image(ns.ref) if ns.ref is not None else None
-        lta = None if ns.transform is None else read_transform_as_lta(
-            ns.transform,
-            src_img=ns.mov,
-            dst_img=ns.ref,
-            fmt=ns.transform_format,
+        lta = (
+            None
+            if ns.transform is None
+            else read_transform_as_lta(
+                ns.transform,
+                src_img=ns.mov,
+                dst_img=ns.ref,
+                fmt=ns.transform_format,
+            )
         )
         effective_lta = None if lta is None else (lta.invert() if ns.inverse else lta)
         r2r = np.eye(4, dtype=np.float64) if effective_lta is None else effective_lta.r2r()
@@ -518,6 +559,16 @@ def main(args=None) -> None:
                 padding_value=padding_value,
                 keep_dtype=False,
             )
+            if ns.mask is not None:
+                mask_img = load_image(ns.mask)
+                if mask_geometry_differs(mask_img, target_affine, target_shape):
+                    print("Mask:      geometry differs from output; resampling mask to output grid (nearest).")
+                mapped_img = reslice_and_apply_mask(
+                    mapped_img,
+                    mask_img,
+                    threshold=ns.mask_threshold,
+                    fill=ns.mask_fill,
+                )
             mapped_img = _convert_output_image(
                 mapped_img,
                 mov_img,

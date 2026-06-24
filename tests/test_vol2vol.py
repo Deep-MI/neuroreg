@@ -205,3 +205,72 @@ class TestVol2VolCli:
         assert mapped.get_data_dtype() == np.dtype(np.float32)
         assert mapped_data[0, 0, 1] == pytest.approx(50.0)
         assert mapped_data[0, 1, 0] == pytest.approx(100.0)
+
+    def test_mask_same_geometry_matches_mri_mask(self, tmp_path: Path, capsys):
+        mov = np.arange(1, 28, dtype=np.uint8).reshape(3, 3, 3)
+        mask = np.zeros((3, 3, 3), dtype=np.uint8)
+        mask[1, 1, 1] = 1
+        mask[0, 0, 0] = 5
+        mov_path = _write_image(tmp_path / "mov.nii.gz", mov)
+        mask_path = _write_image(tmp_path / "mask.nii.gz", mask)
+        out_path = tmp_path / "out_masked.nii.gz"
+
+        vol2vol_main(["--mov", str(mov_path), "--mask", str(mask_path), "--out", str(out_path), "--keep-dtype"])
+
+        mapped = nib.load(str(out_path))
+        expected = np.where(mask > 0, mov, 0)
+        assert mapped.get_data_dtype() == np.dtype(np.uint8)
+        assert np.asarray(mapped.dataobj) == pytest.approx(expected)
+        # same geometry -> no reslicing notice
+        assert "geometry differs" not in capsys.readouterr().out
+
+    def test_mask_threshold_and_fill(self, tmp_path: Path):
+        mov = np.full((2, 2, 2), 9.0, dtype=np.float32)
+        mask = np.array([[[0, 1], [2, 3]], [[1, 2], [3, 0]]], dtype=np.float32)
+        mov_path = _write_image(tmp_path / "mov.nii.gz", mov)
+        mask_path = _write_image(tmp_path / "mask.nii.gz", mask)
+        out_path = tmp_path / "out_thr.nii.gz"
+
+        vol2vol_main(
+            [
+                "--mov", str(mov_path), "--mask", str(mask_path), "--out", str(out_path),
+                "--mask-threshold", "1", "--mask-fill", "-1",
+            ]
+        )
+
+        mapped = np.asarray(nib.load(str(out_path)).dataobj, dtype=np.float32)
+        assert mapped == pytest.approx(np.where(mask > 1, 9.0, -1.0))
+
+    def test_mask_different_geometry_is_resampled(self, tmp_path: Path, capsys):
+        mov = np.full((3, 3, 3), 5.0, dtype=np.float32)
+        mask = np.ones((2, 2, 2), dtype=np.uint8)  # covers RAS voxels 0,1 only
+        mov_path = _write_image(tmp_path / "mov.nii.gz", mov)
+        mask_path = _write_image(tmp_path / "mask.nii.gz", mask)
+        out_path = tmp_path / "out_diff.nii.gz"
+
+        vol2vol_main(["--mov", str(mov_path), "--mask", str(mask_path), "--out", str(out_path)])
+
+        mapped = np.asarray(nib.load(str(out_path)).dataobj, dtype=np.float32)
+        expected = np.zeros((3, 3, 3), dtype=np.float32)
+        expected[:2, :2, :2] = 5.0
+        assert mapped == pytest.approx(expected)
+        assert "geometry differs" in capsys.readouterr().out
+
+    def test_mask_rejected_with_header_only(self, tmp_path: Path):
+        mov_path = _write_image(tmp_path / "mov.nii.gz", np.ones((2, 2, 2), dtype=np.float32))
+        mask_path = _write_image(tmp_path / "mask.nii.gz", np.ones((2, 2, 2), dtype=np.uint8))
+        lta_path = _write_lta(tmp_path / "id.lta", np.eye(4), (2, 2, 2), (2, 2, 2))
+        with pytest.raises(SystemExit):
+            vol2vol_main(
+                [
+                    "--mov", str(mov_path), "--transform", str(lta_path), "--header-only",
+                    "--mask", str(mask_path), "--out", str(tmp_path / "o.nii.gz"),
+                ]
+            )
+
+    def test_mask_threshold_requires_mask(self, tmp_path: Path):
+        mov_path = _write_image(tmp_path / "mov.nii.gz", np.ones((2, 2, 2), dtype=np.float32))
+        with pytest.raises(SystemExit):
+            vol2vol_main(
+                ["--mov", str(mov_path), "--out", str(tmp_path / "o.nii.gz"), "--mask-threshold", "1"]
+            )
