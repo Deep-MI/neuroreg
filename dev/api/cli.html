@@ -895,21 +895,27 @@ exits after reporting an error.</p>
 <p><p>Apply a linear transform to an image, reslice into a target geometry,
 or update the header only. This is the project-native analogue of
 FreeSurfer’s mri_vol2vol for linear transforms.</p>
+<p>With no –transform and no –ref the image is read and written as-is
+(no mapping or reslicing); the output format is taken from the –out
+file extension, so this converts between any formats nibabel supports
+(e.g. .mgz, .nii, .nii.gz, .img/.hdr). –mask and the dtype/scaling
+flags also apply on the native grid without reslicing.</p>
 </p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">vol2vol</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">mov</span> <span class="n">FILE</span> <span class="p">[</span><span class="o">--</span><span class="n">transform</span> <span class="n">FILE</span><span class="p">]</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">vol2vol</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="ow">in</span> <span class="n">FILE</span> <span class="p">[</span><span class="o">--</span><span class="n">transform</span> <span class="n">FILE</span><span class="p">]</span>
                <span class="p">[</span><span class="o">--</span><span class="n">transform</span><span class="o">-</span><span class="nb">format</span> <span class="p">{</span><span class="n">lta</span><span class="p">,</span><span class="n">xfm</span><span class="p">,</span><span class="n">fsl</span><span class="p">,</span><span class="n">regdat</span><span class="p">,</span><span class="n">itk</span><span class="p">,</span><span class="n">antsmat</span><span class="p">,</span><span class="n">afni</span><span class="p">,</span><span class="n">niftyreg</span><span class="p">}]</span>
                <span class="p">[</span><span class="o">--</span><span class="n">ref</span> <span class="n">FILE</span><span class="p">]</span> <span class="o">--</span><span class="n">out</span> <span class="n">FILE</span> <span class="p">[</span><span class="o">--</span><span class="n">interp</span> <span class="p">{</span><span class="n">linear</span><span class="p">,</span><span class="n">cubic</span><span class="p">,</span><span class="n">nearest</span><span class="p">}]</span>
-               <span class="p">[</span><span class="o">--</span><span class="n">pad</span> <span class="n">MODE</span><span class="o">|</span><span class="n">VALUE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">header</span><span class="o">-</span><span class="n">only</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">inverse</span><span class="p">]</span>
-               <span class="p">[</span><span class="o">--</span><span class="n">out</span><span class="o">-</span><span class="n">dtype</span> <span class="n">DTYPE</span> <span class="o">|</span> <span class="o">--</span><span class="n">keep</span><span class="o">-</span><span class="n">dtype</span><span class="p">]</span>
-               <span class="p">[</span><span class="o">--</span><span class="n">scale</span><span class="o">-</span><span class="n">mode</span> <span class="p">{</span><span class="n">clamp</span><span class="p">,</span><span class="n">rescale</span><span class="p">,</span><span class="n">robust</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">target</span><span class="o">-</span><span class="nb">max</span> <span class="n">TARGET_MAX</span><span class="p">]</span>
-               <span class="p">[</span><span class="o">--</span><span class="n">robust</span><span class="o">-</span><span class="n">low</span> <span class="n">FRAC</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">robust</span><span class="o">-</span><span class="n">high</span> <span class="n">FRAC</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">pad</span> <span class="n">MODE</span><span class="o">|</span><span class="n">VALUE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">header</span><span class="o">-</span><span class="n">only</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">inverse</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">mask</span> <span class="n">FILE</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">mask</span><span class="o">-</span><span class="n">threshold</span> <span class="n">T</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">mask</span><span class="o">-</span><span class="n">fill</span> <span class="n">V</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">out</span><span class="o">-</span><span class="n">dtype</span> <span class="n">DTYPE</span> <span class="o">|</span>
+               <span class="o">--</span><span class="n">keep</span><span class="o">-</span><span class="n">dtype</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">scale</span><span class="o">-</span><span class="n">mode</span> <span class="p">{</span><span class="n">clamp</span><span class="p">,</span><span class="n">rescale</span><span class="p">,</span><span class="n">robust</span><span class="p">}]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">target</span><span class="o">-</span><span class="nb">max</span> <span class="n">TARGET_MAX</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">robust</span><span class="o">-</span><span class="n">low</span> <span class="n">FRAC</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">robust</span><span class="o">-</span><span class="n">high</span> <span class="n">FRAC</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
 </pre></div>
 </div>
 <section id="neuroreg.cli.vol2vol-_build_parser-named-arguments">
 <h3>Named Arguments<a class="headerlink" href="#neuroreg.cli.vol2vol-_build_parser-named-arguments" title="Link to this heading">¶</a></h3>
 <dl class="option-list">
-<dt><kbd>--mov</kbd></dt>
-<dd><p>Moving/source image to map.</p>
+<dt><kbd>--in</kbd></dt>
+<dd><p>Input image.</p>
 </dd>
 <dt><kbd>--transform</kbd></dt>
 <dd><p>Optional linear transform to apply.</p>
@@ -922,7 +928,7 @@ FreeSurfer’s mri_vol2vol for linear transforms.</p>
 <dd><p>Optional target/reference image geometry. Overrides geometry stored in the transform.</p>
 </dd>
 <dt><kbd>--out</kbd></dt>
-<dd><p>Output mapped image filename.</p>
+<dd><p>Output image filename. The extension selects the output format (any nibabel format).</p>
 </dd>
 <dt><kbd>--interp</kbd></dt>
 <dd><p>Possible choices: linear, cubic, nearest</p>
@@ -940,6 +946,17 @@ FreeSurfer’s mri_vol2vol for linear transforms.</p>
 <dt><kbd>--inverse</kbd></dt>
 <dd><p>Apply the inverse of the supplied transform.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--mask</kbd></dt>
+<dd><p>Optional binary mask. After reslicing, keep voxels where mask &gt; –mask-threshold and set the rest to –mask-fill. The mask is resampled (nearest neighbor) into the output geometry when its grid differs. With no –transform/–ref this reduces to FreeSurfer mri_mask.</p>
+</dd>
+<dt><kbd>--mask-threshold</kbd></dt>
+<dd><p>Voxels with mask value strictly greater than this are kept (default: 0).</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.0</span></code></p>
+</dd>
+<dt><kbd>--mask-fill</kbd></dt>
+<dd><p>Value assigned to voxels outside the mask (default: 0).</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.0</span></code></p>
 </dd>
 <dt><kbd>--out-dtype</kbd></dt>
 <dd><p>Explicit final output dtype, or ‘input’ to preserve the moving-image dtype.</p>

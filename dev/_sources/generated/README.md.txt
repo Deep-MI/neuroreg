@@ -288,44 +288,53 @@ ANTs `*GenericAffine.mat`, AFNI `.aff12.1D`, and NiftyReg text matrices are
 supported.
 
 ```
-vol2vol --mov <moving.nii.gz> --out <output.nii.gz> [options]
+vol2vol --in <input.nii.gz> --out <output.nii.gz> [options]
 ```
 
 **Common options**
 
-| Argument                                     | Default  | Description                                                               |
-|----------------------------------------------|----------|---------------------------------------------------------------------------|
-| `--transform FILE`                           | identity | Optional linear transform to apply.                                       |
-| `--transform-format {lta,xfm,fsl,...}`       | infer    | Override transform-format inference for ambiguous suffixes.               |
-| `--ref FILE`                                 | —        | Optional target/reference geometry. Overrides geometry stored in the LTA. |
-| `--interp {linear,cubic,nearest}`            | `linear` | Interpolation mode for resampled output.                                  |
-| `--pad {zero,border,reflection,brightest,N}` | `zero`   | Out-of-bounds fill mode or numeric constant.                              |
-| `--inverse`                                  | off      | Apply the inverse transform.                                              |
-| `--header-only`                              | off      | Update the affine/header only and skip interpolation.                     |
-| `--out-dtype DTYPE`                          | auto     | Explicit final dtype such as `uint8`, `int16`, `float32`, or `input`.     |
-| `--keep-dtype`                               | off      | Alias for `--out-dtype input`.                                            |
-| `--scale-mode {clamp,rescale,robust}`        | auto     | Final intensity handling before discrete dtype conversion.                |
-| `--target-max FLOAT`                         | inferred | Upper target value for `rescale` / `robust`.                              |
-| `--robust-low FLOAT`                         | `0.0`    | Lower robust quantile for `--scale-mode robust`.                          |
-| `--robust-high FLOAT`                        | `0.999`  | Upper robust quantile for `--scale-mode robust`.                          |
+| Argument                                     | Default  | Description                                                                                                                                                                                    |
+|----------------------------------------------|----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `--transform FILE`                           | identity | Optional linear transform to apply.                                                                                                                                                            |
+| `--transform-format {lta,xfm,fsl,...}`       | infer    | Override transform-format inference for ambiguous suffixes.                                                                                                                                    |
+| `--ref FILE`                                 | —        | Optional target/reference geometry. Overrides geometry stored in the LTA.                                                                                                                      |
+| `--interp {linear,cubic,nearest}`            | `linear` | Interpolation mode for resampled output.                                                                                                                                                       |
+| `--pad {zero,border,reflection,brightest,N}` | `zero`   | Out-of-bounds fill mode or numeric constant.                                                                                                                                                   |
+| `--inverse`                                  | off      | Apply the inverse transform.                                                                                                                                                                   |
+| `--header-only`                              | off      | Update the affine/header only and skip interpolation.                                                                                                                                          |
+| `--out-dtype DTYPE`                          | auto     | Explicit final dtype such as `uint8`, `int16`, `float32`, or `input`.                                                                                                                          |
+| `--keep-dtype`                               | off      | Alias for `--out-dtype input`.                                                                                                                                                                 |
+| `--scale-mode {clamp,rescale,robust}`        | auto     | Final intensity handling before discrete dtype conversion.                                                                                                                                     |
+| `--target-max FLOAT`                         | inferred | Upper target value for `rescale` / `robust`.                                                                                                                                                   |
+| `--robust-low FLOAT`                         | `0.0`    | Lower robust quantile for `--scale-mode robust`.                                                                                                                                               |
+| `--robust-high FLOAT`                        | `0.999`  | Upper robust quantile for `--scale-mode robust`.                                                                                                                                               |
+| `--mask FILE`                                | —        | Mask the output: keep voxels where mask > threshold, else `--mask-fill`. Nearest-resampled into the output grid when geometries differ. With no `--transform`/`--ref` this matches `mri_mask`. |
+| `--mask-threshold T`                         | `0`      | Keep voxels with mask value strictly greater than this.                                                                                                                                        |
+| `--mask-fill V`                              | `0`      | Value assigned to voxels outside the mask.                                                                                                                                                     |
 
 **Examples**
 
 ```bash
 # Apply an LTA and resample to a reference image grid
-vol2vol --mov bold.nii.gz --transform bold_to_t1.lta --ref T1.mgz --out bold_in_t1.nii.gz
+vol2vol --in bold.nii.gz --transform bold_to_t1.lta --ref T1.mgz --out bold_in_t1.nii.gz
 
 # Invert a transform and use the swapped LTA geometry when no --ref is given
-vol2vol --mov T1.mgz --transform bold_to_t1.lta --inverse --out T1_in_bold_space.nii.gz
+vol2vol --in T1.mgz --transform bold_to_t1.lta --inverse --out T1_in_bold_space.nii.gz
 
 # Identity reslice to a reference grid while preserving the input dtype
-vol2vol --mov aseg.mgz --ref orig.mgz --out aseg_in_orig.mgz --interp nearest --keep-dtype
+vol2vol --in aseg.mgz --ref orig.mgz --out aseg_in_orig.mgz --interp nearest --keep-dtype
 
 # Convert float data to uint8 with zero-anchored robust rescaling
-vol2vol --mov image.mgz --out image_uchar.mgz --out-dtype uint8 --scale-mode robust --target-max 255
+vol2vol --in image.mgz --out image_uchar.mgz --out-dtype uint8 --scale-mode robust --target-max 255
 
 # Apply the transform to the header only
-vol2vol --mov bold.nii.gz --transform bold_to_t1.lta --header-only --out bold_header_in_t1.nii.gz
+vol2vol --in bold.nii.gz --transform bold_to_t1.lta --header-only --out bold_header_in_t1.nii.gz
+
+# Apply a brain mask in the same geometry (replacement for FreeSurfer mri_mask)
+vol2vol --in conformed.mgz --mask brainmask.mgz --out masked.mgz
+
+# Convert between image formats — output format is chosen by the --out extension
+vol2vol --in image.mgz --out image.nii.gz
 ```
 
 Run `vol2vol -h` for a full argument summary with defaults.
