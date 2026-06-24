@@ -109,7 +109,7 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("--mov", required=True, metavar="FILE", help="Moving/source image to map.")
+    parser.add_argument("--in", required=True, dest="input_file", metavar="FILE", help="Input image.")
     parser.add_argument("--transform", metavar="FILE", help="Optional linear transform to apply.")
     parser.add_argument(
         "--transform-format",
@@ -541,14 +541,14 @@ def main(args=None) -> None:
     logger = logging.getLogger("neuroreg.cli.vol2vol")
 
     try:
-        mov_img = load_image(ns.mov)
+        mov_img = load_image(ns.input_file)
         ref_img = load_image(ns.ref) if ns.ref is not None else None
         lta = (
             None
             if ns.transform is None
             else read_transform_as_lta(
                 ns.transform,
-                src_img=ns.mov,
+                src_img=ns.input_file,
                 dst_img=ns.ref,
                 fmt=ns.transform_format,
             )
