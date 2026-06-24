@@ -317,14 +317,41 @@ class TestVol2VolCli:
         assert result[1, 1, 1] == 0  # fill=-1 clamped to uint8 min, not wrapped to 255
 
     def test_mask_bool_image_clamps_fill_to_false(self):
-        # NIfTI round-trips don't reliably preserve bool dtype, so call the
-        # function directly. fill=-1 must clamp to 0 (False), not stay True.
+        # Nifti1Image rejects bool dtype, so we use a minimal duck-typed stub
+        # that satisfies the reslice_and_apply_mask + create_image_like interface.
+        # fill=-1 must clamp to False, not stay True (non-zero → True in plain cast).
         from neuroreg.image import reslice_and_apply_mask
+
+        class _BoolImg:
+            def __init__(self, data, affine, _header=None):
+                self._data = np.asarray(data)
+                self.affine = np.asarray(affine, dtype=np.float64)
+                self.shape = self._data.shape
+
+            def get_data_dtype(self):
+                return self._data.dtype
+
+            def get_fdata(self):
+                return self._data.astype(np.float64)
+
+            @property
+            def dataobj(self):
+                return self._data
+
+            @property
+            def header(self):
+                return self
+
+            def copy(self):
+                return self
+
+            def set_data_dtype(self, dt):
+                pass
 
         data = np.array([[[True, False], [True, False]], [[True, False], [True, False]]], dtype=np.bool_)
         mask_data = np.zeros((2, 2, 2), dtype=np.uint8)
         mask_data[0, 0, 0] = 1
-        img = nib.Nifti1Image(data, np.eye(4))
+        img = _BoolImg(data, np.eye(4))
         mask_img = nib.Nifti1Image(mask_data, np.eye(4))
 
         result = reslice_and_apply_mask(img, mask_img, fill=-1)
