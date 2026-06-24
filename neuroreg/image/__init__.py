@@ -3,14 +3,16 @@
 from .bspline import downsample2_bspline
 from .centroid import compute_centroid
 from .geometry import get_ras2tkras, get_tkras2ras, get_vox2tkras, vox2tkras_from_volume_info
-from .io import load_image
+from .io import load_image, save_image
 from .map import (
     create_image_like,
     header_map_image,
     infer_image_reslice_mode,
     map,
     map_r2r,
+    mask_geometry_differs,
     resample_isotropic,
+    reslice_and_apply_mask,
     reslice_r2r_image,
     save_header_mapped_image,
     save_resliced_r2r_image,
@@ -26,12 +28,15 @@ __all__ = [
     "get_vox2tkras",
     "vox2tkras_from_volume_info",
     "load_image",
+    "save_image",
     "map",
     "map_r2r",
     "create_image_like",
     "header_map_image",
     "infer_image_reslice_mode",
+    "mask_geometry_differs",
     "resample_isotropic",
+    "reslice_and_apply_mask",
     "reslice_r2r_image",
     "save_resliced_r2r_image",
     "save_header_mapped_image",
