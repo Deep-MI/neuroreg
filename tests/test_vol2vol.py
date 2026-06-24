@@ -42,7 +42,7 @@ class TestVol2VolCli:
         mov_path = _write_image(tmp_path / "mov.nii.gz", data, affine=affine)
         out_path = tmp_path / "out.nii.gz"
 
-        vol2vol_main(["--mov", str(mov_path), "--out", str(out_path)])
+        vol2vol_main(["--in", str(mov_path), "--out", str(out_path)])
 
         mapped = nib.load(str(out_path))
         assert mapped.shape == (3, 3, 3)
@@ -65,7 +65,7 @@ class TestVol2VolCli:
         in_class(data, affine).to_filename(str(mov_path))
         out_path = tmp_path / f"out{out_ext}"
 
-        vol2vol_main(["--mov", str(mov_path), "--out", str(out_path)])
+        vol2vol_main(["--in", str(mov_path), "--out", str(out_path)])
 
         mapped = nib.load(str(out_path))
         assert isinstance(mapped, out_class)
@@ -75,14 +75,14 @@ class TestVol2VolCli:
     def test_unsupported_output_extension_errors(self, tmp_path: Path):
         mov_path = _write_image(tmp_path / "mov.nii.gz", np.ones((2, 2, 2), dtype=np.float32))
         with pytest.raises(SystemExit):
-            vol2vol_main(["--mov", str(mov_path), "--out", str(tmp_path / "out.foo")])
+            vol2vol_main(["--in", str(mov_path), "--out", str(tmp_path / "out.foo")])
 
     def test_dtype_only_conversion_does_not_reslice(self, tmp_path: Path):
         data = np.arange(8, dtype=np.uint8).reshape(2, 2, 2)
         mov_path = _write_image(tmp_path / "mov.nii.gz", data)
         out_path = tmp_path / "out_short.nii.gz"
 
-        vol2vol_main(["--mov", str(mov_path), "--out", str(out_path), "--out-dtype", "int16"])
+        vol2vol_main(["--in", str(mov_path), "--out", str(out_path), "--out-dtype", "int16"])
 
         mapped = nib.load(str(out_path))
         assert mapped.get_data_dtype() == np.dtype(np.int16)
@@ -92,7 +92,7 @@ class TestVol2VolCli:
         mov_path = _write_image(tmp_path / "mov.nii.gz", np.arange(8, dtype=np.uint8).reshape(2, 2, 2))
         out_path = tmp_path / "out_keep_dtype.nii.gz"
 
-        vol2vol_main(["--mov", str(mov_path), "--out", str(out_path), "--keep-dtype"])
+        vol2vol_main(["--in", str(mov_path), "--out", str(out_path), "--keep-dtype"])
 
         mapped = nib.load(str(out_path))
         assert mapped.get_data_dtype() == np.dtype(np.uint8)
@@ -107,7 +107,7 @@ class TestVol2VolCli:
 
         vol2vol_main(
             [
-                "--mov",
+                "--in",
                 str(mov_path),
                 "--ref",
                 str(ref_path),
@@ -139,8 +139,8 @@ class TestVol2VolCli:
         out_dst = tmp_path / "out_dst.nii.gz"
         out_src = tmp_path / "out_src.nii.gz"
 
-        vol2vol_main(["--mov", str(mov_path), "--transform", str(lta_path), "--out", str(out_dst)])
-        vol2vol_main(["--mov", str(mov_path), "--transform", str(lta_path), "--inverse", "--out", str(out_src)])
+        vol2vol_main(["--in", str(mov_path), "--transform", str(lta_path), "--out", str(out_dst)])
+        vol2vol_main(["--in", str(mov_path), "--transform", str(lta_path), "--inverse", "--out", str(out_src)])
 
         mapped_dst = nib.load(str(out_dst))
         mapped_src = nib.load(str(out_src))
@@ -158,7 +158,7 @@ class TestVol2VolCli:
         lta_path = _write_lta(tmp_path / "shift.lta", matrix, (2, 2, 2), (2, 2, 2))
         out_path = tmp_path / "out_hdr.nii.gz"
 
-        vol2vol_main(["--mov", str(mov_path), "--transform", str(lta_path), "--header-only", "--out", str(out_path)])
+        vol2vol_main(["--in", str(mov_path), "--transform", str(lta_path), "--header-only", "--out", str(out_path)])
 
         mapped = nib.load(str(out_path))
         expected_affine = np.eye(4)
@@ -175,7 +175,7 @@ class TestVol2VolCli:
 
         vol2vol_main(
             [
-                "--mov",
+                "--in",
                 str(mov_path),
                 "--out",
                 str(out_path),
@@ -204,7 +204,7 @@ class TestVol2VolCli:
 
         vol2vol_main(
             [
-                "--mov",
+                "--in",
                 str(mov_path),
                 "--ref",
                 str(ref_path),
@@ -229,7 +229,7 @@ class TestVol2VolCli:
 
         vol2vol_main(
             [
-                "--mov",
+                "--in",
                 str(mov_path),
                 "--out",
                 str(out_path),
@@ -255,7 +255,7 @@ class TestVol2VolCli:
         mask_path = _write_image(tmp_path / "mask.nii.gz", mask)
         out_path = tmp_path / "out_masked.nii.gz"
 
-        vol2vol_main(["--mov", str(mov_path), "--mask", str(mask_path), "--out", str(out_path), "--keep-dtype"])
+        vol2vol_main(["--in", str(mov_path), "--mask", str(mask_path), "--out", str(out_path), "--keep-dtype"])
 
         mapped = nib.load(str(out_path))
         expected = np.where(mask > 0, mov, 0)
@@ -273,7 +273,7 @@ class TestVol2VolCli:
 
         vol2vol_main(
             [
-                "--mov",
+                "--in",
                 str(mov_path),
                 "--mask",
                 str(mask_path),
@@ -296,7 +296,7 @@ class TestVol2VolCli:
         mask_path = _write_image(tmp_path / "mask.nii.gz", mask)
         out_path = tmp_path / "out_diff.nii.gz"
 
-        vol2vol_main(["--mov", str(mov_path), "--mask", str(mask_path), "--out", str(out_path)])
+        vol2vol_main(["--in", str(mov_path), "--mask", str(mask_path), "--out", str(out_path)])
 
         mapped = np.asarray(nib.load(str(out_path)).dataobj, dtype=np.float32)
         expected = np.zeros((3, 3, 3), dtype=np.float32)
@@ -311,7 +311,7 @@ class TestVol2VolCli:
         with pytest.raises(SystemExit):
             vol2vol_main(
                 [
-                    "--mov",
+                    "--in",
                     str(mov_path),
                     "--transform",
                     str(lta_path),
@@ -326,4 +326,4 @@ class TestVol2VolCli:
     def test_mask_threshold_requires_mask(self, tmp_path: Path):
         mov_path = _write_image(tmp_path / "mov.nii.gz", np.ones((2, 2, 2), dtype=np.float32))
         with pytest.raises(SystemExit):
-            vol2vol_main(["--mov", str(mov_path), "--out", str(tmp_path / "o.nii.gz"), "--mask-threshold", "1"])
+            vol2vol_main(["--in", str(mov_path), "--out", str(tmp_path / "o.nii.gz"), "--mask-threshold", "1"])
