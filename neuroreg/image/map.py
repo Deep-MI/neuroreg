@@ -741,7 +741,7 @@ def reslice_and_apply_mask(
     to ``fill``. The mask is resampled with nearest-neighbor interpolation into
     the image geometry (out-of-bounds treated as outside the mask), so a mask
     given in a different geometry is handled like FreeSurfer's ``mri_mask``. When
-    the mask already shares the image grid the nearest resample is exact.
+    the mask already shares the image grid the reslice step is skipped entirely.
 
     Parameters
     ----------
@@ -761,16 +761,21 @@ def reslice_and_apply_mask(
     """
     target_affine = np.asarray(image.affine, dtype=np.float64)
     target_shape = tuple(int(v) for v in image.shape[:3])
-    mask_resliced = reslice_r2r_image(
-        mask,
-        np.eye(4, dtype=np.float64),
-        target_affine=target_affine,
-        target_shape=target_shape,
-        mode="nearest",
-        padding_mode="zeros",
-        padding_value=0.0,
-    )
-    keep = np.asarray(mask_resliced.dataobj) > threshold
+    if mask_geometry_differs(mask, target_affine, target_shape):
+        mask_data = np.asarray(
+            reslice_r2r_image(
+                mask,
+                np.eye(4, dtype=np.float64),
+                target_affine=target_affine,
+                target_shape=target_shape,
+                mode="nearest",
+                padding_mode="zeros",
+                padding_value=0.0,
+            ).dataobj
+        )
+    else:
+        mask_data = np.asarray(mask.dataobj)
+    keep = mask_data > threshold
     source_dtype = np.dtype(image.get_data_dtype())
     data = np.asarray(image.get_fdata(), dtype=np.float64).copy()
     data[~keep] = float(fill)
