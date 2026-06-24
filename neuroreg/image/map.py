@@ -757,7 +757,7 @@ def reslice_and_apply_mask(
     Returns
     -------
     Any
-        Masked image in the input image geometry (float32 payload).
+        Masked image in the input image geometry, preserving the input dtype.
     """
     target_affine = np.asarray(image.affine, dtype=np.float64)
     target_shape = tuple(int(v) for v in image.shape[:3])
@@ -771,8 +771,13 @@ def reslice_and_apply_mask(
         padding_value=0.0,
     )
     keep = np.asarray(mask_resliced.dataobj) > threshold
-    data = np.asarray(image.get_fdata(), dtype=np.float32).copy()
+    source_dtype = np.dtype(image.get_data_dtype())
+    data = np.asarray(image.get_fdata(), dtype=np.float64).copy()
     data[~keep] = float(fill)
+    if np.issubdtype(source_dtype, np.integer):
+        data = np.rint(data).astype(source_dtype)
+    else:
+        data = data.astype(source_dtype, copy=False)
     return create_image_like(image, data, target_affine)
 
 

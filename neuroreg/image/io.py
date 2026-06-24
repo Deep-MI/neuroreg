@@ -9,6 +9,7 @@ from typing import Any
 
 import nibabel as nib
 import numpy as np
+from nibabel.filebasedimages import ImageFileError
 
 logger = logging.getLogger(__name__)
 
@@ -170,12 +171,45 @@ def load_image(image: str | Path | Any) -> Any:
     metadata = _read_ifh_metadata(sidecar)
     shape3 = tuple(int(dim) for dim in loaded.shape[:3])
     if shape3 != metadata.shape:
-        raise ValueError(
-            f"IFH sidecar {sidecar} reports shape {metadata.shape}, but image data shape is {shape3}."
-        )
+        raise ValueError(f"IFH sidecar {sidecar} reports shape {metadata.shape}, but image data shape is {shape3}.")
 
     if metadata.center is not None:
         logger.debug("Applying 4dfp affine override from %s (center=%s).", sidecar, metadata.center)
     else:
         logger.debug("Applying 4dfp affine override from %s.", sidecar)
     return _with_affine(loaded, _build_4dfp_affine(metadata))
+
+
+def save_image(image: Any, path: str | Path) -> None:
+    """Write an image, choosing the on-disk format from the output extension.
+
+    Unlike calling ``image.to_filename`` directly, the output format follows the
+    extension of ``path`` rather than the in-memory image class. When the
+    requested format differs from the image's native class, nibabel converts the
+    image (via ``from_image``) so any format nibabel can write is supported, for
+    example ``.mgz`` -> ``.nii.gz``. Geometry and voxel values are preserved; the
+    stored dtype may be coerced to one the target format supports (for example
+    MGH only stores uint8, int16, int32, and float32).
+
+    Parameters
+    ----------
+    image : Any
+        Nibabel-like image to write.
+    path : str or Path
+        Output filename. Its extension selects the output format.
+
+    Returns
+    -------
+    None
+        The image is written for its side effect.
+
+    Raises
+    ------
+    ValueError
+        If ``path`` has no extension nibabel recognizes as a writable image
+        format.
+    """
+    try:
+        nib.save(image, str(path))
+    except ImageFileError as exc:
+        raise ValueError(f"Unsupported output image format for {str(path)!r}: {exc}") from exc

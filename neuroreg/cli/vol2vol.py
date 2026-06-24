@@ -17,6 +17,7 @@ from ..image import (
     mask_geometry_differs,
     reslice_and_apply_mask,
     reslice_r2r_image,
+    save_image,
 )
 from ..transforms import TRANSFORM_FORMATS, affine_from_volume_info, read_transform_as_lta
 
@@ -98,7 +99,13 @@ def _build_parser() -> argparse.ArgumentParser:
         description=(
             "Apply a linear transform to an image, reslice into a target geometry,\n"
             "or update the header only. This is the project-native analogue of\n"
-            "FreeSurfer's mri_vol2vol for linear transforms."
+            "FreeSurfer's mri_vol2vol for linear transforms.\n"
+            "\n"
+            "With no --transform and no --ref the image is read and written as-is\n"
+            "(no mapping or reslicing); the output format is taken from the --out\n"
+            "file extension, so this converts between any formats nibabel supports\n"
+            "(e.g. .mgz, .nii, .nii.gz, .img/.hdr). --mask and the dtype/scaling\n"
+            "flags also apply on the native grid without reslicing."
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -114,7 +121,12 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="FILE",
         help="Optional target/reference image geometry. Overrides geometry stored in the transform.",
     )
-    parser.add_argument("--out", required=True, metavar="FILE", help="Output mapped image filename.")
+    parser.add_argument(
+        "--out",
+        required=True,
+        metavar="FILE",
+        help="Output image filename. The extension selects the output format (any nibabel format).",
+    )
     parser.add_argument(
         "--interp",
         choices=["linear", "cubic", "nearest"],
@@ -543,12 +555,40 @@ def main(args=None) -> None:
         )
         effective_lta = None if lta is None else (lta.invert() if ns.inverse else lta)
         r2r = np.eye(4, dtype=np.float64) if effective_lta is None else effective_lta.r2r()
+        target_dtype = _resolve_target_dtype(ns, np.dtype(mov_img.get_data_dtype()))
         if ns.header_only:
             mapped_img = header_map_image(mov_img, r2r)
+        elif ns.transform is None and ns.ref is None:
+            # No geometry change requested: read and write on the native grid
+            # without resampling. This covers pure format conversion (chosen by
+            # the --out extension), as well as mask-only and dtype/scale-only
+            # operations. Interpolation would only average voxels, so it is
+            # skipped here to keep voxel values and dtype intact.
+            mapped_img = mov_img
+            if ns.mask is not None:
+                mask_img = load_image(ns.mask)
+                native_affine = np.asarray(mov_img.affine, dtype=np.float64)
+                native_shape = tuple(int(v) for v in mov_img.shape[:3])
+                if mask_geometry_differs(mask_img, native_affine, native_shape):
+                    print("Mask:      geometry differs from input; resampling mask to input grid (nearest).")
+                mapped_img = reslice_and_apply_mask(
+                    mapped_img,
+                    mask_img,
+                    threshold=ns.mask_threshold,
+                    fill=ns.mask_fill,
+                )
+            mapped_img = _convert_output_image(
+                mapped_img,
+                mov_img,
+                target_dtype=target_dtype,
+                scale_mode=ns.scale_mode,
+                target_max=ns.target_max,
+                robust_low=ns.robust_low,
+                robust_high=ns.robust_high,
+            )
         else:
             target_affine, target_shape = _resolve_target_geometry(mov_img, ref_img, effective_lta)
             padding_mode, padding_value = _resolve_padding(ns.pad, mov_img)
-            target_dtype = _resolve_target_dtype(ns, np.dtype(mov_img.get_data_dtype()))
             mapped_img = reslice_r2r_image(
                 mov_img,
                 r2r,
@@ -578,7 +618,7 @@ def main(args=None) -> None:
                 robust_low=ns.robust_low,
                 robust_high=ns.robust_high,
             )
-        mapped_img.to_filename(ns.out)
+        save_image(mapped_img, ns.out)
     except Exception as exc:
         logger.debug("vol2vol failed", exc_info=True)
         print(f"ERROR: {exc}", file=sys.stderr)

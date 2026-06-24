@@ -24,27 +24,69 @@ def _geom(shape: tuple[int, int, int]) -> dict[str, object]:
 
 
 def _write_lta(
-        path: Path,
-        matrix: np.ndarray,
-        src_shape: tuple[int, int, int],
-        dst_shape: tuple[int, int, int],
+    path: Path,
+    matrix: np.ndarray,
+    src_shape: tuple[int, int, int],
+    dst_shape: tuple[int, int, int],
 ) -> Path:
     LTA.from_matrix(matrix, "mov.nii.gz", _geom(src_shape), "ref.nii.gz", _geom(dst_shape)).write(path)
     return path
 
 
 class TestVol2VolCli:
-    def test_identity_mapping_defaults_to_float32(self, tmp_path: Path):
-        mov_path = _write_image(tmp_path / "mov.nii.gz", np.arange(27, dtype=np.uint8).reshape(3, 3, 3))
+    def test_no_flags_reads_and_writes_without_reslicing(self, tmp_path: Path):
+        # With no transform/ref the image is copied as-is: dtype and voxels are
+        # preserved (no float32 cast, no interpolation).
+        data = np.arange(27, dtype=np.uint8).reshape(3, 3, 3)
+        affine = np.diag([2.0, 2.0, 2.0, 1.0])
+        mov_path = _write_image(tmp_path / "mov.nii.gz", data, affine=affine)
         out_path = tmp_path / "out.nii.gz"
 
         vol2vol_main(["--mov", str(mov_path), "--out", str(out_path)])
 
         mapped = nib.load(str(out_path))
         assert mapped.shape == (3, 3, 3)
-        assert mapped.affine == pytest.approx(np.eye(4))
-        assert mapped.get_data_dtype() == np.dtype(np.float32)
-        assert mapped.get_fdata(dtype=np.float32) == pytest.approx(np.arange(27, dtype=np.float32).reshape(3, 3, 3))
+        assert mapped.affine == pytest.approx(affine)
+        assert mapped.get_data_dtype() == np.dtype(np.uint8)
+        assert np.asarray(mapped.dataobj) == pytest.approx(data)
+
+    @pytest.mark.parametrize(
+        ("in_ext", "in_class", "out_ext", "out_class"),
+        [
+            (".mgz", nib.MGHImage, ".nii.gz", nib.Nifti1Image),
+            (".nii.gz", nib.Nifti1Image, ".mgz", nib.MGHImage),
+            (".nii", nib.Nifti1Image, ".nii.gz", nib.Nifti1Image),
+        ],
+    )
+    def test_pure_conversion_follows_output_extension(self, tmp_path: Path, in_ext, in_class, out_ext, out_class):
+        data = np.arange(27, dtype=np.int16).reshape(3, 3, 3)
+        affine = np.diag([2.0, 2.0, 2.0, 1.0])
+        mov_path = tmp_path / f"mov{in_ext}"
+        in_class(data, affine).to_filename(str(mov_path))
+        out_path = tmp_path / f"out{out_ext}"
+
+        vol2vol_main(["--mov", str(mov_path), "--out", str(out_path)])
+
+        mapped = nib.load(str(out_path))
+        assert isinstance(mapped, out_class)
+        assert mapped.affine == pytest.approx(affine)
+        assert np.asarray(mapped.dataobj) == pytest.approx(data)
+
+    def test_unsupported_output_extension_errors(self, tmp_path: Path):
+        mov_path = _write_image(tmp_path / "mov.nii.gz", np.ones((2, 2, 2), dtype=np.float32))
+        with pytest.raises(SystemExit):
+            vol2vol_main(["--mov", str(mov_path), "--out", str(tmp_path / "out.foo")])
+
+    def test_dtype_only_conversion_does_not_reslice(self, tmp_path: Path):
+        data = np.arange(8, dtype=np.uint8).reshape(2, 2, 2)
+        mov_path = _write_image(tmp_path / "mov.nii.gz", data)
+        out_path = tmp_path / "out_short.nii.gz"
+
+        vol2vol_main(["--mov", str(mov_path), "--out", str(out_path), "--out-dtype", "int16"])
+
+        mapped = nib.load(str(out_path))
+        assert mapped.get_data_dtype() == np.dtype(np.int16)
+        assert np.asarray(mapped.dataobj) == pytest.approx(data)
 
     def test_keep_dtype_preserves_linear_output_dtype(self, tmp_path: Path):
         mov_path = _write_image(tmp_path / "mov.nii.gz", np.arange(8, dtype=np.uint8).reshape(2, 2, 2))
@@ -89,9 +131,7 @@ class TestVol2VolCli:
         src_affine = np.array(
             [[2.0, 0.0, 0.0, 10.0], [0.0, 2.0, 0.0, 20.0], [0.0, 0.0, 2.0, 30.0], [0.0, 0.0, 0.0, 1.0]]
         )
-        dst_affine = np.array(
-            [[1.0, 0.0, 0.0, -1.0], [0.0, 1.5, 0.0, 5.0], [0.0, 0.0, 2.0, 7.0], [0.0, 0.0, 0.0, 1.0]]
-        )
+        dst_affine = np.array([[1.0, 0.0, 0.0, -1.0], [0.0, 1.5, 0.0, 5.0], [0.0, 0.0, 2.0, 7.0], [0.0, 0.0, 0.0, 1.0]])
         mov_path = _write_image(tmp_path / "mov.nii.gz", np.ones((3, 3, 3), dtype=np.float32), affine=src_affine)
         ref_path = _write_image(tmp_path / "ref.nii.gz", np.zeros((5, 5, 5), dtype=np.float32), affine=dst_affine)
         lta_path = tmp_path / "geom.lta"
@@ -233,8 +273,16 @@ class TestVol2VolCli:
 
         vol2vol_main(
             [
-                "--mov", str(mov_path), "--mask", str(mask_path), "--out", str(out_path),
-                "--mask-threshold", "1", "--mask-fill", "-1",
+                "--mov",
+                str(mov_path),
+                "--mask",
+                str(mask_path),
+                "--out",
+                str(out_path),
+                "--mask-threshold",
+                "1",
+                "--mask-fill",
+                "-1",
             ]
         )
 
@@ -263,14 +311,19 @@ class TestVol2VolCli:
         with pytest.raises(SystemExit):
             vol2vol_main(
                 [
-                    "--mov", str(mov_path), "--transform", str(lta_path), "--header-only",
-                    "--mask", str(mask_path), "--out", str(tmp_path / "o.nii.gz"),
+                    "--mov",
+                    str(mov_path),
+                    "--transform",
+                    str(lta_path),
+                    "--header-only",
+                    "--mask",
+                    str(mask_path),
+                    "--out",
+                    str(tmp_path / "o.nii.gz"),
                 ]
             )
 
     def test_mask_threshold_requires_mask(self, tmp_path: Path):
         mov_path = _write_image(tmp_path / "mov.nii.gz", np.ones((2, 2, 2), dtype=np.float32))
         with pytest.raises(SystemExit):
-            vol2vol_main(
-                ["--mov", str(mov_path), "--out", str(tmp_path / "o.nii.gz"), "--mask-threshold", "1"]
-            )
+            vol2vol_main(["--mov", str(mov_path), "--out", str(tmp_path / "o.nii.gz"), "--mask-threshold", "1"])
