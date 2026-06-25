@@ -383,8 +383,8 @@ before or after a transform, compose with `vol2vol`:
 mri mask conformed.mgz brainmask.mgz masked.mgz
 
 # Mask, then resample into a reference grid (mask-then-map)
-mri mask bold.nii.gz bold_brain.nii.gz bold_brain.nii.gz
-vol2vol --in bold_brain.nii.gz --transform bold_to_t1.lta --ref T1.mgz --out bold_in_t1.nii.gz
+mri mask bold.nii.gz bold_brain.nii.gz bold_masked.nii.gz
+vol2vol --in bold_masked.nii.gz --transform bold_to_t1.lta --ref T1.mgz --out bold_in_t1.nii.gz
 ```
 
 #### `mri info` — print header and geometry information
