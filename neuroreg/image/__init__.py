@@ -1,5 +1,8 @@
 """Image utilities: smoothing, pyramid, centroid, mapping, segmentation."""
 
+# Imported after ``.map`` because ``binarize`` depends on ``create_image_like``,
+# whose module pulls in ``transforms`` (which in turn needs ``load_image``).
+from .binarize import binarize_image
 from .bspline import downsample2_bspline
 from .centroid import compute_centroid
 from .compare import ImageDiff, compare_images
@@ -19,10 +22,6 @@ from .map import (
     save_header_mapped_image,
     save_resliced_r2r_image,
 )
-
-# Imported after ``.map`` because ``binarize`` depends on ``create_image_like``,
-# whose module pulls in ``transforms`` (which in turn needs ``load_image``).
-from .binarize import binarize_image
 from .pyramid import build_gaussian_pyramid, get_pyramid_limits
 from .segmentation import extract_wm_surface, simplify_segmentation, surfaces_from_segmentation
 from .smooth import get_gaussian_kernel, smooth
