@@ -99,6 +99,7 @@ segreg          = "neuroreg.cli.segreg:main"
 segcentroids    = "neuroreg.cli.segcentroids:main"
 lta             = "neuroreg.cli.lta:main"
 vol2vol         = "neuroreg.cli.vol2vol:main"
+mri             = "neuroreg.cli.mri:main"
 neuroreg-sys_info  = "neuroreg.cli.sys_info:run"
 
 [tool.setuptools]

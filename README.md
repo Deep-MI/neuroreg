@@ -22,6 +22,7 @@ The main user-facing tools are:
 - **`segreg`** – segmentation-based registration via label centroids
   (rigid/affine, including atlas-centroid and upright/self-flip modes)
 - **`lta`** – transform comparison, inversion, concatenation, and conversion utilities
+- **`mri`** – small image-volume utilities (`mask`, …; analogous to FreeSurfer's `mri_*` tools)
 
 This project is a work-in-progress in an early development stage. It is developed by
 the creator of FreeSurfer's `mri_robust_register` as an efficient pure Python
@@ -308,9 +309,8 @@ vol2vol --in <input.nii.gz> --out <output.nii.gz> [options]
 | `--target-max FLOAT`                         | inferred | Upper target value for `rescale` / `robust`.                                                                                                                                                   |
 | `--robust-low FLOAT`                         | `0.0`    | Lower robust quantile for `--scale-mode robust`.                                                                                                                                               |
 | `--robust-high FLOAT`                        | `0.999`  | Upper robust quantile for `--scale-mode robust`.                                                                                                                                               |
-| `--mask FILE`                                | —        | Mask the output: keep voxels where mask > threshold, else `--mask-fill`. Nearest-resampled into the output grid when geometries differ. With no `--transform`/`--ref` this matches `mri_mask`. |
-| `--mask-threshold T`                         | `0`      | Keep voxels with mask value strictly greater than this.                                                                                                                                        |
-| `--mask-fill V`                              | `0`      | Value assigned to voxels outside the mask.                                                                                                                                                     |
+
+To mask a volume, use `mri mask` (see below).
 
 **Examples**
 
@@ -330,14 +330,59 @@ vol2vol --in image.mgz --out image_uchar.mgz --out-dtype uint8 --scale-mode robu
 # Apply the transform to the header only
 vol2vol --in bold.nii.gz --transform bold_to_t1.lta --header-only --out bold_header_in_t1.nii.gz
 
-# Apply a brain mask in the same geometry (replacement for FreeSurfer mri_mask)
-vol2vol --in conformed.mgz --mask brainmask.mgz --out masked.mgz
-
 # Convert between image formats — output format is chosen by the --out extension
 vol2vol --in image.mgz --out image.nii.gz
 ```
 
 Run `vol2vol -h` for a full argument summary with defaults.
+
+---
+
+### `mri` — image-volume utilities
+
+Small `mri_*`-style volume utilities grouped under a single command, in the same
+spirit as the `lta` transform CLI. The first available subcommand is `mask`;
+`info`, `diff`, and `binarize` are planned.
+
+```
+mri mask --in <input.nii.gz> --mask <mask.nii.gz> --out <output.nii.gz> [options]
+```
+
+#### `mri mask` — apply a binary mask
+
+Keeps voxels where the mask value is strictly greater than `--threshold` and
+sets the rest to `--fill`, matching FreeSurfer's `mri_mask`. The mask is
+resampled (nearest neighbor) into the input geometry when its grid differs. The
+input dtype is preserved; the output format follows the `--out` extension.
+
+This is a single-space operation — it does not map between geometries. To mask
+before or after a transform, compose with `vol2vol`:
+
+- `mri mask …` then `vol2vol …` → mask-then-map (mask in the moving-image grid)
+- `vol2vol …` then `mri mask …` → map-then-mask (mask in the reference grid)
+
+**Options**
+
+| Argument          | Default | Description                                                    |
+|-------------------|---------|----------------------------------------------------------------|
+| `--in FILE`       | —       | Input image to mask (required).                                |
+| `--mask FILE`     | —       | Binary mask image (required).                                  |
+| `--out FILE`      | —       | Output image filename; the extension selects the format.       |
+| `--threshold T`   | `0`     | Keep voxels with mask value strictly greater than this.        |
+| `--fill V`        | `0`     | Value assigned to voxels outside the mask.                     |
+
+**Examples**
+
+```bash
+# Apply a brain mask in the same geometry (replacement for FreeSurfer mri_mask)
+mri mask --in conformed.mgz --mask brainmask.mgz --out masked.mgz
+
+# Mask, then resample into a reference grid (mask-then-map)
+mri mask --in bold.nii.gz --mask bold_brain.nii.gz --out bold_brain.nii.gz
+vol2vol --in bold_brain.nii.gz --transform bold_to_t1.lta --ref T1.mgz --out bold_in_t1.nii.gz
+```
+
+Run `mri -h` or `mri mask -h` for a full argument summary with defaults.
 
 ---
 
