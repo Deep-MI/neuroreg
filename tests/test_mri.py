@@ -23,7 +23,7 @@ class TestMask:
         mask_path = _write_image(tmp_path / "mask.nii.gz", mask)
         out_path = tmp_path / "out_masked.nii.gz"
 
-        mri_main(["mask", "--in", str(in_path), "--mask", str(mask_path), "--out", str(out_path)])
+        mri_main(["mask", str(in_path), str(mask_path), str(out_path)])
 
         masked = nib.load(str(out_path))
         expected = np.where(mask > 0, mov, 0)
@@ -40,21 +40,7 @@ class TestMask:
         mask_path = _write_image(tmp_path / "mask.nii.gz", mask)
         out_path = tmp_path / "out_thr.nii.gz"
 
-        mri_main(
-            [
-                "mask",
-                "--in",
-                str(in_path),
-                "--mask",
-                str(mask_path),
-                "--out",
-                str(out_path),
-                "--threshold",
-                "1",
-                "--fill",
-                "-1",
-            ]
-        )
+        mri_main(["mask", str(in_path), str(mask_path), str(out_path), "--threshold", "1", "--oval", "-1"])
 
         masked = np.asarray(nib.load(str(out_path)).dataobj, dtype=np.float32)
         assert masked == pytest.approx(np.where(mask > 1, 9.0, -1.0))
@@ -68,9 +54,7 @@ class TestMask:
         mask_path = _write_image(tmp_path / "mask.nii.gz", mask)
         out_path = tmp_path / "out_clamp.nii.gz"
 
-        mri_main(
-            ["mask", "--in", str(in_path), "--mask", str(mask_path), "--out", str(out_path), "--fill", "-1"]
-        )
+        mri_main(["mask", str(in_path), str(mask_path), str(out_path), "--oval", "-1"])
 
         result = np.asarray(nib.load(str(out_path)).dataobj)
         assert result[0, 0, 0] == 10  # kept voxel unchanged
@@ -128,10 +112,76 @@ class TestMask:
         mask_path = _write_image(tmp_path / "mask.nii.gz", mask)
         out_path = tmp_path / "out_diff.nii.gz"
 
-        mri_main(["mask", "--in", str(in_path), "--mask", str(mask_path), "--out", str(out_path)])
+        mri_main(["mask", str(in_path), str(mask_path), str(out_path)])
 
         masked = np.asarray(nib.load(str(out_path)).dataobj, dtype=np.float32)
         expected = np.zeros((3, 3, 3), dtype=np.float32)
         expected[:2, :2, :2] = 5.0
         assert masked == pytest.approx(expected)
         assert "geometry differs" in capsys.readouterr().out
+
+
+class TestInfo:
+    def test_full_dump_contains_key_fields(self, tmp_path: Path, capsys):
+        data = np.zeros((4, 5, 6), dtype=np.int16)
+        affine = np.diag([2.0, 2.0, 2.0, 1.0])
+        in_path = _write_image(tmp_path / "in.nii.gz", data, affine=affine)
+
+        mri_main(["info", str(in_path)])
+
+        out = capsys.readouterr().out
+        assert "Volume information for" in out
+        assert "dimensions: 4 x 5 x 6" in out
+        assert "voxel sizes: 2.000000, 2.000000, 2.000000" in out
+        assert "Orientation: RAS" in out
+        assert "voxel to ras transform:" in out
+
+    def test_dim_selector(self, tmp_path: Path, capsys):
+        in_path = _write_image(tmp_path / "in.nii.gz", np.zeros((4, 5, 6), dtype=np.uint8))
+
+        mri_main(["info", str(in_path), "--dim"])
+
+        assert capsys.readouterr().out.strip() == "4 5 6"
+
+    def test_res_and_type_selectors(self, tmp_path: Path, capsys):
+        affine = np.diag([1.5, 2.0, 2.5, 1.0])
+        in_path = _write_image(tmp_path / "in.nii.gz", np.zeros((2, 2, 2), dtype=np.uint8), affine=affine)
+
+        mri_main(["info", str(in_path), "--res", "--type"])
+
+        lines = capsys.readouterr().out.strip().splitlines()
+        assert lines[0] == "1.500000 2.000000 2.500000"
+        assert lines[1] == "uint8"
+
+    def test_orientation_alias(self, tmp_path: Path, capsys):
+        in_path = _write_image(tmp_path / "in.nii.gz", np.zeros((2, 2, 2), dtype=np.uint8))
+
+        mri_main(["info", str(in_path), "--ori"])
+
+        assert capsys.readouterr().out.strip() == "RAS"
+
+    def test_nframes_for_4d(self, tmp_path: Path, capsys):
+        in_path = _write_image(tmp_path / "in.nii.gz", np.zeros((2, 2, 2, 3), dtype=np.uint8))
+
+        mri_main(["info", str(in_path), "--nframes"])
+
+        assert capsys.readouterr().out.strip() == "3"
+
+    def test_vox2ras_matrix_selector(self, tmp_path: Path, capsys):
+        affine = np.diag([2.0, 2.0, 2.0, 1.0])
+        in_path = _write_image(tmp_path / "in.nii.gz", np.zeros((2, 2, 2), dtype=np.uint8), affine=affine)
+
+        mri_main(["info", str(in_path), "--vox2ras"])
+
+        lines = capsys.readouterr().out.strip().splitlines()
+        assert len(lines) == 4
+        assert np.asarray([row.split() for row in lines], dtype=np.float64) == pytest.approx(affine)
+
+    def test_stats_selector(self, tmp_path: Path, capsys):
+        data = np.arange(8, dtype=np.float32).reshape(2, 2, 2)  # 0..7, mean 3.5
+        in_path = _write_image(tmp_path / "in.nii.gz", data)
+
+        mri_main(["info", str(in_path), "--stats"])
+
+        mn, mx, mean = capsys.readouterr().out.strip().split()
+        assert (float(mn), float(mx), float(mean)) == pytest.approx((0.0, 7.0, 3.5))

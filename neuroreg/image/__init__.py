@@ -3,6 +3,7 @@
 from .bspline import downsample2_bspline
 from .centroid import compute_centroid
 from .geometry import get_ras2tkras, get_tkras2ras, get_vox2tkras, vox2tkras_from_volume_info
+from .info import describe_image, image_value_stats
 from .io import load_image, save_image
 from .map import (
     create_image_like,
@@ -27,6 +28,8 @@ __all__ = [
     "get_tkras2ras",
     "get_vox2tkras",
     "vox2tkras_from_volume_info",
+    "describe_image",
+    "image_value_stats",
     "load_image",
     "save_image",
     "map",

@@ -341,19 +341,22 @@ Run `vol2vol -h` for a full argument summary with defaults.
 ### `mri` — image-volume utilities
 
 Small `mri_*`-style volume utilities grouped under a single command, in the same
-spirit as the `lta` transform CLI. The first available subcommand is `mask`;
-`info`, `diff`, and `binarize` are planned.
+spirit as the `lta` transform CLI. Available subcommands are `mask` and `info`;
+`diff` and `binarize` are planned. The argument conventions follow FreeSurfer's
+`mri_*` tools where possible.
 
 ```
-mri mask --in <input.nii.gz> --mask <mask.nii.gz> --out <output.nii.gz> [options]
+mri mask <input> <mask> <output> [options]
+mri info <input> [selectors]
 ```
 
 #### `mri mask` — apply a binary mask
 
 Keeps voxels where the mask value is strictly greater than `--threshold` and
-sets the rest to `--fill`, matching FreeSurfer's `mri_mask`. The mask is
-resampled (nearest neighbor) into the input geometry when its grid differs. The
-input dtype is preserved; the output format follows the `--out` extension.
+sets the rest to `--oval`, matching FreeSurfer's `mri_mask` (same positional
+`<in> <mask> <out>` argument order). The mask is resampled (nearest neighbor)
+into the input geometry when its grid differs. The input dtype is preserved; the
+output format follows the output extension.
 
 This is a single-space operation — it does not map between geometries. To mask
 before or after a transform, compose with `vol2vol`:
@@ -361,28 +364,63 @@ before or after a transform, compose with `vol2vol`:
 - `mri mask …` then `vol2vol …` → mask-then-map (mask in the moving-image grid)
 - `vol2vol …` then `mri mask …` → map-then-mask (mask in the reference grid)
 
-**Options**
+**Arguments**
 
-| Argument          | Default | Description                                                    |
-|-------------------|---------|----------------------------------------------------------------|
-| `--in FILE`       | —       | Input image to mask (required).                                |
-| `--mask FILE`     | —       | Binary mask image (required).                                  |
-| `--out FILE`      | —       | Output image filename; the extension selects the format.       |
-| `--threshold T`   | `0`     | Keep voxels with mask value strictly greater than this.        |
-| `--fill V`        | `0`     | Value assigned to voxels outside the mask.                     |
+| Argument             | Default | Description                                                    |
+|----------------------|---------|----------------------------------------------------------------|
+| `in` (positional)    | —       | Input image to mask.                                           |
+| `mask` (positional)  | —       | Binary mask image.                                             |
+| `out` (positional)   | —       | Output image filename; the extension selects the format.       |
+| `-T`, `--threshold T`| `0`     | Keep voxels with mask value strictly greater than this.        |
+| `--oval V`           | `0`     | Value assigned to voxels outside the mask.                     |
 
 **Examples**
 
 ```bash
 # Apply a brain mask in the same geometry (replacement for FreeSurfer mri_mask)
-mri mask --in conformed.mgz --mask brainmask.mgz --out masked.mgz
+mri mask conformed.mgz brainmask.mgz masked.mgz
 
 # Mask, then resample into a reference grid (mask-then-map)
-mri mask --in bold.nii.gz --mask bold_brain.nii.gz --out bold_brain.nii.gz
+mri mask bold.nii.gz bold_brain.nii.gz bold_brain.nii.gz
 vol2vol --in bold_brain.nii.gz --transform bold_to_t1.lta --ref T1.mgz --out bold_in_t1.nii.gz
 ```
 
-Run `mri -h` or `mri mask -h` for a full argument summary with defaults.
+#### `mri info` — print header and geometry information
+
+Prints header and geometry information for a volume, analogous to FreeSurfer's
+`mri_info`. With no selector flags a full human-readable dump is printed.
+Selector flags print only the requested value(s), one per line, for scripting.
+
+**Arguments**
+
+| Argument            | Description                                                |
+|---------------------|------------------------------------------------------------|
+| `FILE` (positional) | Input image.                                               |
+| `--dim`             | Print dimensions: `w h d`.                                 |
+| `--res`             | Print voxel sizes: `x y z`.                                |
+| `--voxvol`          | Print the voxel volume.                                    |
+| `--type`            | Print the data dtype.                                      |
+| `--nframes`         | Print the number of frames.                                |
+| `--orientation`, `--ori` | Print the orientation string (e.g. `LIA`).            |
+| `--cras`            | Print the volume center RAS: `c_r c_a c_s`.                |
+| `--vox2ras`         | Print the voxel-to-RAS (scanner) matrix.                   |
+| `--ras2vox`         | Print the RAS-to-voxel matrix.                             |
+| `--vox2ras-tkr`     | Print the voxel-to-tkRAS matrix.                           |
+| `--stats`           | Print voxel value stats: `min max mean`.                  |
+
+**Examples**
+
+```bash
+# Full information dump
+mri info orig.mgz
+
+# Scriptable single fields
+mri info orig.mgz --dim          # e.g. "256 256 256"
+mri info orig.mgz --res          # e.g. "1.000000 1.000000 1.000000"
+mri info orig.mgz --orientation  # e.g. "LIA"
+```
+
+Run `mri -h` or `mri <subcommand> -h` for a full argument summary with defaults.
 
 ---
 
