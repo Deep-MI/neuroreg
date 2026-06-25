@@ -268,3 +268,98 @@ class TestDiff:
         b = _write_image(tmp_path / "b.nii.gz", b_data)
 
         assert _run_diff([str(a), str(b), "--count-thresh", "5"]) == 0
+
+
+class TestBinarize:
+    def test_min_max_range_default_int32(self, tmp_path: Path):
+        data = np.arange(27, dtype=np.int16).reshape(3, 3, 3)
+        in_path = _write_image(tmp_path / "in.nii.gz", data)
+        out_path = tmp_path / "out.nii.gz"
+
+        mri_main(["binarize", "--i", str(in_path), "--o", str(out_path), "--min", "5", "--max", "10"])
+
+        out = nib.load(str(out_path))
+        expected = ((data >= 5) & (data <= 10)).astype(np.int32)
+        assert out.get_data_dtype() == np.dtype(np.int32)
+        assert np.asarray(out.dataobj) == pytest.approx(expected)
+
+    def test_match_labels(self, tmp_path: Path):
+        data = np.array([[[0, 2], [5, 3]], [[2, 7], [5, 0]]], dtype=np.int16)
+        in_path = _write_image(tmp_path / "in.nii.gz", data)
+        out_path = tmp_path / "out.nii.gz"
+
+        mri_main(["binarize", "--i", str(in_path), "--o", str(out_path), "--match", "2", "5"])
+
+        out = np.asarray(nib.load(str(out_path)).dataobj)
+        assert out == pytest.approx(np.isin(data, [2, 5]).astype(np.int32))
+
+    def test_inv_swaps_values(self, tmp_path: Path):
+        data = np.arange(8, dtype=np.int16).reshape(2, 2, 2)
+        in_path = _write_image(tmp_path / "in.nii.gz", data)
+        out_path = tmp_path / "out.nii.gz"
+
+        mri_main(["binarize", "--i", str(in_path), "--o", str(out_path), "--min", "4", "--inv"])
+
+        out = np.asarray(nib.load(str(out_path)).dataobj)
+        # default 1/0 swapped: selected (>=4) -> 0, rest -> 1
+        assert out == pytest.approx(np.where(data >= 4, 0, 1))
+
+    def test_custom_binval_binvalnot(self, tmp_path: Path):
+        data = np.array([[[3, 1], [3, 0]], [[2, 3], [1, 3]]], dtype=np.int16)
+        in_path = _write_image(tmp_path / "in.nii.gz", data)
+        out_path = tmp_path / "out.nii.gz"
+
+        mri_main(
+            ["binarize", "--i", str(in_path), "--o", str(out_path),
+             "--match", "3", "--binval", "7", "--binvalnot", "2"]
+        )
+
+        out = np.asarray(nib.load(str(out_path)).dataobj)
+        assert out == pytest.approx(np.where(data == 3, 7, 2))
+
+    def test_uchar_output(self, tmp_path: Path):
+        data = np.arange(8, dtype=np.int16).reshape(2, 2, 2)
+        in_path = _write_image(tmp_path / "in.nii.gz", data)
+        out_path = tmp_path / "out.nii.gz"
+
+        mri_main(["binarize", "--i", str(in_path), "--o", str(out_path), "--min", "4", "--uchar"])
+
+        assert nib.load(str(out_path)).get_data_dtype() == np.dtype(np.uint8)
+
+    def test_in_out_aliases(self, tmp_path: Path):
+        data = np.arange(8, dtype=np.int16).reshape(2, 2, 2)
+        in_path = _write_image(tmp_path / "in.nii.gz", data)
+        out_path = tmp_path / "out.nii.gz"
+
+        # the FreeSurfer-style --i/--o and our --in/--out must be equivalent
+        mri_main(["binarize", "--in", str(in_path), "--out", str(out_path), "--min", "4"])
+
+        out = np.asarray(nib.load(str(out_path)).dataobj)
+        assert out == pytest.approx((data >= 4).astype(np.int32))
+
+    def test_abs_before_threshold(self, tmp_path: Path):
+        data = np.array([[[-9, -1], [2, 0]], [[-5, 1], [9, -2]]], dtype=np.int16)
+        in_path = _write_image(tmp_path / "in.nii.gz", data)
+        out_path = tmp_path / "out.nii.gz"
+
+        mri_main(["binarize", "--i", str(in_path), "--o", str(out_path), "--min", "5", "--abs"])
+
+        out = np.asarray(nib.load(str(out_path)).dataobj)
+        assert out == pytest.approx((np.abs(data) >= 5).astype(np.int32))
+
+    def test_frame_selects_single_frame(self, tmp_path: Path):
+        data = np.zeros((2, 2, 2, 3), dtype=np.int16)
+        data[..., 1] = 9  # only frame 1 is nonzero
+        in_path = _write_image(tmp_path / "in.nii.gz", data)
+        out_path = tmp_path / "out.nii.gz"
+
+        mri_main(["binarize", "--i", str(in_path), "--o", str(out_path), "--min", "1", "--frame", "1"])
+
+        out = np.asarray(nib.load(str(out_path)).dataobj)
+        assert out.shape == (2, 2, 2)
+        assert np.all(out == 1)
+
+    def test_requires_a_selection_criterion(self, tmp_path: Path):
+        in_path = _write_image(tmp_path / "in.nii.gz", np.zeros((2, 2, 2), dtype=np.int16))
+        with pytest.raises(SystemExit):
+            mri_main(["binarize", "--i", str(in_path), "--o", str(tmp_path / "o.nii.gz")])

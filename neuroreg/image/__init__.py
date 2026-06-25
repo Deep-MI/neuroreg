@@ -19,6 +19,10 @@ from .map import (
     save_header_mapped_image,
     save_resliced_r2r_image,
 )
+
+# Imported after ``.map`` because ``binarize`` depends on ``create_image_like``,
+# whose module pulls in ``transforms`` (which in turn needs ``load_image``).
+from .binarize import binarize_image
 from .pyramid import build_gaussian_pyramid, get_pyramid_limits
 from .segmentation import extract_wm_surface, simplify_segmentation, surfaces_from_segmentation
 from .smooth import get_gaussian_kernel, smooth
@@ -33,6 +37,7 @@ __all__ = [
     "image_value_stats",
     "ImageDiff",
     "compare_images",
+    "binarize_image",
     "load_image",
     "save_image",
     "map",

@@ -3,9 +3,9 @@
 
 Small ``mri_*``-style volume utilities grouped under a single command, in the
 same spirit as the ``lta`` transform CLI. Available subcommands are ``mask``
-(analogous to FreeSurfer's ``mri_mask``), ``info`` (analogous to ``mri_info``),
-and ``diff`` (analogous to ``mri_diff``); ``binarize`` is planned. Run
-``mri --help`` or ``mri <subcommand> --help`` for the full command syntax.
+(analogous to FreeSurfer's ``mri_mask``), ``info`` (``mri_info``), ``diff``
+(``mri_diff``), and ``binarize`` (``mri_binarize``). Run ``mri --help`` or
+``mri <subcommand> --help`` for the full command syntax.
 """
 
 from __future__ import annotations
@@ -16,6 +16,7 @@ import sys
 import numpy as np
 
 from ..image import (
+    binarize_image,
     compare_images,
     describe_image,
     image_value_stats,
@@ -38,7 +39,7 @@ def _build_parser() -> argparse.ArgumentParser:
     """
     p = argparse.ArgumentParser(
         prog="mri",
-        description="Image volume utilities (mask, info, diff, ...).",
+        description="Image volume utilities (mask, info, diff, binarize).",
     )
     sub = p.add_subparsers(dest="command", metavar="COMMAND", required=True)
 
@@ -152,6 +153,36 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="exit_on_diff",
         help="Report all differences instead of exiting at the first one.",
     )
+
+    # ── binarize ──────────────────────────────────────────────────────────────
+    bin_p = sub.add_parser(
+        "binarize",
+        help="Binarize a volume by intensity range or matched label values.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=(
+            "Binarize an image, analogous to FreeSurfer's mri_binarize. A voxel is\n"
+            "selected when it matches one of --match (exact), or lies in the\n"
+            "inclusive range [--min, --max] (either bound may be omitted).\n"
+            "Selected voxels are set to --binval, the rest to --binvalnot; --inv\n"
+            "swaps that assignment. At least one of --min, --max, or --match is\n"
+            "required. Output is int32 by default (--uchar selects uint8)."
+        ),
+    )
+    bin_p.add_argument("--i", "--in", dest="input_file", required=True, metavar="FILE", help="Input image.")
+    bin_p.add_argument("--o", "--out", dest="out", required=True, metavar="FILE", help="Output image.")
+    bin_p.add_argument("--min", dest="vmin", type=float, metavar="MIN", help="Inclusive lower intensity bound.")
+    bin_p.add_argument("--max", dest="vmax", type=float, metavar="MAX", help="Inclusive upper intensity bound.")
+    bin_p.add_argument(
+        "--match", type=float, nargs="+", metavar="V", help="Match these values exactly (e.g. label ids)."
+    )
+    bin_p.add_argument("--binval", type=int, default=1, metavar="V", help="Value for selected voxels (default: 1).")
+    bin_p.add_argument(
+        "--binvalnot", type=int, default=0, metavar="V", help="Value for unselected voxels (default: 0)."
+    )
+    bin_p.add_argument("--inv", action="store_true", help="Swap the selected/unselected output values.")
+    bin_p.add_argument("--abs", action="store_true", dest="use_abs", help="Take abs value before thresholding.")
+    bin_p.add_argument("--frame", type=int, default=None, metavar="N", help="For 4D input, binarize this frame only.")
+    bin_p.add_argument("--uchar", action="store_true", help="Write uint8 output instead of int32.")
 
     return p
 
@@ -314,6 +345,29 @@ def _main_diff(ns: argparse.Namespace) -> None:
     sys.exit(status)
 
 
+def _main_binarize(ns: argparse.Namespace) -> None:
+    try:
+        img = load_image(ns.input_file)
+        out = binarize_image(
+            img,
+            vmin=ns.vmin,
+            vmax=ns.vmax,
+            match=ns.match,
+            binval=ns.binval,
+            binvalnot=ns.binvalnot,
+            invert=ns.inv,
+            use_abs=ns.use_abs,
+            frame=ns.frame,
+            out_dtype=np.uint8 if ns.uchar else np.int32,
+        )
+        save_image(out, ns.out)
+    except Exception as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"Output: {ns.out}")
+
+
 # ── entry point ───────────────────────────────────────────────────────────────
 
 
@@ -340,6 +394,8 @@ def main(args=None) -> None:
         _main_info(ns)
     elif ns.command == "diff":
         _main_diff(ns)
+    elif ns.command == "binarize":
+        _main_binarize(ns)
 
 
 if __name__ == "__main__":

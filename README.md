@@ -341,14 +341,15 @@ Run `vol2vol -h` for a full argument summary with defaults.
 ### `mri` — image-volume utilities
 
 Small `mri_*`-style volume utilities grouped under a single command, in the same
-spirit as the `lta` transform CLI. Available subcommands are `mask`, `info`, and
-`diff`; `binarize` is planned. The argument conventions follow FreeSurfer's
-`mri_*` tools where possible.
+spirit as the `lta` transform CLI. Available subcommands are `mask`, `info`,
+`diff`, and `binarize`. The argument conventions follow FreeSurfer's `mri_*`
+tools where possible.
 
 ```
 mri mask <input> <mask> <output> [options]
 mri info <input> [selectors]
 mri diff <vol1> <vol2> [options]
+mri binarize --i <input> --o <output> (--min|--max|--match ...) [options]
 ```
 
 #### `mri mask` — apply a binary mask
@@ -461,6 +462,44 @@ mri diff a.mgz b.mgz && echo "identical"
 
 # Tolerant comparison with a differing-voxel count
 mri diff a.mgz b.mgz --thresh 1e-4 --count
+```
+
+#### `mri binarize` — binarize by intensity range or label values
+
+Binarizes an image, analogous to FreeSurfer's `mri_binarize`. A voxel is
+selected when it matches one of `--match` (exact), or lies in the inclusive
+range `[--min, --max]` (either bound may be omitted). Selected voxels are set to
+`--binval`, the rest to `--binvalnot`; `--inv` swaps that assignment. At least
+one of `--min`, `--max`, or `--match` is required. I/O uses FreeSurfer's `--i`
+/`--o`, with `--in`/`--out` accepted as aliases.
+
+**Arguments**
+
+| Argument                | Default | Description                                                  |
+|-------------------------|---------|--------------------------------------------------------------|
+| `--i`, `--in FILE`      | —       | Input image (required).                                      |
+| `--o`, `--out FILE`     | —       | Output image (required).                                     |
+| `--min MIN`             | —       | Inclusive lower intensity bound.                             |
+| `--max MAX`             | —       | Inclusive upper intensity bound.                             |
+| `--match V [V ...]`     | —       | Match these values exactly (e.g. label ids).                |
+| `--binval V`            | `1`     | Output value for selected voxels.                           |
+| `--binvalnot V`         | `0`     | Output value for unselected voxels.                         |
+| `--inv`                 | off     | Swap the selected/unselected output values.                 |
+| `--abs`                 | off     | Take the absolute value before thresholding.                |
+| `--frame N`             | all     | For 4D input, binarize this frame only.                     |
+| `--uchar`               | off     | Write `uint8` output instead of the default `int32`.        |
+
+**Examples**
+
+```bash
+# Threshold an intensity volume into a 0/1 mask
+mri binarize --i T1.mgz --o brain_thr.mgz --min 50 --uchar
+
+# Extract specific segmentation labels (e.g. left/right hippocampus)
+mri binarize --i aseg.mgz --o hippo.mgz --match 17 53
+
+# Everything outside a range, using the --in/--out aliases
+mri binarize --in T1.mgz --out outside.mgz --min 50 --max 150 --inv
 ```
 
 Run `mri -h` or `mri <subcommand> -h` for a full argument summary with defaults.
