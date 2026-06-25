@@ -341,13 +341,14 @@ Run `vol2vol -h` for a full argument summary with defaults.
 ### `mri` — image-volume utilities
 
 Small `mri_*`-style volume utilities grouped under a single command, in the same
-spirit as the `lta` transform CLI. Available subcommands are `mask` and `info`;
-`diff` and `binarize` are planned. The argument conventions follow FreeSurfer's
+spirit as the `lta` transform CLI. Available subcommands are `mask`, `info`, and
+`diff`; `binarize` is planned. The argument conventions follow FreeSurfer's
 `mri_*` tools where possible.
 
 ```
 mri mask <input> <mask> <output> [options]
 mri info <input> [selectors]
+mri diff <vol1> <vol2> [options]
 ```
 
 #### `mri mask` — apply a binary mask
@@ -418,6 +419,48 @@ mri info orig.mgz
 mri info orig.mgz --dim          # e.g. "256 256 256"
 mri info orig.mgz --res          # e.g. "1.000000 1.000000 1.000000"
 mri info orig.mgz --orientation  # e.g. "LIA"
+```
+
+#### `mri diff` — compare two volumes
+
+Compares two volumes, analogous to FreeSurfer's `mri_diff`. Checks run in order
+and (unless `--no-exit-on-diff`) the command exits at the first difference with a
+FreeSurfer-compatible status code. Acquisition-parameter (TR/TE/TI/flip) checks
+are not performed.
+
+**Exit codes**
+
+| Code | Meaning                                                          |
+|------|-----------------------------------------------------------------|
+| `0`  | Volumes are the same.                                            |
+| `1`  | Error (e.g. a file could not be read).                          |
+| `101`| Dimensions differ (always exits).                               |
+| `102`| Voxel resolution differs (> `--res-thresh`).                    |
+| `104`| Geometry / vox2ras differs (> `--geo-thresh`).                  |
+| `105`| Data type (precision) differs.                                  |
+| `106`| Voxel values differ (max \|diff\| > `--thresh` and count > `--count-thresh`). |
+
+**Arguments**
+
+| Argument             | Default | Description                                                       |
+|----------------------|---------|-------------------------------------------------------------------|
+| `vol1` (positional)  | —       | First image.                                                      |
+| `vol2` (positional)  | —       | Second image.                                                     |
+| `--thresh T`         | `0`     | Voxel value difference threshold.                                 |
+| `--res-thresh T`     | `0`     | Voxel-size difference threshold.                                  |
+| `--geo-thresh T`     | `0`     | vox2ras element difference threshold.                             |
+| `--count-thresh N`   | `0`     | Require more than N differing voxels to flag a pixel difference.  |
+| `--count`            | off     | Print the number of differing voxels (`diffcount N`).            |
+| `--no-exit-on-diff`  | off     | Report all differences instead of exiting at the first one.      |
+
+**Examples**
+
+```bash
+# Quick equality check (use the exit code in scripts)
+mri diff a.mgz b.mgz && echo "identical"
+
+# Tolerant comparison with a differing-voxel count
+mri diff a.mgz b.mgz --thresh 1e-4 --count
 ```
 
 Run `mri -h` or `mri <subcommand> -h` for a full argument summary with defaults.

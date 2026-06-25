@@ -2,6 +2,7 @@
 
 from .bspline import downsample2_bspline
 from .centroid import compute_centroid
+from .compare import ImageDiff, compare_images
 from .geometry import get_ras2tkras, get_tkras2ras, get_vox2tkras, vox2tkras_from_volume_info
 from .info import describe_image, image_value_stats
 from .io import load_image, save_image
@@ -30,6 +31,8 @@ __all__ = [
     "vox2tkras_from_volume_info",
     "describe_image",
     "image_value_stats",
+    "ImageDiff",
+    "compare_images",
     "load_image",
     "save_image",
     "map",

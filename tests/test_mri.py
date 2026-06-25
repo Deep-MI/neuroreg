@@ -185,3 +185,86 @@ class TestInfo:
 
         mn, mx, mean = capsys.readouterr().out.strip().split()
         assert (float(mn), float(mx), float(mean)) == pytest.approx((0.0, 7.0, 3.5))
+
+
+def _run_diff(args: list[str]) -> int:
+    with pytest.raises(SystemExit) as exc:
+        mri_main(["diff", *args])
+    return 0 if exc.value.code is None else int(exc.value.code)
+
+
+class TestDiff:
+    def test_identical_exits_zero(self, tmp_path: Path, capsys):
+        data = np.arange(8, dtype=np.float32).reshape(2, 2, 2)
+        a = _write_image(tmp_path / "a.nii.gz", data)
+        b = _write_image(tmp_path / "b.nii.gz", data)
+
+        assert _run_diff([str(a), str(b)]) == 0
+        assert "Volumes are the same" in capsys.readouterr().out
+
+    def test_pixel_diff_exits_106(self, tmp_path: Path):
+        a_data = np.zeros((2, 2, 2), dtype=np.float32)
+        b_data = a_data.copy()
+        b_data[0, 0, 0] = 9.0
+        a = _write_image(tmp_path / "a.nii.gz", a_data)
+        b = _write_image(tmp_path / "b.nii.gz", b_data)
+
+        assert _run_diff([str(a), str(b)]) == 106
+
+    def test_pixel_diff_under_thresh_is_same(self, tmp_path: Path):
+        a_data = np.zeros((2, 2, 2), dtype=np.float32)
+        b_data = a_data.copy()
+        b_data[0, 0, 0] = 3.0
+        a = _write_image(tmp_path / "a.nii.gz", a_data)
+        b = _write_image(tmp_path / "b.nii.gz", b_data)
+
+        assert _run_diff([str(a), str(b), "--thresh", "5"]) == 0
+
+    def test_dimension_mismatch_exits_101(self, tmp_path: Path):
+        a = _write_image(tmp_path / "a.nii.gz", np.zeros((2, 2, 2), dtype=np.float32))
+        b = _write_image(tmp_path / "b.nii.gz", np.zeros((3, 3, 3), dtype=np.float32))
+
+        assert _run_diff([str(a), str(b)]) == 101
+
+    def test_resolution_diff_exits_102(self, tmp_path: Path):
+        z = np.zeros((2, 2, 2), dtype=np.float32)
+        a = _write_image(tmp_path / "a.nii.gz", z, affine=np.eye(4))
+        b = _write_image(tmp_path / "b.nii.gz", z, affine=np.diag([2.0, 2.0, 2.0, 1.0]))
+
+        assert _run_diff([str(a), str(b)]) == 102
+
+    def test_geometry_diff_exits_104(self, tmp_path: Path):
+        affine_b = np.eye(4)
+        affine_b[0, 3] = 5.0  # same voxel sizes, shifted origin
+        a = _write_image(tmp_path / "a.nii.gz", np.zeros((2, 2, 2), dtype=np.float32), affine=np.eye(4))
+        b = _write_image(tmp_path / "b.nii.gz", np.zeros((2, 2, 2), dtype=np.float32), affine=affine_b)
+
+        assert _run_diff([str(a), str(b)]) == 104
+
+    def test_dtype_diff_exits_105(self, tmp_path: Path):
+        data = np.zeros((2, 2, 2))
+        a = _write_image(tmp_path / "a.nii.gz", data.astype(np.uint8))
+        b = _write_image(tmp_path / "b.nii.gz", data.astype(np.int16))
+
+        assert _run_diff([str(a), str(b)]) == 105
+
+    def test_count_prints_diffcount(self, tmp_path: Path, capsys):
+        a_data = np.zeros((2, 2, 2), dtype=np.float32)
+        b_data = a_data.copy()
+        b_data[0, 0, 0] = 9.0
+        b_data[1, 1, 1] = 9.0
+        a = _write_image(tmp_path / "a.nii.gz", a_data)
+        b = _write_image(tmp_path / "b.nii.gz", b_data)
+
+        code = _run_diff([str(a), str(b), "--count"])
+        assert code == 106
+        assert "diffcount 2" in capsys.readouterr().out
+
+    def test_count_thresh_suppresses_small_diff(self, tmp_path: Path):
+        a_data = np.zeros((2, 2, 2), dtype=np.float32)
+        b_data = a_data.copy()
+        b_data[0, 0, 0] = 9.0  # only 1 differing voxel
+        a = _write_image(tmp_path / "a.nii.gz", a_data)
+        b = _write_image(tmp_path / "b.nii.gz", b_data)
+
+        assert _run_diff([str(a), str(b), "--count-thresh", "5"]) == 0

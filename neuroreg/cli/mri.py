@@ -3,9 +3,9 @@
 
 Small ``mri_*``-style volume utilities grouped under a single command, in the
 same spirit as the ``lta`` transform CLI. Available subcommands are ``mask``
-(analogous to FreeSurfer's ``mri_mask``) and ``info`` (analogous to
-``mri_info``); ``diff`` and ``binarize`` are planned. Run ``mri --help`` or
-``mri <subcommand> --help`` for the full command syntax.
+(analogous to FreeSurfer's ``mri_mask``), ``info`` (analogous to ``mri_info``),
+and ``diff`` (analogous to ``mri_diff``); ``binarize`` is planned. Run
+``mri --help`` or ``mri <subcommand> --help`` for the full command syntax.
 """
 
 from __future__ import annotations
@@ -16,6 +16,7 @@ import sys
 import numpy as np
 
 from ..image import (
+    compare_images,
     describe_image,
     image_value_stats,
     load_image,
@@ -37,7 +38,7 @@ def _build_parser() -> argparse.ArgumentParser:
     """
     p = argparse.ArgumentParser(
         prog="mri",
-        description="Image volume utilities (mask, info, ...).",
+        description="Image volume utilities (mask, info, diff, ...).",
     )
     sub = p.add_subparsers(dest="command", metavar="COMMAND", required=True)
 
@@ -105,6 +106,52 @@ def _build_parser() -> argparse.ArgumentParser:
     info_p.add_argument("--ras2vox", action="store_true", help="Print the RAS-to-voxel matrix.")
     info_p.add_argument("--vox2ras-tkr", action="store_true", help="Print the voxel-to-tkRAS matrix.")
     info_p.add_argument("--stats", action="store_true", help="Print voxel value stats: 'min max mean'.")
+
+    # ── diff ────────────────────────────────────────────────────────────────
+    diff_p = sub.add_parser(
+        "diff",
+        help="Compare two volumes and exit nonzero when they differ.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=(
+            "Compare two volumes, analogous to FreeSurfer's mri_diff. Checks are\n"
+            "run in order and (unless --no-exit-on-diff) the command exits at the\n"
+            "first difference with a FreeSurfer-compatible status code:\n"
+            "  0    volumes are the same\n"
+            "  1    error (e.g. a file could not be read)\n"
+            "  101  dimensions differ (always exits)\n"
+            "  102  voxel resolution differs (> --res-thresh)\n"
+            "  104  geometry / vox2ras differs (> --geo-thresh)\n"
+            "  105  data type (precision) differs\n"
+            "  106  voxel values differ (max |diff| > --thresh and count > --count-thresh)\n"
+            "\n"
+            "Acquisition-parameter (TR/TE/TI/flip) checks are not performed."
+        ),
+    )
+    diff_p.add_argument("vol1", metavar="vol1", help="First image.")
+    diff_p.add_argument("vol2", metavar="vol2", help="Second image.")
+    diff_p.add_argument(
+        "--thresh", type=float, default=0.0, metavar="T", help="Voxel value difference threshold (default: 0)."
+    )
+    diff_p.add_argument(
+        "--res-thresh", type=float, default=0.0, metavar="T", help="Voxel-size difference threshold (default: 0)."
+    )
+    diff_p.add_argument(
+        "--geo-thresh", type=float, default=0.0, metavar="T", help="vox2ras element difference threshold (default: 0)."
+    )
+    diff_p.add_argument(
+        "--count-thresh",
+        type=int,
+        default=0,
+        metavar="N",
+        help="Voxel values count as differing only when more than N voxels differ (default: 0).",
+    )
+    diff_p.add_argument("--count", action="store_true", help="Print the number of differing voxels.")
+    diff_p.add_argument(
+        "--no-exit-on-diff",
+        action="store_false",
+        dest="exit_on_diff",
+        help="Report all differences instead of exiting at the first one.",
+    )
 
     return p
 
@@ -214,6 +261,59 @@ def _main_info(ns: argparse.Namespace) -> None:
         print(f"{stats['min']:g} {stats['max']:g} {stats['mean']:g}")
 
 
+def _main_diff(ns: argparse.Namespace) -> None:
+    try:
+        v1 = load_image(ns.vol1)
+        v2 = load_image(ns.vol2)
+        d = compare_images(v1, v2, pix_thresh=ns.thresh)
+    except Exception as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    # Dimension mismatch makes the remaining checks meaningless; always exit.
+    if not d.shape_match:
+        print("Volumes differ in dimension")
+        print(f"v1dim {' '.join(str(v) for v in d.shape1)}")
+        print(f"v2dim {' '.join(str(v) for v in d.shape2)}")
+        sys.exit(101)
+
+    status = 0
+
+    if d.res_max_diff > ns.res_thresh:
+        print("Volumes differ in resolution")
+        print(f"v1res {d.voxsize1[0]:f} {d.voxsize1[1]:f} {d.voxsize1[2]:f}")
+        print(f"v2res {d.voxsize2[0]:f} {d.voxsize2[1]:f} {d.voxsize2[2]:f}")
+        status = 102
+        if ns.exit_on_diff:
+            sys.exit(status)
+
+    if d.geo_max_diff > ns.geo_thresh:
+        print(f"Volumes differ in geometry (max vox2ras element diff = {d.geo_max_diff:g})")
+        status = 104
+        if ns.exit_on_diff:
+            sys.exit(status)
+
+    if not d.dtype_match:
+        print(f"Volumes differ in precision {d.dtype1} {d.dtype2}")
+        status = 105
+        if ns.exit_on_diff:
+            sys.exit(status)
+
+    if ns.count:
+        print(f"diffcount {d.n_voxels_differ}")
+    if d.max_abs_diff > ns.thresh and d.n_voxels_differ > ns.count_thresh:
+        print("Volumes differ in pixel data")
+        loc = "" if d.max_diff_loc is None else " at " + " ".join(str(v) for v in d.max_diff_loc)
+        print(f"maxdiff {d.max_abs_diff:g}{loc}")
+        status = 106
+        if ns.exit_on_diff:
+            sys.exit(status)
+
+    if status == 0:
+        print("Volumes are the same")
+    sys.exit(status)
+
+
 # ── entry point ───────────────────────────────────────────────────────────────
 
 
@@ -238,6 +338,8 @@ def main(args=None) -> None:
         _main_mask(ns)
     elif ns.command == "info":
         _main_info(ns)
+    elif ns.command == "diff":
+        _main_diff(ns)
 
 
 if __name__ == "__main__":
