@@ -260,6 +260,24 @@ class TestDiff:
         assert code == 106
         assert "diffcount 2" in capsys.readouterr().out
 
+    def test_nan_on_one_side_counts_as_difference(self, tmp_path: Path, capsys):
+        a_data = np.zeros((2, 2, 2), dtype=np.float32)
+        b_data = a_data.copy()
+        b_data[0, 0, 0] = float("nan")  # one side NaN, other finite → should differ
+        a = _write_image(tmp_path / "a.nii.gz", a_data)
+        b = _write_image(tmp_path / "b.nii.gz", b_data)
+
+        code = _run_diff([str(a), str(b), "--count"])
+        assert code == 106
+        assert "diffcount 1" in capsys.readouterr().out
+
+    def test_nan_on_both_sides_treated_as_same(self, tmp_path: Path):
+        data = np.full((2, 2, 2), float("nan"), dtype=np.float32)
+        a = _write_image(tmp_path / "a.nii.gz", data)
+        b = _write_image(tmp_path / "b.nii.gz", data)
+
+        assert _run_diff([str(a), str(b)]) == 0
+
     def test_count_thresh_suppresses_small_diff(self, tmp_path: Path):
         a_data = np.zeros((2, 2, 2), dtype=np.float32)
         b_data = a_data.copy()

@@ -7,8 +7,6 @@ from typing import Any
 
 import numpy as np
 
-from .map import create_image_like
-
 
 def binarize_image(
     img: Any,
@@ -85,4 +83,5 @@ def binarize_image(
 
     true_val, false_val = (binvalnot, binval) if invert else (binval, binvalnot)
     out = np.where(selected, true_val, false_val).astype(out_dtype)
+    from .map import create_image_like  # lazy: avoids image↔transforms circular import
     return create_image_like(img, out, np.asarray(img.affine, dtype=np.float64))

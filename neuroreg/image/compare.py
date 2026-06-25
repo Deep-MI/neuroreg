@@ -84,10 +84,16 @@ def compare_images(a: Any, b: Any, *, pix_thresh: float = 0.0) -> ImageDiff:
         d1 = np.asarray(a.dataobj, dtype=np.float64)
         d2 = np.asarray(b.dataobj, dtype=np.float64)
         absdiff = np.abs(d1 - d2)
-        n_voxels_differ = int(np.count_nonzero(absdiff > pix_thresh))
-        max_abs_diff = float(absdiff.max()) if absdiff.size else 0.0
-        if absdiff.size:
-            max_diff_loc = tuple(int(v) for v in np.unravel_index(int(np.argmax(absdiff)), absdiff.shape))
+        # Build absdiff_safe with explicit NaN semantics:
+        #   NaN vs NaN  → 0.0 (both undefined — treat as "same", matching FS)
+        #   NaN vs finite or Inf vs finite → inf (always counts as differing)
+        #   finite diff → absdiff value (normal)
+        both_nan = np.isnan(d1) & np.isnan(d2)
+        absdiff_safe = np.where(both_nan, 0.0, np.where(np.isfinite(absdiff), absdiff, np.inf))
+        n_voxels_differ = int(np.count_nonzero(absdiff_safe > pix_thresh))
+        max_abs_diff = float(absdiff_safe.max()) if absdiff_safe.size else 0.0
+        if absdiff_safe.size:
+            max_diff_loc = tuple(int(v) for v in np.unravel_index(int(np.argmax(absdiff_safe)), absdiff_safe.shape))
 
     return ImageDiff(
         shape1=shape1,

@@ -1,7 +1,5 @@
 """Image utilities: smoothing, pyramid, centroid, mapping, segmentation."""
 
-# Imported after ``.map`` because ``binarize`` depends on ``create_image_like``,
-# whose module pulls in ``transforms`` (which in turn needs ``load_image``).
 from .binarize import binarize_image
 from .bspline import downsample2_bspline
 from .centroid import compute_centroid
