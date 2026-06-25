@@ -4,7 +4,7 @@ build-backend = 'setuptools.build_meta'
 
 [project]
 name = 'neuroreg'
-version = '0.9.0'
+version = '0.10.0-dev0'
 description = 'A package for 3D neuroimaging registration with PyTorch.'
 readme = 'README.md'
 license = {file = 'LICENSE'}
@@ -26,6 +26,7 @@ classifiers = [
     'Programming Language :: Python :: 3.11',
     'Programming Language :: Python :: 3.12',
     'Programming Language :: Python :: 3.13',
+    'Programming Language :: Python :: 3.14',
     'Natural Language :: English',
     'License :: OSI Approved :: MIT License',
     'Intended Audience :: Science/Research',
