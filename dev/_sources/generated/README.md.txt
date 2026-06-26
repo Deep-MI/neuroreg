@@ -22,13 +22,14 @@ The main user-facing tools are:
 - **`segreg`** – segmentation-based registration via label centroids
   (rigid/affine, including atlas-centroid and upright/self-flip modes)
 - **`lta`** – transform comparison, inversion, concatenation, and conversion utilities
-- **`mri`** – small image-volume utilities (`mask`, …; analogous to FreeSurfer's `mri_*` tools)
+- **`mri`** – small image-volume utilities like `mask`, `info`, `diff`, `binarize`
+  (analogous to FreeSurfer's `mri_*` tools)
 
 This project is a work-in-progress in an early development stage. It is developed by
 the creator of FreeSurfer's `mri_robust_register` as an efficient pure Python
 replacement (with GPU support) and cross-modal extensions to support all your medical
-imaging registration needs. If you find it
-useful for a publication, please cite the relevant papers (see [References](#References)).
+imaging registration needs. If you find it useful for a publication, please cite the
+relevant papers (see [References](#References)).
 
 ## Installation
 
