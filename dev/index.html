@@ -270,6 +270,7 @@ or update the header only</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">segreg</span></code></strong> – segmentation-based registration via label centroids
 (rigid/affine, including atlas-centroid and upright/self-flip modes)</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">lta</span></code></strong> – transform comparison, inversion, concatenation, and conversion utilities</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">mri</span></code></strong> – small image-volume utilities (<code class="docutils literal notranslate"><span class="pre">mask</span></code>, …; analogous to FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">mri_*</span></code> tools)</p></li>
 </ul>
 <p>This project is a work-in-progress in an early development stage. It is developed by
 the creator of FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">mri_robust_register</span></code> as an efficient pure Python
@@ -753,6 +754,8 @@ Transform files are read through the same shared backend as <code class="docutil
 ANTs <code class="docutils literal notranslate"><span class="pre">*GenericAffine.mat</span></code>, AFNI <code class="docutils literal notranslate"><span class="pre">.aff12.1D</span></code>, and NiftyReg text matrices are
 supported.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vol2vol</span> <span class="o">--</span><span class="ow">in</span> <span class="o">&lt;</span><span class="nb">input</span><span class="o">.</span><span class="n">nii</span><span class="o">.</span><span class="n">gz</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">out</span> <span class="o">&lt;</span><span class="n">output</span><span class="o">.</span><span class="n">nii</span><span class="o">.</span><span class="n">gz</span><span class="o">&gt;</span> <span class="p">[</span><span class="n">options</span><span class="p">]</span>
+<span class="c1"># or equivalently (FreeSurfer-style short flags):</span>
+<span class="n">vol2vol</span> <span class="o">--</span><span class="n">i</span> <span class="o">&lt;</span><span class="nb">input</span><span class="o">.</span><span class="n">nii</span><span class="o">.</span><span class="n">gz</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">o</span> <span class="o">&lt;</span><span class="n">output</span><span class="o">.</span><span class="n">nii</span><span class="o">.</span><span class="n">gz</span><span class="o">&gt;</span> <span class="p">[</span><span class="n">options</span><span class="p">]</span>
 </pre></div>
 </div>
 <p><strong>Common options</strong></p>
@@ -765,6 +768,14 @@ supported.</p>
 </tr>
 </thead>
 <tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--in</span> <span class="pre">FILE</span></code>, <code class="docutils literal notranslate"><span class="pre">--i</span> <span class="pre">FILE</span></code></p></td>
+<td><p>—</p></td>
+<td><p>Input image (required).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--out</span> <span class="pre">FILE</span></code>, <code class="docutils literal notranslate"><span class="pre">--o</span> <span class="pre">FILE</span></code></p></td>
+<td><p>—</p></td>
+<td><p>Output image (required). Extension selects the format.</p></td>
+</tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--transform</span> <span class="pre">FILE</span></code></p></td>
 <td><p>identity</p></td>
 <td><p>Optional linear transform to apply.</p></td>
@@ -817,21 +828,10 @@ supported.</p>
 <td><p><code class="docutils literal notranslate"><span class="pre">0.999</span></code></p></td>
 <td><p>Upper robust quantile for <code class="docutils literal notranslate"><span class="pre">--scale-mode</span> <span class="pre">robust</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--mask</span> <span class="pre">FILE</span></code></p></td>
-<td><p>—</p></td>
-<td><p>Mask the output: keep voxels where mask &gt; threshold, else <code class="docutils literal notranslate"><span class="pre">--mask-fill</span></code>. Nearest-resampled into the output grid when geometries differ. With no <code class="docutils literal notranslate"><span class="pre">--transform</span></code>/<code class="docutils literal notranslate"><span class="pre">--ref</span></code> this matches <code class="docutils literal notranslate"><span class="pre">mri_mask</span></code>.</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--mask-threshold</span> <span class="pre">T</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
-<td><p>Keep voxels with mask value strictly greater than this.</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--mask-fill</span> <span class="pre">V</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
-<td><p>Value assigned to voxels outside the mask.</p></td>
-</tr>
 </tbody>
 </table>
 </div>
+<p>To mask a volume, use <code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">mask</span></code> (see below).</p>
 <p><strong>Examples</strong></p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Apply an LTA and resample to a reference image grid</span>
 vol2vol<span class="w"> </span>--in<span class="w"> </span>bold.nii.gz<span class="w"> </span>--transform<span class="w"> </span>bold_to_t1.lta<span class="w"> </span>--ref<span class="w"> </span>T1.mgz<span class="w"> </span>--out<span class="w"> </span>bold_in_t1.nii.gz
@@ -848,14 +848,316 @@ vol2vol<span class="w"> </span>--in<span class="w"> </span>image.mgz<span class=
 <span class="c1"># Apply the transform to the header only</span>
 vol2vol<span class="w"> </span>--in<span class="w"> </span>bold.nii.gz<span class="w"> </span>--transform<span class="w"> </span>bold_to_t1.lta<span class="w"> </span>--header-only<span class="w"> </span>--out<span class="w"> </span>bold_header_in_t1.nii.gz
 
-<span class="c1"># Apply a brain mask in the same geometry (replacement for FreeSurfer mri_mask)</span>
-vol2vol<span class="w"> </span>--in<span class="w"> </span>conformed.mgz<span class="w"> </span>--mask<span class="w"> </span>brainmask.mgz<span class="w"> </span>--out<span class="w"> </span>masked.mgz
-
 <span class="c1"># Convert between image formats — output format is chosen by the --out extension</span>
 vol2vol<span class="w"> </span>--in<span class="w"> </span>image.mgz<span class="w"> </span>--out<span class="w"> </span>image.nii.gz
 </pre></div>
 </div>
 <p>Run <code class="docutils literal notranslate"><span class="pre">vol2vol</span> <span class="pre">-h</span></code> for a full argument summary with defaults.</p>
+</section>
+<hr class="docutils" />
+<section id="mri-image-volume-utilities">
+<h3><code class="docutils literal notranslate"><span class="pre">mri</span></code> — image-volume utilities<a class="headerlink" href="#mri-image-volume-utilities" title="Link to this heading">¶</a></h3>
+<p>Small <code class="docutils literal notranslate"><span class="pre">mri_*</span></code>-style volume utilities grouped under a single command, in the same
+spirit as the <code class="docutils literal notranslate"><span class="pre">lta</span></code> transform CLI. Available subcommands are <code class="docutils literal notranslate"><span class="pre">mask</span></code>, <code class="docutils literal notranslate"><span class="pre">info</span></code>,
+<code class="docutils literal notranslate"><span class="pre">diff</span></code>, and <code class="docutils literal notranslate"><span class="pre">binarize</span></code>. The argument conventions follow FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">mri_*</span></code>
+tools where possible.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mri</span> <span class="n">mask</span> <span class="o">&lt;</span><span class="nb">input</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">mask</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">output</span><span class="o">&gt;</span> <span class="p">[</span><span class="n">options</span><span class="p">]</span>
+<span class="n">mri</span> <span class="n">info</span> <span class="o">&lt;</span><span class="nb">input</span><span class="o">&gt;</span> <span class="p">[</span><span class="n">selectors</span><span class="p">]</span>
+<span class="n">mri</span> <span class="n">diff</span> <span class="o">&lt;</span><span class="n">vol1</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">vol2</span><span class="o">&gt;</span> <span class="p">[</span><span class="n">options</span><span class="p">]</span>
+<span class="n">mri</span> <span class="n">binarize</span> <span class="o">--</span><span class="n">i</span> <span class="o">&lt;</span><span class="nb">input</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">o</span> <span class="o">&lt;</span><span class="n">output</span><span class="o">&gt;</span> <span class="p">(</span><span class="o">--</span><span class="nb">min</span><span class="o">|--</span><span class="nb">max</span><span class="o">|--</span><span class="n">match</span> <span class="o">...</span><span class="p">)</span> <span class="p">[</span><span class="n">options</span><span class="p">]</span>
+</pre></div>
+</div>
+<section id="mri-mask-apply-a-binary-mask">
+<h4><code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">mask</span></code> — apply a binary mask<a class="headerlink" href="#mri-mask-apply-a-binary-mask" title="Link to this heading">¶</a></h4>
+<p>Keeps voxels where the mask value is strictly greater than <code class="docutils literal notranslate"><span class="pre">--threshold</span></code> and
+sets the rest to <code class="docutils literal notranslate"><span class="pre">--oval</span></code>, matching FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">mri_mask</span></code> (same positional
+<code class="docutils literal notranslate"><span class="pre">&lt;in&gt;</span> <span class="pre">&lt;mask&gt;</span> <span class="pre">&lt;out&gt;</span></code> argument order). The mask is resampled (nearest neighbor)
+into the input geometry when its grid differs. The input dtype is preserved; the
+output format follows the output extension.</p>
+<p>This is a single-space operation — it does not map between geometries. To mask
+before or after a transform, compose with <code class="docutils literal notranslate"><span class="pre">vol2vol</span></code>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">mask</span> <span class="pre">…</span></code> then <code class="docutils literal notranslate"><span class="pre">vol2vol</span> <span class="pre">…</span></code> → mask-then-map (mask in the moving-image grid)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">vol2vol</span> <span class="pre">…</span></code> then <code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">mask</span> <span class="pre">…</span></code> → map-then-mask (mask in the reference grid)</p></li>
+</ul>
+<p><strong>Arguments</strong></p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Argument</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">in</span></code> (positional)</p></td>
+<td><p>—</p></td>
+<td><p>Input image to mask.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">mask</span></code> (positional)</p></td>
+<td><p>—</p></td>
+<td><p>Binary mask image.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">out</span></code> (positional)</p></td>
+<td><p>—</p></td>
+<td><p>Output image filename; the extension selects the format.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">-T</span></code>, <code class="docutils literal notranslate"><span class="pre">--threshold</span> <span class="pre">T</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+<td><p>Keep voxels with mask value strictly greater than this.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--oval</span> <span class="pre">V</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+<td><p>Value assigned to voxels outside the mask.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Examples</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Apply a brain mask in the same geometry (replacement for FreeSurfer mri_mask)</span>
+mri<span class="w"> </span>mask<span class="w"> </span>conformed.mgz<span class="w"> </span>brainmask.mgz<span class="w"> </span>masked.mgz
+
+<span class="c1"># Mask, then resample into a reference grid (mask-then-map)</span>
+mri<span class="w"> </span>mask<span class="w"> </span>bold.nii.gz<span class="w"> </span>bold_brain.nii.gz<span class="w"> </span>bold_masked.nii.gz
+vol2vol<span class="w"> </span>--in<span class="w"> </span>bold_masked.nii.gz<span class="w"> </span>--transform<span class="w"> </span>bold_to_t1.lta<span class="w"> </span>--ref<span class="w"> </span>T1.mgz<span class="w"> </span>--out<span class="w"> </span>bold_in_t1.nii.gz
+</pre></div>
+</div>
+</section>
+<section id="mri-info-print-header-and-geometry-information">
+<h4><code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">info</span></code> — print header and geometry information<a class="headerlink" href="#mri-info-print-header-and-geometry-information" title="Link to this heading">¶</a></h4>
+<p>Prints header and geometry information for a volume, analogous to FreeSurfer’s
+<code class="docutils literal notranslate"><span class="pre">mri_info</span></code>. With no selector flags a full human-readable dump is printed.
+Selector flags print only the requested value(s), one per line, for scripting.</p>
+<p><strong>Arguments</strong></p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Argument</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">FILE</span></code> (positional)</p></td>
+<td><p>Input image.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--dim</span></code></p></td>
+<td><p>Print dimensions: <code class="docutils literal notranslate"><span class="pre">w</span> <span class="pre">h</span> <span class="pre">d</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--res</span></code></p></td>
+<td><p>Print voxel sizes: <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">y</span> <span class="pre">z</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--voxvol</span></code></p></td>
+<td><p>Print the voxel volume.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--type</span></code></p></td>
+<td><p>Print the data dtype.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--nframes</span></code></p></td>
+<td><p>Print the number of frames.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--orientation</span></code>, <code class="docutils literal notranslate"><span class="pre">--ori</span></code></p></td>
+<td><p>Print the orientation string (e.g. <code class="docutils literal notranslate"><span class="pre">LIA</span></code>).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--cras</span></code></p></td>
+<td><p>Print the volume center RAS: <code class="docutils literal notranslate"><span class="pre">c_r</span> <span class="pre">c_a</span> <span class="pre">c_s</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--vox2ras</span></code></p></td>
+<td><p>Print the voxel-to-RAS (scanner) matrix.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--ras2vox</span></code></p></td>
+<td><p>Print the RAS-to-voxel matrix.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--vox2ras-tkr</span></code></p></td>
+<td><p>Print the voxel-to-tkRAS matrix.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--stats</span></code></p></td>
+<td><p>Print voxel value stats: <code class="docutils literal notranslate"><span class="pre">min</span> <span class="pre">max</span> <span class="pre">mean</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Examples</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Full information dump</span>
+mri<span class="w"> </span>info<span class="w"> </span>orig.mgz
+
+<span class="c1"># Scriptable single fields</span>
+mri<span class="w"> </span>info<span class="w"> </span>orig.mgz<span class="w"> </span>--dim<span class="w">          </span><span class="c1"># e.g. &quot;256 256 256&quot;</span>
+mri<span class="w"> </span>info<span class="w"> </span>orig.mgz<span class="w"> </span>--res<span class="w">          </span><span class="c1"># e.g. &quot;1.000000 1.000000 1.000000&quot;</span>
+mri<span class="w"> </span>info<span class="w"> </span>orig.mgz<span class="w"> </span>--orientation<span class="w">  </span><span class="c1"># e.g. &quot;LIA&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="mri-diff-compare-two-volumes">
+<h4><code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">diff</span></code> — compare two volumes<a class="headerlink" href="#mri-diff-compare-two-volumes" title="Link to this heading">¶</a></h4>
+<p>Compares two volumes, analogous to FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">mri_diff</span></code>. Checks run in order
+and (unless <code class="docutils literal notranslate"><span class="pre">--no-exit-on-diff</span></code>) the command exits at the first difference with a
+FreeSurfer-compatible status code. Acquisition-parameter (TR/TE/TI/flip) checks
+are not performed.</p>
+<p><strong>Exit codes</strong></p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Code</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+<td><p>Volumes are the same.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
+<td><p>Error (e.g. a file could not be read).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">101</span></code></p></td>
+<td><p>Dimensions differ (always exits).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">102</span></code></p></td>
+<td><p>Voxel resolution differs (&gt; <code class="docutils literal notranslate"><span class="pre">--res-thresh</span></code>).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">104</span></code></p></td>
+<td><p>Geometry / vox2ras differs (&gt; <code class="docutils literal notranslate"><span class="pre">--geo-thresh</span></code>).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">105</span></code></p></td>
+<td><p>Data type (precision) differs.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">106</span></code></p></td>
+<td><p>Voxel values differ (max |diff| &gt; <code class="docutils literal notranslate"><span class="pre">--thresh</span></code> and count &gt; <code class="docutils literal notranslate"><span class="pre">--count-thresh</span></code>).</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Arguments</strong></p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Argument</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">vol1</span></code> (positional)</p></td>
+<td><p>—</p></td>
+<td><p>First image.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">vol2</span></code> (positional)</p></td>
+<td><p>—</p></td>
+<td><p>Second image.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--thresh</span> <span class="pre">T</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+<td><p>Voxel value difference threshold.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--res-thresh</span> <span class="pre">T</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+<td><p>Voxel-size difference threshold.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--geo-thresh</span> <span class="pre">T</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+<td><p>vox2ras element difference threshold.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--count-thresh</span> <span class="pre">N</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+<td><p>Require more than N differing voxels to flag a pixel difference.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--count</span></code></p></td>
+<td><p>off</p></td>
+<td><p>Print the number of differing voxels (<code class="docutils literal notranslate"><span class="pre">diffcount</span> <span class="pre">N</span></code>).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--no-exit-on-diff</span></code></p></td>
+<td><p>off</p></td>
+<td><p>Report all differences instead of exiting at the first one.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Examples</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Quick equality check (use the exit code in scripts)</span>
+mri<span class="w"> </span>diff<span class="w"> </span>a.mgz<span class="w"> </span>b.mgz<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;identical&quot;</span>
+
+<span class="c1"># Tolerant comparison with a differing-voxel count</span>
+mri<span class="w"> </span>diff<span class="w"> </span>a.mgz<span class="w"> </span>b.mgz<span class="w"> </span>--thresh<span class="w"> </span>1e-4<span class="w"> </span>--count
+</pre></div>
+</div>
+</section>
+<section id="mri-binarize-binarize-by-intensity-range-or-label-values">
+<h4><code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">binarize</span></code> — binarize by intensity range or label values<a class="headerlink" href="#mri-binarize-binarize-by-intensity-range-or-label-values" title="Link to this heading">¶</a></h4>
+<p>Binarizes an image, analogous to FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">mri_binarize</span></code>. A voxel is
+selected when it matches one of <code class="docutils literal notranslate"><span class="pre">--match</span></code> (exact), or lies in the inclusive
+range <code class="docutils literal notranslate"><span class="pre">[--min,</span> <span class="pre">--max]</span></code> (either bound may be omitted). Selected voxels are set to
+<code class="docutils literal notranslate"><span class="pre">--binval</span></code>, the rest to <code class="docutils literal notranslate"><span class="pre">--binvalnot</span></code>; <code class="docutils literal notranslate"><span class="pre">--inv</span></code> swaps that assignment. At least
+one of <code class="docutils literal notranslate"><span class="pre">--min</span></code>, <code class="docutils literal notranslate"><span class="pre">--max</span></code>, or <code class="docutils literal notranslate"><span class="pre">--match</span></code> is required. I/O uses FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">--i</span></code>
+/<code class="docutils literal notranslate"><span class="pre">--o</span></code>, with <code class="docutils literal notranslate"><span class="pre">--in</span></code>/<code class="docutils literal notranslate"><span class="pre">--out</span></code> accepted as aliases.</p>
+<p><strong>Arguments</strong></p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Argument</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--i</span></code>, <code class="docutils literal notranslate"><span class="pre">--in</span> <span class="pre">FILE</span></code></p></td>
+<td><p>—</p></td>
+<td><p>Input image (required).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--o</span></code>, <code class="docutils literal notranslate"><span class="pre">--out</span> <span class="pre">FILE</span></code></p></td>
+<td><p>—</p></td>
+<td><p>Output image (required).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--min</span> <span class="pre">MIN</span></code></p></td>
+<td><p>—</p></td>
+<td><p>Inclusive lower intensity bound.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--max</span> <span class="pre">MAX</span></code></p></td>
+<td><p>—</p></td>
+<td><p>Inclusive upper intensity bound.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--match</span> <span class="pre">V</span> <span class="pre">[V</span> <span class="pre">...]</span></code></p></td>
+<td><p>—</p></td>
+<td><p>Match these values exactly (e.g. label ids).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--binval</span> <span class="pre">V</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
+<td><p>Output value for selected voxels.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--binvalnot</span> <span class="pre">V</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+<td><p>Output value for unselected voxels.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--inv</span></code></p></td>
+<td><p>off</p></td>
+<td><p>Swap the selected/unselected output values.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--abs</span></code></p></td>
+<td><p>off</p></td>
+<td><p>Take the absolute value before thresholding.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--frame</span> <span class="pre">N</span></code></p></td>
+<td><p>all</p></td>
+<td><p>For 4D input, binarize this frame only.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--uchar</span></code></p></td>
+<td><p>off</p></td>
+<td><p>Write <code class="docutils literal notranslate"><span class="pre">uint8</span></code> output instead of the default <code class="docutils literal notranslate"><span class="pre">int32</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Examples</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Threshold an intensity volume into a 0/1 mask</span>
+mri<span class="w"> </span>binarize<span class="w"> </span>--i<span class="w"> </span>T1.mgz<span class="w"> </span>--o<span class="w"> </span>brain_thr.mgz<span class="w"> </span>--min<span class="w"> </span><span class="m">50</span><span class="w"> </span>--uchar
+
+<span class="c1"># Extract specific segmentation labels (e.g. left/right hippocampus)</span>
+mri<span class="w"> </span>binarize<span class="w"> </span>--i<span class="w"> </span>aseg.mgz<span class="w"> </span>--o<span class="w"> </span>hippo.mgz<span class="w"> </span>--match<span class="w"> </span><span class="m">17</span><span class="w"> </span><span class="m">53</span>
+
+<span class="c1"># Everything outside a range, using the --in/--out aliases</span>
+mri<span class="w"> </span>binarize<span class="w"> </span>--in<span class="w"> </span>T1.mgz<span class="w"> </span>--out<span class="w"> </span>outside.mgz<span class="w"> </span>--min<span class="w"> </span><span class="m">50</span><span class="w"> </span>--max<span class="w"> </span><span class="m">150</span><span class="w"> </span>--inv
+</pre></div>
+</div>
+<p>Run <code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">-h</span></code> or <code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">&lt;subcommand&gt;</span> <span class="pre">-h</span></code> for a full argument summary with defaults.</p>
+</section>
 </section>
 <hr class="docutils" />
 <section id="segreg-segmentation-based-registration">

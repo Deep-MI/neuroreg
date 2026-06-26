@@ -256,8 +256,6 @@
     <span class="n">create_image_like</span><span class="p">,</span>
     <span class="n">header_map_image</span><span class="p">,</span>
     <span class="n">load_image</span><span class="p">,</span>
-    <span class="n">mask_geometry_differs</span><span class="p">,</span>
-    <span class="n">reslice_and_apply_mask</span><span class="p">,</span>
     <span class="n">reslice_r2r_image</span><span class="p">,</span>
     <span class="n">save_image</span><span class="p">,</span>
 <span class="p">)</span>
@@ -346,12 +344,13 @@
             <span class="s2">&quot;With no --transform and no --ref the image is read and written as-is</span><span class="se">\n</span><span class="s2">&quot;</span>
             <span class="s2">&quot;(no mapping or reslicing); the output format is taken from the --out</span><span class="se">\n</span><span class="s2">&quot;</span>
             <span class="s2">&quot;file extension, so this converts between any formats nibabel supports</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;(e.g. .mgz, .nii, .nii.gz, .img/.hdr). --mask and the dtype/scaling</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;flags also apply on the native grid without reslicing.&quot;</span>
+            <span class="s2">&quot;(e.g. .mgz, .nii, .nii.gz, .img/.hdr). The dtype/scaling flags also</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;apply on the native grid without reslicing. To mask a volume, use</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;&#39;mri mask&#39;.&quot;</span>
         <span class="p">),</span>
         <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentDefaultsHelpFormatter</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--in&quot;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;input_file&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FILE&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Input image.&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--in&quot;</span><span class="p">,</span> <span class="s2">&quot;--i&quot;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;input_file&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FILE&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Input image.&quot;</span><span class="p">)</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--transform&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FILE&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Optional linear transform to apply.&quot;</span><span class="p">)</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
         <span class="s2">&quot;--transform-format&quot;</span><span class="p">,</span>
@@ -365,6 +364,7 @@
     <span class="p">)</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
         <span class="s2">&quot;--out&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;--o&quot;</span><span class="p">,</span>
         <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FILE&quot;</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Output image filename. The extension selects the output format (any nibabel format).&quot;</span><span class="p">,</span>
@@ -391,30 +391,6 @@
         <span class="s2">&quot;--inverse&quot;</span><span class="p">,</span>
         <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Apply the inverse of the supplied transform.&quot;</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--mask&quot;</span><span class="p">,</span>
-        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FILE&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="p">(</span>
-            <span class="s2">&quot;Optional binary mask. After reslicing, keep voxels where mask &gt; --mask-threshold &quot;</span>
-            <span class="s2">&quot;and set the rest to --mask-fill. The mask is resampled (nearest neighbor) into the &quot;</span>
-            <span class="s2">&quot;output geometry when its grid differs. With no --transform/--ref this reduces to &quot;</span>
-            <span class="s2">&quot;FreeSurfer mri_mask.&quot;</span>
-        <span class="p">),</span>
-    <span class="p">)</span>
-    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--mask-threshold&quot;</span><span class="p">,</span>
-        <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
-        <span class="n">default</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
-        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;T&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Voxels with mask value strictly greater than this are kept (default: 0).&quot;</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--mask-fill&quot;</span><span class="p">,</span>
-        <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
-        <span class="n">default</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
-        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;V&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Value assigned to voxels outside the mask (default: 0).&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">dtype_group</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">add_mutually_exclusive_group</span><span class="p">()</span>
     <span class="n">dtype_group</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
@@ -491,10 +467,6 @@
             <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;--header-only cannot be combined with scaling flags.&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">robust_low</span> <span class="o">!=</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">ns</span><span class="o">.</span><span class="n">robust_high</span> <span class="o">!=</span> <span class="mf">0.999</span><span class="p">:</span>
             <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;--header-only cannot be combined with robust scaling flags.&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;--header-only cannot be combined with --mask.&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">mask</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">mask_threshold</span> <span class="o">!=</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">ns</span><span class="o">.</span><span class="n">mask_fill</span> <span class="o">!=</span> <span class="mf">0.0</span><span class="p">):</span>
-        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;--mask-threshold and --mask-fill require --mask.&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">scale_mode</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">target_max</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;--target-max requires --scale-mode rescale or --scale-mode robust.&quot;</span><span class="p">)</span>
@@ -806,22 +778,10 @@
         <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">transform</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">ns</span><span class="o">.</span><span class="n">ref</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># No geometry change requested: read and write on the native grid</span>
             <span class="c1"># without resampling. This covers pure format conversion (chosen by</span>
-            <span class="c1"># the --out extension), as well as mask-only and dtype/scale-only</span>
-            <span class="c1"># operations. Interpolation would only average voxels, so it is</span>
-            <span class="c1"># skipped here to keep voxel values and dtype intact.</span>
+            <span class="c1"># the --out extension), as well as dtype/scale-only operations.</span>
+            <span class="c1"># Interpolation would only average voxels, so it is skipped here to</span>
+            <span class="c1"># keep voxel values and dtype intact.</span>
             <span class="n">mapped_img</span> <span class="o">=</span> <span class="n">mov_img</span>
-            <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">mask_img</span> <span class="o">=</span> <span class="n">load_image</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">mask</span><span class="p">)</span>
-                <span class="n">native_affine</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mov_img</span><span class="o">.</span><span class="n">affine</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
-                <span class="n">native_shape</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">mov_img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">3</span><span class="p">])</span>
-                <span class="k">if</span> <span class="n">mask_geometry_differs</span><span class="p">(</span><span class="n">mask_img</span><span class="p">,</span> <span class="n">native_affine</span><span class="p">,</span> <span class="n">native_shape</span><span class="p">):</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Mask:      geometry differs from input; resampling mask to input grid (nearest).&quot;</span><span class="p">)</span>
-                <span class="n">mapped_img</span> <span class="o">=</span> <span class="n">reslice_and_apply_mask</span><span class="p">(</span>
-                    <span class="n">mapped_img</span><span class="p">,</span>
-                    <span class="n">mask_img</span><span class="p">,</span>
-                    <span class="n">threshold</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">mask_threshold</span><span class="p">,</span>
-                    <span class="n">fill</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">mask_fill</span><span class="p">,</span>
-                <span class="p">)</span>
             <span class="n">mapped_img</span> <span class="o">=</span> <span class="n">_convert_output_image</span><span class="p">(</span>
                 <span class="n">mapped_img</span><span class="p">,</span>
                 <span class="n">mov_img</span><span class="p">,</span>
@@ -844,16 +804,6 @@
                 <span class="n">padding_value</span><span class="o">=</span><span class="n">padding_value</span><span class="p">,</span>
                 <span class="n">keep_dtype</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
             <span class="p">)</span>
-            <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">mask_img</span> <span class="o">=</span> <span class="n">load_image</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">mask</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">mask_geometry_differs</span><span class="p">(</span><span class="n">mask_img</span><span class="p">,</span> <span class="n">target_affine</span><span class="p">,</span> <span class="n">target_shape</span><span class="p">):</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Mask:      geometry differs from output; resampling mask to output grid (nearest).&quot;</span><span class="p">)</span>
-                <span class="n">mapped_img</span> <span class="o">=</span> <span class="n">reslice_and_apply_mask</span><span class="p">(</span>
-                    <span class="n">mapped_img</span><span class="p">,</span>
-                    <span class="n">mask_img</span><span class="p">,</span>
-                    <span class="n">threshold</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">mask_threshold</span><span class="p">,</span>
-                    <span class="n">fill</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">mask_fill</span><span class="p">,</span>
-                <span class="p">)</span>
             <span class="n">mapped_img</span> <span class="o">=</span> <span class="n">_convert_output_image</span><span class="p">(</span>
                 <span class="n">mapped_img</span><span class="p">,</span>
                 <span class="n">mov_img</span><span class="p">,</span>
