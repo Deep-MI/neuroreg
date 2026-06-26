@@ -51,7 +51,13 @@ def _voxsize(img: Any) -> tuple[float, float, float]:
     return tuple(float(np.linalg.norm(affine[:3, i])) for i in range(3))
 
 
-def compare_images(a: Any, b: Any, *, pix_thresh: float = 0.0) -> ImageDiff:
+def compare_images(
+    a: Any,
+    b: Any,
+    *,
+    pix_thresh: float = 0.0,
+    compare_pixels: bool = True,
+) -> ImageDiff:
     """Compare two images and return a structured difference report.
 
     Parameters
@@ -60,7 +66,13 @@ def compare_images(a: Any, b: Any, *, pix_thresh: float = 0.0) -> ImageDiff:
         Loaded nibabel-like images.
     pix_thresh : float, default=0.0
         Voxel differences with absolute value at or below this are not counted
-        in ``n_voxels_differ``. Only used when the shapes match.
+        in ``n_voxels_differ``. Only used when the shapes match and
+        ``compare_pixels`` is ``True``.
+    compare_pixels : bool, default=True
+        When ``False`` skip pixel-data comparison entirely (no ``.dataobj``
+        access). The pixel fields of the returned ``ImageDiff`` will be
+        ``-1``, ``nan``, and ``None`` respectively. Useful for fast header-only
+        checks before deciding whether to pay the cost of loading voxel data.
 
     Returns
     -------
@@ -80,7 +92,7 @@ def compare_images(a: Any, b: Any, *, pix_thresh: float = 0.0) -> ImageDiff:
     n_voxels_differ = -1
     max_abs_diff = float("nan")
     max_diff_loc: tuple[int, ...] | None = None
-    if shape1 == shape2:
+    if compare_pixels and shape1 == shape2:
         d1 = np.asarray(a.dataobj, dtype=np.float64)
         d2 = np.asarray(b.dataobj, dtype=np.float64)
         absdiff = np.abs(d1 - d2)

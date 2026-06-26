@@ -296,7 +296,8 @@ def _main_diff(ns: argparse.Namespace) -> None:
     try:
         v1 = load_image(ns.vol1)
         v2 = load_image(ns.vol2)
-        d = compare_images(v1, v2, pix_thresh=ns.thresh)
+        # Header-only first: voxel data are not materialized yet (nibabel is lazy).
+        d = compare_images(v1, v2, compare_pixels=False)
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -330,6 +331,8 @@ def _main_diff(ns: argparse.Namespace) -> None:
         if ns.exit_on_diff:
             sys.exit(status)
 
+    # Only materialize pixel data once header checks have passed (or --no-exit-on-diff).
+    d = compare_images(v1, v2, pix_thresh=ns.thresh, compare_pixels=True)
     if ns.count:
         print(f"diffcount {d.n_voxels_differ}")
     if d.max_abs_diff > ns.thresh and d.n_voxels_differ > ns.count_thresh:
