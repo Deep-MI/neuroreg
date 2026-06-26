@@ -287,6 +287,60 @@ class TestDiff:
 
         assert _run_diff([str(a), str(b), "--count-thresh", "5"]) == 0
 
+    def test_skip_res_ignores_resolution_diff(self, tmp_path: Path):
+        # Changing voxel sizes also changes geometry, so skipping res alone advances
+        # past the 102 check but hits the 104 geometry check — not 102.
+        z = np.zeros((2, 2, 2), dtype=np.float32)
+        a = _write_image(tmp_path / "a.nii.gz", z, affine=np.eye(4))
+        b = _write_image(tmp_path / "b.nii.gz", z, affine=np.diag([2.0, 2.0, 2.0, 1.0]))
+
+        assert _run_diff([str(a), str(b), "--skip-res"]) == 104
+
+    def test_notallow_res_is_alias_for_skip_res(self, tmp_path: Path):
+        z = np.zeros((2, 2, 2), dtype=np.float32)
+        a = _write_image(tmp_path / "a.nii.gz", z, affine=np.eye(4))
+        b = _write_image(tmp_path / "b.nii.gz", z, affine=np.diag([2.0, 2.0, 2.0, 1.0]))
+
+        assert _run_diff([str(a), str(b), "--notallow-res"]) == 104
+
+    def test_skip_geo_ignores_geometry_diff(self, tmp_path: Path):
+        affine_b = np.eye(4)
+        affine_b[0, 3] = 5.0
+        a = _write_image(tmp_path / "a.nii.gz", np.zeros((2, 2, 2), dtype=np.float32), affine=np.eye(4))
+        b = _write_image(tmp_path / "b.nii.gz", np.zeros((2, 2, 2), dtype=np.float32), affine=affine_b)
+
+        assert _run_diff([str(a), str(b), "--skip-geo"]) == 0
+
+    def test_skip_prec_ignores_dtype_diff(self, tmp_path: Path):
+        data = np.zeros((2, 2, 2))
+        a = _write_image(tmp_path / "a.nii.gz", data.astype(np.uint8))
+        b = _write_image(tmp_path / "b.nii.gz", data.astype(np.int16))
+
+        assert _run_diff([str(a), str(b), "--skip-prec"]) == 0
+
+    def test_skip_pix_ignores_pixel_diff(self, tmp_path: Path, capsys):
+        a_data = np.zeros((2, 2, 2), dtype=np.float32)
+        b_data = a_data.copy()
+        b_data[0, 0, 0] = 99.0
+        a = _write_image(tmp_path / "a.nii.gz", a_data)
+        b = _write_image(tmp_path / "b.nii.gz", b_data)
+
+        assert _run_diff([str(a), str(b), "--skip-pix"]) == 0
+
+    def test_notallow_pix_notallow_geo_fastsurfer_pattern(self, tmp_path: Path):
+        # Mirrors the FastSurfer long_prepare_template.sh usage:
+        # mri_diff --notallow-pix --notallow-geo vol1 vol2 --res-thresh 0.000001
+        # Checks only resolution (tight threshold) — pixels and geometry are skipped.
+        affine_b = np.eye(4)
+        affine_b[0, 3] = 5.0  # geometry differs
+        a_data = np.zeros((2, 2, 2), dtype=np.float32)
+        b_data = a_data.copy()
+        b_data[0, 0, 0] = 99.0  # pixels differ
+        a = _write_image(tmp_path / "a.nii.gz", a_data, affine=np.eye(4))
+        b = _write_image(tmp_path / "b.nii.gz", b_data, affine=affine_b)
+
+        assert _run_diff([str(a), str(b), "--notallow-pix", "--notallow-geo", "--res-thresh", "0.000001"]) == 0
+
 
 class TestBinarize:
     def test_min_max_range_default_int32(self, tmp_path: Path):
