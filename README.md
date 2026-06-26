@@ -22,6 +22,7 @@ The main user-facing tools are:
 - **`segreg`** – segmentation-based registration via label centroids
   (rigid/affine, including atlas-centroid and upright/self-flip modes)
 - **`lta`** – transform comparison, inversion, concatenation, and conversion utilities
+- **`mri`** – small image-volume utilities (`mask`, …; analogous to FreeSurfer's `mri_*` tools)
 
 This project is a work-in-progress in an early development stage. It is developed by
 the creator of FreeSurfer's `mri_robust_register` as an efficient pure Python
@@ -289,12 +290,16 @@ supported.
 
 ```
 vol2vol --in <input.nii.gz> --out <output.nii.gz> [options]
+# or equivalently (FreeSurfer-style short flags):
+vol2vol --i <input.nii.gz> --o <output.nii.gz> [options]
 ```
 
 **Common options**
 
 | Argument                                     | Default  | Description                                                                                                                                                                                    |
 |----------------------------------------------|----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `--in FILE`, `--i FILE`                      | —        | Input image (required).                                                                                                                                                                        |
+| `--out FILE`, `--o FILE`                     | —        | Output image (required). Extension selects the format.                                                                                                                                         |
 | `--transform FILE`                           | identity | Optional linear transform to apply.                                                                                                                                                            |
 | `--transform-format {lta,xfm,fsl,...}`       | infer    | Override transform-format inference for ambiguous suffixes.                                                                                                                                    |
 | `--ref FILE`                                 | —        | Optional target/reference geometry. Overrides geometry stored in the LTA.                                                                                                                      |
@@ -308,9 +313,8 @@ vol2vol --in <input.nii.gz> --out <output.nii.gz> [options]
 | `--target-max FLOAT`                         | inferred | Upper target value for `rescale` / `robust`.                                                                                                                                                   |
 | `--robust-low FLOAT`                         | `0.0`    | Lower robust quantile for `--scale-mode robust`.                                                                                                                                               |
 | `--robust-high FLOAT`                        | `0.999`  | Upper robust quantile for `--scale-mode robust`.                                                                                                                                               |
-| `--mask FILE`                                | —        | Mask the output: keep voxels where mask > threshold, else `--mask-fill`. Nearest-resampled into the output grid when geometries differ. With no `--transform`/`--ref` this matches `mri_mask`. |
-| `--mask-threshold T`                         | `0`      | Keep voxels with mask value strictly greater than this.                                                                                                                                        |
-| `--mask-fill V`                              | `0`      | Value assigned to voxels outside the mask.                                                                                                                                                     |
+
+To mask a volume, use `mri mask` (see below).
 
 **Examples**
 
@@ -330,14 +334,179 @@ vol2vol --in image.mgz --out image_uchar.mgz --out-dtype uint8 --scale-mode robu
 # Apply the transform to the header only
 vol2vol --in bold.nii.gz --transform bold_to_t1.lta --header-only --out bold_header_in_t1.nii.gz
 
-# Apply a brain mask in the same geometry (replacement for FreeSurfer mri_mask)
-vol2vol --in conformed.mgz --mask brainmask.mgz --out masked.mgz
-
 # Convert between image formats — output format is chosen by the --out extension
 vol2vol --in image.mgz --out image.nii.gz
 ```
 
 Run `vol2vol -h` for a full argument summary with defaults.
+
+---
+
+### `mri` — image-volume utilities
+
+Small `mri_*`-style volume utilities grouped under a single command, in the same
+spirit as the `lta` transform CLI. Available subcommands are `mask`, `info`,
+`diff`, and `binarize`. The argument conventions follow FreeSurfer's `mri_*`
+tools where possible.
+
+```
+mri mask <input> <mask> <output> [options]
+mri info <input> [selectors]
+mri diff <vol1> <vol2> [options]
+mri binarize --i <input> --o <output> (--min|--max|--match ...) [options]
+```
+
+#### `mri mask` — apply a binary mask
+
+Keeps voxels where the mask value is strictly greater than `--threshold` and
+sets the rest to `--oval`, matching FreeSurfer's `mri_mask` (same positional
+`<in> <mask> <out>` argument order). The mask is resampled (nearest neighbor)
+into the input geometry when its grid differs. The input dtype is preserved; the
+output format follows the output extension.
+
+This is a single-space operation — it does not map between geometries. To mask
+before or after a transform, compose with `vol2vol`:
+
+- `mri mask …` then `vol2vol …` → mask-then-map (mask in the moving-image grid)
+- `vol2vol …` then `mri mask …` → map-then-mask (mask in the reference grid)
+
+**Arguments**
+
+| Argument             | Default | Description                                                    |
+|----------------------|---------|----------------------------------------------------------------|
+| `in` (positional)    | —       | Input image to mask.                                           |
+| `mask` (positional)  | —       | Binary mask image.                                             |
+| `out` (positional)   | —       | Output image filename; the extension selects the format.       |
+| `-T`, `--threshold T`| `0`     | Keep voxels with mask value strictly greater than this.        |
+| `--oval V`           | `0`     | Value assigned to voxels outside the mask.                     |
+
+**Examples**
+
+```bash
+# Apply a brain mask in the same geometry (replacement for FreeSurfer mri_mask)
+mri mask conformed.mgz brainmask.mgz masked.mgz
+
+# Mask, then resample into a reference grid (mask-then-map)
+mri mask bold.nii.gz bold_brain.nii.gz bold_masked.nii.gz
+vol2vol --in bold_masked.nii.gz --transform bold_to_t1.lta --ref T1.mgz --out bold_in_t1.nii.gz
+```
+
+#### `mri info` — print header and geometry information
+
+Prints header and geometry information for a volume, analogous to FreeSurfer's
+`mri_info`. With no selector flags a full human-readable dump is printed.
+Selector flags print only the requested value(s), one per line, for scripting.
+
+**Arguments**
+
+| Argument            | Description                                                |
+|---------------------|------------------------------------------------------------|
+| `FILE` (positional) | Input image.                                               |
+| `--dim`             | Print dimensions: `w h d`.                                 |
+| `--res`             | Print voxel sizes: `x y z`.                                |
+| `--voxvol`          | Print the voxel volume.                                    |
+| `--type`            | Print the data dtype.                                      |
+| `--nframes`         | Print the number of frames.                                |
+| `--orientation`, `--ori` | Print the orientation string (e.g. `LIA`).            |
+| `--cras`            | Print the volume center RAS: `c_r c_a c_s`.                |
+| `--vox2ras`         | Print the voxel-to-RAS (scanner) matrix.                   |
+| `--ras2vox`         | Print the RAS-to-voxel matrix.                             |
+| `--vox2ras-tkr`     | Print the voxel-to-tkRAS matrix.                           |
+| `--stats`           | Print voxel value stats: `min max mean`.                  |
+
+**Examples**
+
+```bash
+# Full information dump
+mri info orig.mgz
+
+# Scriptable single fields
+mri info orig.mgz --dim          # e.g. "256 256 256"
+mri info orig.mgz --res          # e.g. "1.000000 1.000000 1.000000"
+mri info orig.mgz --orientation  # e.g. "LIA"
+```
+
+#### `mri diff` — compare two volumes
+
+Compares two volumes, analogous to FreeSurfer's `mri_diff`. Checks run in order
+and (unless `--no-exit-on-diff`) the command exits at the first difference with a
+FreeSurfer-compatible status code. Acquisition-parameter (TR/TE/TI/flip) checks
+are not performed.
+
+**Exit codes**
+
+| Code | Meaning                                                          |
+|------|-----------------------------------------------------------------|
+| `0`  | Volumes are the same.                                            |
+| `1`  | Error (e.g. a file could not be read).                          |
+| `101`| Dimensions differ (always exits).                               |
+| `102`| Voxel resolution differs (> `--res-thresh`).                    |
+| `104`| Geometry / vox2ras differs (> `--geo-thresh`).                  |
+| `105`| Data type (precision) differs.                                  |
+| `106`| Voxel values differ (max \|diff\| > `--thresh` and count > `--count-thresh`). |
+
+**Arguments**
+
+| Argument             | Default | Description                                                       |
+|----------------------|---------|-------------------------------------------------------------------|
+| `vol1` (positional)  | —       | First image.                                                      |
+| `vol2` (positional)  | —       | Second image.                                                     |
+| `--thresh T`         | `0`     | Voxel value difference threshold.                                 |
+| `--res-thresh T`     | `0`     | Voxel-size difference threshold.                                  |
+| `--geo-thresh T`     | `0`     | vox2ras element difference threshold.                             |
+| `--count-thresh N`   | `0`     | Require more than N differing voxels to flag a pixel difference.  |
+| `--count`            | off     | Print the number of differing voxels (`diffcount N`).            |
+| `--no-exit-on-diff`  | off     | Report all differences instead of exiting at the first one.      |
+
+**Examples**
+
+```bash
+# Quick equality check (use the exit code in scripts)
+mri diff a.mgz b.mgz && echo "identical"
+
+# Tolerant comparison with a differing-voxel count
+mri diff a.mgz b.mgz --thresh 1e-4 --count
+```
+
+#### `mri binarize` — binarize by intensity range or label values
+
+Binarizes an image, analogous to FreeSurfer's `mri_binarize`. A voxel is
+selected when it matches one of `--match` (exact), or lies in the inclusive
+range `[--min, --max]` (either bound may be omitted). Selected voxels are set to
+`--binval`, the rest to `--binvalnot`; `--inv` swaps that assignment. At least
+one of `--min`, `--max`, or `--match` is required. I/O uses FreeSurfer's `--i`
+/`--o`, with `--in`/`--out` accepted as aliases.
+
+**Arguments**
+
+| Argument                | Default | Description                                                  |
+|-------------------------|---------|--------------------------------------------------------------|
+| `--i`, `--in FILE`      | —       | Input image (required).                                      |
+| `--o`, `--out FILE`     | —       | Output image (required).                                     |
+| `--min MIN`             | —       | Inclusive lower intensity bound.                             |
+| `--max MAX`             | —       | Inclusive upper intensity bound.                             |
+| `--match V [V ...]`     | —       | Match these values exactly (e.g. label ids).                |
+| `--binval V`            | `1`     | Output value for selected voxels.                           |
+| `--binvalnot V`         | `0`     | Output value for unselected voxels.                         |
+| `--inv`                 | off     | Swap the selected/unselected output values.                 |
+| `--abs`                 | off     | Take the absolute value before thresholding.                |
+| `--frame N`             | all     | For 4D input, binarize this frame only.                     |
+| `--uchar`               | off     | Write `uint8` output instead of the default `int32`.        |
+
+**Examples**
+
+```bash
+# Threshold an intensity volume into a 0/1 mask
+mri binarize --i T1.mgz --o brain_thr.mgz --min 50 --uchar
+
+# Extract specific segmentation labels (e.g. left/right hippocampus)
+mri binarize --i aseg.mgz --o hippo.mgz --match 17 53
+
+# Everything outside a range, using the --in/--out aliases
+mri binarize --in T1.mgz --out outside.mgz --min 50 --max 150 --inv
+```
+
+Run `mri -h` or `mri <subcommand> -h` for a full argument summary with defaults.
 
 ---
 

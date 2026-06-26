@@ -10,4 +10,5 @@ segreg       Segmentation-centroid registration that writes LTAs.
 segcentroids Write centroid target JSON files from segmentations.
 lta          LTA transform utilities (diff, invert, concat).
 vol2vol      Apply linear transforms to images, reslice to reference geometry, or map headers.
+mri          Image volume utilities (mask, info, diff, binarize).
 """

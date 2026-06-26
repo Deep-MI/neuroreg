@@ -14,8 +14,6 @@ from ..image import (
     create_image_like,
     header_map_image,
     load_image,
-    mask_geometry_differs,
-    reslice_and_apply_mask,
     reslice_r2r_image,
     save_image,
 )
@@ -104,12 +102,13 @@ def _build_parser() -> argparse.ArgumentParser:
             "With no --transform and no --ref the image is read and written as-is\n"
             "(no mapping or reslicing); the output format is taken from the --out\n"
             "file extension, so this converts between any formats nibabel supports\n"
-            "(e.g. .mgz, .nii, .nii.gz, .img/.hdr). --mask and the dtype/scaling\n"
-            "flags also apply on the native grid without reslicing."
+            "(e.g. .mgz, .nii, .nii.gz, .img/.hdr). The dtype/scaling flags also\n"
+            "apply on the native grid without reslicing. To mask a volume, use\n"
+            "'mri mask'."
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("--in", required=True, dest="input_file", metavar="FILE", help="Input image.")
+    parser.add_argument("--in", "--i", required=True, dest="input_file", metavar="FILE", help="Input image.")
     parser.add_argument("--transform", metavar="FILE", help="Optional linear transform to apply.")
     parser.add_argument(
         "--transform-format",
@@ -123,6 +122,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--out",
+        "--o",
         required=True,
         metavar="FILE",
         help="Output image filename. The extension selects the output format (any nibabel format).",
@@ -149,30 +149,6 @@ def _build_parser() -> argparse.ArgumentParser:
         "--inverse",
         action="store_true",
         help="Apply the inverse of the supplied transform.",
-    )
-    parser.add_argument(
-        "--mask",
-        metavar="FILE",
-        help=(
-            "Optional binary mask. After reslicing, keep voxels where mask > --mask-threshold "
-            "and set the rest to --mask-fill. The mask is resampled (nearest neighbor) into the "
-            "output geometry when its grid differs. With no --transform/--ref this reduces to "
-            "FreeSurfer mri_mask."
-        ),
-    )
-    parser.add_argument(
-        "--mask-threshold",
-        type=float,
-        default=0.0,
-        metavar="T",
-        help="Voxels with mask value strictly greater than this are kept (default: 0).",
-    )
-    parser.add_argument(
-        "--mask-fill",
-        type=float,
-        default=0.0,
-        metavar="V",
-        help="Value assigned to voxels outside the mask (default: 0).",
     )
     dtype_group = parser.add_mutually_exclusive_group()
     dtype_group.add_argument(
@@ -249,10 +225,6 @@ def _validate_args(ns: argparse.Namespace, parser: argparse.ArgumentParser) -> N
             parser.error("--header-only cannot be combined with scaling flags.")
         if ns.robust_low != 0.0 or ns.robust_high != 0.999:
             parser.error("--header-only cannot be combined with robust scaling flags.")
-        if ns.mask is not None:
-            parser.error("--header-only cannot be combined with --mask.")
-    if ns.mask is None and (ns.mask_threshold != 0.0 or ns.mask_fill != 0.0):
-        parser.error("--mask-threshold and --mask-fill require --mask.")
     if ns.scale_mode is None:
         if ns.target_max is not None:
             parser.error("--target-max requires --scale-mode rescale or --scale-mode robust.")
@@ -562,22 +534,10 @@ def main(args=None) -> None:
         elif ns.transform is None and ns.ref is None:
             # No geometry change requested: read and write on the native grid
             # without resampling. This covers pure format conversion (chosen by
-            # the --out extension), as well as mask-only and dtype/scale-only
-            # operations. Interpolation would only average voxels, so it is
-            # skipped here to keep voxel values and dtype intact.
+            # the --out extension), as well as dtype/scale-only operations.
+            # Interpolation would only average voxels, so it is skipped here to
+            # keep voxel values and dtype intact.
             mapped_img = mov_img
-            if ns.mask is not None:
-                mask_img = load_image(ns.mask)
-                native_affine = np.asarray(mov_img.affine, dtype=np.float64)
-                native_shape = tuple(int(v) for v in mov_img.shape[:3])
-                if mask_geometry_differs(mask_img, native_affine, native_shape):
-                    print("Mask:      geometry differs from input; resampling mask to input grid (nearest).")
-                mapped_img = reslice_and_apply_mask(
-                    mapped_img,
-                    mask_img,
-                    threshold=ns.mask_threshold,
-                    fill=ns.mask_fill,
-                )
             mapped_img = _convert_output_image(
                 mapped_img,
                 mov_img,
@@ -600,16 +560,6 @@ def main(args=None) -> None:
                 padding_value=padding_value,
                 keep_dtype=False,
             )
-            if ns.mask is not None:
-                mask_img = load_image(ns.mask)
-                if mask_geometry_differs(mask_img, target_affine, target_shape):
-                    print("Mask:      geometry differs from output; resampling mask to output grid (nearest).")
-                mapped_img = reslice_and_apply_mask(
-                    mapped_img,
-                    mask_img,
-                    threshold=ns.mask_threshold,
-                    fill=ns.mask_fill,
-                )
             mapped_img = _convert_output_image(
                 mapped_img,
                 mov_img,

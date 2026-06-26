@@ -4,7 +4,7 @@ build-backend = 'setuptools.build_meta'
 
 [project]
 name = 'neuroreg'
-version = '0.9.0'
+version = '0.10.0.dev0'
 description = 'A package for 3D neuroimaging registration with PyTorch.'
 readme = 'README.md'
 license = {file = 'LICENSE'}
@@ -26,6 +26,7 @@ classifiers = [
     'Programming Language :: Python :: 3.11',
     'Programming Language :: Python :: 3.12',
     'Programming Language :: Python :: 3.13',
+    'Programming Language :: Python :: 3.14',
     'Natural Language :: English',
     'License :: OSI Approved :: MIT License',
     'Intended Audience :: Science/Research',
@@ -99,6 +100,7 @@ segreg          = "neuroreg.cli.segreg:main"
 segcentroids    = "neuroreg.cli.segcentroids:main"
 lta             = "neuroreg.cli.lta:main"
 vol2vol         = "neuroreg.cli.vol2vol:main"
+mri             = "neuroreg.cli.mri:main"
 neuroreg-sys_info  = "neuroreg.cli.sys_info:run"
 
 [tool.setuptools]
@@ -143,7 +145,7 @@ select = [
 "notebooks/*.ipynb" = ["E402"]
 
 [tool.codespell]
-ignore-words-list = 'fro'
+ignore-words-list = 'fro,TE'
 check-filenames = true
 check-hidden = true
 skip = './.git,./build,./.mypy_cache,./.pytest_cache,./.venv,./doc-build,*/data/*,./neuroreg-data,./scratch,./.agent-work,./.agentbridge'
