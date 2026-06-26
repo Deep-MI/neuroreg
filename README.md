@@ -290,12 +290,16 @@ supported.
 
 ```
 vol2vol --in <input.nii.gz> --out <output.nii.gz> [options]
+# or equivalently (FreeSurfer-style short flags):
+vol2vol --i <input.nii.gz> --o <output.nii.gz> [options]
 ```
 
 **Common options**
 
 | Argument                                     | Default  | Description                                                                                                                                                                                    |
 |----------------------------------------------|----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `--in FILE`, `--i FILE`                      | —        | Input image (required).                                                                                                                                                                        |
+| `--out FILE`, `--o FILE`                     | —        | Output image (required). Extension selects the format.                                                                                                                                         |
 | `--transform FILE`                           | identity | Optional linear transform to apply.                                                                                                                                                            |
 | `--transform-format {lta,xfm,fsl,...}`       | infer    | Override transform-format inference for ambiguous suffixes.                                                                                                                                    |
 | `--ref FILE`                                 | —        | Optional target/reference geometry. Overrides geometry stored in the LTA.                                                                                                                      |

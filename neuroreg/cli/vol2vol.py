@@ -108,7 +108,7 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("--in", required=True, dest="input_file", metavar="FILE", help="Input image.")
+    parser.add_argument("--in", "--i", required=True, dest="input_file", metavar="FILE", help="Input image.")
     parser.add_argument("--transform", metavar="FILE", help="Optional linear transform to apply.")
     parser.add_argument(
         "--transform-format",
@@ -122,6 +122,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--out",
+        "--o",
         required=True,
         metavar="FILE",
         help="Output image filename. The extension selects the output format (any nibabel format).",
