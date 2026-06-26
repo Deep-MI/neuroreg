@@ -904,9 +904,9 @@ apply on the native grid without reslicing. To mask a volume, use
 </p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">vol2vol</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="ow">in</span> <span class="n">FILE</span> <span class="p">[</span><span class="o">--</span><span class="n">transform</span> <span class="n">FILE</span><span class="p">]</span>
                <span class="p">[</span><span class="o">--</span><span class="n">transform</span><span class="o">-</span><span class="nb">format</span> <span class="p">{</span><span class="n">lta</span><span class="p">,</span><span class="n">xfm</span><span class="p">,</span><span class="n">fsl</span><span class="p">,</span><span class="n">regdat</span><span class="p">,</span><span class="n">itk</span><span class="p">,</span><span class="n">antsmat</span><span class="p">,</span><span class="n">afni</span><span class="p">,</span><span class="n">niftyreg</span><span class="p">}]</span>
-               <span class="p">[</span><span class="o">--</span><span class="n">ref</span> <span class="n">FILE</span><span class="p">]</span> <span class="o">--</span><span class="n">out</span> <span class="n">FILE</span> <span class="p">[</span><span class="o">--</span><span class="n">interp</span> <span class="p">{</span><span class="n">linear</span><span class="p">,</span><span class="n">cubic</span><span class="p">,</span><span class="n">nearest</span><span class="p">}]</span>
-               <span class="p">[</span><span class="o">--</span><span class="n">pad</span> <span class="n">MODE</span><span class="o">|</span><span class="n">VALUE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">header</span><span class="o">-</span><span class="n">only</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">inverse</span><span class="p">]</span>
-               <span class="p">[</span><span class="o">--</span><span class="n">out</span><span class="o">-</span><span class="n">dtype</span> <span class="n">DTYPE</span> <span class="o">|</span> <span class="o">--</span><span class="n">keep</span><span class="o">-</span><span class="n">dtype</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">ref</span> <span class="n">FILE</span><span class="p">]</span> <span class="o">--</span><span class="n">out</span> <span class="n">FILE</span> <span class="p">[</span><span class="o">--</span><span class="n">interp</span> <span class="p">{</span><span class="n">linear</span><span class="p">,</span><span class="n">cubic</span><span class="p">,</span><span class="n">nearest</span><span class="p">}</span> <span class="o">|</span>
+               <span class="o">--</span><span class="n">trilin</span> <span class="o">|</span> <span class="o">--</span><span class="n">nearest</span> <span class="o">|</span> <span class="o">--</span><span class="n">cubic</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">pad</span> <span class="n">MODE</span><span class="o">|</span><span class="n">VALUE</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">header</span><span class="o">-</span><span class="n">only</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">inverse</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">out</span><span class="o">-</span><span class="n">dtype</span> <span class="n">DTYPE</span> <span class="o">|</span> <span class="o">--</span><span class="n">keep</span><span class="o">-</span><span class="n">dtype</span><span class="p">]</span>
                <span class="p">[</span><span class="o">--</span><span class="n">scale</span><span class="o">-</span><span class="n">mode</span> <span class="p">{</span><span class="n">clamp</span><span class="p">,</span><span class="n">rescale</span><span class="p">,</span><span class="n">robust</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">target</span><span class="o">-</span><span class="nb">max</span> <span class="n">TARGET_MAX</span><span class="p">]</span>
                <span class="p">[</span><span class="o">--</span><span class="n">robust</span><span class="o">-</span><span class="n">low</span> <span class="n">FRAC</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">robust</span><span class="o">-</span><span class="n">high</span> <span class="n">FRAC</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
 </pre></div>
@@ -914,17 +914,17 @@ apply on the native grid without reslicing. To mask a volume, use
 <section id="neuroreg.cli.vol2vol-_build_parser-named-arguments">
 <h3>Named Arguments<a class="headerlink" href="#neuroreg.cli.vol2vol-_build_parser-named-arguments" title="Link to this heading">¶</a></h3>
 <dl class="option-list">
-<dt><kbd>--in, --i</kbd></dt>
-<dd><p>Input image.</p>
+<dt><kbd>--in, --i, --mov</kbd></dt>
+<dd><p>Input (moving) image.</p>
 </dd>
-<dt><kbd>--transform</kbd></dt>
-<dd><p>Optional linear transform to apply.</p>
+<dt><kbd>--transform, --lta</kbd></dt>
+<dd><p>Optional linear transform to apply (any format: .lta, .xfm, FSL .mat, …).</p>
 </dd>
 <dt><kbd>--transform-format</kbd></dt>
 <dd><p>Possible choices: lta, xfm, fsl, regdat, itk, antsmat, afni, niftyreg</p>
 <p>Override transform format inference for ambiguous files such as .txt or .mat.</p>
 </dd>
-<dt><kbd>--ref</kbd></dt>
+<dt><kbd>--ref, --targ</kbd></dt>
 <dd><p>Optional target/reference image geometry. Overrides geometry stored in the transform.</p>
 </dd>
 <dt><kbd>--out, --o</kbd></dt>
@@ -935,23 +935,32 @@ apply on the native grid without reslicing. To mask a volume, use
 <p>Interpolation mode for resampled output.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">'linear'</span></code></p>
 </dd>
+<dt><kbd>--trilin</kbd></dt>
+<dd><p>Trilinear interpolation. Alias for –interp linear.</p>
+</dd>
+<dt><kbd>--nearest</kbd></dt>
+<dd><p>Nearest-neighbour interpolation. Alias for –interp nearest.</p>
+</dd>
+<dt><kbd>--cubic</kbd></dt>
+<dd><p>Cubic interpolation. Alias for –interp cubic.</p>
+</dd>
 <dt><kbd>--pad</kbd></dt>
 <dd><p>Out-of-bounds padding: zero, border, reflection, brightest, or a numeric constant.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">zero</span></code></p>
 </dd>
-<dt><kbd>--header-only</kbd></dt>
+<dt><kbd>--header-only, --no-resample</kbd></dt>
 <dd><p>Apply the transform to the header only and skip interpolation.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
 </dd>
-<dt><kbd>--inverse</kbd></dt>
+<dt><kbd>--inverse, --inv</kbd></dt>
 <dd><p>Apply the inverse of the supplied transform.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
 </dd>
 <dt><kbd>--out-dtype</kbd></dt>
 <dd><p>Explicit final output dtype, or ‘input’ to preserve the moving-image dtype.</p>
 </dd>
-<dt><kbd>--keep-dtype</kbd></dt>
-<dd><p>Write interpolated output in the moving-image dtype. Equivalent to –out-dtype input.</p>
+<dt><kbd>--keep-dtype, --keep-precision</kbd></dt>
+<dd><p>Write output in the moving-image dtype. Equivalent to –out-dtype input.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
 </dd>
 <dt><kbd>--scale-mode</kbd></dt>
