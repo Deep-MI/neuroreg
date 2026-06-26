@@ -108,30 +108,48 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("--in", "--i", required=True, dest="input_file", metavar="FILE", help="Input image.")
-    parser.add_argument("--transform", metavar="FILE", help="Optional linear transform to apply.")
+    parser.add_argument(
+        "--in", "--i", "--mov",
+        required=True, dest="input_file", metavar="FILE", help="Input (moving) image."
+    )
+    parser.add_argument(
+        "--transform", "--lta",
+        metavar="FILE", dest="transform",
+        help="Optional linear transform to apply (any format: .lta, .xfm, FSL .mat, …).",
+    )
     parser.add_argument(
         "--transform-format",
         choices=TRANSFORM_FORMATS,
         help="Override transform format inference for ambiguous files such as .txt or .mat.",
     )
     parser.add_argument(
-        "--ref",
-        metavar="FILE",
+        "--ref", "--targ",
+        metavar="FILE", dest="ref",
         help="Optional target/reference image geometry. Overrides geometry stored in the transform.",
     )
     parser.add_argument(
-        "--out",
-        "--o",
-        required=True,
-        metavar="FILE",
+        "--out", "--o",
+        required=True, metavar="FILE",
         help="Output image filename. The extension selects the output format (any nibabel format).",
     )
-    parser.add_argument(
+    interp_group = parser.add_mutually_exclusive_group()
+    interp_group.add_argument(
         "--interp",
         choices=["linear", "cubic", "nearest"],
         default="linear",
         help="Interpolation mode for resampled output.",
+    )
+    interp_group.add_argument(
+        "--trilin", dest="interp", action="store_const", const="linear",
+        help="Trilinear interpolation. Alias for --interp linear.",
+    )
+    interp_group.add_argument(
+        "--nearest", dest="interp", action="store_const", const="nearest",
+        help="Nearest-neighbour interpolation. Alias for --interp nearest.",
+    )
+    interp_group.add_argument(
+        "--cubic", dest="interp", action="store_const", const="cubic",
+        help="Cubic interpolation. Alias for --interp cubic.",
     )
     parser.add_argument(
         "--pad",
@@ -141,13 +159,13 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Out-of-bounds padding: zero, border, reflection, brightest, or a numeric constant.",
     )
     parser.add_argument(
-        "--header-only",
-        action="store_true",
+        "--header-only", "--no-resample",
+        action="store_true", dest="header_only",
         help="Apply the transform to the header only and skip interpolation.",
     )
     parser.add_argument(
-        "--inverse",
-        action="store_true",
+        "--inverse", "--inv",
+        action="store_true", dest="inverse",
         help="Apply the inverse of the supplied transform.",
     )
     dtype_group = parser.add_mutually_exclusive_group()
@@ -158,9 +176,9 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Explicit final output dtype, or 'input' to preserve the moving-image dtype.",
     )
     dtype_group.add_argument(
-        "--keep-dtype",
-        action="store_true",
-        help="Write interpolated output in the moving-image dtype. Equivalent to --out-dtype input.",
+        "--keep-dtype", "--keep-precision",
+        action="store_true", dest="keep_dtype",
+        help="Write output in the moving-image dtype. Equivalent to --out-dtype input.",
     )
     parser.add_argument(
         "--scale-mode",

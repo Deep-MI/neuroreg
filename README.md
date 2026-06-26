@@ -290,29 +290,32 @@ supported.
 
 ```
 vol2vol --in <input.nii.gz> --out <output.nii.gz> [options]
-# or equivalently (FreeSurfer-style short flags):
-vol2vol --i <input.nii.gz> --o <output.nii.gz> [options]
+# FreeSurfer-style aliases work too:
+vol2vol --mov <input.nii.gz> --targ <ref.mgz> --lta <reg.lta> --o <output.nii.gz>
 ```
 
 **Common options**
 
-| Argument                                     | Default  | Description                                                                                                                                                                                    |
-|----------------------------------------------|----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `--in FILE`, `--i FILE`                      | —        | Input image (required).                                                                                                                                                                        |
-| `--out FILE`, `--o FILE`                     | —        | Output image (required). Extension selects the format.                                                                                                                                         |
-| `--transform FILE`                           | identity | Optional linear transform to apply.                                                                                                                                                            |
-| `--transform-format {lta,xfm,fsl,...}`       | infer    | Override transform-format inference for ambiguous suffixes.                                                                                                                                    |
-| `--ref FILE`                                 | —        | Optional target/reference geometry. Overrides geometry stored in the LTA.                                                                                                                      |
-| `--interp {linear,cubic,nearest}`            | `linear` | Interpolation mode for resampled output.                                                                                                                                                       |
-| `--pad {zero,border,reflection,brightest,N}` | `zero`   | Out-of-bounds fill mode or numeric constant.                                                                                                                                                   |
-| `--inverse`                                  | off      | Apply the inverse transform.                                                                                                                                                                   |
-| `--header-only`                              | off      | Update the affine/header only and skip interpolation.                                                                                                                                          |
-| `--out-dtype DTYPE`                          | auto     | Explicit final dtype such as `uint8`, `int16`, `float32`, or `input`.                                                                                                                          |
-| `--keep-dtype`                               | off      | Alias for `--out-dtype input`.                                                                                                                                                                 |
-| `--scale-mode {clamp,rescale,robust}`        | auto     | Final intensity handling before discrete dtype conversion.                                                                                                                                     |
-| `--target-max FLOAT`                         | inferred | Upper target value for `rescale` / `robust`.                                                                                                                                                   |
-| `--robust-low FLOAT`                         | `0.0`    | Lower robust quantile for `--scale-mode robust`.                                                                                                                                               |
-| `--robust-high FLOAT`                        | `0.999`  | Upper robust quantile for `--scale-mode robust`.                                                                                                                                               |
+| Argument                                                    | Default  | Description                                                                    |
+|-------------------------------------------------------------|----------|--------------------------------------------------------------------------------|
+| `--in FILE`, `--i FILE`, `--mov FILE`                       | —        | Input (moving) image (required).                                               |
+| `--out FILE`, `--o FILE`                                    | —        | Output image (required). Extension selects the format.                         |
+| `--transform FILE`, `--lta FILE`                            | identity | Linear transform to apply (.lta, .xfm, FSL .mat, …).                          |
+| `--transform-format {lta,xfm,fsl,...}`                      | infer    | Override format inference for ambiguous suffixes.                              |
+| `--ref FILE`, `--targ FILE`                                 | —        | Target/reference geometry. Overrides geometry stored in the transform.         |
+| `--interp {linear,cubic,nearest}`                           | `linear` | Interpolation mode for resampled output.                                       |
+| `--trilin`                                                  | —        | Alias for `--interp linear`.                                                   |
+| `--nearest`                                                 | —        | Alias for `--interp nearest`.                                                  |
+| `--cubic`                                                   | —        | Alias for `--interp cubic`.                                                    |
+| `--pad {zero,border,reflection,brightest,N}`                | `zero`   | Out-of-bounds fill mode or numeric constant.                                   |
+| `--inverse`, `--inv`                                        | off      | Apply the inverse transform.                                                   |
+| `--header-only`, `--no-resample`                            | off      | Update the affine/header only and skip interpolation.                          |
+| `--out-dtype DTYPE`                                         | auto     | Explicit final dtype: `uint8`, `int16`, `float32`, `input`, …                 |
+| `--keep-dtype`, `--keep-precision`                          | off      | Preserve the moving-image dtype. Equivalent to `--out-dtype input`.            |
+| `--scale-mode {clamp,rescale,robust}`                       | auto     | Final intensity handling before discrete dtype conversion.                     |
+| `--target-max FLOAT`                                        | inferred | Upper target value for `rescale` / `robust`.                                   |
+| `--robust-low FLOAT`                                        | `0.0`    | Lower robust quantile for `--scale-mode robust`.                               |
+| `--robust-high FLOAT`                                       | `0.999`  | Upper robust quantile for `--scale-mode robust`.                               |
 
 To mask a volume, use `mri mask` (see below).
 
