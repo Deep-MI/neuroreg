@@ -450,16 +450,20 @@ are not performed.
 
 **Arguments**
 
-| Argument             | Default | Description                                                       |
-|----------------------|---------|-------------------------------------------------------------------|
-| `vol1` (positional)  | —       | First image.                                                      |
-| `vol2` (positional)  | —       | Second image.                                                     |
-| `--thresh T`         | `0`     | Voxel value difference threshold.                                 |
-| `--res-thresh T`     | `0`     | Voxel-size difference threshold.                                  |
-| `--geo-thresh T`     | `0`     | vox2ras element difference threshold.                             |
-| `--count-thresh N`   | `0`     | Require more than N differing voxels to flag a pixel difference.  |
-| `--count`            | off     | Print the number of differing voxels (`diffcount N`).            |
-| `--no-exit-on-diff`  | off     | Report all differences instead of exiting at the first one.      |
+| Argument                          | Default | Description                                                       |
+|-----------------------------------|---------|-------------------------------------------------------------------|
+| `vol1` (positional)               | —       | First image.                                                      |
+| `vol2` (positional)               | —       | Second image.                                                     |
+| `--thresh T`                      | `0`     | Voxel value difference threshold.                                 |
+| `--res-thresh T`                  | `0`     | Voxel-size difference threshold.                                  |
+| `--geo-thresh T`                  | `0`     | vox2ras element difference threshold.                             |
+| `--count-thresh N`                | `0`     | Require more than N differing voxels to flag a pixel difference.  |
+| `--count`                         | off     | Print the number of differing voxels (`diffcount N`).            |
+| `--no-exit-on-diff`               | off     | Report all differences instead of exiting at the first one.      |
+| `--skip-res`, `--notallow-res`    | off     | Skip the voxel-resolution check.                                  |
+| `--skip-geo`, `--notallow-geo`    | off     | Skip the geometry / vox2ras check.                                |
+| `--skip-prec`, `--notallow-prec`  | off     | Skip the data-type / precision check.                             |
+| `--skip-pix`, `--notallow-pix`    | off     | Skip the pixel-value check.                                       |
 
 **Examples**
 
@@ -469,6 +473,10 @@ mri diff a.mgz b.mgz && echo "identical"
 
 # Tolerant comparison with a differing-voxel count
 mri diff a.mgz b.mgz --thresh 1e-4 --count
+
+# Resolution-only consistency check (skip geometry and pixel checks) — mirrors
+# the FastSurfer longitudinal template pattern
+mri diff tp1.mgz tp2.mgz --skip-geo --skip-pix --res-thresh 0.000001
 ```
 
 #### `mri binarize` — binarize by intensity range or label values

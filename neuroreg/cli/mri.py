@@ -153,6 +153,31 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="exit_on_diff",
         help="Report all differences instead of exiting at the first one.",
     )
+    diff_p.add_argument(
+        "--skip-res", "--notallow-res",
+        action="store_true", dest="skip_res",
+        help="Skip the voxel-resolution check.",
+    )
+    diff_p.add_argument(
+        "--skip-geo", "--notallow-geo",
+        action="store_true", dest="skip_geo",
+        help="Skip the geometry / vox2ras check.",
+    )
+    diff_p.add_argument(
+        "--skip-prec", "--notallow-prec",
+        action="store_true", dest="skip_prec",
+        help="Skip the data-type / precision check.",
+    )
+    diff_p.add_argument(
+        "--skip-pix", "--notallow-pix",
+        action="store_true", dest="skip_pix",
+        help="Skip the pixel-value check.",
+    )
+    diff_p.add_argument(
+        "--notallow-acq",
+        action="store_true", dest="skip_acq",
+        help="Accepted for FreeSurfer compatibility; acquisition-parameter checks are not performed.",
+    )
 
     # ── binarize ──────────────────────────────────────────────────────────────
     bin_p = sub.add_parser(
@@ -311,7 +336,7 @@ def _main_diff(ns: argparse.Namespace) -> None:
 
     status = 0
 
-    if d.res_max_diff > ns.res_thresh:
+    if not ns.skip_res and d.res_max_diff > ns.res_thresh:
         print("Volumes differ in resolution")
         print(f"v1res {d.voxsize1[0]:f} {d.voxsize1[1]:f} {d.voxsize1[2]:f}")
         print(f"v2res {d.voxsize2[0]:f} {d.voxsize2[1]:f} {d.voxsize2[2]:f}")
@@ -319,29 +344,30 @@ def _main_diff(ns: argparse.Namespace) -> None:
         if ns.exit_on_diff:
             sys.exit(status)
 
-    if d.geo_max_diff > ns.geo_thresh:
+    if not ns.skip_geo and d.geo_max_diff > ns.geo_thresh:
         print(f"Volumes differ in geometry (max vox2ras element diff = {d.geo_max_diff:g})")
         status = 104
         if ns.exit_on_diff:
             sys.exit(status)
 
-    if not d.dtype_match:
+    if not ns.skip_prec and not d.dtype_match:
         print(f"Volumes differ in precision {d.dtype1} {d.dtype2}")
         status = 105
         if ns.exit_on_diff:
             sys.exit(status)
 
     # Only materialize pixel data once header checks have passed (or --no-exit-on-diff).
-    d = compare_images(v1, v2, pix_thresh=ns.thresh, compare_pixels=True)
-    if ns.count:
-        print(f"diffcount {d.n_voxels_differ}")
-    if d.max_abs_diff > ns.thresh and d.n_voxels_differ > ns.count_thresh:
-        print("Volumes differ in pixel data")
-        loc = "" if d.max_diff_loc is None else " at " + " ".join(str(v) for v in d.max_diff_loc)
-        print(f"maxdiff {d.max_abs_diff:g}{loc}")
-        status = 106
-        if ns.exit_on_diff:
-            sys.exit(status)
+    if not ns.skip_pix:
+        d = compare_images(v1, v2, pix_thresh=ns.thresh, compare_pixels=True)
+        if ns.count:
+            print(f"diffcount {d.n_voxels_differ}")
+        if d.max_abs_diff > ns.thresh and d.n_voxels_differ > ns.count_thresh:
+            print("Volumes differ in pixel data")
+            loc = "" if d.max_diff_loc is None else " at " + " ".join(str(v) for v in d.max_diff_loc)
+            print(f"maxdiff {d.max_abs_diff:g}{loc}")
+            status = 106
+            if ns.exit_on_diff:
+                sys.exit(status)
 
     if status == 0:
         print("Volumes are the same")

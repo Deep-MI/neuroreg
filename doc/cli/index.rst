@@ -82,6 +82,7 @@ Image-volume utilities grouped under a single command, analogous to FreeSurfer's
 
    mri diff vol1.mgz vol2.mgz
    mri diff vol1.mgz vol2.mgz --thresh 1e-4 --count
+   mri diff tp1.mgz tp2.mgz --skip-geo --skip-pix --res-thresh 0.000001
 
 **binarize** — binarize by intensity range or matched label values::
 
