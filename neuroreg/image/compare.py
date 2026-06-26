@@ -101,7 +101,10 @@ def compare_images(
         #   NaN vs finite or Inf vs finite → inf (always counts as differing)
         #   finite diff → absdiff value (normal)
         both_nan = np.isnan(d1) & np.isnan(d2)
-        absdiff_safe = np.where(both_nan, 0.0, np.where(np.isfinite(absdiff), absdiff, np.inf))
+        both_posinf = np.isposinf(d1) & np.isposinf(d2)
+        both_neginf = np.isneginf(d1) & np.isneginf(d2)
+        both_same_inf = both_posinf | both_neginf
+        absdiff_safe = np.where(both_nan | both_same_inf, 0.0, np.where(np.isfinite(absdiff), absdiff, np.inf))
         n_voxels_differ = int(np.count_nonzero(absdiff_safe > pix_thresh))
         max_abs_diff = float(absdiff_safe.max()) if absdiff_safe.size else 0.0
         if absdiff_safe.size:
