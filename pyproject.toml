@@ -145,7 +145,7 @@ select = [
 "notebooks/*.ipynb" = ["E402"]
 
 [tool.codespell]
-ignore-words-list = 'fro'
+ignore-words-list = 'fro,TE'
 check-filenames = true
 check-hidden = true
 skip = './.git,./build,./.mypy_cache,./.pytest_cache,./.venv,./doc-build,*/data/*,./neuroreg-data,./scratch,./.agent-work,./.agentbridge'
