@@ -62,6 +62,34 @@ Examples::
    vol2vol --mov aseg.mgz --ref orig.mgz --interp nearest --keep-dtype --out aseg_in_orig.mgz
    vol2vol --mov bold.nii.gz --transform bold_to_t1.lta --header-only --out bold_header_in_t1.nii.gz
 
+mri
+---
+
+Image-volume utilities grouped under a single command, analogous to FreeSurfer's
+``mri_mask``, ``mri_info``, ``mri_diff``, and ``mri_binarize``.
+
+**mask** — apply a binary mask to a volume::
+
+   mri mask input.nii.gz mask.nii.gz output.nii.gz
+   mri mask input.mgz brain_mask.mgz masked.mgz -T 0.5
+
+**info** — print header and geometry information::
+
+   mri info T1.mgz
+   mri info T1.mgz --dim --res --orientation
+
+**diff** — compare two volumes and exit nonzero when they differ::
+
+   mri diff vol1.mgz vol2.mgz
+   mri diff vol1.mgz vol2.mgz --thresh 1e-4 --count
+   mri diff tp1.mgz tp2.mgz --skip-geo --skip-pix --res-thresh 0.000001
+
+**binarize** — binarize by intensity range or matched label values::
+
+   mri binarize --i aseg.mgz --o wm_mask.mgz --match 2 41
+   mri binarize --i T1.mgz --o brain_bin.mgz --min 10 --uchar
+   mri binarize --i T1.mgz --o bg.mgz --min 10 --inv
+
 lta
 ---
 

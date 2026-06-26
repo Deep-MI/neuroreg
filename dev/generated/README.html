@@ -1078,6 +1078,22 @@ are not performed.</p>
 <td><p>off</p></td>
 <td><p>Report all differences instead of exiting at the first one.</p></td>
 </tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--skip-res</span></code>, <code class="docutils literal notranslate"><span class="pre">--notallow-res</span></code></p></td>
+<td><p>off</p></td>
+<td><p>Skip the voxel-resolution check.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--skip-geo</span></code>, <code class="docutils literal notranslate"><span class="pre">--notallow-geo</span></code></p></td>
+<td><p>off</p></td>
+<td><p>Skip the geometry / vox2ras check.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--skip-prec</span></code>, <code class="docutils literal notranslate"><span class="pre">--notallow-prec</span></code></p></td>
+<td><p>off</p></td>
+<td><p>Skip the data-type / precision check.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--skip-pix</span></code>, <code class="docutils literal notranslate"><span class="pre">--notallow-pix</span></code></p></td>
+<td><p>off</p></td>
+<td><p>Skip the pixel-value check.</p></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -1087,6 +1103,10 @@ mri<span class="w"> </span>diff<span class="w"> </span>a.mgz<span class="w"> </s
 
 <span class="c1"># Tolerant comparison with a differing-voxel count</span>
 mri<span class="w"> </span>diff<span class="w"> </span>a.mgz<span class="w"> </span>b.mgz<span class="w"> </span>--thresh<span class="w"> </span>1e-4<span class="w"> </span>--count
+
+<span class="c1"># Resolution-only consistency check (skip geometry and pixel checks) — mirrors</span>
+<span class="c1"># the FastSurfer longitudinal template pattern</span>
+mri<span class="w"> </span>diff<span class="w"> </span>tp1.mgz<span class="w"> </span>tp2.mgz<span class="w"> </span>--skip-geo<span class="w"> </span>--skip-pix<span class="w"> </span>--res-thresh<span class="w"> </span><span class="m">0</span>.000001
 </pre></div>
 </div>
 </section>

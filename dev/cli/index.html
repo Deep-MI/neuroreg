@@ -303,6 +303,33 @@ intensity remapping.</p>
 </pre></div>
 </div>
 </section>
+<section id="mri">
+<h2>mri<a class="headerlink" href="#mri" title="Link to this heading">¶</a></h2>
+<p>Image-volume utilities grouped under a single command, analogous to FreeSurfer’s
+<code class="docutils literal notranslate"><span class="pre">mri_mask</span></code>, <code class="docutils literal notranslate"><span class="pre">mri_info</span></code>, <code class="docutils literal notranslate"><span class="pre">mri_diff</span></code>, and <code class="docutils literal notranslate"><span class="pre">mri_binarize</span></code>.</p>
+<p><strong>mask</strong> — apply a binary mask to a volume:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mri</span> <span class="n">mask</span> <span class="nb">input</span><span class="o">.</span><span class="n">nii</span><span class="o">.</span><span class="n">gz</span> <span class="n">mask</span><span class="o">.</span><span class="n">nii</span><span class="o">.</span><span class="n">gz</span> <span class="n">output</span><span class="o">.</span><span class="n">nii</span><span class="o">.</span><span class="n">gz</span>
+<span class="n">mri</span> <span class="n">mask</span> <span class="nb">input</span><span class="o">.</span><span class="n">mgz</span> <span class="n">brain_mask</span><span class="o">.</span><span class="n">mgz</span> <span class="n">masked</span><span class="o">.</span><span class="n">mgz</span> <span class="o">-</span><span class="n">T</span> <span class="mf">0.5</span>
+</pre></div>
+</div>
+<p><strong>info</strong> — print header and geometry information:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mri</span> <span class="n">info</span> <span class="n">T1</span><span class="o">.</span><span class="n">mgz</span>
+<span class="n">mri</span> <span class="n">info</span> <span class="n">T1</span><span class="o">.</span><span class="n">mgz</span> <span class="o">--</span><span class="n">dim</span> <span class="o">--</span><span class="n">res</span> <span class="o">--</span><span class="n">orientation</span>
+</pre></div>
+</div>
+<p><strong>diff</strong> — compare two volumes and exit nonzero when they differ:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mri</span> <span class="n">diff</span> <span class="n">vol1</span><span class="o">.</span><span class="n">mgz</span> <span class="n">vol2</span><span class="o">.</span><span class="n">mgz</span>
+<span class="n">mri</span> <span class="n">diff</span> <span class="n">vol1</span><span class="o">.</span><span class="n">mgz</span> <span class="n">vol2</span><span class="o">.</span><span class="n">mgz</span> <span class="o">--</span><span class="n">thresh</span> <span class="mf">1e-4</span> <span class="o">--</span><span class="n">count</span>
+<span class="n">mri</span> <span class="n">diff</span> <span class="n">tp1</span><span class="o">.</span><span class="n">mgz</span> <span class="n">tp2</span><span class="o">.</span><span class="n">mgz</span> <span class="o">--</span><span class="n">skip</span><span class="o">-</span><span class="n">geo</span> <span class="o">--</span><span class="n">skip</span><span class="o">-</span><span class="n">pix</span> <span class="o">--</span><span class="n">res</span><span class="o">-</span><span class="n">thresh</span> <span class="mf">0.000001</span>
+</pre></div>
+</div>
+<p><strong>binarize</strong> — binarize by intensity range or matched label values:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mri</span> <span class="n">binarize</span> <span class="o">--</span><span class="n">i</span> <span class="n">aseg</span><span class="o">.</span><span class="n">mgz</span> <span class="o">--</span><span class="n">o</span> <span class="n">wm_mask</span><span class="o">.</span><span class="n">mgz</span> <span class="o">--</span><span class="n">match</span> <span class="mi">2</span> <span class="mi">41</span>
+<span class="n">mri</span> <span class="n">binarize</span> <span class="o">--</span><span class="n">i</span> <span class="n">T1</span><span class="o">.</span><span class="n">mgz</span> <span class="o">--</span><span class="n">o</span> <span class="n">brain_bin</span><span class="o">.</span><span class="n">mgz</span> <span class="o">--</span><span class="nb">min</span> <span class="mi">10</span> <span class="o">--</span><span class="n">uchar</span>
+<span class="n">mri</span> <span class="n">binarize</span> <span class="o">--</span><span class="n">i</span> <span class="n">T1</span><span class="o">.</span><span class="n">mgz</span> <span class="o">--</span><span class="n">o</span> <span class="n">bg</span><span class="o">.</span><span class="n">mgz</span> <span class="o">--</span><span class="nb">min</span> <span class="mi">10</span> <span class="o">--</span><span class="n">inv</span>
+</pre></div>
+</div>
+</section>
 <section id="lta">
 <h2>lta<a class="headerlink" href="#lta" title="Link to this heading">¶</a></h2>
 <p>Utilities for comparing, concatenating, inverting, and converting
@@ -396,6 +423,7 @@ installations and CI environments.</p>
 <li><a class="reference internal" href="#coreg">coreg</a></li>
 <li><a class="reference internal" href="#bbreg">bbreg</a></li>
 <li><a class="reference internal" href="#vol2vol">vol2vol</a></li>
+<li><a class="reference internal" href="#mri">mri</a></li>
 <li><a class="reference internal" href="#lta">lta</a></li>
 <li><a class="reference internal" href="#neuroreg-sys-info">neuroreg-sys_info</a></li>
 </ul>
