@@ -88,6 +88,56 @@ Python module
 .. automodule:: neuroreg.cli.segreg
    :members: main
 
+``mri``
+-------
+
+.. argparse::
+   :module: neuroreg.cli.mri
+   :func: _build_parser
+   :prog: mri
+
+``mri mask``
+~~~~~~~~~~~~
+
+.. argparse::
+   :module: neuroreg.cli.mri
+   :func: _build_parser
+   :prog: mri mask
+   :path: mask
+
+``mri info``
+~~~~~~~~~~~~
+
+.. argparse::
+   :module: neuroreg.cli.mri
+   :func: _build_parser
+   :prog: mri info
+   :path: info
+
+``mri diff``
+~~~~~~~~~~~~
+
+.. argparse::
+   :module: neuroreg.cli.mri
+   :func: _build_parser
+   :prog: mri diff
+   :path: diff
+
+``mri binarize``
+~~~~~~~~~~~~~~~~
+
+.. argparse::
+   :module: neuroreg.cli.mri
+   :func: _build_parser
+   :prog: mri binarize
+   :path: binarize
+
+Python module
+~~~~~~~~~~~~~
+
+.. automodule:: neuroreg.cli.mri
+   :members: main
+
 ``lta``
 -------
 
