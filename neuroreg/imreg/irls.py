@@ -265,6 +265,11 @@ def construct_Ab(
 # ---------------------------------------------------------------------------
 
 
+def _lstsq_driver_for_device(device: torch.device) -> str:
+    """Return a torch.linalg.lstsq driver supported by the tensor device."""
+    return "gels" if device.type == "cuda" else "gelsd"
+
+
 def solve_wls(
     A: torch.Tensor,
     b: torch.Tensor,
@@ -284,9 +289,9 @@ def solve_wls(
     """
     Aw = A * w_sqrt.unsqueeze(1)  # [N, DOF]
     bw = b * w_sqrt  # [N]
-    # torch.linalg.lstsq is QR-backed, equivalent to vnl_qr.
-    # On MPS this may fall back to CPU, so move the solution back to Aw's device.
-    result = torch.linalg.lstsq(Aw, bw, driver="gelsd")
+    # CUDA only supports the QR-based "gels" driver. Keep the existing CPU
+    # path elsewhere, then move any fallback result back to Aw's device.
+    result = torch.linalg.lstsq(Aw, bw, driver=_lstsq_driver_for_device(Aw.device))
     return result.solution.to(device=Aw.device)
 
 
