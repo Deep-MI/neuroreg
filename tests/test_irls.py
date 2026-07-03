@@ -7,6 +7,7 @@ import torch
 
 from neuroreg.imreg.init import get_init_vox2vox, get_ixform_centroids
 from neuroreg.imreg.irls import (
+    _lstsq_driver_for_device,
     _sqrt_tukey,
     compute_partials,
     construct_Ab,
@@ -115,6 +116,19 @@ class TestConstructAb:
         assert int(valid.sum().item()) == A.shape[0]
         mask_flat = valid_mask.reshape(-1) > 0.5
         assert torch.all(mask_flat[valid])
+
+
+# ---------------------------------------------------------------------------
+# solve_wls
+# ---------------------------------------------------------------------------
+
+
+class TestSolveWls:
+    def test_cpu_uses_existing_gelsd_driver(self):
+        assert _lstsq_driver_for_device(torch.device("cpu")) == "gelsd"
+
+    def test_cuda_uses_supported_gels_driver(self):
+        assert _lstsq_driver_for_device(torch.device("cuda")) == "gels"
 
 
 # ---------------------------------------------------------------------------
