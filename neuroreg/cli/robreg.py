@@ -162,7 +162,6 @@ def main(args=None) -> None:
     SystemExit
         If argument parsing fails or image loading raises an exception.
     """
-
     from ..image import load_image, save_header_mapped_image, save_resliced_r2r_image
     from ..imreg.robreg import robreg
 
