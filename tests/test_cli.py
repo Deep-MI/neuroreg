@@ -80,11 +80,48 @@ class TestRobregCli:
 
         assert captured["init_type"] == "header"
         assert captured["symmetric"] is True
+        assert captured["device"] == "cpu"
         args = cast(tuple[Any, Any], captured["args"])
         assert len(args) == 2
         assert hasattr(args[0], "get_fdata") and hasattr(args[0], "affine")
         assert hasattr(args[1], "get_fdata") and hasattr(args[1], "affine")
         assert out_path.exists()
+
+    def test_main_forwards_device(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        mov_path = tmp_path / "mov.nii.gz"
+        ref_path = tmp_path / "ref.nii.gz"
+        out_path = tmp_path / "out.lta"
+
+        _write_zero_image(mov_path)
+        _write_zero_image(ref_path)
+
+        captured: dict[str, object] = {}
+
+        def fake_register_pyramid(*args, **kwargs):
+            captured.update(kwargs)
+            return _TensorRequiringCpu(torch.eye(4))
+
+        class _DummyLTA:
+            def write(self, path):
+                Path(path).write_text("dummy")
+
+        monkeypatch.setattr("neuroreg.imreg.robreg.robreg", fake_register_pyramid)
+        monkeypatch.setattr("neuroreg.transforms.LTA.from_matrix", lambda *args, **kwargs: _DummyLTA())
+
+        robreg_main(
+            [
+                "--mov",
+                str(mov_path),
+                "--ref",
+                str(ref_path),
+                "--out",
+                str(out_path),
+                "--device",
+                "gpu",
+            ]
+        )
+
+        assert captured["device"] == "gpu"
 
     def test_main_forwards_center_init(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         mov_path = tmp_path / "mov.nii.gz"

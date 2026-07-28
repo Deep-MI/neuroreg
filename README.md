@@ -76,6 +76,7 @@ Run `robreg -h` for a full argument summary with defaults.
 | `--init-center`   | off     | Initialize by aligning geometric image centers in RAS.                                                             |
 | `--mapped FILE`   | —       | Save the warped moving image.                                                                                      |
 | `--outliers FILE` | —       | Save an outlier map (`1 - Tukey weights`).                                                                         |
+| `--device DEVICE` | `cpu`   | Torch device string, e.g. `cpu`, `cuda`, `mps`, or `gpu`. IRLS falls back to CPU on MPS (float64 limitation).      |
 | `--verbose`       | off     | Enable INFO-level logging.                                                                                         |
 | `--debug`         | off     | Enable DEBUG-level logging.                                                                                        |
 
