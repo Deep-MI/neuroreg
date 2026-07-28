@@ -410,7 +410,9 @@ transform change.</p>
 </dd>
 <dt><strong>return_mapped</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, include mapped images in the returned result.</p>
 </dd>
-<dt><strong>mapped_keep_dtype</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, preserve source dtypes for returned mapped images.</p>
+<dt><strong>mapped_keep_dtype</strong><span class="classifier">bool, default=False</span></dt><dd><p>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, preserve source dtypes for returned mapped images and cast
+the output template to the initial target time point’s dtype (clipping
+cubic-interpolation over/undershoot instead of rescaling).</p>
 </dd>
 <dt><strong>verbose</strong><span class="classifier">bool, default=False</span></dt><dd><p>Whether to enable verbose pairwise-registration logging.</p>
 </dd>

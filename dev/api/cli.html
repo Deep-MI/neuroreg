@@ -260,7 +260,7 @@ closely matching FreeSurfer’s mri_robust_register algorithm.</p>
               <span class="p">[</span><span class="o">--</span><span class="n">ref</span><span class="o">-</span><span class="n">mask</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">dof</span> <span class="p">{</span><span class="mi">6</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">nmax</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">sat</span> <span class="n">FLOAT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">nosym</span><span class="p">]</span>
               <span class="p">[</span><span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">lta</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">header</span> <span class="o">|</span> <span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">centroid</span> <span class="o">|</span>
               <span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">center</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">mapmov</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">mapmovhdr</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">keep</span><span class="o">-</span><span class="n">dtype</span><span class="p">]</span>
-              <span class="p">[</span><span class="o">--</span><span class="n">outliers</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
+              <span class="p">[</span><span class="o">--</span><span class="n">outliers</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">device</span> <span class="n">DEVICE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
 </pre></div>
 </div>
 <section id="robreg-named-arguments">
@@ -322,6 +322,10 @@ closely matching FreeSurfer’s mri_robust_register algorithm.</p>
 <dt><kbd>--outliers</kbd></dt>
 <dd><p>Save outlier map (1 - Tukey weights) to this file (MGZ format). High values indicate poorly registered regions (outliers), low values indicate well-registered regions. Use with heat colormap in freeview for visualization.</p>
 </dd>
+<dt><kbd>--device</kbd></dt>
+<dd><p>Torch device string, e.g. ‘cpu’, ‘cuda’, ‘mps’, or ‘gpu’.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">'cpu'</span></code></p>
+</dd>
 <dt><kbd>--verbose</kbd></dt>
 <dd><p>Enable INFO-level logging.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
@@ -375,7 +379,7 @@ Registers all time points to a deterministic initial target,
 constructs an unbiased mean space, and iteratively refines the template.</p>
 </p>
 <div class="highlight-default notranslate" id="id1"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">multireg</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">mov</span> <span class="n">FILE</span> <span class="p">[</span><span class="n">FILE</span> <span class="o">...</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">mov</span><span class="o">-</span><span class="n">mask</span> <span class="p">[</span><span class="n">FILE</span> <span class="o">...</span><span class="p">]]</span>
-                <span class="o">--</span><span class="n">template</span> <span class="n">FILE</span> <span class="p">[</span><span class="o">--</span><span class="n">lta</span> <span class="p">[</span><span class="n">FILE</span> <span class="o">...</span><span class="p">]]</span> <span class="p">[</span><span class="o">--</span><span class="n">mapmov</span><span class="o">-</span><span class="nb">dir</span> <span class="n">DIR</span><span class="p">]</span>
+                <span class="o">--</span><span class="n">template</span> <span class="n">FILE</span> <span class="p">[</span><span class="o">--</span><span class="n">lta</span> <span class="p">[</span><span class="n">FILE</span> <span class="o">...</span><span class="p">]]</span> <span class="p">[</span><span class="o">--</span><span class="n">mapmov</span> <span class="p">[</span><span class="n">FILE</span> <span class="o">...</span><span class="p">]]</span>
                 <span class="p">[</span><span class="o">--</span><span class="n">ixforms</span> <span class="p">[</span><span class="n">FILE</span> <span class="o">...</span><span class="p">]]</span> <span class="p">[</span><span class="o">--</span><span class="n">average</span> <span class="n">MODE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">inittp</span> <span class="n">N</span><span class="p">]</span>
                 <span class="p">[</span><span class="o">--</span><span class="n">seed</span> <span class="n">INT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">fixtp</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">cras</span><span class="o">-</span><span class="n">center</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">noit</span> <span class="o">|</span> <span class="o">--</span><span class="n">iterate</span> <span class="n">N</span><span class="p">]</span>
                 <span class="p">[</span><span class="o">--</span><span class="n">template</span><span class="o">-</span><span class="n">eps</span> <span class="n">FLOAT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">nmax</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">sat</span> <span class="n">FLOAT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">nosym</span><span class="p">]</span>
@@ -398,8 +402,8 @@ constructs an unbiased mean space, and iteratively refines the template.</p>
 <dt><kbd>--lta</kbd></dt>
 <dd><p>Optional output LTAs. When given, provide one output path per –mov image.</p>
 </dd>
-<dt><kbd>--mapmov-dir</kbd></dt>
-<dd><p>Optional directory for writing mapped per-time-point images in template space.</p>
+<dt><kbd>--mapmov</kbd></dt>
+<dd><p>Optional output paths for mapped per-time-point images in template space, one per –mov image.</p>
 </dd>
 <dt><kbd>--ixforms</kbd></dt>
 <dd><p>Optional input LTAs, one per –mov image. When given, reuse these transforms as the template-space mapping.</p>
@@ -459,7 +463,7 @@ constructs an unbiased mean space, and iteratively refines the template.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">'gpu'</span></code></p>
 </dd>
 <dt><kbd>--keep-dtype</kbd></dt>
-<dd><p>Write –mapmov-dir outputs in the source-image dtype instead of float32.</p>
+<dd><p>Write –mapmov outputs in each input’s own dtype and the –template output in the initial target time point’s dtype, instead of float32.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
 </dd>
 <dt><kbd>--verbose</kbd></dt>

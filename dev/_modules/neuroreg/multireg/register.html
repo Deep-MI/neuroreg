@@ -254,7 +254,7 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">..image</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_image</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..image</span><span class="w"> </span><span class="kn">import</span> <span class="n">cast_image_dtype</span><span class="p">,</span> <span class="n">load_image</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..image.map</span><span class="w"> </span><span class="kn">import</span> <span class="n">coerce_image_data_3d</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..imreg.init</span><span class="w"> </span><span class="kn">import</span> <span class="n">InitType</span><span class="p">,</span> <span class="n">resolve_init_type</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..imreg.robreg</span><span class="w"> </span><span class="kn">import</span> <span class="n">robreg</span>
@@ -677,7 +677,9 @@
 <span class="sd">    return_mapped : bool, default=False</span>
 <span class="sd">        If ``True``, include mapped images in the returned result.</span>
 <span class="sd">    mapped_keep_dtype : bool, default=False</span>
-<span class="sd">        If ``True``, preserve source dtypes for returned mapped images.</span>
+<span class="sd">        If ``True``, preserve source dtypes for returned mapped images and cast</span>
+<span class="sd">        the output template to the initial target time point&#39;s dtype (clipping</span>
+<span class="sd">        cubic-interpolation over/undershoot instead of rescaling).</span>
 <span class="sd">    verbose : bool, default=False</span>
 <span class="sd">        Whether to enable verbose pairwise-registration logging.</span>
 
@@ -824,6 +826,9 @@
             <span class="n">return_mapped</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
             <span class="n">mapped_keep_dtype</span><span class="o">=</span><span class="n">mapped_keep_dtype</span><span class="p">,</span>
         <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">mapped_keep_dtype</span><span class="p">:</span>
+        <span class="n">current_template</span> <span class="o">=</span> <span class="n">cast_image_dtype</span><span class="p">(</span><span class="n">current_template</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="n">target_image</span><span class="o">.</span><span class="n">get_data_dtype</span><span class="p">()))</span>
 
     <span class="n">ltas</span> <span class="o">=</span> <span class="n">build_ltas</span><span class="p">(</span><span class="n">current_transforms</span><span class="p">,</span> <span class="n">source_names</span><span class="p">,</span> <span class="n">images</span><span class="p">,</span> <span class="n">current_template</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">MultiRegResult</span><span class="p">(</span>

@@ -363,11 +363,15 @@ to lack of double precision support on MPS.</p>
 <td><p>—</p></td>
 <td><p>Save an outlier map (<code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">-</span> <span class="pre">Tukey</span> <span class="pre">weights</span></code>).</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--verbose</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">DEVICE</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">cpu</span></code></p></td>
+<td><p>Torch device string, e.g. <code class="docutils literal notranslate"><span class="pre">cpu</span></code>, <code class="docutils literal notranslate"><span class="pre">cuda</span></code>, <code class="docutils literal notranslate"><span class="pre">mps</span></code>, or <code class="docutils literal notranslate"><span class="pre">gpu</span></code>. IRLS falls back to CPU on MPS (float64 limitation).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--verbose</span></code></p></td>
 <td><p>off</p></td>
 <td><p>Enable INFO-level logging.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--debug</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--debug</span></code></p></td>
 <td><p>off</p></td>
 <td><p>Enable DEBUG-level logging.</p></td>
 </tr>
@@ -436,13 +440,13 @@ pass</p></li>
 <td><p>auto</p></td>
 <td><p>1-based initial target time point.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--mapmov-dir</span> <span class="pre">DIR</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--mapmov</span> <span class="pre">FILE</span> <span class="pre">...</span></code></p></td>
 <td><p>—</p></td>
-<td><p>Optional directory for mapped input images in template space.</p></td>
+<td><p>Optional output paths for mapped input images in template space, one per input.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--keep-dtype</span></code></p></td>
 <td><p>off</p></td>
-<td><p>Preserve source dtype for mapped images instead of writing float32.</p></td>
+<td><p>Preserve each input’s own dtype for <code class="docutils literal notranslate"><span class="pre">--mapmov</span></code> outputs and the initial target’s dtype for the template.</p></td>
 </tr>
 </tbody>
 </table>
