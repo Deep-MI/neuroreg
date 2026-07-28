@@ -256,15 +256,15 @@ objects so the Sphinx reference stays aligned with the CLI help text.</p>
 Uses Iteratively Reweighted Least Squares with Tukey biweights,
 closely matching FreeSurfer’s mri_robust_register algorithm.</p>
 </p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">robreg</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">mov</span> <span class="n">FILE</span> <span class="o">--</span><span class="n">ref</span> <span class="n">FILE</span> <span class="o">--</span><span class="n">out</span> <span class="n">LTA</span> <span class="p">[</span><span class="o">--</span><span class="n">mov</span><span class="o">-</span><span class="n">mask</span> <span class="n">FILE</span><span class="p">]</span>
+<div class="highlight-default notranslate" id="id0"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">robreg</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">mov</span> <span class="n">FILE</span> <span class="o">--</span><span class="n">ref</span> <span class="n">FILE</span> <span class="o">--</span><span class="n">out</span> <span class="n">LTA</span> <span class="p">[</span><span class="o">--</span><span class="n">mov</span><span class="o">-</span><span class="n">mask</span> <span class="n">FILE</span><span class="p">]</span>
               <span class="p">[</span><span class="o">--</span><span class="n">ref</span><span class="o">-</span><span class="n">mask</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">dof</span> <span class="p">{</span><span class="mi">6</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">nmax</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">sat</span> <span class="n">FLOAT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">nosym</span><span class="p">]</span>
               <span class="p">[</span><span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">lta</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">header</span> <span class="o">|</span> <span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">centroid</span> <span class="o">|</span>
               <span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">center</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">mapmov</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">mapmovhdr</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">keep</span><span class="o">-</span><span class="n">dtype</span><span class="p">]</span>
               <span class="p">[</span><span class="o">--</span><span class="n">outliers</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
 </pre></div>
 </div>
-<section id="neuroreg.cli.robreg-_build_parser-named-arguments">
-<h3>Named Arguments<a class="headerlink" href="#neuroreg.cli.robreg-_build_parser-named-arguments" title="Link to this heading">¶</a></h3>
+<section id="robreg-named-arguments">
+<span id="neuroreg.cli.robreg-_build_parser-named-arguments"></span><h3>Named Arguments<a class="headerlink" href="#robreg-named-arguments" title="Link to this heading">¶</a></h3>
 <dl class="option-list">
 <dt><kbd>--mov</kbd></dt>
 <dd><p>Moving (source) image (NIfTI or MGZ).</p>
@@ -374,7 +374,7 @@ mapped-image export, and writing the output transform.</p>
 Registers all time points to a deterministic initial target,
 constructs an unbiased mean space, and iteratively refines the template.</p>
 </p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">multireg</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">mov</span> <span class="n">FILE</span> <span class="p">[</span><span class="n">FILE</span> <span class="o">...</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">mov</span><span class="o">-</span><span class="n">mask</span> <span class="p">[</span><span class="n">FILE</span> <span class="o">...</span><span class="p">]]</span>
+<div class="highlight-default notranslate" id="id1"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">multireg</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">mov</span> <span class="n">FILE</span> <span class="p">[</span><span class="n">FILE</span> <span class="o">...</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">mov</span><span class="o">-</span><span class="n">mask</span> <span class="p">[</span><span class="n">FILE</span> <span class="o">...</span><span class="p">]]</span>
                 <span class="o">--</span><span class="n">template</span> <span class="n">FILE</span> <span class="p">[</span><span class="o">--</span><span class="n">lta</span> <span class="p">[</span><span class="n">FILE</span> <span class="o">...</span><span class="p">]]</span> <span class="p">[</span><span class="o">--</span><span class="n">mapmov</span><span class="o">-</span><span class="nb">dir</span> <span class="n">DIR</span><span class="p">]</span>
                 <span class="p">[</span><span class="o">--</span><span class="n">ixforms</span> <span class="p">[</span><span class="n">FILE</span> <span class="o">...</span><span class="p">]]</span> <span class="p">[</span><span class="o">--</span><span class="n">average</span> <span class="n">MODE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">inittp</span> <span class="n">N</span><span class="p">]</span>
                 <span class="p">[</span><span class="o">--</span><span class="n">seed</span> <span class="n">INT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">fixtp</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">cras</span><span class="o">-</span><span class="n">center</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">noit</span> <span class="o">|</span> <span class="o">--</span><span class="n">iterate</span> <span class="n">N</span><span class="p">]</span>
@@ -383,8 +383,8 @@ constructs an unbiased mean space, and iteratively refines the template.</p>
                 <span class="p">[</span><span class="o">--</span><span class="n">device</span> <span class="n">DEVICE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">keep</span><span class="o">-</span><span class="n">dtype</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
 </pre></div>
 </div>
-<section id="neuroreg.cli.multireg-_build_parser-named-arguments">
-<h3>Named Arguments<a class="headerlink" href="#neuroreg.cli.multireg-_build_parser-named-arguments" title="Link to this heading">¶</a></h3>
+<section id="multireg-named-arguments">
+<span id="neuroreg.cli.multireg-_build_parser-named-arguments"></span><h3>Named Arguments<a class="headerlink" href="#multireg-named-arguments" title="Link to this heading">¶</a></h3>
 <dl class="option-list">
 <dt><kbd>--mov</kbd></dt>
 <dd><p>Input time-point images (NIfTI or MGZ).</p>
@@ -472,8 +472,8 @@ constructs an unbiased mean space, and iteratively refines the template.</p>
 </dd>
 </dl>
 </section>
-<section id="id1">
-<h3>Python module<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h3>
+<section id="id2">
+<h3>Python module<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
 <p id="module-neuroreg.cli.multireg">Command-line interface for FreeSurfer-style multi-timepoint robust registration.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.cli.multireg.main">
@@ -512,7 +512,7 @@ constructs an unbiased mean space, and iteratively refines the template.</p>
 <p><p>3-D image-to-image registration.
 Defaults to the MRI_coreg-style Powell path; use –method gd for the legacy PyTorch gradient-descent path.</p>
 </p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">coreg</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">mov</span> <span class="n">FILE</span> <span class="o">--</span><span class="n">ref</span> <span class="n">FILE</span> <span class="o">--</span><span class="n">out</span> <span class="n">LTA</span> <span class="p">[</span><span class="o">--</span><span class="n">mapmov</span> <span class="n">FILE</span><span class="p">]</span>
+<div class="highlight-default notranslate" id="id3"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">coreg</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">mov</span> <span class="n">FILE</span> <span class="o">--</span><span class="n">ref</span> <span class="n">FILE</span> <span class="o">--</span><span class="n">out</span> <span class="n">LTA</span> <span class="p">[</span><span class="o">--</span><span class="n">mapmov</span> <span class="n">FILE</span><span class="p">]</span>
              <span class="p">[</span><span class="o">--</span><span class="n">mapmovhdr</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">keep</span><span class="o">-</span><span class="n">dtype</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">mov</span><span class="o">-</span><span class="n">mask</span> <span class="n">FILE</span><span class="p">]</span>
              <span class="p">[</span><span class="o">--</span><span class="n">ref</span><span class="o">-</span><span class="n">mask</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">dof</span> <span class="p">{</span><span class="mi">3</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">9</span><span class="p">,</span><span class="mi">12</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">method</span> <span class="p">{</span><span class="n">powell</span><span class="p">,</span><span class="n">gd</span><span class="p">}]</span>
              <span class="p">[</span><span class="o">--</span><span class="n">n_iters</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">level</span><span class="o">-</span><span class="n">iters</span> <span class="n">LEVEL_ITERS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">lr</span> <span class="n">LR</span><span class="p">]</span>
@@ -526,8 +526,8 @@ Defaults to the MRI_coreg-style Powell path; use –method gd for the legacy PyT
              <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
 </pre></div>
 </div>
-<section id="neuroreg.cli.coreg-_build_parser-named-arguments">
-<h3>Named Arguments<a class="headerlink" href="#neuroreg.cli.coreg-_build_parser-named-arguments" title="Link to this heading">¶</a></h3>
+<section id="coreg-named-arguments">
+<span id="neuroreg.cli.coreg-_build_parser-named-arguments"></span><h3>Named Arguments<a class="headerlink" href="#coreg-named-arguments" title="Link to this heading">¶</a></h3>
 <dl class="option-list">
 <dt><kbd>--mov</kbd></dt>
 <dd><p>Moving (source) image (NIfTI or MGZ).</p>
@@ -633,8 +633,8 @@ Defaults to the MRI_coreg-style Powell path; use –method gd for the legacy PyT
 </dd>
 </dl>
 </section>
-<section id="id2">
-<h3>Python module<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
+<section id="id4">
+<h3>Python module<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h3>
 <p id="module-neuroreg.cli.coreg">Command-line interface for image-based cross-modal registration (coreg).</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.cli.coreg.main">
@@ -700,7 +700,7 @@ surface files needed)</p>
 </dd>
 </dl>
 </p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">bbreg</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">mov</span> <span class="n">FILE</span> <span class="o">--</span><span class="n">out</span> <span class="n">LTA</span> <span class="p">[</span><span class="o">--</span><span class="n">subject_dir</span> <span class="n">DIR</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">ref</span> <span class="n">FILE</span><span class="p">]</span>
+<div class="highlight-default notranslate" id="id5"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">bbreg</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">mov</span> <span class="n">FILE</span> <span class="o">--</span><span class="n">out</span> <span class="n">LTA</span> <span class="p">[</span><span class="o">--</span><span class="n">subject_dir</span> <span class="n">DIR</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">ref</span> <span class="n">FILE</span><span class="p">]</span>
              <span class="p">[</span><span class="o">--</span><span class="n">lh_surf</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">rh_surf</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">lh_thickness</span> <span class="n">FILE</span><span class="p">]</span>
              <span class="p">[</span><span class="o">--</span><span class="n">rh_thickness</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">seg</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">seg_smooth_sigma</span> <span class="n">SIGMA</span><span class="p">]</span>
              <span class="p">[</span><span class="o">--</span><span class="n">seg_mc_level</span> <span class="n">LEVEL</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">seg_smooth_iters</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">dof</span> <span class="p">{</span><span class="mi">6</span><span class="p">,</span><span class="mi">9</span><span class="p">,</span><span class="mi">12</span><span class="p">}]</span>
@@ -712,8 +712,8 @@ surface files needed)</p>
              <span class="p">[</span><span class="o">--</span><span class="n">mapmovhdr</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">keep</span><span class="o">-</span><span class="n">dtype</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
 </pre></div>
 </div>
-<section id="neuroreg.cli.bbreg-_build_parser-named-arguments">
-<h3>Named Arguments<a class="headerlink" href="#neuroreg.cli.bbreg-_build_parser-named-arguments" title="Link to this heading">¶</a></h3>
+<section id="bbreg-named-arguments">
+<span id="neuroreg.cli.bbreg-_build_parser-named-arguments"></span><h3>Named Arguments<a class="headerlink" href="#bbreg-named-arguments" title="Link to this heading">¶</a></h3>
 <dl class="option-list">
 <dt><kbd>--mov</kbd></dt>
 <dd><p>Moving image to register (e.g. fMRI or T2, NIfTI or MGZ).</p>
@@ -798,16 +798,16 @@ surface files needed)</p>
 </dd>
 </dl>
 </section>
-<section id="neuroreg.cli.bbreg-_build_parser-mode-a-–-freesurfer-subject-directory">
-<h3>Mode A – FreeSurfer subject directory<a class="headerlink" href="#neuroreg.cli.bbreg-_build_parser-mode-a-–-freesurfer-subject-directory" title="Link to this heading">¶</a></h3>
+<section id="bbreg-mode-a-freesurfer-subject-directory">
+<span id="neuroreg.cli.bbreg-_build_parser-mode-a-–-freesurfer-subject-directory"></span><h3>Mode A – FreeSurfer subject directory<a class="headerlink" href="#bbreg-mode-a-freesurfer-subject-directory" title="Link to this heading">¶</a></h3>
 <dl class="option-list">
 <dt><kbd>--subject_dir</kbd></dt>
 <dd><p>Subject directory containing surf/lh.white, surf/rh.white, and mri/orig.mgz.</p>
 </dd>
 </dl>
 </section>
-<section id="neuroreg.cli.bbreg-_build_parser-mode-b-–-explicit-surface-files">
-<h3>Mode B – explicit surface files<a class="headerlink" href="#neuroreg.cli.bbreg-_build_parser-mode-b-–-explicit-surface-files" title="Link to this heading">¶</a></h3>
+<section id="bbreg-mode-b-explicit-surface-files">
+<span id="neuroreg.cli.bbreg-_build_parser-mode-b-–-explicit-surface-files"></span><h3>Mode B – explicit surface files<a class="headerlink" href="#bbreg-mode-b-explicit-surface-files" title="Link to this heading">¶</a></h3>
 <dl class="option-list">
 <dt><kbd>--ref</kbd></dt>
 <dd><p>Reference anatomical intensity image. Required for Mode B (explicit surfaces). Optional for Mode C (–seg) to drive coarse NMI prealignment.</p>
@@ -826,8 +826,8 @@ surface files needed)</p>
 </dd>
 </dl>
 </section>
-<section id="neuroreg.cli.bbreg-_build_parser-mode-c-–-segmentation-(aparc+aseg-/-aseg)">
-<h3>Mode C – segmentation (aparc+aseg / aseg)<a class="headerlink" href="#neuroreg.cli.bbreg-_build_parser-mode-c-–-segmentation-(aparc+aseg-/-aseg)" title="Link to this heading">¶</a></h3>
+<section id="bbreg-mode-c-segmentation-aparc-aseg-aseg">
+<span id="neuroreg.cli.bbreg-_build_parser-mode-c-–-segmentation-(aparc+aseg-/-aseg)"></span><h3>Mode C – segmentation (aparc+aseg / aseg)<a class="headerlink" href="#bbreg-mode-c-segmentation-aparc-aseg-aseg" title="Link to this heading">¶</a></h3>
 <p>White surfaces are extracted on-the-fly via marching cubes. No pre-built surface files are needed and the segmentation header provides the target reference geometry.</p>
 <dl class="option-list">
 <dt><kbd>--seg</kbd></dt>
@@ -847,8 +847,8 @@ surface files needed)</p>
 </dd>
 </dl>
 </section>
-<section id="id3">
-<h3>Python module<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
+<section id="id6">
+<h3>Python module<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h3>
 <p id="module-neuroreg.cli.bbreg">Command-line interface for boundary-based registration (bbreg).</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.cli.bbreg.main">
@@ -902,7 +902,7 @@ file extension, so this converts between any formats nibabel supports
 apply on the native grid without reslicing. To mask a volume, use
 ‘mri mask’.</p>
 </p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">vol2vol</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="ow">in</span> <span class="n">FILE</span> <span class="p">[</span><span class="o">--</span><span class="n">transform</span> <span class="n">FILE</span><span class="p">]</span>
+<div class="highlight-default notranslate" id="id7"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">vol2vol</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="ow">in</span> <span class="n">FILE</span> <span class="p">[</span><span class="o">--</span><span class="n">transform</span> <span class="n">FILE</span><span class="p">]</span>
                <span class="p">[</span><span class="o">--</span><span class="n">transform</span><span class="o">-</span><span class="nb">format</span> <span class="p">{</span><span class="n">lta</span><span class="p">,</span><span class="n">xfm</span><span class="p">,</span><span class="n">fsl</span><span class="p">,</span><span class="n">regdat</span><span class="p">,</span><span class="n">itk</span><span class="p">,</span><span class="n">antsmat</span><span class="p">,</span><span class="n">afni</span><span class="p">,</span><span class="n">niftyreg</span><span class="p">}]</span>
                <span class="p">[</span><span class="o">--</span><span class="n">ref</span> <span class="n">FILE</span><span class="p">]</span> <span class="o">--</span><span class="n">out</span> <span class="n">FILE</span> <span class="p">[</span><span class="o">--</span><span class="n">interp</span> <span class="p">{</span><span class="n">linear</span><span class="p">,</span><span class="n">cubic</span><span class="p">,</span><span class="n">nearest</span><span class="p">}</span> <span class="o">|</span>
                <span class="o">--</span><span class="n">trilin</span> <span class="o">|</span> <span class="o">--</span><span class="n">nearest</span> <span class="o">|</span> <span class="o">--</span><span class="n">cubic</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">pad</span> <span class="n">MODE</span><span class="o">|</span><span class="n">VALUE</span><span class="p">]</span>
@@ -911,8 +911,8 @@ apply on the native grid without reslicing. To mask a volume, use
                <span class="p">[</span><span class="o">--</span><span class="n">robust</span><span class="o">-</span><span class="n">low</span> <span class="n">FRAC</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">robust</span><span class="o">-</span><span class="n">high</span> <span class="n">FRAC</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
 </pre></div>
 </div>
-<section id="neuroreg.cli.vol2vol-_build_parser-named-arguments">
-<h3>Named Arguments<a class="headerlink" href="#neuroreg.cli.vol2vol-_build_parser-named-arguments" title="Link to this heading">¶</a></h3>
+<section id="vol2vol-named-arguments">
+<span id="neuroreg.cli.vol2vol-_build_parser-named-arguments"></span><h3>Named Arguments<a class="headerlink" href="#vol2vol-named-arguments" title="Link to this heading">¶</a></h3>
 <dl class="option-list">
 <dt><kbd>--in, --i, --mov</kbd></dt>
 <dd><p>Input (moving) image.</p>
@@ -988,8 +988,8 @@ apply on the native grid without reslicing. To mask a volume, use
 </dd>
 </dl>
 </section>
-<section id="id4">
-<h3>Python module<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h3>
+<section id="id8">
+<h3>Python module<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h3>
 <p id="module-neuroreg.cli.vol2vol">Command-line image mapping and reslicing utility.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.cli.vol2vol.main">
@@ -1030,15 +1030,15 @@ transform loading or writing raises an exception.</p>
 <p><p>Segmentation-based registration via label centroids.
 Fits translation-only, rigid, similarity, no-shear anisotropic-scale, or affine transforms from a moving segmentation to a target segmentation, a centroid target file, or a left-right flipped self target.</p>
 </p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">segreg</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">seg</span> <span class="n">FILE</span> <span class="p">(</span><span class="o">--</span><span class="n">target</span><span class="o">-</span><span class="n">seg</span> <span class="n">FILE</span> <span class="o">|</span> <span class="o">--</span><span class="n">centroids</span> <span class="n">TARGET</span> <span class="o">|</span>
+<div class="highlight-default notranslate" id="id9"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">segreg</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">seg</span> <span class="n">FILE</span> <span class="p">(</span><span class="o">--</span><span class="n">target</span><span class="o">-</span><span class="n">seg</span> <span class="n">FILE</span> <span class="o">|</span> <span class="o">--</span><span class="n">centroids</span> <span class="n">TARGET</span> <span class="o">|</span>
               <span class="o">--</span><span class="n">flipped</span><span class="p">)</span> <span class="o">--</span><span class="n">lta</span> <span class="n">FILE</span> <span class="p">[</span><span class="o">--</span><span class="n">dof</span> <span class="p">{</span><span class="mi">3</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">9</span><span class="p">,</span><span class="mi">12</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">labels</span> <span class="n">LABELS</span><span class="p">]</span>
               <span class="p">[</span><span class="o">--</span><span class="n">label</span><span class="o">-</span><span class="nb">set</span> <span class="p">{</span><span class="n">all_shared</span><span class="p">,</span><span class="n">target_centroids</span><span class="p">,</span><span class="n">cortex_lr_pairs</span><span class="p">}]</span>
               <span class="p">[</span><span class="o">--</span><span class="nb">min</span><span class="o">-</span><span class="n">common</span><span class="o">-</span><span class="n">labels</span> <span class="n">MIN_COMMON_LABELS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">midslice</span> <span class="n">MIDSLICE</span><span class="p">]</span>
               <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
 </pre></div>
 </div>
-<section id="neuroreg.cli.segreg-_build_parser-named-arguments">
-<h3>Named Arguments<a class="headerlink" href="#neuroreg.cli.segreg-_build_parser-named-arguments" title="Link to this heading">¶</a></h3>
+<section id="segreg-named-arguments">
+<span id="neuroreg.cli.segreg-_build_parser-named-arguments"></span><h3>Named Arguments<a class="headerlink" href="#segreg-named-arguments" title="Link to this heading">¶</a></h3>
 <dl class="option-list">
 <dt><kbd>--seg</kbd></dt>
 <dd><p>Moving segmentation image (NIfTI or MGZ).</p>
@@ -1084,8 +1084,8 @@ Fits translation-only, rigid, similarity, no-shear anisotropic-scale, or affine 
 </dd>
 </dl>
 </section>
-<section id="id5">
-<h3>Python module<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h3>
+<section id="id10">
+<h3>Python module<a class="headerlink" href="#id10" title="Link to this heading">¶</a></h3>
 <p id="module-neuroreg.cli.segreg">Command-line interface for segmentation-based centroid registration.</p>
 <p>The CLI fits an LTA from a moving segmentation to either a target segmentation,
 a centroid target JSON file (or bundled centroid target name), or a left-right
@@ -1107,11 +1107,11 @@ flipped self target.</p>
 <h2><code class="docutils literal notranslate"><span class="pre">mri</span></code><a class="headerlink" href="#mri" title="Link to this heading">¶</a></h2>
 <p><p>Image volume utilities (mask, info, diff, binarize).</p>
 </p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">mri</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="n">COMMAND</span> <span class="o">...</span>
+<div class="highlight-default notranslate" id="id11"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">mri</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="n">COMMAND</span> <span class="o">...</span>
 </pre></div>
 </div>
-<section id="neuroreg.cli.mri-_build_parser-positional-arguments">
-<h3>Positional Arguments<a class="headerlink" href="#neuroreg.cli.mri-_build_parser-positional-arguments" title="Link to this heading">¶</a></h3>
+<section id="mri-positional-arguments">
+<span id="neuroreg.cli.mri-_build_parser-positional-arguments"></span><h3>Positional Arguments<a class="headerlink" href="#mri-positional-arguments" title="Link to this heading">¶</a></h3>
 <dl class="option-list">
 <dt><kbd>COMMAND</kbd></dt>
 <dd><p>Possible choices: mask, info, diff, binarize</p>
@@ -1120,8 +1120,8 @@ flipped self target.</p>
 </section>
 <section id="Sub-commands">
 <h3>Sub-commands<a class="headerlink" href="#Sub-commands" title="Link to this heading">¶</a></h3>
-<section id="mask">
-<h4>mask<a class="headerlink" href="#mask" title="Link to this heading">¶</a></h4>
+<section id="mri-mask">
+<span id="mask"></span><h4>mask<a class="headerlink" href="#mri-mask" title="Link to this heading">¶</a></h4>
 <p>Apply a binary mask to an image, keeping voxels where the mask
 value is strictly greater than –threshold and setting the rest to
 –oval. The mask is resampled with nearest-neighbor interpolation
@@ -1135,8 +1135,8 @@ mri mask …  =  map-then-mask).</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mri</span> <span class="n">mask</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">T</span> <span class="n">T</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">oval</span> <span class="n">V</span><span class="p">]</span> <span class="ow">in</span> <span class="n">mask</span> <span class="n">out</span>
 </pre></div>
 </div>
-<section id="positional-arguments">
-<h5>Positional Arguments<a class="headerlink" href="#positional-arguments" title="Link to this heading">¶</a></h5>
+<section id="mri-mask-positional-arguments">
+<span id="-positional-arguments"></span><h5>Positional Arguments<a class="headerlink" href="#mri-mask-positional-arguments" title="Link to this heading">¶</a></h5>
 <dl class="option-list">
 <dt><kbd>in</kbd></dt>
 <dd><p>Input image to mask.</p>
@@ -1149,259 +1149,8 @@ mri mask …  =  map-then-mask).</p>
 </dd>
 </dl>
 </section>
-<section id="named-arguments">
-<h5>Named Arguments<a class="headerlink" href="#named-arguments" title="Link to this heading">¶</a></h5>
-<dl class="option-list">
-<dt><kbd>-T, --threshold</kbd></dt>
-<dd><p>Voxels with mask value strictly greater than this are kept (default: 0).</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">0.0</span></code></p>
-</dd>
-<dt><kbd>--oval</kbd></dt>
-<dd><p>Value assigned to voxels outside the mask (default: 0).</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">0.0</span></code></p>
-</dd>
-</dl>
-</section>
-</section>
-<section id="info">
-<h4>info<a class="headerlink" href="#info" title="Link to this heading">¶</a></h4>
-<p>Print header and geometry information for an image, analogous to
-FreeSurfer’s mri_info. With no selector flags a full human-readable
-dump is printed. Selector flags print only the requested value(s),
-one per line, for scripting.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mri</span> <span class="n">info</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">dim</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">res</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">voxvol</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="nb">type</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">nframes</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">orientation</span><span class="p">]</span>
-         <span class="p">[</span><span class="o">--</span><span class="n">cras</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">vox2ras</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">ras2vox</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">vox2ras</span><span class="o">-</span><span class="n">tkr</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">stats</span><span class="p">]</span>
-         <span class="n">FILE</span>
-</pre></div>
-</div>
-<section id="positional-arguments_repeat1">
-<h5>Positional Arguments<a class="headerlink" href="#positional-arguments_repeat1" title="Link to this heading">¶</a></h5>
-<dl class="option-list">
-<dt><kbd>FILE</kbd></dt>
-<dd><p>Input image.</p>
-</dd>
-</dl>
-</section>
-<section id="named-arguments_repeat1">
-<h5>Named Arguments<a class="headerlink" href="#named-arguments_repeat1" title="Link to this heading">¶</a></h5>
-<dl class="option-list">
-<dt><kbd>--dim</kbd></dt>
-<dd><p>Print dimensions: ‘w h d’.</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
-</dd>
-<dt><kbd>--res</kbd></dt>
-<dd><p>Print voxel sizes: ‘x y z’.</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
-</dd>
-<dt><kbd>--voxvol</kbd></dt>
-<dd><p>Print the voxel volume.</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
-</dd>
-<dt><kbd>--type</kbd></dt>
-<dd><p>Print the data dtype.</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
-</dd>
-<dt><kbd>--nframes</kbd></dt>
-<dd><p>Print the number of frames.</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
-</dd>
-<dt><kbd>--orientation, --ori</kbd></dt>
-<dd><p>Print the orientation string.</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
-</dd>
-<dt><kbd>--cras</kbd></dt>
-<dd><p>Print the volume center RAS: ‘c_r c_a c_s’.</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
-</dd>
-<dt><kbd>--vox2ras</kbd></dt>
-<dd><p>Print the voxel-to-RAS (scanner) matrix.</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
-</dd>
-<dt><kbd>--ras2vox</kbd></dt>
-<dd><p>Print the RAS-to-voxel matrix.</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
-</dd>
-<dt><kbd>--vox2ras-tkr</kbd></dt>
-<dd><p>Print the voxel-to-tkRAS matrix.</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
-</dd>
-<dt><kbd>--stats</kbd></dt>
-<dd><p>Print voxel value stats: ‘min max mean’.</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
-</dd>
-</dl>
-</section>
-</section>
-<section id="diff">
-<h4>diff<a class="headerlink" href="#diff" title="Link to this heading">¶</a></h4>
-<p>Compare two volumes, analogous to FreeSurfer’s mri_diff. Checks are
-run in order and (unless –no-exit-on-diff) the command exits at the
-first difference with a FreeSurfer-compatible status code:
-0   volumes are the same
-1   error (e.g. a file could not be read)
-101 dimensions differ (always exits)
-102 voxel resolution differs (&gt; –res-thresh)
-104 geometry / vox2ras differs (&gt; –geo-thresh)
-105 data type (precision) differs
-106 voxel values differ (max abs diff &gt; –thresh and count &gt; –count-thresh)</p>
-<p>Acquisition-parameter (TR/TE/TI/flip) checks are not performed.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mri</span> <span class="n">diff</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">thresh</span> <span class="n">T</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">res</span><span class="o">-</span><span class="n">thresh</span> <span class="n">T</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">geo</span><span class="o">-</span><span class="n">thresh</span> <span class="n">T</span><span class="p">]</span>
-         <span class="p">[</span><span class="o">--</span><span class="n">count</span><span class="o">-</span><span class="n">thresh</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">count</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">exit</span><span class="o">-</span><span class="n">on</span><span class="o">-</span><span class="n">diff</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">skip</span><span class="o">-</span><span class="n">res</span><span class="p">]</span>
-         <span class="p">[</span><span class="o">--</span><span class="n">skip</span><span class="o">-</span><span class="n">geo</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">skip</span><span class="o">-</span><span class="n">prec</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">skip</span><span class="o">-</span><span class="n">pix</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">notallow</span><span class="o">-</span><span class="n">acq</span><span class="p">]</span>
-         <span class="n">vol1</span> <span class="n">vol2</span>
-</pre></div>
-</div>
-<section id="positional-arguments_repeat2">
-<h5>Positional Arguments<a class="headerlink" href="#positional-arguments_repeat2" title="Link to this heading">¶</a></h5>
-<dl class="option-list">
-<dt><kbd>vol1</kbd></dt>
-<dd><p>First image.</p>
-</dd>
-<dt><kbd>vol2</kbd></dt>
-<dd><p>Second image.</p>
-</dd>
-</dl>
-</section>
-<section id="named-arguments_repeat2">
-<h5>Named Arguments<a class="headerlink" href="#named-arguments_repeat2" title="Link to this heading">¶</a></h5>
-<dl class="option-list">
-<dt><kbd>--thresh</kbd></dt>
-<dd><p>Voxel value difference threshold (default: 0).</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">0.0</span></code></p>
-</dd>
-<dt><kbd>--res-thresh</kbd></dt>
-<dd><p>Voxel-size difference threshold (default: 0).</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">0.0</span></code></p>
-</dd>
-<dt><kbd>--geo-thresh</kbd></dt>
-<dd><p>vox2ras element difference threshold (default: 0).</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">0.0</span></code></p>
-</dd>
-<dt><kbd>--count-thresh</kbd></dt>
-<dd><p>Voxel values count as differing only when more than N voxels differ (default: 0).</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">0</span></code></p>
-</dd>
-<dt><kbd>--count</kbd></dt>
-<dd><p>Print the number of differing voxels.</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
-</dd>
-<dt><kbd>--no-exit-on-diff</kbd></dt>
-<dd><p>Report all differences instead of exiting at the first one.</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">True</span></code></p>
-</dd>
-<dt><kbd>--skip-res, --notallow-res</kbd></dt>
-<dd><p>Skip the voxel-resolution check.</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
-</dd>
-<dt><kbd>--skip-geo, --notallow-geo</kbd></dt>
-<dd><p>Skip the geometry / vox2ras check.</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
-</dd>
-<dt><kbd>--skip-prec, --notallow-prec</kbd></dt>
-<dd><p>Skip the data-type / precision check.</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
-</dd>
-<dt><kbd>--skip-pix, --notallow-pix</kbd></dt>
-<dd><p>Skip the pixel-value check.</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
-</dd>
-<dt><kbd>--notallow-acq</kbd></dt>
-<dd><p>Accepted for FreeSurfer compatibility; acquisition-parameter checks are not performed.</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
-</dd>
-</dl>
-</section>
-</section>
-<section id="binarize">
-<h4>binarize<a class="headerlink" href="#binarize" title="Link to this heading">¶</a></h4>
-<p>Binarize an image, analogous to FreeSurfer’s mri_binarize. A voxel is
-selected when it matches one of –match (exact), or lies in the
-inclusive range [–min, –max] (either bound may be omitted).
-Selected voxels are set to –binval, the rest to –binvalnot; –inv
-swaps that assignment. At least one of –min, –max, or –match is
-required. Output is int32 by default (–uchar selects uint8).</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mri</span> <span class="n">binarize</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">i</span> <span class="n">FILE</span> <span class="o">--</span><span class="n">o</span> <span class="n">FILE</span> <span class="p">[</span><span class="o">--</span><span class="nb">min</span> <span class="n">MIN</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="nb">max</span> <span class="n">MAX</span><span class="p">]</span>
-             <span class="p">[</span><span class="o">--</span><span class="n">match</span> <span class="n">V</span> <span class="p">[</span><span class="n">V</span> <span class="o">...</span><span class="p">]]</span> <span class="p">[</span><span class="o">--</span><span class="n">binval</span> <span class="n">V</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">binvalnot</span> <span class="n">V</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">inv</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="nb">abs</span><span class="p">]</span>
-             <span class="p">[</span><span class="o">--</span><span class="n">frame</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">uchar</span><span class="p">]</span>
-</pre></div>
-</div>
-<section id="named-arguments_repeat3">
-<h5>Named Arguments<a class="headerlink" href="#named-arguments_repeat3" title="Link to this heading">¶</a></h5>
-<dl class="option-list">
-<dt><kbd>--i, --in</kbd></dt>
-<dd><p>Input image.</p>
-</dd>
-<dt><kbd>--o, --out</kbd></dt>
-<dd><p>Output image.</p>
-</dd>
-<dt><kbd>--min</kbd></dt>
-<dd><p>Inclusive lower intensity bound.</p>
-</dd>
-<dt><kbd>--max</kbd></dt>
-<dd><p>Inclusive upper intensity bound.</p>
-</dd>
-<dt><kbd>--match</kbd></dt>
-<dd><p>Match these values exactly (e.g. label ids).</p>
-</dd>
-<dt><kbd>--binval</kbd></dt>
-<dd><p>Value for selected voxels (default: 1).</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">1</span></code></p>
-</dd>
-<dt><kbd>--binvalnot</kbd></dt>
-<dd><p>Value for unselected voxels (default: 0).</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">0</span></code></p>
-</dd>
-<dt><kbd>--inv</kbd></dt>
-<dd><p>Swap the selected/unselected output values.</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
-</dd>
-<dt><kbd>--abs</kbd></dt>
-<dd><p>Take abs value before thresholding.</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
-</dd>
-<dt><kbd>--frame</kbd></dt>
-<dd><p>For 4D input, binarize this frame only.</p>
-</dd>
-<dt><kbd>--uchar</kbd></dt>
-<dd><p>Write uint8 output instead of int32.</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
-</dd>
-</dl>
-</section>
-</section>
-</section>
-<section id="mri-mask">
-<h3><code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">mask</span></code><a class="headerlink" href="#mri-mask" title="Link to this heading">¶</a></h3>
-<p><p>Apply a binary mask to an image, keeping voxels where the mask
-value is strictly greater than –threshold and setting the rest to
-–oval. The mask is resampled with nearest-neighbor interpolation
-into the input geometry when its grid differs, so a mask given in a
-different geometry is handled like FreeSurfer’s mri_mask. The input
-dtype is preserved; the output format follows the out extension.</p>
-<p>This is a single-space operation: it does not map between
-geometries. To mask before/after a transform, compose with vol2vol
-(mri mask … then vol2vol …  =  mask-then-map;  vol2vol … then
-mri mask …  =  map-then-mask).</p>
-</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">mri</span> <span class="n">mask</span> <span class="n">mask</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">T</span> <span class="n">T</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">oval</span> <span class="n">V</span><span class="p">]</span> <span class="ow">in</span> <span class="n">mask</span> <span class="n">out</span>
-</pre></div>
-</div>
-<section id="neuroreg.cli.mri-_build_parser-positional-arguments">
-<h4>Positional Arguments<a class="headerlink" href="#neuroreg.cli.mri-_build_parser-positional-arguments" title="Link to this heading">¶</a></h4>
-<dl class="option-list">
-<dt><kbd>in</kbd></dt>
-<dd><p>Input image to mask.</p>
-</dd>
-<dt><kbd>mask</kbd></dt>
-<dd><p>Binary mask image.</p>
-</dd>
-<dt><kbd>out</kbd></dt>
-<dd><p>Output image filename (format from extension).</p>
-</dd>
-</dl>
-</section>
-<section id="neuroreg.cli.mri-_build_parser-named-arguments">
-<h4>Named Arguments<a class="headerlink" href="#neuroreg.cli.mri-_build_parser-named-arguments" title="Link to this heading">¶</a></h4>
+<section id="mri-mask-named-arguments">
+<span id="-named-arguments"></span><h5>Named Arguments<a class="headerlink" href="#mri-mask-named-arguments" title="Link to this heading">¶</a></h5>
 <dl class="option-list">
 <dt><kbd>-T, --threshold</kbd></dt>
 <dd><p>Voxels with mask value strictly greater than this are kept (default: 0).</p>
@@ -1415,28 +1164,26 @@ mri mask …  =  map-then-mask).</p>
 </section>
 </section>
 <section id="mri-info">
-<h3><code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">info</span></code><a class="headerlink" href="#mri-info" title="Link to this heading">¶</a></h3>
-<p><p>Print header and geometry information for an image, analogous to
+<span id="info"></span><h4>info<a class="headerlink" href="#mri-info" title="Link to this heading">¶</a></h4>
+<p>Print header and geometry information for an image, analogous to
 FreeSurfer’s mri_info. With no selector flags a full human-readable
 dump is printed. Selector flags print only the requested value(s),
 one per line, for scripting.</p>
-</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">mri</span> <span class="n">info</span> <span class="n">info</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">dim</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">res</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">voxvol</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="nb">type</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">nframes</span><span class="p">]</span>
-                     <span class="p">[</span><span class="o">--</span><span class="n">orientation</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">cras</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">vox2ras</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">ras2vox</span><span class="p">]</span>
-                     <span class="p">[</span><span class="o">--</span><span class="n">vox2ras</span><span class="o">-</span><span class="n">tkr</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">stats</span><span class="p">]</span>
-                     <span class="n">FILE</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mri</span> <span class="n">info</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">dim</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">res</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">voxvol</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="nb">type</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">nframes</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">orientation</span><span class="p">]</span>
+         <span class="p">[</span><span class="o">--</span><span class="n">cras</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">vox2ras</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">ras2vox</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">vox2ras</span><span class="o">-</span><span class="n">tkr</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">stats</span><span class="p">]</span>
+         <span class="n">FILE</span>
 </pre></div>
 </div>
-<section id="neuroreg.cli.mri-_build_parser-positional-arguments">
-<h4>Positional Arguments<a class="headerlink" href="#neuroreg.cli.mri-_build_parser-positional-arguments" title="Link to this heading">¶</a></h4>
+<section id="mri-info-positional-arguments">
+<span id="-positional-arguments_repeat1"></span><h5>Positional Arguments<a class="headerlink" href="#mri-info-positional-arguments" title="Link to this heading">¶</a></h5>
 <dl class="option-list">
 <dt><kbd>FILE</kbd></dt>
 <dd><p>Input image.</p>
 </dd>
 </dl>
 </section>
-<section id="neuroreg.cli.mri-_build_parser-named-arguments">
-<h4>Named Arguments<a class="headerlink" href="#neuroreg.cli.mri-_build_parser-named-arguments" title="Link to this heading">¶</a></h4>
+<section id="mri-info-named-arguments">
+<span id="-named-arguments_repeat1"></span><h5>Named Arguments<a class="headerlink" href="#mri-info-named-arguments" title="Link to this heading">¶</a></h5>
 <dl class="option-list">
 <dt><kbd>--dim</kbd></dt>
 <dd><p>Print dimensions: ‘w h d’.</p>
@@ -1486,8 +1233,8 @@ one per line, for scripting.</p>
 </section>
 </section>
 <section id="mri-diff">
-<h3><code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">diff</span></code><a class="headerlink" href="#mri-diff" title="Link to this heading">¶</a></h3>
-<p><p>Compare two volumes, analogous to FreeSurfer’s mri_diff. Checks are
+<span id="diff"></span><h4>diff<a class="headerlink" href="#mri-diff" title="Link to this heading">¶</a></h4>
+<p>Compare two volumes, analogous to FreeSurfer’s mri_diff. Checks are
 run in order and (unless –no-exit-on-diff) the command exits at the
 first difference with a FreeSurfer-compatible status code:
 0   volumes are the same
@@ -1498,16 +1245,14 @@ first difference with a FreeSurfer-compatible status code:
 105 data type (precision) differs
 106 voxel values differ (max abs diff &gt; –thresh and count &gt; –count-thresh)</p>
 <p>Acquisition-parameter (TR/TE/TI/flip) checks are not performed.</p>
-</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">mri</span> <span class="n">diff</span> <span class="n">diff</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">thresh</span> <span class="n">T</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">res</span><span class="o">-</span><span class="n">thresh</span> <span class="n">T</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">geo</span><span class="o">-</span><span class="n">thresh</span> <span class="n">T</span><span class="p">]</span>
-                     <span class="p">[</span><span class="o">--</span><span class="n">count</span><span class="o">-</span><span class="n">thresh</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">count</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">exit</span><span class="o">-</span><span class="n">on</span><span class="o">-</span><span class="n">diff</span><span class="p">]</span>
-                     <span class="p">[</span><span class="o">--</span><span class="n">skip</span><span class="o">-</span><span class="n">res</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">skip</span><span class="o">-</span><span class="n">geo</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">skip</span><span class="o">-</span><span class="n">prec</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">skip</span><span class="o">-</span><span class="n">pix</span><span class="p">]</span>
-                     <span class="p">[</span><span class="o">--</span><span class="n">notallow</span><span class="o">-</span><span class="n">acq</span><span class="p">]</span>
-                     <span class="n">vol1</span> <span class="n">vol2</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mri</span> <span class="n">diff</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">thresh</span> <span class="n">T</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">res</span><span class="o">-</span><span class="n">thresh</span> <span class="n">T</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">geo</span><span class="o">-</span><span class="n">thresh</span> <span class="n">T</span><span class="p">]</span>
+         <span class="p">[</span><span class="o">--</span><span class="n">count</span><span class="o">-</span><span class="n">thresh</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">count</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">exit</span><span class="o">-</span><span class="n">on</span><span class="o">-</span><span class="n">diff</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">skip</span><span class="o">-</span><span class="n">res</span><span class="p">]</span>
+         <span class="p">[</span><span class="o">--</span><span class="n">skip</span><span class="o">-</span><span class="n">geo</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">skip</span><span class="o">-</span><span class="n">prec</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">skip</span><span class="o">-</span><span class="n">pix</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">notallow</span><span class="o">-</span><span class="n">acq</span><span class="p">]</span>
+         <span class="n">vol1</span> <span class="n">vol2</span>
 </pre></div>
 </div>
-<section id="neuroreg.cli.mri-_build_parser-positional-arguments">
-<h4>Positional Arguments<a class="headerlink" href="#neuroreg.cli.mri-_build_parser-positional-arguments" title="Link to this heading">¶</a></h4>
+<section id="mri-diff-positional-arguments">
+<span id="-positional-arguments_repeat2"></span><h5>Positional Arguments<a class="headerlink" href="#mri-diff-positional-arguments" title="Link to this heading">¶</a></h5>
 <dl class="option-list">
 <dt><kbd>vol1</kbd></dt>
 <dd><p>First image.</p>
@@ -1517,8 +1262,8 @@ first difference with a FreeSurfer-compatible status code:
 </dd>
 </dl>
 </section>
-<section id="neuroreg.cli.mri-_build_parser-named-arguments">
-<h4>Named Arguments<a class="headerlink" href="#neuroreg.cli.mri-_build_parser-named-arguments" title="Link to this heading">¶</a></h4>
+<section id="mri-diff-named-arguments">
+<span id="-named-arguments_repeat2"></span><h5>Named Arguments<a class="headerlink" href="#mri-diff-named-arguments" title="Link to this heading">¶</a></h5>
 <dl class="option-list">
 <dt><kbd>--thresh</kbd></dt>
 <dd><p>Voxel value difference threshold (default: 0).</p>
@@ -1568,21 +1313,20 @@ first difference with a FreeSurfer-compatible status code:
 </section>
 </section>
 <section id="mri-binarize">
-<h3><code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">binarize</span></code><a class="headerlink" href="#mri-binarize" title="Link to this heading">¶</a></h3>
-<p><p>Binarize an image, analogous to FreeSurfer’s mri_binarize. A voxel is
+<span id="binarize"></span><h4>binarize<a class="headerlink" href="#mri-binarize" title="Link to this heading">¶</a></h4>
+<p>Binarize an image, analogous to FreeSurfer’s mri_binarize. A voxel is
 selected when it matches one of –match (exact), or lies in the
 inclusive range [–min, –max] (either bound may be omitted).
 Selected voxels are set to –binval, the rest to –binvalnot; –inv
 swaps that assignment. At least one of –min, –max, or –match is
 required. Output is int32 by default (–uchar selects uint8).</p>
-</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">mri</span> <span class="n">binarize</span> <span class="n">binarize</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">i</span> <span class="n">FILE</span> <span class="o">--</span><span class="n">o</span> <span class="n">FILE</span> <span class="p">[</span><span class="o">--</span><span class="nb">min</span> <span class="n">MIN</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="nb">max</span> <span class="n">MAX</span><span class="p">]</span>
-                             <span class="p">[</span><span class="o">--</span><span class="n">match</span> <span class="n">V</span> <span class="p">[</span><span class="n">V</span> <span class="o">...</span><span class="p">]]</span> <span class="p">[</span><span class="o">--</span><span class="n">binval</span> <span class="n">V</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">binvalnot</span> <span class="n">V</span><span class="p">]</span>
-                             <span class="p">[</span><span class="o">--</span><span class="n">inv</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="nb">abs</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">frame</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">uchar</span><span class="p">]</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mri</span> <span class="n">binarize</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">i</span> <span class="n">FILE</span> <span class="o">--</span><span class="n">o</span> <span class="n">FILE</span> <span class="p">[</span><span class="o">--</span><span class="nb">min</span> <span class="n">MIN</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="nb">max</span> <span class="n">MAX</span><span class="p">]</span>
+             <span class="p">[</span><span class="o">--</span><span class="n">match</span> <span class="n">V</span> <span class="p">[</span><span class="n">V</span> <span class="o">...</span><span class="p">]]</span> <span class="p">[</span><span class="o">--</span><span class="n">binval</span> <span class="n">V</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">binvalnot</span> <span class="n">V</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">inv</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="nb">abs</span><span class="p">]</span>
+             <span class="p">[</span><span class="o">--</span><span class="n">frame</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">uchar</span><span class="p">]</span>
 </pre></div>
 </div>
-<section id="neuroreg.cli.mri-_build_parser-named-arguments">
-<h4>Named Arguments<a class="headerlink" href="#neuroreg.cli.mri-_build_parser-named-arguments" title="Link to this heading">¶</a></h4>
+<section id="mri-binarize-named-arguments">
+<span id="-named-arguments_repeat3"></span><h5>Named Arguments<a class="headerlink" href="#mri-binarize-named-arguments" title="Link to this heading">¶</a></h5>
 <dl class="option-list">
 <dt><kbd>--i, --in</kbd></dt>
 <dd><p>Input image.</p>
@@ -1625,8 +1369,264 @@ required. Output is int32 by default (–uchar selects uint8).</p>
 </dl>
 </section>
 </section>
-<section id="id6">
-<h3>Python module<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h3>
+</section>
+<section id="id12">
+<h3><code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">mask</span></code><a class="headerlink" href="#id12" title="Link to this heading">¶</a></h3>
+<p><p>Apply a binary mask to an image, keeping voxels where the mask
+value is strictly greater than –threshold and setting the rest to
+–oval. The mask is resampled with nearest-neighbor interpolation
+into the input geometry when its grid differs, so a mask given in a
+different geometry is handled like FreeSurfer’s mri_mask. The input
+dtype is preserved; the output format follows the out extension.</p>
+<p>This is a single-space operation: it does not map between
+geometries. To mask before/after a transform, compose with vol2vol
+(mri mask … then vol2vol …  =  mask-then-map;  vol2vol … then
+mri mask …  =  map-then-mask).</p>
+</p>
+<div class="highlight-default notranslate" id="mri-mask-mask"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">mri</span> <span class="n">mask</span> <span class="n">mask</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">T</span> <span class="n">T</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">oval</span> <span class="n">V</span><span class="p">]</span> <span class="ow">in</span> <span class="n">mask</span> <span class="n">out</span>
+</pre></div>
+</div>
+<section id="mri-mask-mask-positional-arguments">
+<span id="neuroreg.cli.mri-_build_parser-positional-arguments"></span><h4>Positional Arguments<a class="headerlink" href="#mri-mask-mask-positional-arguments" title="Link to this heading">¶</a></h4>
+<dl class="option-list">
+<dt><kbd>in</kbd></dt>
+<dd><p>Input image to mask.</p>
+</dd>
+<dt><kbd>mask</kbd></dt>
+<dd><p>Binary mask image.</p>
+</dd>
+<dt><kbd>out</kbd></dt>
+<dd><p>Output image filename (format from extension).</p>
+</dd>
+</dl>
+</section>
+<section id="mri-mask-mask-named-arguments">
+<span id="neuroreg.cli.mri-_build_parser-named-arguments"></span><h4>Named Arguments<a class="headerlink" href="#mri-mask-mask-named-arguments" title="Link to this heading">¶</a></h4>
+<dl class="option-list">
+<dt><kbd>-T, --threshold</kbd></dt>
+<dd><p>Voxels with mask value strictly greater than this are kept (default: 0).</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.0</span></code></p>
+</dd>
+<dt><kbd>--oval</kbd></dt>
+<dd><p>Value assigned to voxels outside the mask (default: 0).</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.0</span></code></p>
+</dd>
+</dl>
+</section>
+</section>
+<section id="id13">
+<h3><code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">info</span></code><a class="headerlink" href="#id13" title="Link to this heading">¶</a></h3>
+<p><p>Print header and geometry information for an image, analogous to
+FreeSurfer’s mri_info. With no selector flags a full human-readable
+dump is printed. Selector flags print only the requested value(s),
+one per line, for scripting.</p>
+</p>
+<div class="highlight-default notranslate" id="mri-info-info"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">mri</span> <span class="n">info</span> <span class="n">info</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">dim</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">res</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">voxvol</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="nb">type</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">nframes</span><span class="p">]</span>
+                     <span class="p">[</span><span class="o">--</span><span class="n">orientation</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">cras</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">vox2ras</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">ras2vox</span><span class="p">]</span>
+                     <span class="p">[</span><span class="o">--</span><span class="n">vox2ras</span><span class="o">-</span><span class="n">tkr</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">stats</span><span class="p">]</span>
+                     <span class="n">FILE</span>
+</pre></div>
+</div>
+<section id="mri-info-info-positional-arguments">
+<span id="neuroreg.cli.mri-_build_parser-positional-arguments"></span><h4>Positional Arguments<a class="headerlink" href="#mri-info-info-positional-arguments" title="Link to this heading">¶</a></h4>
+<dl class="option-list">
+<dt><kbd>FILE</kbd></dt>
+<dd><p>Input image.</p>
+</dd>
+</dl>
+</section>
+<section id="mri-info-info-named-arguments">
+<span id="neuroreg.cli.mri-_build_parser-named-arguments"></span><h4>Named Arguments<a class="headerlink" href="#mri-info-info-named-arguments" title="Link to this heading">¶</a></h4>
+<dl class="option-list">
+<dt><kbd>--dim</kbd></dt>
+<dd><p>Print dimensions: ‘w h d’.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--res</kbd></dt>
+<dd><p>Print voxel sizes: ‘x y z’.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--voxvol</kbd></dt>
+<dd><p>Print the voxel volume.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--type</kbd></dt>
+<dd><p>Print the data dtype.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--nframes</kbd></dt>
+<dd><p>Print the number of frames.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--orientation, --ori</kbd></dt>
+<dd><p>Print the orientation string.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--cras</kbd></dt>
+<dd><p>Print the volume center RAS: ‘c_r c_a c_s’.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--vox2ras</kbd></dt>
+<dd><p>Print the voxel-to-RAS (scanner) matrix.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--ras2vox</kbd></dt>
+<dd><p>Print the RAS-to-voxel matrix.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--vox2ras-tkr</kbd></dt>
+<dd><p>Print the voxel-to-tkRAS matrix.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--stats</kbd></dt>
+<dd><p>Print voxel value stats: ‘min max mean’.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+</dl>
+</section>
+</section>
+<section id="id14">
+<h3><code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">diff</span></code><a class="headerlink" href="#id14" title="Link to this heading">¶</a></h3>
+<p><p>Compare two volumes, analogous to FreeSurfer’s mri_diff. Checks are
+run in order and (unless –no-exit-on-diff) the command exits at the
+first difference with a FreeSurfer-compatible status code:
+0   volumes are the same
+1   error (e.g. a file could not be read)
+101 dimensions differ (always exits)
+102 voxel resolution differs (&gt; –res-thresh)
+104 geometry / vox2ras differs (&gt; –geo-thresh)
+105 data type (precision) differs
+106 voxel values differ (max abs diff &gt; –thresh and count &gt; –count-thresh)</p>
+<p>Acquisition-parameter (TR/TE/TI/flip) checks are not performed.</p>
+</p>
+<div class="highlight-default notranslate" id="mri-diff-diff"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">mri</span> <span class="n">diff</span> <span class="n">diff</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">thresh</span> <span class="n">T</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">res</span><span class="o">-</span><span class="n">thresh</span> <span class="n">T</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">geo</span><span class="o">-</span><span class="n">thresh</span> <span class="n">T</span><span class="p">]</span>
+                     <span class="p">[</span><span class="o">--</span><span class="n">count</span><span class="o">-</span><span class="n">thresh</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">count</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">exit</span><span class="o">-</span><span class="n">on</span><span class="o">-</span><span class="n">diff</span><span class="p">]</span>
+                     <span class="p">[</span><span class="o">--</span><span class="n">skip</span><span class="o">-</span><span class="n">res</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">skip</span><span class="o">-</span><span class="n">geo</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">skip</span><span class="o">-</span><span class="n">prec</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">skip</span><span class="o">-</span><span class="n">pix</span><span class="p">]</span>
+                     <span class="p">[</span><span class="o">--</span><span class="n">notallow</span><span class="o">-</span><span class="n">acq</span><span class="p">]</span>
+                     <span class="n">vol1</span> <span class="n">vol2</span>
+</pre></div>
+</div>
+<section id="mri-diff-diff-positional-arguments">
+<span id="neuroreg.cli.mri-_build_parser-positional-arguments"></span><h4>Positional Arguments<a class="headerlink" href="#mri-diff-diff-positional-arguments" title="Link to this heading">¶</a></h4>
+<dl class="option-list">
+<dt><kbd>vol1</kbd></dt>
+<dd><p>First image.</p>
+</dd>
+<dt><kbd>vol2</kbd></dt>
+<dd><p>Second image.</p>
+</dd>
+</dl>
+</section>
+<section id="mri-diff-diff-named-arguments">
+<span id="neuroreg.cli.mri-_build_parser-named-arguments"></span><h4>Named Arguments<a class="headerlink" href="#mri-diff-diff-named-arguments" title="Link to this heading">¶</a></h4>
+<dl class="option-list">
+<dt><kbd>--thresh</kbd></dt>
+<dd><p>Voxel value difference threshold (default: 0).</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.0</span></code></p>
+</dd>
+<dt><kbd>--res-thresh</kbd></dt>
+<dd><p>Voxel-size difference threshold (default: 0).</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.0</span></code></p>
+</dd>
+<dt><kbd>--geo-thresh</kbd></dt>
+<dd><p>vox2ras element difference threshold (default: 0).</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0.0</span></code></p>
+</dd>
+<dt><kbd>--count-thresh</kbd></dt>
+<dd><p>Voxel values count as differing only when more than N voxels differ (default: 0).</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0</span></code></p>
+</dd>
+<dt><kbd>--count</kbd></dt>
+<dd><p>Print the number of differing voxels.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--no-exit-on-diff</kbd></dt>
+<dd><p>Report all differences instead of exiting at the first one.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">True</span></code></p>
+</dd>
+<dt><kbd>--skip-res, --notallow-res</kbd></dt>
+<dd><p>Skip the voxel-resolution check.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--skip-geo, --notallow-geo</kbd></dt>
+<dd><p>Skip the geometry / vox2ras check.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--skip-prec, --notallow-prec</kbd></dt>
+<dd><p>Skip the data-type / precision check.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--skip-pix, --notallow-pix</kbd></dt>
+<dd><p>Skip the pixel-value check.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--notallow-acq</kbd></dt>
+<dd><p>Accepted for FreeSurfer compatibility; acquisition-parameter checks are not performed.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+</dl>
+</section>
+</section>
+<section id="id15">
+<h3><code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">binarize</span></code><a class="headerlink" href="#id15" title="Link to this heading">¶</a></h3>
+<p><p>Binarize an image, analogous to FreeSurfer’s mri_binarize. A voxel is
+selected when it matches one of –match (exact), or lies in the
+inclusive range [–min, –max] (either bound may be omitted).
+Selected voxels are set to –binval, the rest to –binvalnot; –inv
+swaps that assignment. At least one of –min, –max, or –match is
+required. Output is int32 by default (–uchar selects uint8).</p>
+</p>
+<div class="highlight-default notranslate" id="mri-binarize-binarize"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">mri</span> <span class="n">binarize</span> <span class="n">binarize</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">i</span> <span class="n">FILE</span> <span class="o">--</span><span class="n">o</span> <span class="n">FILE</span> <span class="p">[</span><span class="o">--</span><span class="nb">min</span> <span class="n">MIN</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="nb">max</span> <span class="n">MAX</span><span class="p">]</span>
+                             <span class="p">[</span><span class="o">--</span><span class="n">match</span> <span class="n">V</span> <span class="p">[</span><span class="n">V</span> <span class="o">...</span><span class="p">]]</span> <span class="p">[</span><span class="o">--</span><span class="n">binval</span> <span class="n">V</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">binvalnot</span> <span class="n">V</span><span class="p">]</span>
+                             <span class="p">[</span><span class="o">--</span><span class="n">inv</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="nb">abs</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">frame</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">uchar</span><span class="p">]</span>
+</pre></div>
+</div>
+<section id="mri-binarize-binarize-named-arguments">
+<span id="neuroreg.cli.mri-_build_parser-named-arguments"></span><h4>Named Arguments<a class="headerlink" href="#mri-binarize-binarize-named-arguments" title="Link to this heading">¶</a></h4>
+<dl class="option-list">
+<dt><kbd>--i, --in</kbd></dt>
+<dd><p>Input image.</p>
+</dd>
+<dt><kbd>--o, --out</kbd></dt>
+<dd><p>Output image.</p>
+</dd>
+<dt><kbd>--min</kbd></dt>
+<dd><p>Inclusive lower intensity bound.</p>
+</dd>
+<dt><kbd>--max</kbd></dt>
+<dd><p>Inclusive upper intensity bound.</p>
+</dd>
+<dt><kbd>--match</kbd></dt>
+<dd><p>Match these values exactly (e.g. label ids).</p>
+</dd>
+<dt><kbd>--binval</kbd></dt>
+<dd><p>Value for selected voxels (default: 1).</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">1</span></code></p>
+</dd>
+<dt><kbd>--binvalnot</kbd></dt>
+<dd><p>Value for unselected voxels (default: 0).</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">0</span></code></p>
+</dd>
+<dt><kbd>--inv</kbd></dt>
+<dd><p>Swap the selected/unselected output values.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--abs</kbd></dt>
+<dd><p>Take abs value before thresholding.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--frame</kbd></dt>
+<dd><p>For 4D input, binarize this frame only.</p>
+</dd>
+<dt><kbd>--uchar</kbd></dt>
+<dd><p>Write uint8 output instead of int32.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+</dl>
+</section>
+</section>
+<section id="id16">
+<h3>Python module<a class="headerlink" href="#id16" title="Link to this heading">¶</a></h3>
 <p id="module-neuroreg.cli.mri">Unified image-utility CLI.</p>
 <p>Small <code class="docutils literal notranslate"><span class="pre">mri_*</span></code>-style volume utilities grouped under a single command, in the
 same spirit as the <code class="docutils literal notranslate"><span class="pre">lta</span></code> transform CLI. Available subcommands are <code class="docutils literal notranslate"><span class="pre">mask</span></code>
@@ -1663,11 +1663,11 @@ same spirit as the <code class="docutils literal notranslate"><span class="pre">
 <h2><code class="docutils literal notranslate"><span class="pre">lta</span></code><a class="headerlink" href="#lta" title="Link to this heading">¶</a></h2>
 <p><p>LTA transform manipulation utilities.</p>
 </p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">lta</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="n">COMMAND</span> <span class="o">...</span>
+<div class="highlight-default notranslate" id="id17"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">lta</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="n">COMMAND</span> <span class="o">...</span>
 </pre></div>
 </div>
-<section id="neuroreg.cli.lta-_build_parser-positional-arguments">
-<h3>Positional Arguments<a class="headerlink" href="#neuroreg.cli.lta-_build_parser-positional-arguments" title="Link to this heading">¶</a></h3>
+<section id="lta-positional-arguments">
+<span id="neuroreg.cli.lta-_build_parser-positional-arguments"></span><h3>Positional Arguments<a class="headerlink" href="#lta-positional-arguments" title="Link to this heading">¶</a></h3>
 <dl class="option-list">
 <dt><kbd>COMMAND</kbd></dt>
 <dd><p>Possible choices: diff, invert, concat, convert</p>
@@ -1676,8 +1676,8 @@ same spirit as the <code class="docutils literal notranslate"><span class="pre">
 </section>
 <section id="Sub-commands">
 <h3>Sub-commands<a class="headerlink" href="#Sub-commands" title="Link to this heading">¶</a></h3>
-<section id="diff">
-<h4>diff<a class="headerlink" href="#diff" title="Link to this heading">¶</a></h4>
+<section id="lta-diff">
+<span id="diff"></span><h4>diff<a class="headerlink" href="#lta-diff" title="Link to this heading">¶</a></h4>
 <p>Compute distance metrics between two LTA transforms, or between
 one transform and identity.</p>
 <p>All metrics operate on the RAS-to-RAS representation of the stored
@@ -1712,8 +1712,8 @@ displacement(p) = ‖Md·p − p‖  over ~1600 sphere samples</p>
          <span class="n">LTA1</span> <span class="p">[</span><span class="n">LTA2</span><span class="p">]</span>
 </pre></div>
 </div>
-<section id="positional-arguments">
-<h5>Positional Arguments<a class="headerlink" href="#positional-arguments" title="Link to this heading">¶</a></h5>
+<section id="lta-diff-positional-arguments">
+<span id="-positional-arguments"></span><h5>Positional Arguments<a class="headerlink" href="#lta-diff-positional-arguments" title="Link to this heading">¶</a></h5>
 <dl class="option-list">
 <dt><kbd>LTA1</kbd></dt>
 <dd><p>First (or only) LTA transform file.</p>
@@ -1723,8 +1723,8 @@ displacement(p) = ‖Md·p − p‖  over ~1600 sphere samples</p>
 </dd>
 </dl>
 </section>
-<section id="named-arguments">
-<h5>Named Arguments<a class="headerlink" href="#named-arguments" title="Link to this heading">¶</a></h5>
+<section id="lta-diff-named-arguments">
+<span id="-named-arguments"></span><h5>Named Arguments<a class="headerlink" href="#lta-diff-named-arguments" title="Link to this heading">¶</a></h5>
 <dl class="option-list">
 <dt><kbd>--dist</kbd></dt>
 <dd><p>Possible choices: 1, 2, 3, 4, 5, 7</p>
@@ -1750,16 +1750,16 @@ displacement(p) = ‖Md·p − p‖  over ~1600 sphere samples</p>
 </dl>
 </section>
 </section>
-<section id="invert">
-<h4>invert<a class="headerlink" href="#invert" title="Link to this heading">¶</a></h4>
+<section id="lta-invert">
+<span id="invert"></span><h4>invert<a class="headerlink" href="#lta-invert" title="Link to this heading">¶</a></h4>
 <p>Invert a FreeSurfer LTA transform.</p>
 <p>The output is always stored as LINEAR_RAS_TO_RAS (type 1)
 with src and dst geometry blocks swapped.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">lta</span> <span class="n">invert</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="n">INPUT</span> <span class="n">OUTPUT</span>
 </pre></div>
 </div>
-<section id="positional-arguments_repeat1">
-<h5>Positional Arguments<a class="headerlink" href="#positional-arguments_repeat1" title="Link to this heading">¶</a></h5>
+<section id="lta-invert-positional-arguments">
+<span id="-positional-arguments_repeat1"></span><h5>Positional Arguments<a class="headerlink" href="#lta-invert-positional-arguments" title="Link to this heading">¶</a></h5>
 <dl class="option-list">
 <dt><kbd>INPUT</kbd></dt>
 <dd><p>Input LTA file.</p>
@@ -1770,8 +1770,8 @@ with src and dst geometry blocks swapped.</p>
 </dl>
 </section>
 </section>
-<section id="concat">
-<h4>concat<a class="headerlink" href="#concat" title="Link to this heading">¶</a></h4>
+<section id="lta-concat">
+<span id="concat"></span><h4>concat<a class="headerlink" href="#lta-concat" title="Link to this heading">¶</a></h4>
 <p>Concatenate two LTA transforms.</p>
 <p>LTA1 maps A → B and LTA2 maps B → C.
 The output maps A → C with matrix  M_LTA2 &#64; M_LTA1.
@@ -1780,8 +1780,8 @@ src geometry is taken from LTA1; dst geometry from LTA2.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">lta</span> <span class="n">concat</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="n">LTA1</span> <span class="n">LTA2</span> <span class="n">OUTPUT</span>
 </pre></div>
 </div>
-<section id="positional-arguments_repeat2">
-<h5>Positional Arguments<a class="headerlink" href="#positional-arguments_repeat2" title="Link to this heading">¶</a></h5>
+<section id="lta-concat-positional-arguments">
+<span id="-positional-arguments_repeat2"></span><h5>Positional Arguments<a class="headerlink" href="#lta-concat-positional-arguments" title="Link to this heading">¶</a></h5>
 <dl class="option-list">
 <dt><kbd>LTA1</kbd></dt>
 <dd><p>First transform  (A → B).</p>
@@ -1795,8 +1795,8 @@ src geometry is taken from LTA1; dst geometry from LTA2.</p>
 </dl>
 </section>
 </section>
-<section id="convert">
-<h4>convert<a class="headerlink" href="#convert" title="Link to this heading">¶</a></h4>
+<section id="lta-convert">
+<span id="convert"></span><h4>convert<a class="headerlink" href="#lta-convert" title="Link to this heading">¶</a></h4>
 <p>Convert between FreeSurfer-adjacent linear transform formats.</p>
 <dl class="simple">
 <dt>Supported formats are usually inferred from file suffixes:</dt><dd><p>.lta  FreeSurfer Linear Transform Array
@@ -1829,8 +1829,8 @@ NiftyReg affine text matrices store the inverse target-to-source RAS matrix.</p>
             <span class="n">INPUT</span> <span class="n">OUTPUT</span>
 </pre></div>
 </div>
-<section id="positional-arguments_repeat3">
-<h5>Positional Arguments<a class="headerlink" href="#positional-arguments_repeat3" title="Link to this heading">¶</a></h5>
+<section id="lta-convert-positional-arguments">
+<span id="-positional-arguments_repeat3"></span><h5>Positional Arguments<a class="headerlink" href="#lta-convert-positional-arguments" title="Link to this heading">¶</a></h5>
 <dl class="option-list">
 <dt><kbd>INPUT</kbd></dt>
 <dd><p>Input transform file.</p>
@@ -1840,8 +1840,8 @@ NiftyReg affine text matrices store the inverse target-to-source RAS matrix.</p>
 </dd>
 </dl>
 </section>
-<section id="named-arguments_repeat1">
-<h5>Named Arguments<a class="headerlink" href="#named-arguments_repeat1" title="Link to this heading">¶</a></h5>
+<section id="lta-convert-named-arguments">
+<span id="-named-arguments_repeat1"></span><h5>Named Arguments<a class="headerlink" href="#lta-convert-named-arguments" title="Link to this heading">¶</a></h5>
 <dl class="option-list">
 <dt><kbd>--in-format</kbd></dt>
 <dd><p>Possible choices: lta, xfm, fsl, regdat, itk, antsmat, afni, niftyreg</p>
@@ -1876,8 +1876,8 @@ NiftyReg affine text matrices store the inverse target-to-source RAS matrix.</p>
 </section>
 </section>
 </section>
-<section id="lta-diff">
-<h3><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">diff</span></code><a class="headerlink" href="#lta-diff" title="Link to this heading">¶</a></h3>
+<section id="id18">
+<h3><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">diff</span></code><a class="headerlink" href="#id18" title="Link to this heading">¶</a></h3>
 <p><p>Compute distance metrics between two LTA transforms, or between
 one transform and identity.</p>
 <p>All metrics operate on the RAS-to-RAS representation of the stored
@@ -1908,13 +1908,13 @@ displacement(p) = ‖Md·p − p‖  over ~1600 sphere samples</p>
 </dd>
 </dl>
 </p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">lta</span> <span class="n">diff</span> <span class="n">diff</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">dist</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">7</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">radius</span> <span class="n">MM</span><span class="p">]</span>
+<div class="highlight-default notranslate" id="lta-diff-diff"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">lta</span> <span class="n">diff</span> <span class="n">diff</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">dist</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">7</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">radius</span> <span class="n">MM</span><span class="p">]</span>
                      <span class="p">[</span><span class="o">--</span><span class="n">normdiv</span> <span class="n">FLOAT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">invert1</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">invert2</span><span class="p">]</span>
                      <span class="n">LTA1</span> <span class="p">[</span><span class="n">LTA2</span><span class="p">]</span>
 </pre></div>
 </div>
-<section id="neuroreg.cli.lta-_build_parser-positional-arguments">
-<h4>Positional Arguments<a class="headerlink" href="#neuroreg.cli.lta-_build_parser-positional-arguments" title="Link to this heading">¶</a></h4>
+<section id="lta-diff-diff-positional-arguments">
+<span id="neuroreg.cli.lta-_build_parser-positional-arguments"></span><h4>Positional Arguments<a class="headerlink" href="#lta-diff-diff-positional-arguments" title="Link to this heading">¶</a></h4>
 <dl class="option-list">
 <dt><kbd>LTA1</kbd></dt>
 <dd><p>First (or only) LTA transform file.</p>
@@ -1924,8 +1924,8 @@ displacement(p) = ‖Md·p − p‖  over ~1600 sphere samples</p>
 </dd>
 </dl>
 </section>
-<section id="neuroreg.cli.lta-_build_parser-named-arguments">
-<h4>Named Arguments<a class="headerlink" href="#neuroreg.cli.lta-_build_parser-named-arguments" title="Link to this heading">¶</a></h4>
+<section id="lta-diff-diff-named-arguments">
+<span id="neuroreg.cli.lta-_build_parser-named-arguments"></span><h4>Named Arguments<a class="headerlink" href="#lta-diff-diff-named-arguments" title="Link to this heading">¶</a></h4>
 <dl class="option-list">
 <dt><kbd>--dist</kbd></dt>
 <dd><p>Possible choices: 1, 2, 3, 4, 5, 7</p>
@@ -1951,17 +1951,17 @@ displacement(p) = ‖Md·p − p‖  over ~1600 sphere samples</p>
 </dl>
 </section>
 </section>
-<section id="lta-invert">
-<h3><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">invert</span></code><a class="headerlink" href="#lta-invert" title="Link to this heading">¶</a></h3>
+<section id="id19">
+<h3><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">invert</span></code><a class="headerlink" href="#id19" title="Link to this heading">¶</a></h3>
 <p><p>Invert a FreeSurfer LTA transform.</p>
 <p>The output is always stored as LINEAR_RAS_TO_RAS (type 1)
 with src and dst geometry blocks swapped.</p>
 </p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">lta</span> <span class="n">invert</span> <span class="n">invert</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="n">INPUT</span> <span class="n">OUTPUT</span>
+<div class="highlight-default notranslate" id="lta-invert-invert"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">lta</span> <span class="n">invert</span> <span class="n">invert</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="n">INPUT</span> <span class="n">OUTPUT</span>
 </pre></div>
 </div>
-<section id="neuroreg.cli.lta-_build_parser-positional-arguments">
-<h4>Positional Arguments<a class="headerlink" href="#neuroreg.cli.lta-_build_parser-positional-arguments" title="Link to this heading">¶</a></h4>
+<section id="lta-invert-invert-positional-arguments">
+<span id="neuroreg.cli.lta-_build_parser-positional-arguments"></span><h4>Positional Arguments<a class="headerlink" href="#lta-invert-invert-positional-arguments" title="Link to this heading">¶</a></h4>
 <dl class="option-list">
 <dt><kbd>INPUT</kbd></dt>
 <dd><p>Input LTA file.</p>
@@ -1972,19 +1972,19 @@ with src and dst geometry blocks swapped.</p>
 </dl>
 </section>
 </section>
-<section id="lta-concat">
-<h3><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">concat</span></code><a class="headerlink" href="#lta-concat" title="Link to this heading">¶</a></h3>
+<section id="id20">
+<h3><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">concat</span></code><a class="headerlink" href="#id20" title="Link to this heading">¶</a></h3>
 <p><p>Concatenate two LTA transforms.</p>
 <p>LTA1 maps A → B and LTA2 maps B → C.
 The output maps A → C with matrix  M_LTA2 &#64; M_LTA1.
 src geometry is taken from LTA1; dst geometry from LTA2.</p>
 <p>Equivalent to FreeSurfer’s mri_concatenate_lta.</p>
 </p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">lta</span> <span class="n">concat</span> <span class="n">concat</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="n">LTA1</span> <span class="n">LTA2</span> <span class="n">OUTPUT</span>
+<div class="highlight-default notranslate" id="lta-concat-concat"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">lta</span> <span class="n">concat</span> <span class="n">concat</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="n">LTA1</span> <span class="n">LTA2</span> <span class="n">OUTPUT</span>
 </pre></div>
 </div>
-<section id="neuroreg.cli.lta-_build_parser-positional-arguments">
-<h4>Positional Arguments<a class="headerlink" href="#neuroreg.cli.lta-_build_parser-positional-arguments" title="Link to this heading">¶</a></h4>
+<section id="lta-concat-concat-positional-arguments">
+<span id="neuroreg.cli.lta-_build_parser-positional-arguments"></span><h4>Positional Arguments<a class="headerlink" href="#lta-concat-concat-positional-arguments" title="Link to this heading">¶</a></h4>
 <dl class="option-list">
 <dt><kbd>LTA1</kbd></dt>
 <dd><p>First transform  (A → B).</p>
@@ -1998,8 +1998,8 @@ src geometry is taken from LTA1; dst geometry from LTA2.</p>
 </dl>
 </section>
 </section>
-<section id="lta-convert">
-<h3><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">convert</span></code><a class="headerlink" href="#lta-convert" title="Link to this heading">¶</a></h3>
+<section id="id21">
+<h3><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">convert</span></code><a class="headerlink" href="#id21" title="Link to this heading">¶</a></h3>
 <p><p>Convert between FreeSurfer-adjacent linear transform formats.</p>
 <dl class="simple">
 <dt>Supported formats are usually inferred from file suffixes:</dt><dd><p>.lta  FreeSurfer Linear Transform Array
@@ -2025,7 +2025,7 @@ AFNI support currently targets affine text matrices in DICOM/LPS
 coordinates and should likewise be considered experimental.
 NiftyReg affine text matrices store the inverse target-to-source RAS matrix.</p>
 </p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">lta</span> <span class="n">convert</span> <span class="n">convert</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span>
+<div class="highlight-default notranslate" id="lta-convert-convert"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">lta</span> <span class="n">convert</span> <span class="n">convert</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span>
                            <span class="p">[</span><span class="o">--</span><span class="ow">in</span><span class="o">-</span><span class="nb">format</span> <span class="p">{</span><span class="n">lta</span><span class="p">,</span><span class="n">xfm</span><span class="p">,</span><span class="n">fsl</span><span class="p">,</span><span class="n">regdat</span><span class="p">,</span><span class="n">itk</span><span class="p">,</span><span class="n">antsmat</span><span class="p">,</span><span class="n">afni</span><span class="p">,</span><span class="n">niftyreg</span><span class="p">}]</span>
                            <span class="p">[</span><span class="o">--</span><span class="n">out</span><span class="o">-</span><span class="nb">format</span> <span class="p">{</span><span class="n">lta</span><span class="p">,</span><span class="n">xfm</span><span class="p">,</span><span class="n">fsl</span><span class="p">,</span><span class="n">regdat</span><span class="p">,</span><span class="n">itk</span><span class="p">,</span><span class="n">antsmat</span><span class="p">,</span><span class="n">afni</span><span class="p">,</span><span class="n">niftyreg</span><span class="p">}]</span>
                            <span class="p">[</span><span class="o">--</span><span class="n">src</span><span class="o">-</span><span class="n">img</span> <span class="n">SRC_IMG</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">dst</span><span class="o">-</span><span class="n">img</span> <span class="n">DST_IMG</span><span class="p">]</span>
@@ -2035,8 +2035,8 @@ NiftyReg affine text matrices store the inverse target-to-source RAS matrix.</p>
                            <span class="n">INPUT</span> <span class="n">OUTPUT</span>
 </pre></div>
 </div>
-<section id="neuroreg.cli.lta-_build_parser-positional-arguments">
-<h4>Positional Arguments<a class="headerlink" href="#neuroreg.cli.lta-_build_parser-positional-arguments" title="Link to this heading">¶</a></h4>
+<section id="lta-convert-convert-positional-arguments">
+<span id="neuroreg.cli.lta-_build_parser-positional-arguments"></span><h4>Positional Arguments<a class="headerlink" href="#lta-convert-convert-positional-arguments" title="Link to this heading">¶</a></h4>
 <dl class="option-list">
 <dt><kbd>INPUT</kbd></dt>
 <dd><p>Input transform file.</p>
@@ -2046,8 +2046,8 @@ NiftyReg affine text matrices store the inverse target-to-source RAS matrix.</p>
 </dd>
 </dl>
 </section>
-<section id="neuroreg.cli.lta-_build_parser-named-arguments">
-<h4>Named Arguments<a class="headerlink" href="#neuroreg.cli.lta-_build_parser-named-arguments" title="Link to this heading">¶</a></h4>
+<section id="lta-convert-convert-named-arguments">
+<span id="neuroreg.cli.lta-_build_parser-named-arguments"></span><h4>Named Arguments<a class="headerlink" href="#lta-convert-convert-named-arguments" title="Link to this heading">¶</a></h4>
 <dl class="option-list">
 <dt><kbd>--in-format</kbd></dt>
 <dd><p>Possible choices: lta, xfm, fsl, regdat, itk, antsmat, afni, niftyreg</p>
@@ -2081,8 +2081,8 @@ NiftyReg affine text matrices store the inverse target-to-source RAS matrix.</p>
 </dl>
 </section>
 </section>
-<section id="id7">
-<h3>Python module<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h3>
+<section id="id22">
+<h3>Python module<a class="headerlink" href="#id22" title="Link to this heading">¶</a></h3>
 <p id="module-neuroreg.cli.lta">Unified LTA transform manipulation CLI.</p>
 <p>Available subcommands are <code class="docutils literal notranslate"><span class="pre">diff</span></code> to compare transforms, <code class="docutils literal notranslate"><span class="pre">invert</span></code> to invert
 an LTA, <code class="docutils literal notranslate"><span class="pre">concat</span></code> to chain two LTAs, and <code class="docutils literal notranslate"><span class="pre">convert</span></code> to translate between
@@ -2107,11 +2107,11 @@ tkregister <code class="docutils literal notranslate"><span class="pre">register
 <h2><code class="docutils literal notranslate"><span class="pre">neuroreg-sys_info</span></code><a class="headerlink" href="#neuroreg-sys-info" title="Link to this heading">¶</a></h2>
 <p><p>Display dependency and runtime information for neuroreg.</p>
 </p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">neuroreg</span><span class="o">-</span><span class="n">sys_info</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">developer</span><span class="p">]</span>
+<div class="highlight-default notranslate" id="neuroreg-sys_info"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">neuroreg</span><span class="o">-</span><span class="n">sys_info</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">developer</span><span class="p">]</span>
 </pre></div>
 </div>
-<section id="neuroreg.cli.sys_info-_build_parser-named-arguments">
-<h3>Named Arguments<a class="headerlink" href="#neuroreg.cli.sys_info-_build_parser-named-arguments" title="Link to this heading">¶</a></h3>
+<section id="neuroreg-sys_info-named-arguments">
+<span id="neuroreg.cli.sys_info-_build_parser-named-arguments"></span><h3>Named Arguments<a class="headerlink" href="#neuroreg-sys_info-named-arguments" title="Link to this heading">¶</a></h3>
 <dl class="option-list">
 <dt><kbd>--developer</kbd></dt>
 <dd><p>Display information for optional dependencies.</p>
@@ -2119,8 +2119,8 @@ tkregister <code class="docutils literal notranslate"><span class="pre">register
 </dd>
 </dl>
 </section>
-<section id="id8">
-<h3>Python module<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h3>
+<section id="id23">
+<h3>Python module<a class="headerlink" href="#id23" title="Link to this heading">¶</a></h3>
 <span class="target" id="module-neuroreg.cli.sys_info"></span><dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.cli.sys_info.main">
 <span class="sig-prename descclassname"><span class="pre">neuroreg.cli.sys_info.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/cli/sys_info.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.cli.sys_info.main" title="Link to this definition">¶</a></dt>
@@ -2204,7 +2204,7 @@ tkregister <code class="docutils literal notranslate"><span class="pre">register
             <ul>
 <li><a class="reference internal" href="#">CLI modules</a><ul>
 <li><a class="reference internal" href="#robreg"><code class="docutils literal notranslate"><span class="pre">robreg</span></code></a><ul>
-<li><a class="reference internal" href="#neuroreg.cli.robreg-_build_parser-named-arguments">Named Arguments</a></li>
+<li><a class="reference internal" href="#robreg-named-arguments">Named Arguments</a></li>
 <li><a class="reference internal" href="#module-neuroreg.cli.robreg">Python module</a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.robreg.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 </ul>
@@ -2212,147 +2212,147 @@ tkregister <code class="docutils literal notranslate"><span class="pre">register
 </ul>
 </li>
 <li><a class="reference internal" href="#multireg"><code class="docutils literal notranslate"><span class="pre">multireg</span></code></a><ul>
-<li><a class="reference internal" href="#neuroreg.cli.multireg-_build_parser-named-arguments">Named Arguments</a></li>
-<li><a class="reference internal" href="#id1">Python module</a><ul>
+<li><a class="reference internal" href="#multireg-named-arguments">Named Arguments</a></li>
+<li><a class="reference internal" href="#id2">Python module</a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.multireg.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 </ul>
 </li>
 </ul>
 </li>
 <li><a class="reference internal" href="#coreg"><code class="docutils literal notranslate"><span class="pre">coreg</span></code></a><ul>
-<li><a class="reference internal" href="#neuroreg.cli.coreg-_build_parser-named-arguments">Named Arguments</a></li>
-<li><a class="reference internal" href="#id2">Python module</a><ul>
+<li><a class="reference internal" href="#coreg-named-arguments">Named Arguments</a></li>
+<li><a class="reference internal" href="#id4">Python module</a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.coreg.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 </ul>
 </li>
 </ul>
 </li>
 <li><a class="reference internal" href="#bbreg"><code class="docutils literal notranslate"><span class="pre">bbreg</span></code></a><ul>
-<li><a class="reference internal" href="#neuroreg.cli.bbreg-_build_parser-named-arguments">Named Arguments</a></li>
-<li><a class="reference internal" href="#neuroreg.cli.bbreg-_build_parser-mode-a-–-freesurfer-subject-directory">Mode A – FreeSurfer subject directory</a></li>
-<li><a class="reference internal" href="#neuroreg.cli.bbreg-_build_parser-mode-b-–-explicit-surface-files">Mode B – explicit surface files</a></li>
-<li><a class="reference internal" href="#neuroreg.cli.bbreg-_build_parser-mode-c-–-segmentation-(aparc+aseg-/-aseg)">Mode C – segmentation (aparc+aseg / aseg)</a></li>
-<li><a class="reference internal" href="#id3">Python module</a><ul>
+<li><a class="reference internal" href="#bbreg-named-arguments">Named Arguments</a></li>
+<li><a class="reference internal" href="#bbreg-mode-a-freesurfer-subject-directory">Mode A – FreeSurfer subject directory</a></li>
+<li><a class="reference internal" href="#bbreg-mode-b-explicit-surface-files">Mode B – explicit surface files</a></li>
+<li><a class="reference internal" href="#bbreg-mode-c-segmentation-aparc-aseg-aseg">Mode C – segmentation (aparc+aseg / aseg)</a></li>
+<li><a class="reference internal" href="#id6">Python module</a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.bbreg.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 </ul>
 </li>
 </ul>
 </li>
 <li><a class="reference internal" href="#vol2vol"><code class="docutils literal notranslate"><span class="pre">vol2vol</span></code></a><ul>
-<li><a class="reference internal" href="#neuroreg.cli.vol2vol-_build_parser-named-arguments">Named Arguments</a></li>
-<li><a class="reference internal" href="#id4">Python module</a><ul>
+<li><a class="reference internal" href="#vol2vol-named-arguments">Named Arguments</a></li>
+<li><a class="reference internal" href="#id8">Python module</a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.vol2vol.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 </ul>
 </li>
 </ul>
 </li>
 <li><a class="reference internal" href="#segreg"><code class="docutils literal notranslate"><span class="pre">segreg</span></code></a><ul>
-<li><a class="reference internal" href="#neuroreg.cli.segreg-_build_parser-named-arguments">Named Arguments</a></li>
-<li><a class="reference internal" href="#id5">Python module</a><ul>
+<li><a class="reference internal" href="#segreg-named-arguments">Named Arguments</a></li>
+<li><a class="reference internal" href="#id10">Python module</a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.segreg.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 </ul>
 </li>
 </ul>
 </li>
 <li><a class="reference internal" href="#mri"><code class="docutils literal notranslate"><span class="pre">mri</span></code></a><ul>
-<li><a class="reference internal" href="#neuroreg.cli.mri-_build_parser-positional-arguments">Positional Arguments</a></li>
+<li><a class="reference internal" href="#mri-positional-arguments">Positional Arguments</a></li>
 <li><a class="reference internal" href="#Sub-commands">Sub-commands</a><ul>
-<li><a class="reference internal" href="#mask">mask</a><ul>
-<li><a class="reference internal" href="#positional-arguments">Positional Arguments</a></li>
-<li><a class="reference internal" href="#named-arguments">Named Arguments</a></li>
+<li><a class="reference internal" href="#mri-mask">mask</a><ul>
+<li><a class="reference internal" href="#mri-mask-positional-arguments">Positional Arguments</a></li>
+<li><a class="reference internal" href="#mri-mask-named-arguments">Named Arguments</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#info">info</a><ul>
-<li><a class="reference internal" href="#positional-arguments_repeat1">Positional Arguments</a></li>
-<li><a class="reference internal" href="#named-arguments_repeat1">Named Arguments</a></li>
+<li><a class="reference internal" href="#mri-info">info</a><ul>
+<li><a class="reference internal" href="#mri-info-positional-arguments">Positional Arguments</a></li>
+<li><a class="reference internal" href="#mri-info-named-arguments">Named Arguments</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#diff">diff</a><ul>
-<li><a class="reference internal" href="#positional-arguments_repeat2">Positional Arguments</a></li>
-<li><a class="reference internal" href="#named-arguments_repeat2">Named Arguments</a></li>
+<li><a class="reference internal" href="#mri-diff">diff</a><ul>
+<li><a class="reference internal" href="#mri-diff-positional-arguments">Positional Arguments</a></li>
+<li><a class="reference internal" href="#mri-diff-named-arguments">Named Arguments</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#binarize">binarize</a><ul>
-<li><a class="reference internal" href="#named-arguments_repeat3">Named Arguments</a></li>
+<li><a class="reference internal" href="#mri-binarize">binarize</a><ul>
+<li><a class="reference internal" href="#mri-binarize-named-arguments">Named Arguments</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li><a class="reference internal" href="#mri-mask"><code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">mask</span></code></a><ul>
-<li><a class="reference internal" href="#neuroreg.cli.mri-_build_parser-positional-arguments">Positional Arguments</a></li>
-<li><a class="reference internal" href="#neuroreg.cli.mri-_build_parser-named-arguments">Named Arguments</a></li>
+<li><a class="reference internal" href="#id12"><code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">mask</span></code></a><ul>
+<li><a class="reference internal" href="#mri-mask-mask-positional-arguments">Positional Arguments</a></li>
+<li><a class="reference internal" href="#mri-mask-mask-named-arguments">Named Arguments</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#mri-info"><code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">info</span></code></a><ul>
-<li><a class="reference internal" href="#neuroreg.cli.mri-_build_parser-positional-arguments">Positional Arguments</a></li>
-<li><a class="reference internal" href="#neuroreg.cli.mri-_build_parser-named-arguments">Named Arguments</a></li>
+<li><a class="reference internal" href="#id13"><code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">info</span></code></a><ul>
+<li><a class="reference internal" href="#mri-info-info-positional-arguments">Positional Arguments</a></li>
+<li><a class="reference internal" href="#mri-info-info-named-arguments">Named Arguments</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#mri-diff"><code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">diff</span></code></a><ul>
-<li><a class="reference internal" href="#neuroreg.cli.mri-_build_parser-positional-arguments">Positional Arguments</a></li>
-<li><a class="reference internal" href="#neuroreg.cli.mri-_build_parser-named-arguments">Named Arguments</a></li>
+<li><a class="reference internal" href="#id14"><code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">diff</span></code></a><ul>
+<li><a class="reference internal" href="#mri-diff-diff-positional-arguments">Positional Arguments</a></li>
+<li><a class="reference internal" href="#mri-diff-diff-named-arguments">Named Arguments</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#mri-binarize"><code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">binarize</span></code></a><ul>
-<li><a class="reference internal" href="#neuroreg.cli.mri-_build_parser-named-arguments">Named Arguments</a></li>
+<li><a class="reference internal" href="#id15"><code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">binarize</span></code></a><ul>
+<li><a class="reference internal" href="#mri-binarize-binarize-named-arguments">Named Arguments</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#id6">Python module</a><ul>
+<li><a class="reference internal" href="#id16">Python module</a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.mri.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 </ul>
 </li>
 </ul>
 </li>
 <li><a class="reference internal" href="#lta"><code class="docutils literal notranslate"><span class="pre">lta</span></code></a><ul>
-<li><a class="reference internal" href="#neuroreg.cli.lta-_build_parser-positional-arguments">Positional Arguments</a></li>
+<li><a class="reference internal" href="#lta-positional-arguments">Positional Arguments</a></li>
 <li><a class="reference internal" href="#Sub-commands">Sub-commands</a><ul>
-<li><a class="reference internal" href="#diff">diff</a><ul>
-<li><a class="reference internal" href="#positional-arguments">Positional Arguments</a></li>
-<li><a class="reference internal" href="#named-arguments">Named Arguments</a></li>
+<li><a class="reference internal" href="#lta-diff">diff</a><ul>
+<li><a class="reference internal" href="#lta-diff-positional-arguments">Positional Arguments</a></li>
+<li><a class="reference internal" href="#lta-diff-named-arguments">Named Arguments</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#invert">invert</a><ul>
-<li><a class="reference internal" href="#positional-arguments_repeat1">Positional Arguments</a></li>
+<li><a class="reference internal" href="#lta-invert">invert</a><ul>
+<li><a class="reference internal" href="#lta-invert-positional-arguments">Positional Arguments</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#concat">concat</a><ul>
-<li><a class="reference internal" href="#positional-arguments_repeat2">Positional Arguments</a></li>
+<li><a class="reference internal" href="#lta-concat">concat</a><ul>
+<li><a class="reference internal" href="#lta-concat-positional-arguments">Positional Arguments</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#convert">convert</a><ul>
-<li><a class="reference internal" href="#positional-arguments_repeat3">Positional Arguments</a></li>
-<li><a class="reference internal" href="#named-arguments_repeat1">Named Arguments</a></li>
+<li><a class="reference internal" href="#lta-convert">convert</a><ul>
+<li><a class="reference internal" href="#lta-convert-positional-arguments">Positional Arguments</a></li>
+<li><a class="reference internal" href="#lta-convert-named-arguments">Named Arguments</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li><a class="reference internal" href="#lta-diff"><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">diff</span></code></a><ul>
-<li><a class="reference internal" href="#neuroreg.cli.lta-_build_parser-positional-arguments">Positional Arguments</a></li>
-<li><a class="reference internal" href="#neuroreg.cli.lta-_build_parser-named-arguments">Named Arguments</a></li>
+<li><a class="reference internal" href="#id18"><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">diff</span></code></a><ul>
+<li><a class="reference internal" href="#lta-diff-diff-positional-arguments">Positional Arguments</a></li>
+<li><a class="reference internal" href="#lta-diff-diff-named-arguments">Named Arguments</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#lta-invert"><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">invert</span></code></a><ul>
-<li><a class="reference internal" href="#neuroreg.cli.lta-_build_parser-positional-arguments">Positional Arguments</a></li>
+<li><a class="reference internal" href="#id19"><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">invert</span></code></a><ul>
+<li><a class="reference internal" href="#lta-invert-invert-positional-arguments">Positional Arguments</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#lta-concat"><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">concat</span></code></a><ul>
-<li><a class="reference internal" href="#neuroreg.cli.lta-_build_parser-positional-arguments">Positional Arguments</a></li>
+<li><a class="reference internal" href="#id20"><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">concat</span></code></a><ul>
+<li><a class="reference internal" href="#lta-concat-concat-positional-arguments">Positional Arguments</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#lta-convert"><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">convert</span></code></a><ul>
-<li><a class="reference internal" href="#neuroreg.cli.lta-_build_parser-positional-arguments">Positional Arguments</a></li>
-<li><a class="reference internal" href="#neuroreg.cli.lta-_build_parser-named-arguments">Named Arguments</a></li>
+<li><a class="reference internal" href="#id21"><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">convert</span></code></a><ul>
+<li><a class="reference internal" href="#lta-convert-convert-positional-arguments">Positional Arguments</a></li>
+<li><a class="reference internal" href="#lta-convert-convert-named-arguments">Named Arguments</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#id7">Python module</a><ul>
+<li><a class="reference internal" href="#id22">Python module</a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.lta.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 </ul>
 </li>
 </ul>
 </li>
 <li><a class="reference internal" href="#neuroreg-sys-info"><code class="docutils literal notranslate"><span class="pre">neuroreg-sys_info</span></code></a><ul>
-<li><a class="reference internal" href="#neuroreg.cli.sys_info-_build_parser-named-arguments">Named Arguments</a></li>
-<li><a class="reference internal" href="#id8">Python module</a><ul>
+<li><a class="reference internal" href="#neuroreg-sys_info-named-arguments">Named Arguments</a></li>
+<li><a class="reference internal" href="#id23">Python module</a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.sys_info.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.cli.sys_info.run"><code class="docutils literal notranslate"><span class="pre">run()</span></code></a></li>
 </ul>
