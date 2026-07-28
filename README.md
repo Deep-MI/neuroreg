@@ -115,7 +115,7 @@ multireg --mov <tp1.nii.gz> <tp2.nii.gz> ... --template <template.nii.gz> [optio
 | `--iterate N`        | auto     | Maximum number of refinement iterations (`0` for 2 TPs, `6` for 3+ by default). |
 | `--template-eps F`   | `0.03`   | Stop iterative refinement when the maximum transform update falls below this.   |
 | `--inittp N`         | auto     | 1-based initial target time point.                                              |
-| `--mapmov-dir DIR`   | —        | Optional directory for mapped input images in template space.                   |
+| `--mapmov FILE ...`  | —        | Optional output paths for mapped input images in template space, one per input. |
 | `--keep-dtype`       | off      | Preserve source dtype for mapped images instead of writing float32.             |
 
 **Examples**
