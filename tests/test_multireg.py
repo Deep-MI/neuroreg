@@ -7,6 +7,7 @@ import nibabel as nib
 import numpy as np
 import pytest
 
+from neuroreg.image import cast_image_dtype
 from neuroreg.multireg import choose_initial_target, compute_seed, multireg
 from neuroreg.transforms import LTA
 
@@ -225,3 +226,36 @@ def test_multireg_rebuilds_template_from_precomputed_ltas(monkeypatch: pytest.Mo
     assert np.asarray(result.template_image.affine) == pytest.approx(template_image.affine)
     assert result.mapped_images is not None
     assert len(result.mapped_images) == 2
+
+
+def test_cast_image_dtype_clips_cubic_overshoot_without_rescaling():
+    data = np.array([-5.0, -0.4, 0.4, 128.0, 254.6, 300.0], dtype=np.float32).reshape(1, 1, 6)
+    template_image = nib.Nifti1Image(data, np.eye(4, dtype=np.float32))
+
+    cast_image = cast_image_dtype(template_image, np.dtype(np.uint8))
+
+    assert cast_image.get_data_dtype() == np.dtype(np.uint8)
+    cast_data = np.asarray(cast_image.dataobj)
+    assert cast_data.ravel().tolist() == [0, 0, 0, 128, 255, 255]
+
+
+def test_multireg_keep_dtype_casts_template_to_target_dtype_without_wraparound(monkeypatch: pytest.MonkeyPatch):
+    shape = (21, 21, 21)
+    disk = (_make_blob(shape) > 0.5).astype(np.uint8) * np.uint8(255)
+    images = [
+        nib.Nifti1Image(disk, np.eye(4, dtype=np.float32)),
+        nib.Nifti1Image(disk, np.eye(4, dtype=np.float32)),
+    ]
+    register_module = importlib.import_module("neuroreg.multireg.register")
+    monkeypatch.setattr(
+        register_module,
+        "robreg",
+        lambda *args, **kwargs: _fake_tensor(np.eye(4, dtype=np.float64)),
+    )
+
+    result = multireg(images, init_target_index=0, nmax=1, template_iterations=0, mapped_keep_dtype=True)
+
+    assert result.template_image.get_data_dtype() == np.dtype(np.uint8)
+    template_data = np.asarray(result.template_image.dataobj)
+    assert template_data.min() >= 0
+    assert template_data.max() <= 255

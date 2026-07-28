@@ -116,7 +116,7 @@ multireg --mov <tp1.nii.gz> <tp2.nii.gz> ... --template <template.nii.gz> [optio
 | `--template-eps F`   | `0.03`   | Stop iterative refinement when the maximum transform update falls below this.   |
 | `--inittp N`         | auto     | 1-based initial target time point.                                              |
 | `--mapmov FILE ...`  | —        | Optional output paths for mapped input images in template space, one per input. |
-| `--keep-dtype`       | off      | Preserve source dtype for mapped images instead of writing float32.             |
+| `--keep-dtype`       | off      | Preserve the initial target's dtype for mapped images and the template.        |
 
 **Examples**
 

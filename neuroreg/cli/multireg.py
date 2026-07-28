@@ -168,7 +168,10 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--keep-dtype",
         action="store_true",
-        help="Write --mapmov outputs in the source-image dtype instead of float32.",
+        help=(
+            "Write --mapmov outputs and the --template output in the initial "
+            "target time point's dtype instead of float32."
+        ),
     )
     p.add_argument("--verbose", action="store_true", help="Enable INFO-level logging.")
     p.add_argument("--debug", action="store_true", help="Enable DEBUG-level logging.")
