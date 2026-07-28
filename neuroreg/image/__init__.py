@@ -8,6 +8,8 @@ from .geometry import get_ras2tkras, get_tkras2ras, get_vox2tkras, vox2tkras_fro
 from .info import describe_image, image_value_stats
 from .io import load_image, save_image
 from .map import (
+    cast_image_dtype,
+    clip_and_cast_dtype,
     create_image_like,
     header_map_image,
     infer_image_reslice_mode,
@@ -39,6 +41,8 @@ __all__ = [
     "save_image",
     "map",
     "map_r2r",
+    "cast_image_dtype",
+    "clip_and_cast_dtype",
     "create_image_like",
     "header_map_image",
     "infer_image_reslice_mode",

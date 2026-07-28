@@ -76,6 +76,7 @@ Run `robreg -h` for a full argument summary with defaults.
 | `--init-center`   | off     | Initialize by aligning geometric image centers in RAS.                                                             |
 | `--mapped FILE`   | —       | Save the warped moving image.                                                                                      |
 | `--outliers FILE` | —       | Save an outlier map (`1 - Tukey weights`).                                                                         |
+| `--device DEVICE` | `cpu`   | Torch device string, e.g. `cpu`, `cuda`, `mps`, or `gpu`. IRLS falls back to CPU on MPS (float64 limitation).      |
 | `--verbose`       | off     | Enable INFO-level logging.                                                                                         |
 | `--debug`         | off     | Enable DEBUG-level logging.                                                                                        |
 
@@ -115,8 +116,8 @@ multireg --mov <tp1.nii.gz> <tp2.nii.gz> ... --template <template.nii.gz> [optio
 | `--iterate N`        | auto     | Maximum number of refinement iterations (`0` for 2 TPs, `6` for 3+ by default). |
 | `--template-eps F`   | `0.03`   | Stop iterative refinement when the maximum transform update falls below this.   |
 | `--inittp N`         | auto     | 1-based initial target time point.                                              |
-| `--mapmov-dir DIR`   | —        | Optional directory for mapped input images in template space.                   |
-| `--keep-dtype`       | off      | Preserve source dtype for mapped images instead of writing float32.             |
+| `--mapmov FILE ...`  | —        | Optional output paths for mapped input images in template space, one per input. |
+| `--keep-dtype`       | off      | Preserve each input's own dtype for `--mapmov` outputs and the initial target's dtype for the template. |
 
 **Examples**
 

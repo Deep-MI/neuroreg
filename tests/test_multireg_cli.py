@@ -21,7 +21,8 @@ class TestMultiregCli:
         template = tmp_path / "template.nii.gz"
         lta1 = tmp_path / "tp1.lta"
         lta2 = tmp_path / "tp2.lta"
-        mapmov_dir = tmp_path / "mapped"
+        mapmov1 = tmp_path / "tp1_mapped.nii.gz"
+        mapmov2 = tmp_path / "tp2_mapped.nii.gz"
         _write_zero_image(mov1)
         _write_zero_image(mov2)
 
@@ -64,8 +65,9 @@ class TestMultiregCli:
                 "--lta",
                 str(lta1),
                 str(lta2),
-                "--mapmov-dir",
-                str(mapmov_dir),
+                "--mapmov",
+                str(mapmov1),
+                str(mapmov2),
                 "--average",
                 "1",
                 "--inittp",
@@ -94,8 +96,8 @@ class TestMultiregCli:
         assert template.exists()
         assert lta1.exists()
         assert lta2.exists()
-        assert (mapmov_dir / mov1.name).exists()
-        assert (mapmov_dir / mov2.name).exists()
+        assert mapmov1.exists()
+        assert mapmov2.exists()
 
     def test_main_rejects_mismatched_lta_count(self, tmp_path: Path):
         mov1 = tmp_path / "tp1.nii.gz"
@@ -114,6 +116,26 @@ class TestMultiregCli:
                     str(template),
                     "--lta",
                     str(tmp_path / "only_one.lta"),
+                ]
+            )
+
+    def test_main_rejects_mismatched_mapmov_count(self, tmp_path: Path):
+        mov1 = tmp_path / "tp1.nii.gz"
+        mov2 = tmp_path / "tp2.nii.gz"
+        template = tmp_path / "template.nii.gz"
+        _write_zero_image(mov1)
+        _write_zero_image(mov2)
+
+        with pytest.raises(SystemExit):
+            multireg_main(
+                [
+                    "--mov",
+                    str(mov1),
+                    str(mov2),
+                    "--template",
+                    str(template),
+                    "--mapmov",
+                    str(tmp_path / "only_one.nii.gz"),
                 ]
             )
 

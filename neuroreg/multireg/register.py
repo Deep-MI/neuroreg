@@ -12,7 +12,7 @@ from typing import Any
 
 import numpy as np
 
-from ..image import load_image
+from ..image import cast_image_dtype, load_image
 from ..image.map import coerce_image_data_3d
 from ..imreg.init import InitType, resolve_init_type
 from ..imreg.robreg import robreg
@@ -433,7 +433,9 @@ def multireg(
     return_mapped : bool, default=False
         If ``True``, include mapped images in the returned result.
     mapped_keep_dtype : bool, default=False
-        If ``True``, preserve source dtypes for returned mapped images.
+        If ``True``, preserve source dtypes for returned mapped images and cast
+        the output template to the initial target time point's dtype (clipping
+        cubic-interpolation over/undershoot instead of rescaling).
     verbose : bool, default=False
         Whether to enable verbose pairwise-registration logging.
 
@@ -580,6 +582,9 @@ def multireg(
             return_mapped=True,
             mapped_keep_dtype=mapped_keep_dtype,
         )
+
+    if mapped_keep_dtype:
+        current_template = cast_image_dtype(current_template, np.dtype(target_image.get_data_dtype()))
 
     ltas = build_ltas(current_transforms, source_names, images, current_template)
     return MultiRegResult(

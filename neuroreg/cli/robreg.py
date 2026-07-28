@@ -130,6 +130,12 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     # ── misc ────────────────────────────────────────────────────────────────
+    p.add_argument(
+        "--device",
+        default="cpu",
+        metavar="DEVICE",
+        help="Torch device string, e.g. 'cpu', 'cuda', 'mps', or 'gpu'.",
+    )
     p.add_argument("--verbose", action="store_true", help="Enable INFO-level logging.")
     p.add_argument("--debug", action="store_true", help="Enable DEBUG-level logging.")
 
@@ -156,7 +162,6 @@ def main(args=None) -> None:
     SystemExit
         If argument parsing fails or image loading raises an exception.
     """
-
     from ..image import load_image, save_header_mapped_image, save_resliced_r2r_image
     from ..imreg.robreg import robreg
 
@@ -203,6 +208,7 @@ def main(args=None) -> None:
         isotropic=True,
         outliers_name=ns.outliers,
         verbose=ns.verbose or ns.debug,
+        device=ns.device,
     )
     if ns.init_lta is not None:
         logger.info("Using explicit LTA initialization: %s", ns.init_lta)

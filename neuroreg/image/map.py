@@ -484,6 +484,56 @@ def resample_isotropic_tensor(
     return resampled, iso_affine.float(), Rvox.float()
 
 
+def clip_and_cast_dtype(data: np.ndarray, dtype: np.dtype) -> np.ndarray:
+    """Cast floating data into ``dtype``, clipping rather than rescaling.
+
+    Bool and integer targets round to the nearest value and clip to the
+    destination range instead of rescaling the whole array, so a few
+    cubic-interpolation over/undershoot voxels (e.g. near sharp mask
+    boundaries) are cropped rather than shifting or rescaling the entire
+    intensity range.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        Floating-point input data.
+    dtype : numpy.dtype
+        Target dtype.
+
+    Returns
+    -------
+    numpy.ndarray
+        Data cast to ``dtype``.
+    """
+    dtype = np.dtype(dtype)
+    if np.issubdtype(dtype, np.bool_):
+        return np.clip(np.rint(data), 0, 1).astype(dtype)
+    if np.issubdtype(dtype, np.integer):
+        info = np.iinfo(dtype)
+        return np.clip(np.rint(data), info.min, info.max).astype(dtype)
+    return np.asarray(data).astype(dtype, copy=False)
+
+
+def cast_image_dtype(image: Any, dtype: np.dtype) -> Any:
+    """Cast a nibabel-like image's data to ``dtype`` via :func:`clip_and_cast_dtype`.
+
+    Parameters
+    ----------
+    image : Any
+        Nibabel-like image exposing ``dataobj``, ``affine``, and ``header``.
+    dtype : numpy.dtype
+        Target dtype.
+
+    Returns
+    -------
+    Any
+        New image instance of the same class as ``image`` with data cast to
+        ``dtype``.
+    """
+    data = clip_and_cast_dtype(np.asarray(image.dataobj, dtype=np.float64), dtype)
+    return create_image_like(image, data, np.asarray(image.affine, dtype=np.float64))
+
+
 def create_image_like(template_img: Any, data: Any, affine: np.ndarray) -> Any:
     """Create a new image instance matching a template image class.
 
@@ -600,16 +650,8 @@ def reslice_r2r_image(
     preserve_discrete_dtype = mode == "nearest" and (
         np.issubdtype(source_dtype, np.bool_) or np.issubdtype(source_dtype, np.integer)
     )
-    if preserve_discrete_dtype or keep_dtype:
-        if np.issubdtype(source_dtype, np.bool_):
-            mapped_np = np.clip(np.rint(mapped_np), 0, 1).astype(source_dtype)
-        elif np.issubdtype(source_dtype, np.integer):
-            source_info = np.iinfo(source_dtype)
-            mapped_np = np.clip(np.rint(mapped_np), source_info.min, source_info.max).astype(source_dtype)
-        else:
-            mapped_np = mapped_np.astype(source_dtype, copy=False)
-    else:
-        mapped_np = mapped_np.astype(np.float32, copy=False)
+    target_dtype = source_dtype if (preserve_discrete_dtype or keep_dtype) else np.dtype(np.float32)
+    mapped_np = clip_and_cast_dtype(mapped_np, target_dtype)
     return create_image_like(image, mapped_np, np.asarray(target_affine, dtype=np.float64))
 
 

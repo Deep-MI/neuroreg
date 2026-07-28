@@ -11,6 +11,7 @@ from typing import Any
 import numpy as np
 
 from ..image import (
+    clip_and_cast_dtype,
     create_image_like,
     header_map_image,
     load_image,
@@ -490,15 +491,7 @@ def _convert_output_image(
 
     if target_dtype is None:
         return create_image_like(mapped_img, mapped_np.astype(np.float32, copy=False), np.asarray(mapped_img.affine))
-    if np.issubdtype(target_dtype, np.bool_):
-        converted = np.clip(np.rint(mapped_np), 0, 1).astype(target_dtype)
-    elif np.issubdtype(target_dtype, np.integer):
-        if effective_mode == "clamp":
-            dtype_info = np.iinfo(target_dtype)
-            mapped_np = np.clip(mapped_np, dtype_info.min, dtype_info.max)
-        converted = np.rint(mapped_np).astype(target_dtype)
-    else:
-        converted = mapped_np.astype(target_dtype, copy=False)
+    converted = clip_and_cast_dtype(mapped_np, target_dtype)
     return create_image_like(mapped_img, converted, np.asarray(mapped_img.affine, dtype=np.float64))
 
 

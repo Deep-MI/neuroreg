@@ -48,9 +48,10 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Optional output LTAs. When given, provide one output path per --mov image.",
     )
     p.add_argument(
-        "--mapmov-dir",
-        metavar="DIR",
-        help="Optional directory for writing mapped per-time-point images in template space.",
+        "--mapmov",
+        nargs="*",
+        metavar="FILE",
+        help="Optional output paths for mapped per-time-point images in template space, one per --mov image.",
     )
     p.add_argument(
         "--ixforms",
@@ -167,34 +168,14 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--keep-dtype",
         action="store_true",
-        help="Write --mapmov-dir outputs in the source-image dtype instead of float32.",
+        help=(
+            "Write --mapmov outputs in each input's own dtype and the --template "
+            "output in the initial target time point's dtype, instead of float32."
+        ),
     )
     p.add_argument("--verbose", action="store_true", help="Enable INFO-level logging.")
     p.add_argument("--debug", action="store_true", help="Enable DEBUG-level logging.")
     return p
-
-
-def _mapped_output_path(directory: Path, input_path: str, index: int) -> Path:
-    """Resolve the output path for a mapped time-point image.
-
-    Parameters
-    ----------
-    directory : pathlib.Path
-        Output directory for mapped images.
-    input_path : str
-        Original input filename used to preserve the basename when possible.
-    index : int
-        Zero-based time-point index used for fallback naming.
-
-    Returns
-    -------
-    pathlib.Path
-        Output filename for the mapped image.
-    """
-    name = Path(input_path).name
-    if name:
-        return directory / name
-    return directory / f"tp{index + 1}.nii.gz"
 
 
 def _save_image(image: Any, output_path: str | Path) -> None:
@@ -255,6 +236,8 @@ def main(args=None) -> None:
         parser.error("--lta requires exactly one output path per --mov input.")
     if ns.ixforms is not None and len(ns.ixforms) != len(ns.mov):
         parser.error("--ixforms requires exactly one input LTA per --mov input.")
+    if ns.mapmov is not None and len(ns.mapmov) != len(ns.mov):
+        parser.error("--mapmov requires exactly one output path per --mov input.")
     if ns.inittp is not None and not 1 <= ns.inittp <= len(ns.mov):
         parser.error(f"--inittp must be in [1, {len(ns.mov)}].")
     level = logging.DEBUG if ns.debug else (logging.INFO if ns.verbose else logging.WARNING)
@@ -286,7 +269,7 @@ def main(args=None) -> None:
         use_cras_center=ns.cras_center,
         template_iterations=template_iterations,
         template_eps=ns.template_eps,
-        return_mapped=ns.mapmov_dir is not None,
+        return_mapped=ns.mapmov is not None,
         mapped_keep_dtype=ns.keep_dtype,
         verbose=ns.verbose or ns.debug,
     )
@@ -301,13 +284,11 @@ def main(args=None) -> None:
         for lta_path, mov_path, mov_img, matrix in zip(ns.lta, ns.mov, mov_imgs, result.transforms_r2r, strict=False):
             LTA.from_matrix(matrix, mov_path, mov_img, ns.template, result.template_image, lta_type=1).write(lta_path)
         print(f"LTAs:        {len(ns.lta)}")
-    if ns.mapmov_dir is not None:
-        mapmov_dir = Path(ns.mapmov_dir)
-        mapmov_dir.mkdir(parents=True, exist_ok=True)
+    if ns.mapmov is not None:
         mapped_images = result.mapped_images if result.mapped_images is not None else []
-        for index, (mov_path, mapped_image) in enumerate(zip(ns.mov, mapped_images, strict=False)):
-            _save_image(mapped_image, _mapped_output_path(mapmov_dir, mov_path, index))
-        print(f"MapMovDir:   {mapmov_dir}")
+        for mapmov_path, mapped_image in zip(ns.mapmov, mapped_images, strict=False):
+            _save_image(mapped_image, mapmov_path)
+        print(f"MapMov:      {len(ns.mapmov)}")
 
 
 if __name__ == "__main__":
