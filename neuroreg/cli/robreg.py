@@ -132,9 +132,12 @@ def _build_parser() -> argparse.ArgumentParser:
     # ── misc ────────────────────────────────────────────────────────────────
     p.add_argument(
         "--device",
-        default="cpu",
+        default="gpu",
         metavar="DEVICE",
-        help="Torch device string, e.g. 'cpu', 'cuda', 'mps', or 'gpu'.",
+        help=(
+            "Torch device string, e.g. 'cpu', 'cuda', 'mps', or 'gpu'. "
+            "IRLS falls back to CPU on MPS (float64 limitation)."
+        ),
     )
     p.add_argument("--verbose", action="store_true", help="Enable INFO-level logging.")
     p.add_argument("--debug", action="store_true", help="Enable DEBUG-level logging.")
