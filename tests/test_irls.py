@@ -7,12 +7,12 @@ import torch
 
 from neuroreg.imreg.init import get_init_vox2vox, get_ixform_centroids
 from neuroreg.imreg.irls import (
-    _lstsq_driver_for_device,
     _sqrt_tukey,
     compute_partials,
     construct_Ab,
     irls_inner_loop,
     register_irls,
+    solve_wls,
 )
 from neuroreg.imreg.robreg import register_irls_pyramid
 from neuroreg.transforms import affine_dist, params_to_rigid_matrix
@@ -124,11 +124,17 @@ class TestConstructAb:
 
 
 class TestSolveWls:
-    def test_cpu_uses_existing_gelsd_driver(self):
-        assert _lstsq_driver_for_device(torch.device("cpu")) == "gelsd"
+    def test_solve_wls_recovers_known_solution_on_cpu(self):
+        torch.manual_seed(0)
+        A = torch.randn(200, 6, dtype=torch.float64)
+        p_true = torch.tensor([1.0, -2.0, 0.5, 0.1, -0.2, 0.3], dtype=torch.float64)
+        b = A @ p_true
+        w_sqrt = torch.ones(200, dtype=torch.float64)
 
-    def test_cuda_uses_supported_gels_driver(self):
-        assert _lstsq_driver_for_device(torch.device("cuda")) == "gels"
+        p = solve_wls(A, b, w_sqrt)
+
+        assert torch.allclose(p, p_true, atol=1e-6)
+        assert p.device == A.device
 
 
 # ---------------------------------------------------------------------------

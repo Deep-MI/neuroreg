@@ -265,11 +265,6 @@ def construct_Ab(
 # ---------------------------------------------------------------------------
 
 
-def _lstsq_driver_for_device(device: torch.device) -> str:
-    """Return a torch.linalg.lstsq driver supported by the tensor device."""
-    return "gels" if device.type == "cuda" else "gelsd"
-
-
 def solve_wls(
     A: torch.Tensor,
     b: torch.Tensor,
@@ -286,12 +281,20 @@ def solve_wls(
     Returns
     -------
     p : [DOF]
+
+    Notes
+    -----
+    The ``torch.linalg.lstsq`` call always runs on CPU with the ``"gelsd"``
+    driver, even for CUDA inputs: CUDA only exposes ``"gels"``, whose
+    cuSOLVER workspace sizing is wildly disproportionate for these tall,
+    skinny systems (observed requesting ~10 GiB for a problem needing well
+    under 1 GiB, spuriously OOMing a GPU with plenty of free memory). Only
+    the tiny ``[DOF]`` solution is moved back to ``A``'s original device.
     """
     Aw = A * w_sqrt.unsqueeze(1)  # [N, DOF]
     bw = b * w_sqrt  # [N]
-    # CUDA only supports the QR-based "gels" driver. Keep the existing CPU
-    # path elsewhere, then move any fallback result back to Aw's device.
-    result = torch.linalg.lstsq(Aw, bw, driver=_lstsq_driver_for_device(Aw.device))
+    solve_device = torch.device("cpu") if Aw.device.type == "cuda" else Aw.device
+    result = torch.linalg.lstsq(Aw.to(solve_device), bw.to(solve_device), driver="gelsd")
     return result.solution.to(device=Aw.device)
 
 
