@@ -323,8 +323,8 @@ closely matching FreeSurfer’s mri_robust_register algorithm.</p>
 <dd><p>Save outlier map (1 - Tukey weights) to this file (MGZ format). High values indicate poorly registered regions (outliers), low values indicate well-registered regions. Use with heat colormap in freeview for visualization.</p>
 </dd>
 <dt><kbd>--device</kbd></dt>
-<dd><p>Torch device string, e.g. ‘cpu’, ‘cuda’, ‘mps’, or ‘gpu’.</p>
-<p>Default: <code class="docutils literal notranslate"><span class="pre">'cpu'</span></code></p>
+<dd><p>Torch device string, e.g. ‘cpu’, ‘cuda’, ‘mps’, or ‘gpu’. IRLS falls back to CPU on MPS (float64 limitation).</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">'gpu'</span></code></p>
 </dd>
 <dt><kbd>--verbose</kbd></dt>
 <dd><p>Enable INFO-level logging.</p>
