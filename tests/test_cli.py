@@ -80,7 +80,7 @@ class TestRobregCli:
 
         assert captured["init_type"] == "header"
         assert captured["symmetric"] is True
-        assert captured["device"] == "cpu"
+        assert captured["device"] == "gpu"
         args = cast(tuple[Any, Any], captured["args"])
         assert len(args) == 2
         assert hasattr(args[0], "get_fdata") and hasattr(args[0], "affine")
