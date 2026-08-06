@@ -9,6 +9,7 @@ import torch
 import torch.nn as nn
 
 from ..transforms import matrices as trans
+from .io import save_image
 
 # FreeSurfer's MRItoBSpline/MRIsampleBSpline (used by ``mri_convert -rt cubic`` and
 # ``mri_vol2vol --interp cubic``) prefilter the image into cubic B-spline coefficients
@@ -740,7 +741,7 @@ def save_resliced_r2r_image(
         padding_value=padding_value,
         keep_dtype=keep_dtype,
     )
-    mapped_img.to_filename(output_path)
+    save_image(mapped_img, output_path)
     return mapped_img
 
 
@@ -766,7 +767,7 @@ def save_header_mapped_image(
         Written header-mapped image object.
     """
     mapped_img = header_map_image(image, r2r)
-    mapped_img.to_filename(output_path)
+    save_image(mapped_img, output_path)
     return mapped_img
 
 

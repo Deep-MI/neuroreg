@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+from pathlib import Path
 from typing import Any, cast
 
 import nibabel as nib
@@ -11,7 +12,7 @@ from scipy.spatial.transform import Rotation
 
 from neuroreg import coreg
 from neuroreg.image.map import map as map_image
-from neuroreg.image.map import reslice_r2r_image
+from neuroreg.image.map import reslice_r2r_image, save_header_mapped_image, save_resliced_r2r_image
 from neuroreg.imreg.coreg import register_powell_coreg
 from neuroreg.imreg.device import resolve_cpu_only_device, resolve_torch_device
 from neuroreg.imreg.gd import register_gd_pyramid, register_level
@@ -96,6 +97,35 @@ class TestRegisterPyramidSynthetic:
 
         assert mapped.shape == (1, 4, 5)
         assert mapped.get_fdata(dtype=np.float32) == pytest.approx(np.arange(20, dtype=np.float32).reshape(1, 4, 5))
+
+    def test_save_resliced_r2r_image_writes_mgz_from_nifti_source(self, tmp_path: Path):
+        img = nib.Nifti1Image(np.arange(27, dtype=np.float32).reshape(3, 3, 3), np.eye(4, dtype=np.float32))
+        out_path = tmp_path / "mapped.mgz"
+
+        save_resliced_r2r_image(
+            img,
+            np.eye(4, dtype=np.float64),
+            str(out_path),
+            target_affine=np.eye(4, dtype=np.float64),
+            target_shape=(3, 3, 3),
+            mode="linear",
+        )
+
+        assert out_path.exists()
+        written = nib.load(str(out_path))
+        assert isinstance(written, nib.MGHImage)
+        assert written.shape == (3, 3, 3)
+
+    def test_save_header_mapped_image_writes_mgz_from_nifti_source(self, tmp_path: Path):
+        img = nib.Nifti1Image(np.arange(27, dtype=np.float32).reshape(3, 3, 3), np.eye(4, dtype=np.float32))
+        out_path = tmp_path / "mapped_hdr.mgz"
+
+        save_header_mapped_image(img, np.eye(4, dtype=np.float64), str(out_path))
+
+        assert out_path.exists()
+        written = nib.load(str(out_path))
+        assert isinstance(written, nib.MGHImage)
+        assert written.shape == (3, 3, 3)
 
     def test_register_pyramid_returns_v2v_on_identical_images(self):
         img = _make_img()
