@@ -218,7 +218,7 @@ def as_mgh_image(data: np.ndarray, affine: np.ndarray, header: Any | None = None
         Image whose header has ``fov`` and the data dtype set to match
         ``data``.
     """
-    if data.dtype not in _MGH_DTYPES:
+    if data.dtype.newbyteorder("=") not in _MGH_DTYPES:
         data = data.astype(np.float32, copy=False)
     image = nib.MGHImage(data, affine, header)
     image.header.set_data_dtype(data.dtype)

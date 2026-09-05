@@ -75,3 +75,20 @@ def test_save_image_nifti_to_mgz_preserves_uint8_dtype(tmp_path: Path):
     loaded = nib.load(str(out_path))
     assert loaded.get_data_dtype() == np.dtype(np.uint8)
     assert np.array_equal(np.asanyarray(loaded.dataobj), data)
+
+
+def test_save_image_preserves_int16_dtype_on_mgh_to_mgh_round_trip(tmp_path: Path):
+    # MGH is always big-endian on disk, so a loaded proxy exposes ">i2", not
+    # the native "<i2"/"=i2" that plain dtype-set membership checks assume.
+    data = np.arange(8, dtype=np.int16).reshape(2, 2, 2)
+    src_path = tmp_path / "src.mgz"
+    nib.save(nib.MGHImage(data, np.eye(4)), str(src_path))
+    loaded = nib.load(str(src_path))
+    assert np.asanyarray(loaded.dataobj).dtype.newbyteorder("=") == np.dtype(np.int16)
+
+    out_path = tmp_path / "out.mgz"
+    save_image(loaded, out_path)
+
+    result = nib.load(str(out_path))
+    assert result.get_data_dtype().newbyteorder("=") == np.dtype(np.int16)
+    assert np.array_equal(np.asanyarray(result.dataobj), data)
