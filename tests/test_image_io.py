@@ -50,3 +50,28 @@ def test_save_image_nifti_to_mgz_writes_nonzero_fov(tmp_path: Path):
 
     assert float(loaded.header["fov"]) == pytest.approx(expected)
     assert float(loaded.header["fov"]) == pytest.approx(120.0)
+
+
+def test_as_mgh_image_preserves_dtype_from_a_foreign_header():
+    # MGHHeader.from_header(nifti_header) defaults the data dtype to float32
+    # instead of carrying over the array's actual (already MGH-supported) dtype.
+    data = np.arange(8, dtype=np.uint8).reshape(2, 2, 2)
+    affine = np.eye(4)
+    nifti_header = nib.Nifti1Image(data, affine).header
+
+    image = as_mgh_image(data, affine, nifti_header)
+
+    assert image.get_data_dtype() == np.dtype(np.uint8)
+    assert np.asanyarray(image.dataobj).dtype == np.dtype(np.uint8)
+
+
+def test_save_image_nifti_to_mgz_preserves_uint8_dtype(tmp_path: Path):
+    data = np.arange(8, dtype=np.uint8).reshape(2, 2, 2)
+    src = nib.Nifti1Image(data, np.eye(4))
+    out_path = tmp_path / "labels.mgz"
+
+    save_image(src, out_path)
+
+    loaded = nib.load(str(out_path))
+    assert loaded.get_data_dtype() == np.dtype(np.uint8)
+    assert np.array_equal(np.asanyarray(loaded.dataobj), data)

@@ -185,14 +185,20 @@ _MGH_DTYPES = {np.dtype(np.uint8), np.dtype(np.int16), np.dtype(np.int32), np.dt
 
 
 def as_mgh_image(data: np.ndarray, affine: np.ndarray, header: Any | None = None) -> nib.MGHImage:
-    """Build an ``MGHImage`` with a correctly populated field-of-view.
+    """Build an ``MGHImage`` with a correctly populated field-of-view and dtype.
 
-    ``MGHHeader`` defaults its ``fov`` field to 0, and it has no equivalent in
-    other header types (e.g. NIfTI) to inherit it from, so constructing an
-    ``MGHImage`` directly (or via ``MGHHeader.from_header``) leaves ``fov`` at
-    0 instead of the physical extent FreeSurfer itself would store. This
-    fills it in as the largest of the three extents (``shape * voxel size``),
-    matching FreeSurfer's convention.
+    ``MGHHeader.from_header`` does not carry two fields over from a non-MGH
+    source header (e.g. NIfTI):
+
+    * ``fov`` defaults to 0, since NIfTI has no equivalent field to inherit
+      it from.
+    * The data dtype defaults to float32 instead of the dtype the data
+      actually is, since NIfTI's dtype field means something different to
+      ``MGHHeader``. This silently quadruples storage for e.g. a uint8
+      segmentation and can change how downstream tools interpret the file.
+
+    Both are recomputed here from ``data`` and ``affine`` rather than
+    inherited from ``header``.
 
     Parameters
     ----------
@@ -202,17 +208,20 @@ def as_mgh_image(data: np.ndarray, affine: np.ndarray, header: Any | None = None
         4 x 4 voxel-to-RAS affine.
     header : Any, optional
         Source header to carry compatible fields over from (e.g. an existing
-        ``MGHHeader``). May describe a different shape than ``data``; ``fov``
-        is always recomputed from ``data`` and ``affine``, not inherited.
+        ``MGHHeader``). May describe a different shape or dtype than
+        ``data``; ``fov`` and the data dtype are always recomputed from
+        ``data`` and ``affine``, not inherited.
 
     Returns
     -------
     nib.MGHImage
-        Image whose header has ``fov`` set to the largest physical extent.
+        Image whose header has ``fov`` and the data dtype set to match
+        ``data``.
     """
     if data.dtype not in _MGH_DTYPES:
         data = data.astype(np.float32, copy=False)
     image = nib.MGHImage(data, affine, header)
+    image.header.set_data_dtype(data.dtype)
     zooms = image.header.get_zooms()[:3]
     image.header["fov"] = max(n * z for n, z in zip(image.shape[:3], zooms, strict=True))
     return image
@@ -231,7 +240,9 @@ def save_image(image: Any, path: str | Path) -> None:
 
     When the destination is MGH/MGZ, the image is routed through
     :func:`as_mgh_image` instead of nibabel's generic conversion, since the
-    latter leaves the header's ``fov`` field at 0 (see :func:`as_mgh_image`).
+    latter both leaves the header's ``fov`` field at 0 and silently drops the
+    data dtype to float32 when converting from a non-MGH source (see
+    :func:`as_mgh_image`).
 
     Parameters
     ----------
