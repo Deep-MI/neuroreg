@@ -8,57 +8,38 @@ from typing import Any, cast
 
 from ..transforms import LTA
 
-_NIFTI_SUFFIXES = (".nii.gz", ".nii")
-_MGH_SUFFIXES = (".mgz", ".mgh")
-_IMAGE_SUFFIXES = (*_NIFTI_SUFFIXES, *_MGH_SUFFIXES)
 
+def _validate_output_formats(parser: argparse.ArgumentParser, ns: argparse.Namespace) -> None:
+    """Reject image output paths whose extension names no writable format.
 
-def _recognized_image_suffix(path: str) -> str | None:
-    """Return the recognized NIfTI/MGH suffix of ``path``, or ``None``."""
-    lowered = path.lower()
-    for suffix in _IMAGE_SUFFIXES:
-        if lowered.endswith(suffix):
-            return suffix
-    return None
-
-
-def _resolve_outliers_path(outliers: str, *, mapmov: str | None, mov: str, ref: str) -> str:
-    """Pick an on-disk format for ``--outliers`` when it has no recognized extension.
-
-    FreeSurfer always writes MGZ here, but that format is less portable than
-    NIfTI, so an extensionless ``--outliers`` instead follows, in order: the
-    ``--mapmov`` output format (if requested), NIfTI if ``--mov`` or ``--ref``
-    is NIfTI, else MGZ.
+    Output formats are selected by file extension, so a missing or
+    unrecognized one (``outliers``, ``outliers.txt``) has no sensible
+    interpretation. Checking up front fails in milliseconds instead of after
+    a full registration has run.
 
     Parameters
     ----------
-    outliers : str
-        The user-supplied ``--outliers`` path.
-    mapmov : str, optional
-        The user-supplied ``--mapmov`` path, if any.
-    mov, ref : str
-        The user-supplied ``--mov``/``--ref`` input paths.
+    parser : argparse.ArgumentParser
+        Parser used to report the error.
+    ns : argparse.Namespace
+        Parsed arguments holding the image output paths.
 
     Returns
     -------
-    str
-        ``outliers`` unchanged if it already has a recognized extension,
-        otherwise ``outliers`` with a resolved extension appended.
+    None
+        Returns if every requested output path is usable.
+
+    Raises
+    ------
+    SystemExit
+        Via :meth:`argparse.ArgumentParser.error` if a path is unusable.
     """
-    if _recognized_image_suffix(outliers) is not None:
-        return outliers
+    from ..image import IMAGE_SUFFIXES, recognized_image_suffix
 
-    if mapmov is not None:
-        mapmov_suffix = _recognized_image_suffix(mapmov)
-        if mapmov_suffix is not None:
-            return outliers + mapmov_suffix
-
-    for candidate in (mov, ref):
-        suffix = _recognized_image_suffix(candidate)
-        if suffix in _NIFTI_SUFFIXES:
-            return outliers + suffix
-
-    return outliers + ".mgz"
+    for flag in ("mapmov", "mapmovhdr", "outliers"):
+        value = getattr(ns, flag)
+        if value is not None and recognized_image_suffix(value) is None:
+            parser.error(f"--{flag} needs a recognized image extension ({', '.join(IMAGE_SUFFIXES)}), got: {value}")
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -175,8 +156,8 @@ def _build_parser() -> argparse.ArgumentParser:
             "High values indicate poorly registered regions (outliers), "
             "low values indicate well-registered regions. "
             "Use with heat colormap in freeview for visualization. "
-            "Format follows the file extension; if it has none, it matches "
-            "--mapmov's format, else NIfTI if --mov or --ref is NIfTI, else MGZ."
+            "The extension selects the output format and is required "
+            "(.nii, .nii.gz, .mgz, .mgh)."
         ),
     )
 
@@ -221,6 +202,7 @@ def main(args=None) -> None:
 
     parser = _build_parser()
     ns = parser.parse_args(args)
+    _validate_output_formats(parser, ns)
     ns.symmetric = getattr(ns, "symmetric", True)
     if ns.init_lta is not None and ns.init_type is not None:
         logging.getLogger("neuroreg.cli.robreg").warning(
@@ -249,9 +231,6 @@ def main(args=None) -> None:
     ref_img = cast(Any, ref_img)
     mov_mask_img = cast(Any | None, mov_mask_img)
     ref_mask_img = cast(Any | None, ref_mask_img)
-
-    if ns.outliers is not None:
-        ns.outliers = _resolve_outliers_path(ns.outliers, mapmov=ns.mapmov, mov=ns.mov, ref=ns.ref)
 
     # ── register ────────────────────────────────────────────────────────────
     logger.info("Starting IRLS registration (dof=%d, symmetric=%s) …", ns.dof, ns.symmetric)

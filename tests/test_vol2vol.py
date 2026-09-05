@@ -88,6 +88,40 @@ class TestVol2VolCli:
         assert mapped.get_data_dtype() == np.dtype(np.int16)
         assert np.asarray(mapped.dataobj) == pytest.approx(data)
 
+    @pytest.mark.parametrize("interp", ["linear", "cubic"])
+    @pytest.mark.parametrize("out_ext", [".mgz", ".nii.gz"])
+    def test_interpolated_output_stays_float_for_uint8_input(self, tmp_path: Path, interp: str, out_ext: str):
+        # Interpolation produces fractional values, so the result must not be
+        # quantized back into the uint8 input dtype unless the caller asks for
+        # it via --keep-dtype/--out-dtype.
+        mov = np.zeros((3, 3, 3), dtype=np.uint8)
+        mov[1, 1, 1] = 255
+        mov_path = _write_image(tmp_path / "mov.nii.gz", mov)
+        ref_path = _write_image(tmp_path / "ref.nii.gz", np.zeros((3, 3, 3), dtype=np.float32))
+        shift = np.eye(4)
+        shift[0, 3] = 0.5
+        lta_path = _write_lta(tmp_path / "shift.lta", shift, (3, 3, 3), (3, 3, 3))
+        out_path = tmp_path / f"out{out_ext}"
+
+        vol2vol_main(
+            [
+                "--in",
+                str(mov_path),
+                "--ref",
+                str(ref_path),
+                "--out",
+                str(out_path),
+                "--transform",
+                str(lta_path),
+                "--interp",
+                interp,
+            ]
+        )
+
+        mapped = nib.load(str(out_path))
+        assert mapped.get_data_dtype().newbyteorder("=") == np.dtype(np.float32)
+        assert np.asarray(mapped.dataobj).dtype.newbyteorder("=") == np.dtype(np.float32)
+
     def test_keep_dtype_preserves_linear_output_dtype(self, tmp_path: Path):
         mov_path = _write_image(tmp_path / "mov.nii.gz", np.arange(8, dtype=np.uint8).reshape(2, 2, 2))
         out_path = tmp_path / "out_keep_dtype.nii.gz"

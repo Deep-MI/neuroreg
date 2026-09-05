@@ -7,25 +7,7 @@ import pytest
 import torch
 
 from neuroreg.cli.coreg import main as coreg_main
-from neuroreg.cli.robreg import _resolve_outliers_path
 from neuroreg.cli.robreg import main as robreg_main
-
-
-class TestResolveOutliersPath:
-    def test_keeps_an_already_recognized_extension(self):
-        assert _resolve_outliers_path("out.nii.gz", mapmov="mov.mgz", mov="a.mgz", ref="b.mgz") == "out.nii.gz"
-
-    def test_extensionless_path_follows_mapmov_format(self):
-        assert _resolve_outliers_path("out", mapmov="mapped.nii.gz", mov="a.mgz", ref="b.mgz") == "out.nii.gz"
-        assert _resolve_outliers_path("out", mapmov="mapped.mgz", mov="a.nii.gz", ref="b.nii.gz") == "out.mgz"
-
-    def test_extensionless_path_without_mapmov_prefers_nifti_inputs(self):
-        assert _resolve_outliers_path("out", mapmov=None, mov="a.nii.gz", ref="b.mgz") == "out.nii.gz"
-        assert _resolve_outliers_path("out", mapmov=None, mov="a.mgz", ref="b.nii") == "out.nii"
-
-    def test_extensionless_path_defaults_to_mgz_when_nothing_else_matches(self):
-        assert _resolve_outliers_path("out", mapmov=None, mov="a.mgz", ref="b.mgz") == "out.mgz"
-        assert _resolve_outliers_path("out", mapmov=None, mov="a.img", ref="b.img") == "out.mgz"
 
 
 class _TensorRequiringCpu:
@@ -59,6 +41,82 @@ def _write_uint8_image(path: Path) -> None:
 
 
 class TestRobregCli:
+    @pytest.mark.parametrize("outliers", ["outliers", "outliers.txt"])
+    def test_outliers_needs_a_recognized_image_extension(self, tmp_path: Path, outliers: str):
+        mov_path = tmp_path / "mov.nii.gz"
+        ref_path = tmp_path / "ref.nii.gz"
+        _write_zero_image(mov_path)
+        _write_zero_image(ref_path)
+
+        with pytest.raises(SystemExit):
+            robreg_main(
+                [
+                    "--mov",
+                    str(mov_path),
+                    "--ref",
+                    str(ref_path),
+                    "--out",
+                    str(tmp_path / "out.lta"),
+                    "--outliers",
+                    str(tmp_path / outliers),
+                ]
+            )
+
+    def test_mapmov_needs_a_recognized_image_extension(self, tmp_path: Path):
+        mov_path = tmp_path / "mov.nii.gz"
+        ref_path = tmp_path / "ref.nii.gz"
+        _write_zero_image(mov_path)
+        _write_zero_image(ref_path)
+
+        with pytest.raises(SystemExit):
+            robreg_main(
+                [
+                    "--mov",
+                    str(mov_path),
+                    "--ref",
+                    str(ref_path),
+                    "--out",
+                    str(tmp_path / "out.lta"),
+                    "--mapmov",
+                    str(tmp_path / "mapped"),
+                ]
+            )
+
+    def test_outliers_path_is_forwarded_unchanged(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        mov_path = tmp_path / "mov.nii.gz"
+        ref_path = tmp_path / "ref.nii.gz"
+        outliers_path = tmp_path / "outliers.nii.gz"
+        _write_zero_image(mov_path)
+        _write_zero_image(ref_path)
+
+        captured: dict[str, object] = {}
+
+        def fake_register_pyramid(*args, **kwargs):
+            captured.update(kwargs)
+            return _TensorRequiringCpu(torch.eye(4))
+
+        class _DummyLTA:
+            def write(self, path):
+                Path(path).write_text("dummy")
+
+        monkeypatch.setattr("neuroreg.imreg.robreg.robreg", fake_register_pyramid)
+        monkeypatch.setattr("neuroreg.transforms.LTA.from_matrix", lambda *args, **kwargs: _DummyLTA())
+
+        robreg_main(
+            [
+                "--mov",
+                str(mov_path),
+                "--ref",
+                str(ref_path),
+                "--out",
+                str(tmp_path / "out.lta"),
+                "--outliers",
+                str(outliers_path),
+            ]
+        )
+
+        assert captured["outliers_name"] == str(outliers_path)
+
     def test_main_forwards_noinit_and_symmetric_default(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         mov_path = tmp_path / "mov.nii.gz"
         ref_path = tmp_path / "ref.nii.gz"

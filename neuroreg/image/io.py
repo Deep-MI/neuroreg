@@ -180,8 +180,35 @@ def load_image(image: str | Path | Any) -> Any:
     return _with_affine(loaded, _build_4dfp_affine(metadata))
 
 
-_MGH_SUFFIXES = {".mgz", ".mgh"}
+NIFTI_SUFFIXES = (".nii.gz", ".nii")
+MGH_SUFFIXES = (".mgz", ".mgh")
+IMAGE_SUFFIXES = (*NIFTI_SUFFIXES, *MGH_SUFFIXES)
+
 _MGH_DTYPES = {np.dtype(np.uint8), np.dtype(np.int16), np.dtype(np.int32), np.dtype(np.float32)}
+
+
+def recognized_image_suffix(path: str | Path) -> str | None:
+    """Return the recognized image suffix of ``path``, or ``None``.
+
+    Matching is case-insensitive and handles the compound ``.nii.gz`` suffix,
+    which :attr:`pathlib.PurePath.suffix` alone does not.
+
+    Parameters
+    ----------
+    path : str or Path
+        Filename to inspect.
+
+    Returns
+    -------
+    str or None
+        The matching entry of :data:`IMAGE_SUFFIXES` (e.g. ``".nii.gz"``), or
+        ``None`` when ``path`` names no format this package writes.
+    """
+    lowered = str(path).lower()
+    for suffix in IMAGE_SUFFIXES:
+        if lowered.endswith(suffix):
+            return suffix
+    return None
 
 
 def as_mgh_image(data: np.ndarray, affine: np.ndarray, header: Any | None = None) -> nib.MGHImage:
@@ -263,7 +290,7 @@ def save_image(image: Any, path: str | Path) -> None:
         format.
     """
     destination = Path(path)
-    if destination.suffix.lower() in _MGH_SUFFIXES:
+    if recognized_image_suffix(destination) in MGH_SUFFIXES:
         header = image.header if isinstance(image, nib.MGHImage) else None
         image = as_mgh_image(np.asanyarray(image.dataobj), np.asarray(image.affine, dtype=np.float64), header)
     try:
