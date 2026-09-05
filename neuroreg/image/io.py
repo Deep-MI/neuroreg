@@ -180,6 +180,44 @@ def load_image(image: str | Path | Any) -> Any:
     return _with_affine(loaded, _build_4dfp_affine(metadata))
 
 
+_MGH_SUFFIXES = {".mgz", ".mgh"}
+_MGH_DTYPES = {np.dtype(np.uint8), np.dtype(np.int16), np.dtype(np.int32), np.dtype(np.float32)}
+
+
+def as_mgh_image(data: np.ndarray, affine: np.ndarray, header: Any | None = None) -> nib.MGHImage:
+    """Build an ``MGHImage`` with a correctly populated field-of-view.
+
+    ``MGHHeader`` defaults its ``fov`` field to 0, and it has no equivalent in
+    other header types (e.g. NIfTI) to inherit it from, so constructing an
+    ``MGHImage`` directly (or via ``MGHHeader.from_header``) leaves ``fov`` at
+    0 instead of the physical extent FreeSurfer itself would store. This
+    fills it in as the largest of the three extents (``shape * voxel size``),
+    matching FreeSurfer's convention.
+
+    Parameters
+    ----------
+    data : np.ndarray
+        Voxel data.
+    affine : np.ndarray
+        4 x 4 voxel-to-RAS affine.
+    header : Any, optional
+        Source header to carry compatible fields over from (e.g. an existing
+        ``MGHHeader``). May describe a different shape than ``data``; ``fov``
+        is always recomputed from ``data`` and ``affine``, not inherited.
+
+    Returns
+    -------
+    nib.MGHImage
+        Image whose header has ``fov`` set to the largest physical extent.
+    """
+    if data.dtype not in _MGH_DTYPES:
+        data = data.astype(np.float32, copy=False)
+    image = nib.MGHImage(data, affine, header)
+    zooms = image.header.get_zooms()[:3]
+    image.header["fov"] = max(n * z for n, z in zip(image.shape[:3], zooms, strict=True))
+    return image
+
+
 def save_image(image: Any, path: str | Path) -> None:
     """Write an image, choosing the on-disk format from the output extension.
 
@@ -190,6 +228,10 @@ def save_image(image: Any, path: str | Path) -> None:
     example ``.mgz`` -> ``.nii.gz``. Geometry and voxel values are preserved; the
     stored dtype may be coerced to one the target format supports (for example
     MGH only stores uint8, int16, int32, and float32).
+
+    When the destination is MGH/MGZ, the image is routed through
+    :func:`as_mgh_image` instead of nibabel's generic conversion, since the
+    latter leaves the header's ``fov`` field at 0 (see :func:`as_mgh_image`).
 
     Parameters
     ----------
@@ -209,7 +251,11 @@ def save_image(image: Any, path: str | Path) -> None:
         If ``path`` has no extension nibabel recognizes as a writable image
         format.
     """
+    destination = Path(path)
+    if destination.suffix.lower() in _MGH_SUFFIXES:
+        header = image.header if isinstance(image, nib.MGHImage) else None
+        image = as_mgh_image(np.asanyarray(image.dataobj), np.asarray(image.affine, dtype=np.float64), header)
     try:
-        nib.save(image, str(path))
+        nib.save(image, str(destination))
     except ImageFileError as exc:
         raise ValueError(f"Unsupported output image format for {str(path)!r}: {exc}") from exc

@@ -12,7 +12,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from ..image import build_gaussian_pyramid, get_pyramid_limits, load_image
+from ..image import build_gaussian_pyramid, get_pyramid_limits, load_image, save_image
 from ..image.map import coerce_image_data_3d, resample_isotropic_tensor
 from ..image.masking import as_mask_tensor_and_affine, build_binary_mask_pyramid
 from ..transforms import LINEAR_RAS_TO_RAS, LINEAR_VOX_TO_VOX, LTA, convert_transform_type
@@ -92,8 +92,8 @@ def _save_outlier_map(all_info: list[dict[str, Any]], outliers_name: str, verbos
         Per-level information dictionaries returned by the pyramid registration
         loop. The final entry is used.
     outliers_name : str
-        Output filename. ``.nii`` and ``.nii.gz`` produce NIfTI output;
-        other suffixes default to MGH/MGZ.
+        Output filename. The on-disk format follows its extension (see
+        :func:`neuroreg.image.save_image`).
     verbose : bool, default=False
         If ``True``, emit logging about the saved outlier statistics.
     """
@@ -126,12 +126,8 @@ def _save_outlier_map(all_info: list[dict[str, Any]], outliers_name: str, verbos
     weight_volume.view(-1)[valid_mask] = weights
     outlier_volume = (1.0 - weight_volume).detach().cpu()
 
-    if outliers_name.endswith(".nii") or outliers_name.endswith(".nii.gz"):
-        outlier_img = nib.Nifti1Image(outlier_volume.numpy(), reg_affine)
-    else:
-        outlier_img = nib.MGHImage(outlier_volume.numpy(), reg_affine)
-
-    outlier_img.to_filename(outliers_name)
+    outlier_img = nib.Nifti1Image(outlier_volume.numpy(), reg_affine)
+    save_image(outlier_img, outliers_name)
 
     if verbose:
         outlier_pct = (outlier_volume > 0.5).sum().item() / outlier_volume.numel() * 100

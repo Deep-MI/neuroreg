@@ -5,13 +5,9 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
-from pathlib import Path
 from typing import Any, cast
 
-import nibabel as nib
-import numpy as np
-
-from ..image import load_image
+from ..image import load_image, save_image
 from ..multireg import multireg
 from ..transforms import LTA
 
@@ -178,36 +174,6 @@ def _build_parser() -> argparse.ArgumentParser:
     return p
 
 
-def _save_image(image: Any, output_path: str | Path) -> None:
-    """Save an image while honoring the requested output format.
-
-    Parameters
-    ----------
-    image : Any
-        Image-like object returned by ``multireg``.
-    output_path : str or pathlib.Path
-        Destination filename.
-
-    Returns
-    -------
-    None
-        This function returns ``None`` after writing the image.
-    """
-    path = Path(output_path)
-    if path.suffix.lower() not in {".mgz", ".mgh"}:
-        image.to_filename(path)
-        return
-
-    if isinstance(image, nib.MGHImage):
-        image.to_filename(path)
-        return
-
-    data = np.asanyarray(image.dataobj)
-    if data.dtype not in {np.dtype(np.uint8), np.dtype(np.int16), np.dtype(np.int32), np.dtype(np.float32)}:
-        data = data.astype(np.float32, copy=False)
-    nib.MGHImage(data, np.asarray(image.affine, dtype=np.float64)).to_filename(path)
-
-
 def main(args=None) -> None:
     """Run the ``multireg`` command-line interface.
 
@@ -273,7 +239,7 @@ def main(args=None) -> None:
         mapped_keep_dtype=ns.keep_dtype,
         verbose=ns.verbose or ns.debug,
     )
-    _save_image(result.template_image, ns.template)
+    save_image(result.template_image, ns.template)
     print(f"InitialTP:   {result.initial_target_index + 1}")
     print(f"Seed:        {result.seed}")
     print(f"Iterations:  {result.template_iterations_run}")
@@ -287,7 +253,7 @@ def main(args=None) -> None:
     if ns.mapmov is not None:
         mapped_images = result.mapped_images if result.mapped_images is not None else []
         for mapmov_path, mapped_image in zip(ns.mapmov, mapped_images, strict=False):
-            _save_image(mapped_image, mapmov_path)
+            save_image(mapped_image, mapmov_path)
         print(f"MapMov:      {len(ns.mapmov)}")
 
 
