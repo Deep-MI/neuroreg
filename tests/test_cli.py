@@ -7,7 +7,25 @@ import pytest
 import torch
 
 from neuroreg.cli.coreg import main as coreg_main
+from neuroreg.cli.robreg import _resolve_outliers_path
 from neuroreg.cli.robreg import main as robreg_main
+
+
+class TestResolveOutliersPath:
+    def test_keeps_an_already_recognized_extension(self):
+        assert _resolve_outliers_path("out.nii.gz", mapmov="mov.mgz", mov="a.mgz", ref="b.mgz") == "out.nii.gz"
+
+    def test_extensionless_path_follows_mapmov_format(self):
+        assert _resolve_outliers_path("out", mapmov="mapped.nii.gz", mov="a.mgz", ref="b.mgz") == "out.nii.gz"
+        assert _resolve_outliers_path("out", mapmov="mapped.mgz", mov="a.nii.gz", ref="b.nii.gz") == "out.mgz"
+
+    def test_extensionless_path_without_mapmov_prefers_nifti_inputs(self):
+        assert _resolve_outliers_path("out", mapmov=None, mov="a.nii.gz", ref="b.mgz") == "out.nii.gz"
+        assert _resolve_outliers_path("out", mapmov=None, mov="a.mgz", ref="b.nii") == "out.nii"
+
+    def test_extensionless_path_defaults_to_mgz_when_nothing_else_matches(self):
+        assert _resolve_outliers_path("out", mapmov=None, mov="a.mgz", ref="b.mgz") == "out.mgz"
+        assert _resolve_outliers_path("out", mapmov=None, mov="a.img", ref="b.img") == "out.mgz"
 
 
 class _TensorRequiringCpu:
@@ -250,9 +268,9 @@ class TestRobregCli:
         assert mapped_hdr.affine == pytest.approx(expected_affine)
 
     def test_main_writes_mapmov_in_input_dtype_with_keep_dtype(
-            self,
-            monkeypatch: pytest.MonkeyPatch,
-            tmp_path: Path,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
     ):
         mov_path = tmp_path / "mov.nii.gz"
         ref_path = tmp_path / "ref.nii.gz"
@@ -313,11 +331,16 @@ class TestRobregCli:
 
         robreg_main(
             [
-                "--mov", str(mov_path),
-                "--ref", str(ref_path),
-                "--mov-mask", str(mov_mask_path),
-                "--ref-mask", str(ref_mask_path),
-                "--out", str(out_path),
+                "--mov",
+                str(mov_path),
+                "--ref",
+                str(ref_path),
+                "--mov-mask",
+                str(mov_mask_path),
+                "--ref-mask",
+                str(ref_mask_path),
+                "--out",
+                str(out_path),
             ]
         )
 
@@ -375,7 +398,7 @@ class TestCoregCli:
         ],
     )
     def test_main_forwards_init_mode(
-            self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, flag: str, expected_init: str
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, flag: str, expected_init: str
     ):
         mov_path = tmp_path / "mov.nii.gz"
         ref_path = tmp_path / "ref.nii.gz"
@@ -407,9 +430,9 @@ class TestCoregCli:
         assert out_path.exists()
 
     def test_main_defaults_to_powell_method_and_forwards_powell_knobs(
-            self,
-            monkeypatch: pytest.MonkeyPatch,
-            tmp_path: Path,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
     ):
         mov_path = tmp_path / "mov.nii.gz"
         ref_path = tmp_path / "ref.nii.gz"
@@ -465,11 +488,16 @@ class TestCoregCli:
 
         coreg_main(
             [
-                "--mov", str(mov_path),
-                "--ref", str(ref_path),
-                "--mov-mask", str(mov_mask_path),
-                "--ref-mask", str(ref_mask_path),
-                "--out", str(out_path),
+                "--mov",
+                str(mov_path),
+                "--ref",
+                str(ref_path),
+                "--mov-mask",
+                str(mov_mask_path),
+                "--ref-mask",
+                str(ref_mask_path),
+                "--out",
+                str(out_path),
             ]
         )
 

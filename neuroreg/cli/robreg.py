@@ -8,6 +8,58 @@ from typing import Any, cast
 
 from ..transforms import LTA
 
+_NIFTI_SUFFIXES = (".nii.gz", ".nii")
+_MGH_SUFFIXES = (".mgz", ".mgh")
+_IMAGE_SUFFIXES = (*_NIFTI_SUFFIXES, *_MGH_SUFFIXES)
+
+
+def _recognized_image_suffix(path: str) -> str | None:
+    """Return the recognized NIfTI/MGH suffix of ``path``, or ``None``."""
+    lowered = path.lower()
+    for suffix in _IMAGE_SUFFIXES:
+        if lowered.endswith(suffix):
+            return suffix
+    return None
+
+
+def _resolve_outliers_path(outliers: str, *, mapmov: str | None, mov: str, ref: str) -> str:
+    """Pick an on-disk format for ``--outliers`` when it has no recognized extension.
+
+    FreeSurfer always writes MGZ here, but that format is less portable than
+    NIfTI, so an extensionless ``--outliers`` instead follows, in order: the
+    ``--mapmov`` output format (if requested), NIfTI if ``--mov`` or ``--ref``
+    is NIfTI, else MGZ.
+
+    Parameters
+    ----------
+    outliers : str
+        The user-supplied ``--outliers`` path.
+    mapmov : str, optional
+        The user-supplied ``--mapmov`` path, if any.
+    mov, ref : str
+        The user-supplied ``--mov``/``--ref`` input paths.
+
+    Returns
+    -------
+    str
+        ``outliers`` unchanged if it already has a recognized extension,
+        otherwise ``outliers`` with a resolved extension appended.
+    """
+    if _recognized_image_suffix(outliers) is not None:
+        return outliers
+
+    if mapmov is not None:
+        mapmov_suffix = _recognized_image_suffix(mapmov)
+        if mapmov_suffix is not None:
+            return outliers + mapmov_suffix
+
+    for candidate in (mov, ref):
+        suffix = _recognized_image_suffix(candidate)
+        if suffix in _NIFTI_SUFFIXES:
+            return outliers + suffix
+
+    return outliers + ".mgz"
+
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
@@ -21,12 +73,9 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     # ── required ────────────────────────────────────────────────────────────
-    p.add_argument("--mov", required=True, metavar="FILE",
-                   help="Moving (source) image (NIfTI or MGZ).")
-    p.add_argument("--ref", required=True, metavar="FILE",
-                   help="Reference (target/fixed) image (NIfTI or MGZ).")
-    p.add_argument("--out", required=True, metavar="LTA",
-                   help="Output LTA file for the recovered transformation.")
+    p.add_argument("--mov", required=True, metavar="FILE", help="Moving (source) image (NIfTI or MGZ).")
+    p.add_argument("--ref", required=True, metavar="FILE", help="Reference (target/fixed) image (NIfTI or MGZ).")
+    p.add_argument("--out", required=True, metavar="LTA", help="Output LTA file for the recovered transformation.")
     p.add_argument(
         "--mov-mask",
         metavar="FILE",
@@ -122,10 +171,12 @@ def _build_parser() -> argparse.ArgumentParser:
         "--outliers",
         metavar="FILE",
         help=(
-            "Save outlier map (1 - Tukey weights) to this file (MGZ format). "
+            "Save outlier map (1 - Tukey weights) to this file. "
             "High values indicate poorly registered regions (outliers), "
             "low values indicate well-registered regions. "
-            "Use with heat colormap in freeview for visualization."
+            "Use with heat colormap in freeview for visualization. "
+            "Format follows the file extension; if it has none, it matches "
+            "--mapmov's format, else NIfTI if --mov or --ref is NIfTI, else MGZ."
         ),
     )
 
@@ -198,6 +249,9 @@ def main(args=None) -> None:
     ref_img = cast(Any, ref_img)
     mov_mask_img = cast(Any | None, mov_mask_img)
     ref_mask_img = cast(Any | None, ref_mask_img)
+
+    if ns.outliers is not None:
+        ns.outliers = _resolve_outliers_path(ns.outliers, mapmov=ns.mapmov, mov=ns.mov, ref=ns.ref)
 
     # ── register ────────────────────────────────────────────────────────────
     logger.info("Starting IRLS registration (dof=%d, symmetric=%s) …", ns.dof, ns.symmetric)
