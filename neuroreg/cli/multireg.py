@@ -10,6 +10,7 @@ from typing import Any, cast
 from ..image import load_image, save_image
 from ..multireg import multireg
 from ..transforms import LTA
+from ._outputs import validate_image_outputs
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -195,6 +196,7 @@ def main(args=None) -> None:
     """
     parser = _build_parser()
     ns = parser.parse_args(args)
+    validate_image_outputs(parser, ns, "template", "mapmov")
     ns.symmetric = getattr(ns, "symmetric", True)
     if ns.mov_mask is not None and len(ns.mov_mask) != len(ns.mov):
         parser.error("--mov-mask requires exactly one mask per --mov input.")

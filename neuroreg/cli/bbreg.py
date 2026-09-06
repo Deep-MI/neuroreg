@@ -12,6 +12,7 @@ from typing import Any
 import numpy as np
 
 from ..image import load_image
+from ._outputs import validate_image_outputs
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -262,11 +263,11 @@ def _load_prealign_mask_image(ns: argparse.Namespace, mode: str) -> Any | None:
 
 
 def _run_default_nmi_prealign(
-        mov_img: Any,
-        ref_img: Any,
-        mask_img: Any | None,
-        logger: logging.Logger,
-        device: str,
+    mov_img: Any,
+    ref_img: Any,
+    mask_img: Any | None,
+    logger: logging.Logger,
+    device: str,
 ) -> np.ndarray:
     """Run the default coarse image-based prealignment for ``bbreg``.
 
@@ -332,6 +333,7 @@ def main(args=None) -> None:
 
     parser = _build_parser()
     ns = parser.parse_args(args)
+    validate_image_outputs(parser, ns, "mapmov", "mapmovhdr")
     mode = _validate_args(ns, parser)
 
     level = logging.DEBUG if ns.debug else (logging.INFO if ns.verbose else logging.WARNING)

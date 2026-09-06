@@ -42,7 +42,9 @@ def _write_uint8_image(path: Path) -> None:
 
 class TestRobregCli:
     @pytest.mark.parametrize("outliers", ["outliers", "outliers.txt"])
-    def test_outliers_needs_a_recognized_image_extension(self, tmp_path: Path, outliers: str):
+    def test_outliers_needs_a_recognized_image_extension(
+        self, tmp_path: Path, outliers: str, capsys: pytest.CaptureFixture[str]
+    ):
         mov_path = tmp_path / "mov.nii.gz"
         ref_path = tmp_path / "ref.nii.gz"
         _write_zero_image(mov_path)
@@ -62,7 +64,9 @@ class TestRobregCli:
                 ]
             )
 
-    def test_mapmov_needs_a_recognized_image_extension(self, tmp_path: Path):
+        assert "--outliers needs a recognized image extension" in capsys.readouterr().err
+
+    def test_mapmov_needs_a_recognized_image_extension(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
         mov_path = tmp_path / "mov.nii.gz"
         ref_path = tmp_path / "ref.nii.gz"
         _write_zero_image(mov_path)
@@ -81,6 +85,8 @@ class TestRobregCli:
                     str(tmp_path / "mapped"),
                 ]
             )
+
+        assert "--mapmov needs a recognized image extension" in capsys.readouterr().err
 
     def test_outliers_path_is_forwarded_unchanged(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         mov_path = tmp_path / "mov.nii.gz"

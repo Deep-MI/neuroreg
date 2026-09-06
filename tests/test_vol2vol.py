@@ -119,8 +119,12 @@ class TestVol2VolCli:
         )
 
         mapped = nib.load(str(out_path))
+        data = np.asarray(mapped.dataobj)
         assert mapped.get_data_dtype().newbyteorder("=") == np.dtype(np.float32)
-        assert np.asarray(mapped.dataobj).dtype.newbyteorder("=") == np.dtype(np.float32)
+        assert data.dtype.newbyteorder("=") == np.dtype(np.float32)
+        # Half-voxel shift: interpolation must actually produce fractional values,
+        # not just a float-typed copy of the integer input.
+        assert np.any(data != np.rint(data))
 
     def test_keep_dtype_preserves_linear_output_dtype(self, tmp_path: Path):
         mov_path = _write_image(tmp_path / "mov.nii.gz", np.arange(8, dtype=np.uint8).reshape(2, 2, 2))

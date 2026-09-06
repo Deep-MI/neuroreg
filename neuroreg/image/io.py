@@ -180,11 +180,14 @@ def load_image(image: str | Path | Any) -> Any:
     return _with_affine(loaded, _build_4dfp_affine(metadata))
 
 
-NIFTI_SUFFIXES = (".nii.gz", ".nii")
-MGH_SUFFIXES = (".mgz", ".mgh")
-IMAGE_SUFFIXES = (*NIFTI_SUFFIXES, *MGH_SUFFIXES)
+_NIFTI_SUFFIXES = (".nii.gz", ".nii")
+_MGH_SUFFIXES = (".mgz", ".mgh")
+_ANALYZE_SUFFIXES = (".img", ".hdr")
+IMAGE_SUFFIXES = (*_NIFTI_SUFFIXES, *_MGH_SUFFIXES, *_ANALYZE_SUFFIXES)
 
 _MGH_DTYPES = {np.dtype(np.uint8), np.dtype(np.int16), np.dtype(np.int32), np.dtype(np.float32)}
+# Ordered smallest first, so integer data lands in the narrowest MGH type that holds it.
+_MGH_INT_DTYPES = (np.dtype(np.uint8), np.dtype(np.int16), np.dtype(np.int32))
 
 
 def recognized_image_suffix(path: str | Path) -> str | None:
@@ -211,6 +214,40 @@ def recognized_image_suffix(path: str | Path) -> str | None:
     return None
 
 
+def _mgh_dtype_for(data: np.ndarray) -> np.dtype:
+    """Return the MGH dtype that stores ``data`` with the least loss.
+
+    MGH stores only uint8, int16, int32 and float32. Integer data is mapped to
+    the narrowest of those that holds its value range exactly, so a uint16 or
+    int64 label volume stays integral instead of being cast to float32, which
+    would double its size and silently round values above 2**24. Anything that
+    does not fit (floats, out-of-range integers) falls back to float32.
+
+    Parameters
+    ----------
+    data : np.ndarray
+        Voxel data to be stored.
+
+    Returns
+    -------
+    np.dtype
+        A dtype MGH can store. ``data.dtype`` is returned unchanged when it is
+        already supported, preserving its byte order.
+    """
+    native = data.dtype.newbyteorder("=")
+    if native in _MGH_DTYPES:
+        return data.dtype
+    if np.issubdtype(native, np.bool_):
+        return np.dtype(np.uint8)
+    if np.issubdtype(native, np.integer) and data.size:
+        low, high = data.min(), data.max()
+        for candidate in _MGH_INT_DTYPES:
+            info = np.iinfo(candidate)
+            if low >= info.min and high <= info.max:
+                return candidate
+    return np.dtype(np.float32)
+
+
 def as_mgh_image(data: np.ndarray, affine: np.ndarray, header: Any | None = None) -> nib.MGHImage:
     """Build an ``MGHImage`` with a correctly populated field-of-view and dtype.
 
@@ -219,13 +256,14 @@ def as_mgh_image(data: np.ndarray, affine: np.ndarray, header: Any | None = None
 
     * ``fov`` defaults to 0, since NIfTI has no equivalent field to inherit
       it from.
-    * The data dtype defaults to float32 instead of the dtype the data
-      actually is, since NIfTI's dtype field means something different to
-      ``MGHHeader``. This silently quadruples storage for e.g. a uint8
-      segmentation and can change how downstream tools interpret the file.
+    * The data dtype is not transferred at all, so the header keeps
+      ``MGHHeader``'s float32 default. This silently quadruples storage for
+      e.g. a uint8 segmentation and can change how downstream tools interpret
+      the file.
 
     Both are recomputed here from ``data`` and ``affine`` rather than
-    inherited from ``header``.
+    inherited from ``header``. Data in a dtype MGH cannot store is converted
+    by :func:`_mgh_dtype_for`.
 
     Parameters
     ----------
@@ -245,8 +283,7 @@ def as_mgh_image(data: np.ndarray, affine: np.ndarray, header: Any | None = None
         Image whose header has ``fov`` and the data dtype set to match
         ``data``.
     """
-    if data.dtype.newbyteorder("=") not in _MGH_DTYPES:
-        data = data.astype(np.float32, copy=False)
+    data = data.astype(_mgh_dtype_for(data), copy=False)
     image = nib.MGHImage(data, affine, header)
     image.header.set_data_dtype(data.dtype)
     zooms = image.header.get_zooms()[:3]
@@ -290,10 +327,11 @@ def save_image(image: Any, path: str | Path) -> None:
         format.
     """
     destination = Path(path)
-    if recognized_image_suffix(destination) in MGH_SUFFIXES:
+    if recognized_image_suffix(destination) in _MGH_SUFFIXES:
         header = image.header if isinstance(image, nib.MGHImage) else None
         image = as_mgh_image(np.asanyarray(image.dataobj), np.asarray(image.affine, dtype=np.float64), header)
     try:
         nib.save(image, str(destination))
-    except ImageFileError as exc:
+    except (ImageFileError, NotImplementedError) as exc:
+        # NotImplementedError covers formats nibabel reads but cannot write (e.g. MINC).
         raise ValueError(f"Unsupported output image format for {str(path)!r}: {exc}") from exc

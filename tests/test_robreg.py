@@ -31,8 +31,8 @@ def _make_blob(shape: tuple[int, int, int] = (20, 20, 20), shift: tuple[float, f
 
 
 def _make_img(
-        shape: tuple[int, int, int] = (20, 20, 20),
-        shift: tuple[float, float, float] = (0, 0, 0),
+    shape: tuple[int, int, int] = (20, 20, 20),
+    shift: tuple[float, float, float] = (0, 0, 0),
 ) -> nib.Nifti1Image:
     affine = np.eye(4, dtype=np.float32)
     data = _make_blob(shape, shift)
@@ -57,6 +57,33 @@ def test_save_outlier_map_skips_missing_final_weights(tmp_path: Path, caplog: py
 
     assert not outliers_path.exists()
     assert "final IRLS level did not produce usable weights" in caplog.text
+
+
+@pytest.mark.parametrize("suffix", [".mgz", ".nii.gz"])
+def test_save_outlier_map_writes_weights_in_the_requested_format(tmp_path: Path, suffix: str):
+    shape = (2, 2, 2)
+    weights = torch.tensor([1.0, 0.5, 0.0, 1.0], dtype=torch.float32)
+    valid_mask = torch.tensor([0, 1, 2, 3], dtype=torch.long)
+    outliers_path = tmp_path / f"outliers{suffix}"
+
+    _save_outlier_map(
+        [
+            {
+                "weights": weights,
+                "valid_mask": valid_mask,
+                "image_shape": shape,
+                "iso_affine": np.diag([2.0, 2.0, 2.0, 1.0]).astype(np.float32),
+            }
+        ],
+        str(outliers_path),
+    )
+
+    written = nib.load(str(outliers_path))
+    data = np.asanyarray(written.dataobj).reshape(-1)
+    # Outliers are 1 - weight**2, and unvisited voxels stay fully outlying.
+    assert written.shape == shape
+    assert data[:4] == pytest.approx([0.0, 0.75, 1.0, 0.0])
+    assert written.affine == pytest.approx(np.diag([2.0, 2.0, 2.0, 1.0]))
 
 
 class TestPublicRobregWrapper:
@@ -290,11 +317,11 @@ def test_register_irls_pyramid_regrids_between_level_affines(monkeypatch: pytest
     captured_initials: list[torch.Tensor] = []
 
     def fake_register_irls(
-            src: torch.Tensor,
-            trg: torch.Tensor,
-            *,
-            initial_transform: torch.Tensor | None = None,
-            **_: object,
+        src: torch.Tensor,
+        trg: torch.Tensor,
+        *,
+        initial_transform: torch.Tensor | None = None,
+        **_: object,
     ) -> tuple[torch.Tensor, dict[str, object]]:
         assert initial_transform is not None
         captured_initials.append(initial_transform.clone())

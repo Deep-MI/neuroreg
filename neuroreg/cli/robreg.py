@@ -7,39 +7,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from ..transforms import LTA
-
-
-def _validate_output_formats(parser: argparse.ArgumentParser, ns: argparse.Namespace) -> None:
-    """Reject image output paths whose extension names no writable format.
-
-    Output formats are selected by file extension, so a missing or
-    unrecognized one (``outliers``, ``outliers.txt``) has no sensible
-    interpretation. Checking up front fails in milliseconds instead of after
-    a full registration has run.
-
-    Parameters
-    ----------
-    parser : argparse.ArgumentParser
-        Parser used to report the error.
-    ns : argparse.Namespace
-        Parsed arguments holding the image output paths.
-
-    Returns
-    -------
-    None
-        Returns if every requested output path is usable.
-
-    Raises
-    ------
-    SystemExit
-        Via :meth:`argparse.ArgumentParser.error` if a path is unusable.
-    """
-    from ..image import IMAGE_SUFFIXES, recognized_image_suffix
-
-    for flag in ("mapmov", "mapmovhdr", "outliers"):
-        value = getattr(ns, flag)
-        if value is not None and recognized_image_suffix(value) is None:
-            parser.error(f"--{flag} needs a recognized image extension ({', '.join(IMAGE_SUFFIXES)}), got: {value}")
+from ._outputs import validate_image_outputs
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -156,8 +124,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "High values indicate poorly registered regions (outliers), "
             "low values indicate well-registered regions. "
             "Use with heat colormap in freeview for visualization. "
-            "The extension selects the output format and is required "
-            "(.nii, .nii.gz, .mgz, .mgh)."
+            "The extension selects the output format and is required."
         ),
     )
 
@@ -197,12 +164,13 @@ def main(args=None) -> None:
     SystemExit
         If argument parsing fails or image loading raises an exception.
     """
+    parser = _build_parser()
+    ns = parser.parse_args(args)
+    validate_image_outputs(parser, ns, "mapmov", "mapmovhdr", "outliers")
+
     from ..image import load_image, save_header_mapped_image, save_resliced_r2r_image
     from ..imreg.robreg import robreg
 
-    parser = _build_parser()
-    ns = parser.parse_args(args)
-    _validate_output_formats(parser, ns)
     ns.symmetric = getattr(ns, "symmetric", True)
     if ns.init_lta is not None and ns.init_type is not None:
         logging.getLogger("neuroreg.cli.robreg").warning(
