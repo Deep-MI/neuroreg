@@ -30,12 +30,11 @@ import logging
 import os
 from typing import TYPE_CHECKING, Any
 
-import nibabel as nib
 import numpy as np
 from scipy.ndimage import uniform_filter
 
 from .geometry import get_vox2tkras
-from .io import load_image, save_image
+from .io import as_mgh_image, load_image, save_image
 
 if TYPE_CHECKING:
     import numpy.typing as npt
@@ -285,7 +284,10 @@ def simplify_segmentation(
     seg_data[_mask_not_in_array(seg_data, (_LH_WM, _RH_WM, _LH_GM, _RH_GM))] = 0
 
     if output_path is not None:
-        out_img = nib.MGHImage(seg_data.astype(np.float32), seg_img.affine, seg_img.header)
+        # The step above restricts labels to {0, 2, 3, 41, 42}, so uint8 stores
+        # them exactly at a quarter the size of the int32 working array. The
+        # returned array stays int32 for callers that keep computing on it.
+        out_img = as_mgh_image(seg_data.astype(np.uint8), seg_img.affine, seg_img.header)
         save_image(out_img, output_path)
         logger.info("Simplified segmentation saved to %s", output_path)
 

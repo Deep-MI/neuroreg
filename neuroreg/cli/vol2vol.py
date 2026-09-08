@@ -11,6 +11,7 @@ from typing import Any
 import numpy as np
 
 from ..image import (
+    check_dtype_storable,
     clip_and_cast_dtype,
     create_image_like,
     header_map_image,
@@ -562,6 +563,10 @@ def main(args=None) -> None:
         effective_lta = None if lta is None else (lta.invert() if ns.inverse else lta)
         r2r = np.eye(4, dtype=np.float64) if effective_lta is None else effective_lta.r2r()
         target_dtype = _resolve_target_dtype(ns, np.dtype(mov_img.get_data_dtype()))
+        if target_dtype is not None:
+            # --out-dtype/--keep-dtype name a type explicitly; refuse rather than
+            # write a different one than was asked for.
+            check_dtype_storable(target_dtype, ns.out)
         if ns.header_only:
             mapped_img = header_map_image(mov_img, r2r)
         elif ns.transform is None and ns.ref is None:

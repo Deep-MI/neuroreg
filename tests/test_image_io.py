@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import nibabel as nib
 import numpy as np
 import pytest
 
-from neuroreg.image import as_mgh_image, save_image
+from neuroreg.image import as_mgh_image, check_dtype_storable, save_image
 
 
 def test_as_mgh_image_sets_fov_to_largest_physical_extent():
@@ -106,6 +107,57 @@ def test_as_mgh_image_keeps_large_integers_exact():
 
     assert image.get_data_dtype().newbyteorder("=") == np.dtype(np.int32)
     assert int(np.asanyarray(image.dataobj)[0, 0, 0]) == 2**24 + 1
+
+
+def test_as_mgh_image_refuses_integers_too_wide_for_int32():
+    # float32 would round these, so refuse rather than corrupt the values.
+    data = np.array([[[0, 2**40 + 1]]], dtype=np.int64)
+
+    with pytest.raises(ValueError, match="exceeds int32"):
+        as_mgh_image(data, np.eye(4))
+
+
+def test_as_mgh_image_refuses_complex_data():
+    data = np.array([[[1 + 2j]]], dtype=np.complex128)
+
+    with pytest.raises(ValueError, match="cannot store complex128"):
+        as_mgh_image(data, np.eye(4))
+
+
+def test_as_mgh_image_warns_when_narrowing_float64(caplog: pytest.LogCaptureFixture):
+    data = np.array([[[1 / 3, 2 / 3]]], dtype=np.float64)
+
+    with caplog.at_level(logging.WARNING, logger="neuroreg.image.io"):
+        image = as_mgh_image(data, np.eye(4))
+
+    assert image.get_data_dtype().newbyteorder("=") == np.dtype(np.float32)
+    assert "Narrowing float64 to float32" in caplog.text
+
+
+def test_as_mgh_image_does_not_warn_for_storable_dtypes(caplog: pytest.LogCaptureFixture):
+    data = np.array([[[1.5, 2.5]]], dtype=np.float32)
+
+    with caplog.at_level(logging.WARNING, logger="neuroreg.image.io"):
+        as_mgh_image(data, np.eye(4))
+
+    assert caplog.text == ""
+
+
+@pytest.mark.parametrize("suffix", [".mgz", ".mgh"])
+@pytest.mark.parametrize("dtype", [np.float64, np.int64, np.uint16])
+def test_check_dtype_storable_refuses_dtypes_mgh_cannot_hold(suffix: str, dtype, tmp_path: Path):
+    with pytest.raises(ValueError, match="MGH/MGZ cannot store"):
+        check_dtype_storable(dtype, tmp_path / f"out{suffix}")
+
+
+@pytest.mark.parametrize("dtype", [np.uint8, np.int16, np.int32, np.float32])
+def test_check_dtype_storable_accepts_mgh_dtypes(dtype, tmp_path: Path):
+    check_dtype_storable(dtype, tmp_path / "out.mgz")
+
+
+@pytest.mark.parametrize("dtype", [np.float64, np.int64, np.uint16, np.uint8])
+def test_check_dtype_storable_allows_anything_for_nifti(dtype, tmp_path: Path):
+    check_dtype_storable(dtype, tmp_path / "out.nii.gz")
 
 
 def test_save_image_rejects_a_read_only_format(tmp_path: Path):

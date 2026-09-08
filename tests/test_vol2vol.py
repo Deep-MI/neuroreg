@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 import nibabel as nib
@@ -9,7 +10,9 @@ from neuroreg.transforms import LTA
 
 
 def _write_image(path: Path, data: np.ndarray, affine: np.ndarray | None = None) -> Path:
-    img = nib.Nifti1Image(data, np.eye(4) if affine is None else affine)
+    # Pass dtype explicitly so wide integer types (int64) round-trip instead of
+    # tripping nibabel's "may cause incompatibilities" guard.
+    img = nib.Nifti1Image(data, np.eye(4) if affine is None else affine, dtype=data.dtype)
     nib.save(img, path)
     return path
 
@@ -76,6 +79,60 @@ class TestVol2VolCli:
         mov_path = _write_image(tmp_path / "mov.nii.gz", np.ones((2, 2, 2), dtype=np.float32))
         with pytest.raises(SystemExit):
             vol2vol_main(["--in", str(mov_path), "--out", str(tmp_path / "out.foo")])
+
+    @pytest.mark.parametrize("dtype", ["float64", "int64", "uint16"])
+    def test_explicit_out_dtype_mgh_cannot_store_is_refused(self, tmp_path: Path, dtype: str, capsys):
+        # Silently writing a different dtype than requested would hand back a
+        # file that does not match the request, so the write is refused.
+        mov_path = _write_image(tmp_path / "mov.nii.gz", np.ones((2, 2, 2), dtype=np.float32))
+        out_path = tmp_path / "out.mgz"
+
+        with pytest.raises(SystemExit):
+            vol2vol_main(["--in", str(mov_path), "--out", str(out_path), "--out-dtype", dtype])
+
+        assert "MGH/MGZ cannot store" in capsys.readouterr().err
+        assert not out_path.exists()
+
+    def test_keep_dtype_is_refused_when_mgh_cannot_store_the_input_dtype(self, tmp_path: Path, capsys):
+        mov_path = _write_image(tmp_path / "mov.nii.gz", np.ones((2, 2, 2), dtype=np.float64))
+        out_path = tmp_path / "out.mgz"
+
+        with pytest.raises(SystemExit):
+            vol2vol_main(["--in", str(mov_path), "--out", str(out_path), "--keep-dtype"])
+
+        assert "MGH/MGZ cannot store" in capsys.readouterr().err
+
+    @pytest.mark.parametrize("dtype", ["float64", "int64", "uint16"])
+    def test_explicit_out_dtype_is_honoured_for_nifti(self, tmp_path: Path, dtype: str):
+        mov_path = _write_image(tmp_path / "mov.nii.gz", np.ones((2, 2, 2), dtype=np.float32))
+        out_path = tmp_path / f"out_{dtype}.nii.gz"
+
+        vol2vol_main(["--in", str(mov_path), "--out", str(out_path), "--out-dtype", dtype])
+
+        assert nib.load(str(out_path)).get_data_dtype() == np.dtype(dtype)
+
+    def test_float64_input_to_mgz_narrows_to_float32_with_a_warning(self, tmp_path: Path, caplog):
+        # MGH has no 64-bit float, so this conversion is allowed but must not be silent.
+        data = np.array([[[1 / 3, 2 / 3]], [[0.1, 0.2]]], dtype=np.float64)
+        mov_path = _write_image(tmp_path / "mov.nii.gz", data)
+        out_path = tmp_path / "out.mgz"
+
+        with caplog.at_level(logging.WARNING, logger="neuroreg.image.io"):
+            vol2vol_main(["--in", str(mov_path), "--out", str(out_path)])
+
+        assert nib.load(str(out_path)).get_data_dtype().newbyteorder("=") == np.dtype(np.float32)
+        assert "Narrowing float64 to float32" in caplog.text
+
+    def test_int64_beyond_int32_range_to_mgz_is_refused(self, tmp_path: Path, capsys):
+        data = np.array([[[0, 2**40 + 1]], [[5, 7]]], dtype=np.int64)
+        mov_path = _write_image(tmp_path / "mov.nii.gz", data)
+        out_path = tmp_path / "out.mgz"
+
+        with pytest.raises(SystemExit):
+            vol2vol_main(["--in", str(mov_path), "--out", str(out_path)])
+
+        assert "exceeds int32" in capsys.readouterr().err
+        assert not out_path.exists()
 
     def test_dtype_only_conversion_does_not_reslice(self, tmp_path: Path):
         data = np.arange(8, dtype=np.uint8).reshape(2, 2, 2)

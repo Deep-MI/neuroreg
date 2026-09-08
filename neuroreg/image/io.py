@@ -214,14 +214,49 @@ def recognized_image_suffix(path: str | Path) -> str | None:
     return None
 
 
+def check_dtype_storable(dtype: np.dtype | str, path: str | Path) -> None:
+    """Raise if the format selected by ``path`` cannot store ``dtype``.
+
+    Use this to validate a dtype the caller asked for *explicitly* (for example
+    ``vol2vol --out-dtype``). Silently substituting a different type would hand
+    back a file that does not match the request, so an unhonourable request is
+    refused instead.
+
+    Parameters
+    ----------
+    dtype : np.dtype or str
+        Requested output dtype.
+    path : str or Path
+        Output filename. Its extension selects the format.
+
+    Returns
+    -------
+    None
+        Returns if the format can store ``dtype``.
+
+    Raises
+    ------
+    ValueError
+        If the format cannot store ``dtype``.
+    """
+    dtype = np.dtype(dtype)
+    if recognized_image_suffix(path) in _MGH_SUFFIXES and dtype.newbyteorder("=") not in _MGH_DTYPES:
+        supported = ", ".join(sorted(candidate.name for candidate in _MGH_DTYPES))
+        raise ValueError(
+            f"MGH/MGZ cannot store {dtype.name} data (it supports {supported}). "
+            f"Request a supported dtype, or write NIfTI (.nii/.nii.gz) instead."
+        )
+
+
 def _mgh_dtype_for(data: np.ndarray) -> np.dtype:
-    """Return the MGH dtype that stores ``data`` with the least loss.
+    """Return the MGH dtype that stores ``data`` without corrupting values.
 
     MGH stores only uint8, int16, int32 and float32. Integer data is mapped to
     the narrowest of those that holds its value range exactly, so a uint16 or
     int64 label volume stays integral instead of being cast to float32, which
-    would double its size and silently round values above 2**24. Anything that
-    does not fit (floats, out-of-range integers) falls back to float32.
+    would double its size and silently round values above 2**24. Integers too
+    wide for int32 are refused rather than rounded through float32, and float64
+    is narrowed to float32 with a warning, since MGH has no 64-bit float.
 
     Parameters
     ----------
@@ -233,18 +268,40 @@ def _mgh_dtype_for(data: np.ndarray) -> np.dtype:
     np.dtype
         A dtype MGH can store. ``data.dtype`` is returned unchanged when it is
         already supported, preserving its byte order.
+
+    Raises
+    ------
+    ValueError
+        If no MGH dtype can represent ``data`` without corrupting values.
     """
     native = data.dtype.newbyteorder("=")
     if native in _MGH_DTYPES:
         return data.dtype
     if np.issubdtype(native, np.bool_):
         return np.dtype(np.uint8)
-    if np.issubdtype(native, np.integer) and data.size:
+    if np.issubdtype(native, np.integer):
+        if not data.size:
+            return np.dtype(np.int32)
         low, high = data.min(), data.max()
         for candidate in _MGH_INT_DTYPES:
             info = np.iinfo(candidate)
             if low >= info.min and high <= info.max:
                 return candidate
+        raise ValueError(
+            f"MGH/MGZ cannot store {native.name} values in [{low}, {high}]: the range exceeds "
+            f"int32, and float32 would round them. Write NIfTI (.nii/.nii.gz) instead, or "
+            f"rescale the data to fit int32."
+        )
+    if not np.issubdtype(native, np.floating):
+        raise ValueError(
+            f"MGH/MGZ cannot store {native.name} data. Write NIfTI (.nii/.nii.gz) instead, or convert the data first."
+        )
+    if native.itemsize > np.dtype(np.float32).itemsize:
+        logger.warning(
+            "Narrowing %s to float32: MGH/MGZ has no wider float type. "
+            "Write NIfTI (.nii/.nii.gz) to keep full precision.",
+            native.name,
+        )
     return np.dtype(np.float32)
 
 
@@ -282,6 +339,11 @@ def as_mgh_image(data: np.ndarray, affine: np.ndarray, header: Any | None = None
     nib.MGHImage
         Image whose header has ``fov`` and the data dtype set to match
         ``data``.
+
+    Raises
+    ------
+    ValueError
+        If no MGH dtype can represent ``data`` without corrupting values.
     """
     data = data.astype(_mgh_dtype_for(data), copy=False)
     image = nib.MGHImage(data, affine, header)
@@ -324,7 +386,8 @@ def save_image(image: Any, path: str | Path) -> None:
     ------
     ValueError
         If ``path`` has no extension nibabel recognizes as a writable image
-        format.
+        format, or if the target format cannot store the image's data without
+        corrupting values (see :func:`as_mgh_image`).
     """
     destination = Path(path)
     if recognized_image_suffix(destination) in _MGH_SUFFIXES:
