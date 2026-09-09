@@ -240,7 +240,7 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for neuroreg.transforms.matrices</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Affine / rigid transformation matrix utilities.&quot;&quot;&quot;</span>
+<span></span><span class="sd">"""Affine / rigid transformation matrix utilities."""</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy.typing</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">npt</span>
@@ -248,9 +248,9 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_det_mps_compatible</span><span class="p">(</span><span class="n">R</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute determinant in an MPS-compatible way.</span>
+<span class="w">    </span><span class="sd">"""Compute determinant in an MPS-compatible way.</span>
 <span class="sd">    </span>
-<span class="sd">    MPS doesn&#39;t support torch.linalg.det, so we compute it manually.</span>
+<span class="sd">    MPS doesn't support torch.linalg.det, so we compute it manually.</span>
 <span class="sd">    For 3x3 matrices, we use the standard formula.</span>
 <span class="sd">    For 4x4 matrices, we use the same formula on the top-left 3x3 block</span>
 <span class="sd">    since we only care about rotation determinants.</span>
@@ -264,7 +264,7 @@
 <span class="sd">    -------</span>
 <span class="sd">    det : torch.Tensor</span>
 <span class="sd">        Scalar determinant value</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="n">R</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">4</span> <span class="ow">and</span> <span class="n">R</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span>
         <span class="c1"># For 4x4 matrices, extract the 3x3 rotation block</span>
         <span class="n">R</span> <span class="o">=</span> <span class="n">R</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span>
@@ -284,7 +284,7 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">matrix_sqrt_schur</span><span class="p">(</span><span class="n">M</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Principal square root of a 4×4 matrix via Schur decomposition.</span>
+<span class="w">    </span><span class="sd">"""Principal square root of a 4×4 matrix via Schur decomposition.</span>
 
 <span class="sd">    Uses :func:`scipy.linalg.sqrtm` which performs the Schur decomposition</span>
 <span class="sd">    over ℂ and is valid for **any** matrix whose eigenvalues do not lie on</span>
@@ -305,7 +305,7 @@
 <span class="sd">    mh : torch.Tensor, shape (4, 4)</span>
 <span class="sd">        Principal square root such that ``mh @ mh ≈ M``.</span>
 <span class="sd">    mhi : torch.Tensor, shape (4, 4)</span>
-<span class="sd">        ``mh @ inv(M)`` — the &quot;other half&quot; mapping the target back to the</span>
+<span class="sd">        ``mh @ inv(M)`` — the "other half" mapping the target back to the</span>
 <span class="sd">        midspace.  Using ``mh @ inv(M)`` instead of ``inv(mh)`` is more</span>
 <span class="sd">        numerically stable when ``mh @ mh`` is not exactly ``M`` (following</span>
 <span class="sd">        the FreeSurfer convention).</span>
@@ -316,7 +316,7 @@
 <span class="sd">    ``.detach()`` before the numpy conversion).  Use it in the outer</span>
 <span class="sd">    registration loop where symmetry is managed, not inside a differentiable</span>
 <span class="sd">    model forward pass.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.linalg</span><span class="w"> </span><span class="kn">import</span> <span class="n">sqrtm</span> <span class="k">as</span> <span class="n">scipy_sqrtm</span>  <span class="c1"># lazy import – not always needed</span>
 
     <span class="n">M_np</span> <span class="o">=</span> <span class="n">M</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">double</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
@@ -324,14 +324,14 @@
     <span class="c1"># scipy may return a complex array with tiny imaginary residuals — take real part</span>
     <span class="n">mh_np</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">mh_np</span><span class="p">)</span>
     <span class="n">mh</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">mh_np</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">M</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">M</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-    <span class="n">work_dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float32</span> <span class="k">if</span> <span class="n">M</span><span class="o">.</span><span class="n">device</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;mps&quot;</span> <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">float64</span>
+    <span class="n">work_dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float32</span> <span class="k">if</span> <span class="n">M</span><span class="o">.</span><span class="n">device</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">"mps"</span> <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">float64</span>
     <span class="n">mi</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">inverse</span><span class="p">(</span><span class="n">M</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">M</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">work_dtype</span><span class="p">))</span>
     <span class="n">mhi</span> <span class="o">=</span> <span class="p">(</span><span class="n">mh</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">work_dtype</span><span class="p">)</span> <span class="o">@</span> <span class="n">mi</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">M</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">mh</span><span class="p">,</span> <span class="n">mhi</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">get_translation</span><span class="p">(</span><span class="n">translation</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a 4 × 4 translation matrix (homogeneous coordinates).</span>
+<span class="w">    </span><span class="sd">"""Generate a 4 × 4 translation matrix (homogeneous coordinates).</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -342,14 +342,14 @@
 <span class="sd">    -------</span>
 <span class="sd">    torch.Tensor, shape (4, 4)</span>
 <span class="sd">        Translation matrix.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">trans</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">translation</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">translation</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
     <span class="n">trans</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">translation</span><span class="p">[:</span><span class="mi">3</span><span class="p">]</span>
     <span class="k">return</span> <span class="n">trans</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">get_rotation_rodrigues</span><span class="p">(</span><span class="n">rotvec</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a 4 × 4 homogeneous rotation matrix from a Rodrigues vector.</span>
+<span class="w">    </span><span class="sd">"""Generate a 4 × 4 homogeneous rotation matrix from a Rodrigues vector.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -363,7 +363,7 @@
 <span class="sd">        Homogeneous rotation matrix. The computation uses standard</span>
 <span class="sd">        differentiable torch operations and remains compatible with autograd on</span>
 <span class="sd">        CPU and GPU devices.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">theta</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">rotvec</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">theta</span> <span class="o">&lt;</span> <span class="mf">1e-10</span><span class="p">:</span>
         <span class="n">rmat</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">rotvec</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">rotvec</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
@@ -388,7 +388,7 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">get_rotation_euler</span><span class="p">(</span><span class="n">angles</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a 4 × 4 rotation matrix from Euler angles (X → Y → Z).</span>
+<span class="w">    </span><span class="sd">"""Generate a 4 × 4 rotation matrix from Euler angles (X → Y → Z).</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -399,7 +399,7 @@
 <span class="sd">    -------</span>
 <span class="sd">    torch.Tensor, shape (4, 4)</span>
 <span class="sd">        Rotation matrix.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">cos</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">angles</span><span class="p">)</span>
     <span class="n">sin</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">angles</span><span class="p">)</span>
     <span class="n">one</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">angles</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
@@ -417,7 +417,7 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">params_to_rigid_matrix</span><span class="p">(</span><span class="n">params</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert 6-DOF rigid parameters to a 4 × 4 matrix in DHW axis order.</span>
+<span class="w">    </span><span class="sd">"""Convert 6-DOF rigid parameters to a 4 × 4 matrix in DHW axis order.</span>
 
 <span class="sd">    This helper is shared by the IRLS robreg implementation. The parameter</span>
 <span class="sd">    vector follows the Jacobian convention used in the FreeSurfer-style linear</span>
@@ -429,7 +429,7 @@
 <span class="sd">    * ``params[3:6]`` ↔ Rodrigues rotation vector around W/H/D axes</span>
 
 <span class="sd">    The rotation is first constructed in physical XYZ order and then permuted to</span>
-<span class="sd">    nibabel&#39;s internal DHW indexing convention by swapping axes ``0 ↔ 2``.</span>
+<span class="sd">    nibabel's internal DHW indexing convention by swapping axes ``0 ↔ 2``.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -440,7 +440,7 @@
 <span class="sd">    -------</span>
 <span class="sd">    torch.Tensor, shape (4, 4)</span>
 <span class="sd">        Homogeneous voxel-to-voxel update matrix in DHW axis order.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">T</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">params</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">params</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
 
     <span class="n">R_xyz</span> <span class="o">=</span> <span class="n">get_rotation_rodrigues</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="mi">3</span><span class="p">:</span><span class="mi">6</span><span class="p">])[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span>
@@ -455,7 +455,7 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">get_scaling</span><span class="p">(</span><span class="n">scales</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a 4 × 4 diagonal scaling matrix.</span>
+<span class="w">    </span><span class="sd">"""Generate a 4 × 4 diagonal scaling matrix.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -466,13 +466,13 @@
 <span class="sd">    -------</span>
 <span class="sd">    torch.Tensor, shape (4, 4)</span>
 <span class="sd">        Scaling matrix.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">S</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">scales</span><span class="p">,</span> <span class="n">scales</span><span class="o">.</span><span class="n">new_tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">]))))</span>
     <span class="k">return</span> <span class="n">S</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">rotation_error</span><span class="p">(</span><span class="n">R1</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">R2</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">check_valid</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute rotation error between two rotation matrices in degrees.</span>
+<span class="w">    </span><span class="sd">"""Compute rotation error between two rotation matrices in degrees.</span>
 
 <span class="sd">    Uses the geodesic distance on SO(3): θ = arccos((trace(R1^T R2) - 1) / 2)</span>
 
@@ -481,7 +481,7 @@
 <span class="sd">    R1, R2 : torch.Tensor</span>
 <span class="sd">        3×3 or 4×4 rotation matrices. If 4×4, only top-left 3×3 is used for</span>
 <span class="sd">        the geodesic distance calculation, but full 4×4 is validated if</span>
-<span class="sd">        check_valid=True (ensuring it&#39;s a pure rotation with no translation).</span>
+<span class="sd">        check_valid=True (ensuring it's a pure rotation with no translation).</span>
 <span class="sd">    check_valid : bool, optional</span>
 <span class="sd">        If True (default), validates that inputs are proper rotation matrices.</span>
 <span class="sd">        For 4×4 matrices, also validates no translation component.</span>
@@ -503,7 +503,7 @@
 <span class="sd">    &gt;&gt;&gt; R1 = get_rotation_euler(torch.tensor([0.1, 0.2, 0.0]))[:3, :3]</span>
 <span class="sd">    &gt;&gt;&gt; R2 = get_rotation_euler(torch.tensor([0.15, 0.25, 0.05]))[:3, :3]</span>
 <span class="sd">    &gt;&gt;&gt; error = rotation_error(R1, R2)</span>
-<span class="sd">    &gt;&gt;&gt; print(f&quot;Rotation error: {error:.2f}°&quot;)</span>
+<span class="sd">    &gt;&gt;&gt; print(f"Rotation error: {error:.2f}°")</span>
 
 <span class="sd">    Notes</span>
 <span class="sd">    -----</span>
@@ -514,20 +514,20 @@
 <span class="sd">    For 4×4 homogeneous matrices, additionally:</span>
 <span class="sd">    - Last row must be [0, 0, 0, 1]</span>
 <span class="sd">    - Last column must be [0, 0, 0, 1]^T (no translation component)</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="n">check_valid</span><span class="p">:</span>
         <span class="c1"># Validate with full matrices (handles both 3×3 and 4×4)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">_is_rotation_matrix</span><span class="p">(</span><span class="n">R1</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;R1 is not a valid rotation matrix. &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;Orthogonality error: </span><span class="si">{</span><span class="n">torch</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">R1</span><span class="o">.</span><span class="n">T</span><span class="w"> </span><span class="o">@</span><span class="w"> </span><span class="n">R1</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">torch</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">R1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="w"> </span><span class="n">device</span><span class="o">=</span><span class="n">R1</span><span class="o">.</span><span class="n">device</span><span class="p">))</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">, &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;Determinant: </span><span class="si">{</span><span class="n">_det_mps_compatible</span><span class="p">(</span><span class="n">R1</span><span class="p">)</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2"> (should be 1.0)&quot;</span>
+                <span class="sa">f</span><span class="s2">"R1 is not a valid rotation matrix. "</span>
+                <span class="sa">f</span><span class="s2">"Orthogonality error: </span><span class="si">{</span><span class="n">torch</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">R1</span><span class="o">.</span><span class="n">T</span><span class="w"> </span><span class="o">@</span><span class="w"> </span><span class="n">R1</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">torch</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">R1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="w"> </span><span class="n">device</span><span class="o">=</span><span class="n">R1</span><span class="o">.</span><span class="n">device</span><span class="p">))</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">, "</span>
+                <span class="sa">f</span><span class="s2">"Determinant: </span><span class="si">{</span><span class="n">_det_mps_compatible</span><span class="p">(</span><span class="n">R1</span><span class="p">)</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2"> (should be 1.0)"</span>
             <span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">_is_rotation_matrix</span><span class="p">(</span><span class="n">R2</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;R2 is not a valid rotation matrix. &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;Orthogonality error: </span><span class="si">{</span><span class="n">torch</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">R2</span><span class="o">.</span><span class="n">T</span><span class="w"> </span><span class="o">@</span><span class="w"> </span><span class="n">R2</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">torch</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">R2</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="w"> </span><span class="n">device</span><span class="o">=</span><span class="n">R2</span><span class="o">.</span><span class="n">device</span><span class="p">))</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">, &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;Determinant: </span><span class="si">{</span><span class="n">_det_mps_compatible</span><span class="p">(</span><span class="n">R2</span><span class="p">)</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2"> (should be 1.0)&quot;</span>
+                <span class="sa">f</span><span class="s2">"R2 is not a valid rotation matrix. "</span>
+                <span class="sa">f</span><span class="s2">"Orthogonality error: </span><span class="si">{</span><span class="n">torch</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">R2</span><span class="o">.</span><span class="n">T</span><span class="w"> </span><span class="o">@</span><span class="w"> </span><span class="n">R2</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">torch</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">R2</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="w"> </span><span class="n">device</span><span class="o">=</span><span class="n">R2</span><span class="o">.</span><span class="n">device</span><span class="p">))</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">, "</span>
+                <span class="sa">f</span><span class="s2">"Determinant: </span><span class="si">{</span><span class="n">_det_mps_compatible</span><span class="p">(</span><span class="n">R2</span><span class="p">)</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2"> (should be 1.0)"</span>
             <span class="p">)</span>
 
     <span class="c1"># Extract 3×3 rotation part for geodesic distance calculation</span>
@@ -553,7 +553,7 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_is_rotation_matrix</span><span class="p">(</span><span class="n">R</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">atol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-4</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Check if a 3×3 or 4×4 matrix is a proper rotation matrix.</span>
+<span class="w">    </span><span class="sd">"""Check if a 3×3 or 4×4 matrix is a proper rotation matrix.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -568,7 +568,7 @@
 <span class="sd">    -------</span>
 <span class="sd">    bool</span>
 <span class="sd">        True if R is a proper rotation matrix.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="c1"># Check shape</span>
     <span class="k">if</span> <span class="n">R</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">):</span>
         <span class="c1"># 3×3 rotation matrix</span>
@@ -607,7 +607,7 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">get_affine</span><span class="p">(</span>
         <span class="n">translation</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">rotvec</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">scales</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a 4 × 4 affine matrix from translation, rotation, and scale.</span>
+<span class="w">    </span><span class="sd">"""Generate a 4 × 4 affine matrix from translation, rotation, and scale.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -622,7 +622,7 @@
 <span class="sd">    -------</span>
 <span class="sd">    torch.Tensor, shape (4, 4)</span>
 <span class="sd">        Affine transformation matrix.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">matrix</span> <span class="o">=</span> <span class="n">get_translation</span><span class="p">(</span><span class="n">translation</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">rotvec</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">matrix</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">matrix</span><span class="p">,</span> <span class="n">get_rotation_euler</span><span class="p">(</span><span class="n">rotvec</span><span class="p">))</span>
@@ -633,10 +633,10 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">convert_v2v_to_torch</span><span class="p">(</span><span class="n">v2v</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">source_shape</span><span class="p">,</span> <span class="n">target_shape</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert a vox-to-vox affine matrix to PyTorch grid-sample format.</span>
+<span class="w">    </span><span class="sd">"""Convert a vox-to-vox affine matrix to PyTorch grid-sample format.</span>
 
 <span class="sd">    Accounts for the coordinate-system differences between voxel space and</span>
-<span class="sd">    PyTorch&#39;s normalised ``[-1, 1]`` grid space.</span>
+<span class="sd">    PyTorch's normalised ``[-1, 1]`` grid space.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -661,22 +661,22 @@
 
 <span class="sd">    Notes</span>
 <span class="sd">    -----</span>
-<span class="sd">    PyTorch&#39;s ``affine_grid`` / ``grid_sample`` use **(W, H, D) = (x, y, z)**</span>
+<span class="sd">    PyTorch's ``affine_grid`` / ``grid_sample`` use **(W, H, D) = (x, y, z)**</span>
 <span class="sd">    axis order, while nibabel stores images as **(D, H, W)**.  For non-cubic</span>
 <span class="sd">    images (D ≠ W) the scale factors along each axis differ, so the nibabel</span>
 <span class="sd">    v2v must be **permuted** to (W, H, D) order **before** multiplying with</span>
 <span class="sd">    the per-axis normalisation matrices.  Applying the permutation *after*</span>
 <span class="sd">    the multiplication (as a row/column swap at the end) only works correctly</span>
 <span class="sd">    when D = W (cubic images) and silently produces wrong results otherwise.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="n">target_shape</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">target_shape</span> <span class="o">=</span> <span class="n">source_shape</span>
     <span class="k">if</span> <span class="n">v2v</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">([</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">]):</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Expected v2v of shape (4, 4), but got </span><span class="si">{</span><span class="n">v2v</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Expected v2v of shape (4, 4), but got </span><span class="si">{</span><span class="n">v2v</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">."</span><span class="p">)</span>
 
     <span class="n">dtype</span> <span class="o">=</span> <span class="n">v2v</span><span class="o">.</span><span class="n">dtype</span>
     <span class="n">device</span> <span class="o">=</span> <span class="n">v2v</span><span class="o">.</span><span class="n">device</span>
-    <span class="n">work_dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float32</span> <span class="k">if</span> <span class="n">device</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;mps&quot;</span> <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">float64</span>
+    <span class="n">work_dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float32</span> <span class="k">if</span> <span class="n">device</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">"mps"</span> <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">float64</span>
 
     <span class="c1"># Backward v2v in nibabel (D, H, W) order.</span>
     <span class="n">inv_v2v_dhw</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">inverse</span><span class="p">(</span><span class="n">v2v</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">work_dtype</span><span class="p">))</span>
@@ -721,7 +721,7 @@
         <span class="n">target_shape</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">target_affine</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert a RAS-to-RAS affine matrix to PyTorch grid-sample format.</span>
+<span class="w">    </span><span class="sd">"""Convert a RAS-to-RAS affine matrix to PyTorch grid-sample format.</span>
 
 <span class="sd">    Preferred over converting to vox-to-vox first then calling</span>
 <span class="sd">    :func:`convert_v2v_to_torch`, because the intermediate v2v matrix</span>
@@ -762,7 +762,7 @@
 <span class="sd">    torch.Tensor, shape (3, 4)</span>
 <span class="sd">        PyTorch-compatible affine matrix for</span>
 <span class="sd">        :func:`torch.nn.functional.affine_grid`.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="n">target_shape</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">target_shape</span> <span class="o">=</span> <span class="n">source_shape</span>
     <span class="k">if</span> <span class="n">target_affine</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -804,7 +804,7 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">convert_torch_to_v2v</span><span class="p">(</span><span class="n">torch_transform</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">source_shape</span><span class="p">,</span> <span class="n">target_shape</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert a PyTorch grid-sample affine matrix back to vox-to-vox format.</span>
+<span class="w">    </span><span class="sd">"""Convert a PyTorch grid-sample affine matrix back to vox-to-vox format.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -824,11 +824,11 @@
 <span class="sd">    ------</span>
 <span class="sd">    ValueError</span>
 <span class="sd">        If *torch_transform* is not shape (4, 4).</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="n">target_shape</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">target_shape</span> <span class="o">=</span> <span class="n">source_shape</span>
     <span class="k">if</span> <span class="n">torch_transform</span><span class="o">.</span><span class="n">size</span><span class="p">()</span> <span class="o">!=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">([</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">]):</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Torch affine shape </span><span class="si">{</span><span class="n">torch_transform</span><span class="o">.</span><span class="n">size</span><span class="p">()</span><span class="si">}</span><span class="s2"> should be (4,4)!&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Torch affine shape </span><span class="si">{</span><span class="n">torch_transform</span><span class="o">.</span><span class="n">size</span><span class="p">()</span><span class="si">}</span><span class="s2"> should be (4,4)!"</span><span class="p">)</span>
 
     <span class="n">dtype</span> <span class="o">=</span> <span class="n">torch_transform</span><span class="o">.</span><span class="n">dtype</span>
     <span class="n">device</span> <span class="o">=</span> <span class="n">torch_transform</span><span class="o">.</span><span class="n">device</span>
@@ -873,7 +873,7 @@
         <span class="n">from_type</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
         <span class="n">to_type</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert a transformation matrix between vox-to-vox and RAS-to-RAS.</span>
+<span class="w">    </span><span class="sd">"""Convert a transformation matrix between vox-to-vox and RAS-to-RAS.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -907,11 +907,11 @@
 
 <span class="sd">    * vox→vox to RAS→RAS:  ``A_d @ M @ inv(A_s)``</span>
 <span class="sd">    * RAS→RAS to vox→vox:  ``inv(A_d) @ M @ A_s``</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="n">from_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="n">LINEAR_VOX_TO_VOX</span><span class="p">,</span> <span class="n">LINEAR_RAS_TO_RAS</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;from_type must be 0 or 1, got </span><span class="si">{</span><span class="n">from_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"from_type must be 0 or 1, got </span><span class="si">{</span><span class="n">from_type</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">to_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="n">LINEAR_VOX_TO_VOX</span><span class="p">,</span> <span class="n">LINEAR_RAS_TO_RAS</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;to_type must be 0 or 1, got </span><span class="si">{</span><span class="n">to_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"to_type must be 0 or 1, got </span><span class="si">{</span><span class="n">to_type</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">from_type</span> <span class="o">==</span> <span class="n">to_type</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">matrix</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>

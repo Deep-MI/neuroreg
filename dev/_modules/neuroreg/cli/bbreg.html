@@ -241,7 +241,7 @@
         <article role="main" id="furo-main-content">
           <h1>Source code for neuroreg.cli.bbreg</h1><div class="highlight"><pre>
 <span></span><span class="ch">#!/usr/bin/env python3</span>
-<span class="sd">&quot;&quot;&quot;Command-line interface for boundary-based registration (bbreg).&quot;&quot;&quot;</span>
+<span class="sd">"""Command-line interface for boundary-based registration (bbreg)."""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -254,163 +254,164 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..image</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_image</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._outputs</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_image_outputs</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_build_parser</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">:</span>
     <span class="n">p</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span>
-        <span class="n">prog</span><span class="o">=</span><span class="s2">&quot;bbreg&quot;</span><span class="p">,</span>
+        <span class="n">prog</span><span class="o">=</span><span class="s2">"bbreg"</span><span class="p">,</span>
         <span class="n">description</span><span class="o">=</span><span class="p">(</span>
-            <span class="s2">&quot;Boundary-based registration of a moving image to a T1 anatomy</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;using cortical surface meshes.  Analogous to FreeSurfer&#39;s bbregister.</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;Surface input — choose ONE of the following modes:</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;  A) --subject_dir  : FreeSurfer / FastSurfer subject directory</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;                      (surfaces and T1 reference loaded automatically)</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;  B) --lh_surf / --rh_surf  : explicit surface file(s) + --ref</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;  C) --seg          : parcellation / aseg file; surfaces are extracted</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;                      automatically via marching cubes (no pre-built</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;                      surface files needed)</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">"Boundary-based registration of a moving image to a T1 anatomy</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"using cortical surface meshes.  Analogous to FreeSurfer's bbregister.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"Surface input — choose ONE of the following modes:</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"  A) --subject_dir  : FreeSurfer / FastSurfer subject directory</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"                      (surfaces and T1 reference loaded automatically)</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"  B) --lh_surf / --rh_surf  : explicit surface file(s) + --ref</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"  C) --seg          : parcellation / aseg file; surfaces are extracted</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"                      automatically via marching cubes (no pre-built</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"                      surface files needed)</span><span class="se">\n</span><span class="s2">"</span>
         <span class="p">),</span>
         <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">RawDescriptionHelpFormatter</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--mov&quot;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FILE&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Moving image to register (e.g. fMRI or T2, NIfTI or MGZ).&quot;</span>
+        <span class="s2">"--mov"</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"FILE"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Moving image to register (e.g. fMRI or T2, NIfTI or MGZ)."</span>
     <span class="p">)</span>
-    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--out&quot;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;LTA&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Output LTA file for the recovered transformation.&quot;</span><span class="p">)</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--out"</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"LTA"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Output LTA file for the recovered transformation."</span><span class="p">)</span>
 
-    <span class="n">grp_a</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">add_argument_group</span><span class="p">(</span><span class="s2">&quot;Mode A – FreeSurfer subject directory&quot;</span><span class="p">)</span>
+    <span class="n">grp_a</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">add_argument_group</span><span class="p">(</span><span class="s2">"Mode A – FreeSurfer subject directory"</span><span class="p">)</span>
     <span class="n">grp_a</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--subject_dir&quot;</span><span class="p">,</span>
-        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;DIR&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Subject directory containing surf/lh.white, surf/rh.white, and mri/orig.mgz.&quot;</span><span class="p">,</span>
+        <span class="s2">"--subject_dir"</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"DIR"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Subject directory containing surf/lh.white, surf/rh.white, and mri/orig.mgz."</span><span class="p">,</span>
     <span class="p">)</span>
 
-    <span class="n">grp_b</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">add_argument_group</span><span class="p">(</span><span class="s2">&quot;Mode B – explicit surface files&quot;</span><span class="p">)</span>
+    <span class="n">grp_b</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">add_argument_group</span><span class="p">(</span><span class="s2">"Mode B – explicit surface files"</span><span class="p">)</span>
     <span class="n">grp_b</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--ref&quot;</span><span class="p">,</span>
-        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FILE&quot;</span><span class="p">,</span>
+        <span class="s2">"--ref"</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"FILE"</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="p">(</span>
-            <span class="s2">&quot;Reference anatomical intensity image. Required for Mode B (explicit surfaces). &quot;</span>
-            <span class="s2">&quot;Optional for Mode C (--seg) to drive coarse NMI prealignment.&quot;</span>
+            <span class="s2">"Reference anatomical intensity image. Required for Mode B (explicit surfaces). "</span>
+            <span class="s2">"Optional for Mode C (--seg) to drive coarse NMI prealignment."</span>
         <span class="p">),</span>
     <span class="p">)</span>
-    <span class="n">grp_b</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--lh_surf&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FILE&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Left-hemisphere white surface (e.g. surf/lh.white).&quot;</span><span class="p">)</span>
-    <span class="n">grp_b</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--rh_surf&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FILE&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Right-hemisphere white surface (e.g. surf/rh.white).&quot;</span><span class="p">)</span>
-    <span class="n">grp_b</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--lh_thickness&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FILE&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Left-hemisphere cortical thickness file.&quot;</span><span class="p">)</span>
-    <span class="n">grp_b</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--rh_thickness&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FILE&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Right-hemisphere cortical thickness file.&quot;</span><span class="p">)</span>
+    <span class="n">grp_b</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--lh_surf"</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"FILE"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Left-hemisphere white surface (e.g. surf/lh.white)."</span><span class="p">)</span>
+    <span class="n">grp_b</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--rh_surf"</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"FILE"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Right-hemisphere white surface (e.g. surf/rh.white)."</span><span class="p">)</span>
+    <span class="n">grp_b</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--lh_thickness"</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"FILE"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Left-hemisphere cortical thickness file."</span><span class="p">)</span>
+    <span class="n">grp_b</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--rh_thickness"</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"FILE"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Right-hemisphere cortical thickness file."</span><span class="p">)</span>
 
     <span class="n">grp_c</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">add_argument_group</span><span class="p">(</span>
-        <span class="s2">&quot;Mode C – segmentation (aparc+aseg / aseg)&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;White surfaces are extracted on-the-fly via marching cubes. &quot;</span>
-        <span class="s2">&quot;No pre-built surface files are needed and the segmentation header &quot;</span>
-        <span class="s2">&quot;provides the target reference geometry.&quot;</span><span class="p">,</span>
+        <span class="s2">"Mode C – segmentation (aparc+aseg / aseg)"</span><span class="p">,</span>
+        <span class="s2">"White surfaces are extracted on-the-fly via marching cubes. "</span>
+        <span class="s2">"No pre-built surface files are needed and the segmentation header "</span>
+        <span class="s2">"provides the target reference geometry."</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">grp_c</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--seg&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FILE&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Parcellation file (aparc+aseg.mgz, aseg.mgz, or NIfTI).&quot;</span><span class="p">)</span>
+    <span class="n">grp_c</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--seg"</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"FILE"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Parcellation file (aparc+aseg.mgz, aseg.mgz, or NIfTI)."</span><span class="p">)</span>
     <span class="n">grp_c</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--seg_smooth_sigma&quot;</span><span class="p">,</span>
+        <span class="s2">"--seg_smooth_sigma"</span><span class="p">,</span>
         <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
         <span class="n">default</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
-        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;SIGMA&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Gaussian pre-blur sigma (voxels) before marching cubes. Default: 0.5.&quot;</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"SIGMA"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Gaussian pre-blur sigma (voxels) before marching cubes. Default: 0.5."</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">grp_c</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--seg_mc_level&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">0.45</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;LEVEL&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Marching-cubes iso-level. Default: 0.45.&quot;</span>
+        <span class="s2">"--seg_mc_level"</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">0.45</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"LEVEL"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Marching-cubes iso-level. Default: 0.45."</span>
     <span class="p">)</span>
     <span class="n">grp_c</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--seg_smooth_iters&quot;</span><span class="p">,</span>
+        <span class="s2">"--seg_smooth_iters"</span><span class="p">,</span>
         <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
         <span class="n">default</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>
-        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;N&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Taubin smoothing iterations after marching cubes. Default: 50.&quot;</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"N"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Taubin smoothing iterations after marching cubes. Default: 50."</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--dof&quot;</span><span class="p">,</span>
+        <span class="s2">"--dof"</span><span class="p">,</span>
         <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
         <span class="n">default</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
         <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="mi">6</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">12</span><span class="p">],</span>
-        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;{6,9,12}&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Degrees of freedom: 6=rigid, 9=rigid+scale, 12=affine.&quot;</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"{6,9,12}"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Degrees of freedom: 6=rigid, 9=rigid+scale, 12=affine."</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--contrast&quot;</span><span class="p">,</span>
+        <span class="s2">"--contrast"</span><span class="p">,</span>
         <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-        <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;t1&quot;</span><span class="p">,</span> <span class="s2">&quot;t2&quot;</span><span class="p">],</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Tissue contrast: &#39;t1&#39; (WM&gt;GM) or &#39;t2&#39; (GM&gt;WM). Auto-detected from the image when not specified.&quot;</span><span class="p">,</span>
+        <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">"t1"</span><span class="p">,</span> <span class="s2">"t2"</span><span class="p">],</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Tissue contrast: 't1' (WM&gt;GM) or 't2' (GM&gt;WM). Auto-detected from the image when not specified."</span><span class="p">,</span>
     <span class="p">)</span>
 
-    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--cost&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;contrast&quot;</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;contrast&quot;</span><span class="p">,</span> <span class="s2">&quot;gradient&quot;</span><span class="p">,</span> <span class="s2">&quot;both&quot;</span><span class="p">],</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;BBR cost term.&quot;</span><span class="p">)</span>
-    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--wm_proj_abs&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">1.4</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;MM&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Absolute WM projection depth (mm).&quot;</span><span class="p">)</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--cost"</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">"contrast"</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">"contrast"</span><span class="p">,</span> <span class="s2">"gradient"</span><span class="p">,</span> <span class="s2">"both"</span><span class="p">],</span> <span class="n">help</span><span class="o">=</span><span class="s2">"BBR cost term."</span><span class="p">)</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--wm_proj_abs"</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">1.4</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"MM"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Absolute WM projection depth (mm)."</span><span class="p">)</span>
     <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--gm_proj_frac&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FRAC&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;GM projection fraction of cortical thickness.&quot;</span>
+        <span class="s2">"--gm_proj_frac"</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"FRAC"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"GM projection fraction of cortical thickness."</span>
     <span class="p">)</span>
-    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--slope&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Slope of the BBR sigmoid cost function.&quot;</span><span class="p">)</span>
-    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--gradient_weight&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Weight for gradient cost term when --cost=both.&quot;</span><span class="p">)</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--slope"</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Slope of the BBR sigmoid cost function."</span><span class="p">)</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--gradient_weight"</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Weight for gradient cost term when --cost=both."</span><span class="p">)</span>
 
-    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--n_iters&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;N&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Number of RMSprop optimisation iterations.&quot;</span><span class="p">)</span>
-    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--lr&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">0.005</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Optimiser learning rate.&quot;</span><span class="p">)</span>
-    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--subsample&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;N&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Use every N-th surface vertex (1 = all).&quot;</span><span class="p">)</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--n_iters"</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"N"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Number of RMSprop optimisation iterations."</span><span class="p">)</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--lr"</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">0.005</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Optimiser learning rate."</span><span class="p">)</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--subsample"</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"N"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Use every N-th surface vertex (1 = all)."</span><span class="p">)</span>
 
     <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--init-lta&quot;</span><span class="p">,</span>
-        <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;init_lta&quot;</span><span class="p">,</span>
-        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FILE&quot;</span><span class="p">,</span>
+        <span class="s2">"--init-lta"</span><span class="p">,</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s2">"init_lta"</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"FILE"</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="p">(</span>
-            <span class="s2">&quot;Initialise registration from an existing LTA file &quot;</span>
-            <span class="s2">&quot;(e.g. from a prior robreg run, or a previous bbreg pass).&quot;</span>
+            <span class="s2">"Initialise registration from an existing LTA file "</span>
+            <span class="s2">"(e.g. from a prior robreg run, or a previous bbreg pass)."</span>
         <span class="p">),</span>
     <span class="p">)</span>
     <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--init-header&quot;</span><span class="p">,</span>
-        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span>
+        <span class="s2">"--init-header"</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">"store_true"</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="p">(</span>
-            <span class="s2">&quot;Assume that the geometry information in the cross-modal and anatomical are sufficient to get a close &quot;</span>
-            <span class="s2">&quot;voxel-to-voxel registration. This usually is only the case if they were acquired in the same session.&quot;</span>
+            <span class="s2">"Assume that the geometry information in the cross-modal and anatomical are sufficient to get a close "</span>
+            <span class="s2">"voxel-to-voxel registration. This usually is only the case if they were acquired in the same session."</span>
         <span class="p">),</span>
     <span class="p">)</span>
     <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--no-coreg-ref-mask&quot;</span><span class="p">,</span>
-        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span>
+        <span class="s2">"--no-coreg-ref-mask"</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">"store_true"</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="p">(</span>
-            <span class="s2">&quot;Do not use aparc+aseg/aseg (or the provided segmentation) as a reference mask for the coarse &quot;</span>
-            <span class="s2">&quot;NMI prealignment stage.&quot;</span>
+            <span class="s2">"Do not use aparc+aseg/aseg (or the provided segmentation) as a reference mask for the coarse "</span>
+            <span class="s2">"NMI prealignment stage."</span>
         <span class="p">),</span>
     <span class="p">)</span>
 
     <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--device&quot;</span><span class="p">,</span>
-        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">,</span>
-        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;DEVICE&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Torch device string, e.g. &#39;cpu&#39;, &#39;cuda&#39;, &#39;mps&#39;, or &#39;gpu&#39;.&quot;</span><span class="p">,</span>
+        <span class="s2">"--device"</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"DEVICE"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Torch device string, e.g. 'cpu', 'cuda', 'mps', or 'gpu'."</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--mapmov&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FILE&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save the mapped moving image resliced into target geometry.&quot;</span><span class="p">)</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--mapmov"</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"FILE"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Save the mapped moving image resliced into target geometry."</span><span class="p">)</span>
     <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--mapmovhdr&quot;</span><span class="p">,</span>
-        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FILE&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save a header-only mapped moving image with no interpolation.&quot;</span><span class="p">,</span>
+        <span class="s2">"--mapmovhdr"</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"FILE"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Save a header-only mapped moving image with no interpolation."</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--keep-dtype&quot;</span><span class="p">,</span>
-        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span>
+        <span class="s2">"--keep-dtype"</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">"store_true"</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="p">(</span>
-            <span class="s2">&quot;Write cubic --mapmov output in the moving-image dtype instead of float32. &quot;</span>
-            <span class="s2">&quot;Equivalent to FreeSurfer mri_vol2vol --keep-precision.&quot;</span>
+            <span class="s2">"Write cubic --mapmov output in the moving-image dtype instead of float32. "</span>
+            <span class="s2">"Equivalent to FreeSurfer mri_vol2vol --keep-precision."</span>
         <span class="p">),</span>
     <span class="p">)</span>
-    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--verbose&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Enable INFO-level logging.&quot;</span><span class="p">)</span>
-    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--debug&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Enable DEBUG-level logging.&quot;</span><span class="p">)</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--verbose"</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">"store_true"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Enable INFO-level logging."</span><span class="p">)</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--debug"</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">"store_true"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Enable DEBUG-level logging."</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">p</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_validate_args</span><span class="p">(</span><span class="n">ns</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">,</span> <span class="n">parser</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate mutually exclusive surface-input modes.</span>
+<span class="w">    </span><span class="sd">"""Validate mutually exclusive surface-input modes.</span>
 
-<span class="sd">    Returns one of ``&quot;subject_dir&quot;``, ``&quot;explicit&quot;``, or ``&quot;seg&quot;`` so later</span>
+<span class="sd">    Returns one of ``"subject_dir"``, ``"explicit"``, or ``"seg"`` so later</span>
 <span class="sd">    CLI stages can dispatch loading and prealignment logic without repeating the</span>
 <span class="sd">    same checks.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">has_sdir</span> <span class="o">=</span> <span class="n">ns</span><span class="o">.</span><span class="n">subject_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
     <span class="n">has_explicit</span> <span class="o">=</span> <span class="n">ns</span><span class="o">.</span><span class="n">lh_surf</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">ns</span><span class="o">.</span><span class="n">rh_surf</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
     <span class="n">has_seg</span> <span class="o">=</span> <span class="n">ns</span><span class="o">.</span><span class="n">seg</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
@@ -418,57 +419,57 @@
     <span class="n">n_modes</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">([</span><span class="n">has_sdir</span><span class="p">,</span> <span class="n">has_explicit</span><span class="p">,</span> <span class="n">has_seg</span><span class="p">])</span>
     <span class="k">if</span> <span class="n">n_modes</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
         <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
-            <span class="s2">&quot;--subject_dir, --lh_surf/--rh_surf, and --seg are mutually exclusive. &quot;</span>
-            <span class="s2">&quot;Choose exactly one surface input mode.&quot;</span>
+            <span class="s2">"--subject_dir, --lh_surf/--rh_surf, and --seg are mutually exclusive. "</span>
+            <span class="s2">"Choose exactly one surface input mode."</span>
         <span class="p">)</span>
 
     <span class="k">if</span> <span class="n">n_modes</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
         <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
-            <span class="s2">&quot;Surface input is required.  Provide one of:</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;  --subject_dir DIR   (Mode A)</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;  --lh_surf / --rh_surf FILE  (Mode B, also needs --ref)</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;  --seg FILE          (Mode C)&quot;</span>
+            <span class="s2">"Surface input is required.  Provide one of:</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"  --subject_dir DIR   (Mode A)</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"  --lh_surf / --rh_surf FILE  (Mode B, also needs --ref)</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"  --seg FILE          (Mode C)"</span>
         <span class="p">)</span>
 
     <span class="k">if</span> <span class="n">has_explicit</span> <span class="ow">and</span> <span class="n">ns</span><span class="o">.</span><span class="n">ref</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;--ref is required when using Mode B (explicit surface files).&quot;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--ref is required when using Mode B (explicit surface files)."</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">init_header</span> <span class="ow">and</span> <span class="n">ns</span><span class="o">.</span><span class="n">init_lta</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;--init-header and --init-lta are mutually exclusive.&quot;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--init-header and --init-lta are mutually exclusive."</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">has_sdir</span><span class="p">:</span>
-        <span class="k">return</span> <span class="s2">&quot;subject_dir&quot;</span>
+        <span class="k">return</span> <span class="s2">"subject_dir"</span>
     <span class="k">if</span> <span class="n">has_seg</span><span class="p">:</span>
-        <span class="k">return</span> <span class="s2">&quot;seg&quot;</span>
-    <span class="k">return</span> <span class="s2">&quot;explicit&quot;</span>
+        <span class="k">return</span> <span class="s2">"seg"</span>
+    <span class="k">return</span> <span class="s2">"explicit"</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_load_reference_image_for_mode</span><span class="p">(</span><span class="n">ns</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load the anatomical intensity image used for optional NMI prealignment.</span>
+<span class="w">    </span><span class="sd">"""Load the anatomical intensity image used for optional NMI prealignment.</span>
 
 <span class="sd">    The returned image is the fixed/target image for the coarse image-to-image</span>
 <span class="sd">    prealignment stage that seeds the surface-based BBR optimisation. Some modes</span>
 <span class="sd">    do not always have such an image available, in which case ``None`` is</span>
 <span class="sd">    returned and the CLI falls back to header initialization.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;subject_dir&quot;</span><span class="p">:</span>
-        <span class="n">orig_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">subject_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;mri&quot;</span> <span class="o">/</span> <span class="s2">&quot;orig.mgz&quot;</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">"subject_dir"</span><span class="p">:</span>
+        <span class="n">orig_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">subject_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">"mri"</span> <span class="o">/</span> <span class="s2">"orig.mgz"</span>
         <span class="k">return</span> <span class="n">load_image</span><span class="p">(</span><span class="n">orig_path</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;explicit&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">"explicit"</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">load_image</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">ref</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;seg&quot;</span> <span class="ow">and</span> <span class="n">ns</span><span class="o">.</span><span class="n">ref</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">"seg"</span> <span class="ow">and</span> <span class="n">ns</span><span class="o">.</span><span class="n">ref</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">load_image</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">ref</span><span class="p">)</span>
     <span class="k">return</span> <span class="kc">None</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_load_target_geometry_image</span><span class="p">(</span><span class="n">ns</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load the final target geometry used for mapped output export.</span>
+<span class="w">    </span><span class="sd">"""Load the final target geometry used for mapped output export.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    ns : argparse.Namespace</span>
 <span class="sd">        Parsed CLI arguments.</span>
-<span class="sd">    mode : {&quot;subject_dir&quot;, &quot;explicit&quot;, &quot;seg&quot;}</span>
+<span class="sd">    mode : {"subject_dir", "explicit", "seg"}</span>
 <span class="sd">        Resolved surface-input mode from :func:`_validate_args`.</span>
 
 <span class="sd">    Returns</span>
@@ -476,41 +477,41 @@
 <span class="sd">    Any</span>
 <span class="sd">        Nibabel-like image defining the target/reference geometry of the final</span>
 <span class="sd">        BBR solution.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;subject_dir&quot;</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">load_image</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">subject_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;mri&quot;</span> <span class="o">/</span> <span class="s2">&quot;orig.mgz&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;seg&quot;</span><span class="p">:</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">"subject_dir"</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">load_image</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">subject_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">"mri"</span> <span class="o">/</span> <span class="s2">"orig.mgz"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">"seg"</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">load_image</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">seg</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">load_image</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">ref</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_load_prealign_mask_image</span><span class="p">(</span><span class="n">ns</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load the mask used to focus coarse NMI prealignment on relevant anatomy.</span>
+<span class="w">    </span><span class="sd">"""Load the mask used to focus coarse NMI prealignment on relevant anatomy.</span>
 
 <span class="sd">    In ``subject_dir`` mode this prefers ``aparc+aseg.mgz`` and falls back to</span>
 <span class="sd">    ``aseg.mgz``. In ``seg`` mode the segmentation itself acts as the mask.</span>
 <span class="sd">    Explicit-surface mode does not define a default mask.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;subject_dir&quot;</span><span class="p">:</span>
-        <span class="n">mri_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">subject_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;mri&quot;</span>
-        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;aparc+aseg.mgz&quot;</span><span class="p">,</span> <span class="s2">&quot;aseg.mgz&quot;</span><span class="p">):</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">"subject_dir"</span><span class="p">:</span>
+        <span class="n">mri_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">subject_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">"mri"</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"aparc+aseg.mgz"</span><span class="p">,</span> <span class="s2">"aseg.mgz"</span><span class="p">):</span>
             <span class="n">path</span> <span class="o">=</span> <span class="n">mri_dir</span> <span class="o">/</span> <span class="n">name</span>
             <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
                 <span class="k">return</span> <span class="n">load_image</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
         <span class="k">return</span> <span class="kc">None</span>
-    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;seg&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">"seg"</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">load_image</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">seg</span><span class="p">)</span>
     <span class="k">return</span> <span class="kc">None</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_run_default_nmi_prealign</span><span class="p">(</span>
-        <span class="n">mov_img</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
-        <span class="n">ref_img</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
-        <span class="n">mask_img</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">logger</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">Logger</span><span class="p">,</span>
-        <span class="n">device</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">mov_img</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="n">ref_img</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="n">mask_img</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">logger</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">Logger</span><span class="p">,</span>
+    <span class="n">device</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run the default coarse image-based prealignment for ``bbreg``.</span>
+<span class="w">    </span><span class="sd">"""Run the default coarse image-based prealignment for ``bbreg``.</span>
 
 <span class="sd">    This uses the Powell-based image-registration path with the standard</span>
 <span class="sd">    MRI_coreg-style NMI evaluator and an image-center initialization. The</span>
@@ -518,33 +519,33 @@
 <span class="sd">    ``moving/source -&gt; target/reference`` direction so it can be passed</span>
 <span class="sd">    directly to :func:`neuroreg.bbreg.register.register_surface` as</span>
 <span class="sd">    ``init_ras``.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">..imreg.coreg</span><span class="w"> </span><span class="kn">import</span> <span class="n">coreg</span>
 
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-        <span class="s2">&quot;Running default Powell NMI prealignment (image-center start, sep=4)</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
-        <span class="s2">&quot; with sample-exclusion mask&quot;</span> <span class="k">if</span> <span class="n">mask_img</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="s2">"Running default Powell NMI prealignment (image-center start, sep=4)</span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span>
+        <span class="s2">" with sample-exclusion mask"</span> <span class="k">if</span> <span class="n">mask_img</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">""</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">Mr2r</span> <span class="o">=</span> <span class="n">coreg</span><span class="p">(</span>
         <span class="n">mov_img</span><span class="p">,</span>
         <span class="n">ref_img</span><span class="p">,</span>
         <span class="n">trg_mask</span><span class="o">=</span><span class="n">mask_img</span><span class="p">,</span>
         <span class="n">return_v2v</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-        <span class="n">method</span><span class="o">=</span><span class="s2">&quot;powell&quot;</span><span class="p">,</span>
-        <span class="n">init_type</span><span class="o">=</span><span class="s2">&quot;image_center&quot;</span><span class="p">,</span>
+        <span class="n">method</span><span class="o">=</span><span class="s2">"powell"</span><span class="p">,</span>
+        <span class="n">init_type</span><span class="o">=</span><span class="s2">"image_center"</span><span class="p">,</span>
         <span class="n">dof</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
         <span class="n">powell_sep</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
         <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">Mr2r_np</span> <span class="o">=</span> <span class="n">Mr2r</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Finished NMI prealignment (mov_RAS-&gt;trg_RAS):</span><span class="se">\n</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">Mr2r_np</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Finished NMI prealignment (mov_RAS-&gt;trg_RAS):</span><span class="se">\n</span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">Mr2r_np</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">Mr2r_np</span>
 
 
 <div class="viewcode-block" id="main">
 <a class="viewcode-back" href="../../../api/cli.html#neuroreg.cli.bbreg.main">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Entry point for the ``bbreg`` command-line interface.</span>
+<span class="w">    </span><span class="sd">"""Entry point for the ``bbreg`` command-line interface.</span>
 
 <span class="sd">    The CLI normalizes the different input modes, optionally runs a coarse NMI</span>
 <span class="sd">    prealignment to obtain a ``moving -&gt; target`` initialization, and then calls</span>
@@ -570,17 +571,18 @@
 <span class="sd">    SystemExit</span>
 <span class="sd">        If argument parsing fails, registration raises an exception, or the CLI</span>
 <span class="sd">        exits after reporting an error.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">..bbreg.register</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_surface</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">..image</span><span class="w"> </span><span class="kn">import</span> <span class="n">save_header_mapped_image</span><span class="p">,</span> <span class="n">save_resliced_r2r_image</span>
 
     <span class="n">parser</span> <span class="o">=</span> <span class="n">_build_parser</span><span class="p">()</span>
     <span class="n">ns</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+    <span class="n">validate_image_outputs</span><span class="p">(</span><span class="n">parser</span><span class="p">,</span> <span class="n">ns</span><span class="p">,</span> <span class="s2">"mapmov"</span><span class="p">,</span> <span class="s2">"mapmovhdr"</span><span class="p">)</span>
     <span class="n">mode</span> <span class="o">=</span> <span class="n">_validate_args</span><span class="p">(</span><span class="n">ns</span><span class="p">,</span> <span class="n">parser</span><span class="p">)</span>
 
     <span class="n">level</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span> <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">debug</span> <span class="k">else</span> <span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span> <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">verbose</span> <span class="k">else</span> <span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span><span class="p">)</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">level</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%(levelname)s</span><span class="s2"> </span><span class="si">%(name)s</span><span class="s2">: </span><span class="si">%(message)s</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;neuroreg.cli.bbreg&quot;</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">level</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">"</span><span class="si">%(levelname)s</span><span class="s2"> </span><span class="si">%(name)s</span><span class="s2">: </span><span class="si">%(message)s</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">"neuroreg.cli.bbreg"</span><span class="p">)</span>
 
     <span class="n">kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
         <span class="n">mov</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">mov</span><span class="p">,</span>
@@ -605,47 +607,47 @@
         <span class="n">mask_img</span> <span class="o">=</span> <span class="n">_load_prealign_mask_image</span><span class="p">(</span><span class="n">ns</span><span class="p">,</span> <span class="n">mode</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">init_lta</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Using explicit LTA initialization: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">init_lta</span><span class="p">)</span>
-        <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;init_lta&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ns</span><span class="o">.</span><span class="n">init_lta</span>
-        <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;init_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;lta&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Using explicit LTA initialization: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">init_lta</span><span class="p">)</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="s2">"init_lta"</span><span class="p">]</span> <span class="o">=</span> <span class="n">ns</span><span class="o">.</span><span class="n">init_lta</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="s2">"init_type"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"lta"</span>
     <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">init_header</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Using header-only initialization (--init-header)&quot;</span><span class="p">)</span>
-        <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;init_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;header&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Using header-only initialization (--init-header)"</span><span class="p">)</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="s2">"init_type"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"header"</span>
     <span class="k">elif</span> <span class="n">ref_img</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;init_ras&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">_run_default_nmi_prealign</span><span class="p">(</span><span class="n">mov_img</span><span class="p">,</span> <span class="n">ref_img</span><span class="p">,</span> <span class="n">mask_img</span><span class="p">,</span> <span class="n">logger</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="s2">"init_ras"</span><span class="p">]</span> <span class="o">=</span> <span class="n">_run_default_nmi_prealign</span><span class="p">(</span><span class="n">mov_img</span><span class="p">,</span> <span class="n">ref_img</span><span class="p">,</span> <span class="n">mask_img</span><span class="p">,</span> <span class="n">logger</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;No anatomical intensity reference available for NMI prealignment; falling back to header init&quot;</span><span class="p">)</span>
-        <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;init_type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;header&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"No anatomical intensity reference available for NMI prealignment; falling back to header init"</span><span class="p">)</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="s2">"init_type"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"header"</span>
 
-    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;subject_dir&quot;</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Mode A: subject directory </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">subject_dir</span><span class="p">)</span>
-        <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;subject_dir&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ns</span><span class="o">.</span><span class="n">subject_dir</span>
-    <span class="k">elif</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;seg&quot;</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Mode C: segmentation file </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">seg</span><span class="p">)</span>
-        <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;seg&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ns</span><span class="o">.</span><span class="n">seg</span>
+    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">"subject_dir"</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Mode A: subject directory </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">subject_dir</span><span class="p">)</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="s2">"subject_dir"</span><span class="p">]</span> <span class="o">=</span> <span class="n">ns</span><span class="o">.</span><span class="n">subject_dir</span>
+    <span class="k">elif</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">"seg"</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Mode C: segmentation file </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">seg</span><span class="p">)</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="s2">"seg"</span><span class="p">]</span> <span class="o">=</span> <span class="n">ns</span><span class="o">.</span><span class="n">seg</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Mode B: explicit surface file(s)&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Mode B: explicit surface file(s)"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">lh_surf</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;lh_surf&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ns</span><span class="o">.</span><span class="n">lh_surf</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s2">"lh_surf"</span><span class="p">]</span> <span class="o">=</span> <span class="n">ns</span><span class="o">.</span><span class="n">lh_surf</span>
         <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">rh_surf</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;rh_surf&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ns</span><span class="o">.</span><span class="n">rh_surf</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s2">"rh_surf"</span><span class="p">]</span> <span class="o">=</span> <span class="n">ns</span><span class="o">.</span><span class="n">rh_surf</span>
         <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">lh_thickness</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;lh_thickness&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ns</span><span class="o">.</span><span class="n">lh_thickness</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s2">"lh_thickness"</span><span class="p">]</span> <span class="o">=</span> <span class="n">ns</span><span class="o">.</span><span class="n">lh_thickness</span>
         <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">rh_thickness</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;rh_thickness&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ns</span><span class="o">.</span><span class="n">rh_thickness</span>
-        <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;ref&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ns</span><span class="o">.</span><span class="n">ref</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s2">"rh_thickness"</span><span class="p">]</span> <span class="o">=</span> <span class="n">ns</span><span class="o">.</span><span class="n">rh_thickness</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="s2">"ref"</span><span class="p">]</span> <span class="o">=</span> <span class="n">ns</span><span class="o">.</span><span class="n">ref</span>
 
     <span class="k">try</span><span class="p">:</span>
         <span class="n">mr2r</span> <span class="o">=</span> <span class="n">register_surface</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ERROR: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ERROR: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span>
             <span class="kn">import</span><span class="w"> </span><span class="nn">traceback</span>
 
             <span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">()</span>
         <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Output: </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Output: </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">mapmov</span> <span class="ow">or</span> <span class="n">ns</span><span class="o">.</span><span class="n">mapmovhdr</span><span class="p">:</span>
         <span class="n">target_img</span> <span class="o">=</span> <span class="n">_load_target_geometry_image</span><span class="p">(</span><span class="n">ns</span><span class="p">,</span> <span class="n">mode</span><span class="p">)</span>
         <span class="n">mr2r_np</span> <span class="o">=</span> <span class="n">mr2r</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
@@ -657,19 +659,19 @@
                 <span class="n">ns</span><span class="o">.</span><span class="n">mapmov</span><span class="p">,</span>
                 <span class="n">target_affine</span><span class="o">=</span><span class="n">target_img</span><span class="o">.</span><span class="n">affine</span><span class="p">,</span>
                 <span class="n">target_shape</span><span class="o">=</span><span class="n">target_shape</span><span class="p">,</span>
-                <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;cubic&quot;</span><span class="p">,</span>
+                <span class="n">mode</span><span class="o">=</span><span class="s2">"cubic"</span><span class="p">,</span>
                 <span class="n">keep_dtype</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">keep_dtype</span><span class="p">,</span>
             <span class="p">)</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Wrote resliced mapped image: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">mapmov</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;MapMov:    </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">mapmov</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Wrote resliced mapped image: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">mapmov</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"MapMov:    </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">mapmov</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">mapmovhdr</span><span class="p">:</span>
             <span class="n">save_header_mapped_image</span><span class="p">(</span><span class="n">mov_img</span><span class="p">,</span> <span class="n">mr2r_np</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">mapmovhdr</span><span class="p">)</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Wrote header-mapped image: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">mapmovhdr</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;MapMovHdr: </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">mapmovhdr</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Wrote header-mapped image: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">mapmovhdr</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"MapMovHdr: </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">mapmovhdr</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span></div>
 
 
 
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
     <span class="n">main</span><span class="p">()</span>
 </pre></div>
         </article>

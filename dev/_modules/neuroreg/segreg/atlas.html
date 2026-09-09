@@ -240,7 +240,7 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for neuroreg.segreg.atlas</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Bundled centroid target resources for segmentation-based registration.&quot;&quot;&quot;</span>
+<span></span><span class="sd">"""Bundled centroid target resources for segmentation-based registration."""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -252,20 +252,20 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">CentroidDict</span><span class="p">,</span> <span class="n">GeometryDict</span><span class="p">,</span> <span class="n">TargetFile</span><span class="p">,</span> <span class="n">read_target_json</span>
 
 <span class="n">_ATLAS_FILES</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">&quot;fsaverage&quot;</span><span class="p">:</span> <span class="s2">&quot;fsaverage.json&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;mni_icbm152_t1_tal_nlin_asym_09c&quot;</span><span class="p">:</span> <span class="s2">&quot;mni_icbm152_t1_tal_nlin_asym_09c.json&quot;</span><span class="p">,</span>
+    <span class="s2">"fsaverage"</span><span class="p">:</span> <span class="s2">"fsaverage.json"</span><span class="p">,</span>
+    <span class="s2">"mni_icbm152_t1_tal_nlin_asym_09c"</span><span class="p">:</span> <span class="s2">"mni_icbm152_t1_tal_nlin_asym_09c.json"</span><span class="p">,</span>
 <span class="p">}</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_resource</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">resources</span><span class="o">.</span><span class="n">abc</span><span class="o">.</span><span class="n">Traversable</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a handle to a bundled target resource.&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">resources</span><span class="o">.</span><span class="n">files</span><span class="p">(</span><span class="s2">&quot;neuroreg.segreg&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+<span class="w">    </span><span class="sd">"""Return a handle to a bundled target resource."""</span>
+    <span class="k">return</span> <span class="n">resources</span><span class="o">.</span><span class="n">files</span><span class="p">(</span><span class="s2">"neuroreg.segreg"</span><span class="p">)</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="s2">"data"</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="available_atlases">
 <a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.atlas.available_atlases">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">available_atlases</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the names of bundled centroid targets.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Return the names of bundled centroid targets."""</span>
     <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">_ATLAS_FILES</span><span class="p">))</span></div>
 
 
@@ -273,10 +273,10 @@
 <div class="viewcode-block" id="load_atlas_target">
 <a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.atlas.load_atlas_target">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_atlas_target</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TargetFile</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load a supported bundled centroid target.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Load a supported bundled centroid target."""</span>
     <span class="n">resource_name</span> <span class="o">=</span> <span class="n">_ATLAS_FILES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">resource_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown atlas &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;. Available atlases: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">available_atlases</span><span class="p">())</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Unknown atlas '</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">'. Available atlases: </span><span class="si">{</span><span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">available_atlases</span><span class="p">())</span><span class="si">}</span><span class="s2">."</span><span class="p">)</span>
     <span class="k">with</span> <span class="n">resources</span><span class="o">.</span><span class="n">as_file</span><span class="p">(</span><span class="n">_resource</span><span class="p">(</span><span class="n">resource_name</span><span class="p">))</span> <span class="k">as</span> <span class="n">path</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">read_target_json</span><span class="p">(</span><span class="n">path</span><span class="p">)</span></div>
 
@@ -285,23 +285,23 @@
 <div class="viewcode-block" id="load_fsaverage_centroids">
 <a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.atlas.load_fsaverage_centroids">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_fsaverage_centroids</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">CentroidDict</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load bundled fsaverage centroid coordinates.&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">load_atlas_centroids</span><span class="p">(</span><span class="s2">&quot;fsaverage&quot;</span><span class="p">)</span></div>
+<span class="w">    </span><span class="sd">"""Load bundled fsaverage centroid coordinates."""</span>
+    <span class="k">return</span> <span class="n">load_atlas_centroids</span><span class="p">(</span><span class="s2">"fsaverage"</span><span class="p">)</span></div>
 
 
 
 <div class="viewcode-block" id="load_fsaverage_data">
 <a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.atlas.load_fsaverage_data">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_fsaverage_data</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">],</span> <span class="n">GeometryDict</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load bundled fsaverage geometry metadata.&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">load_atlas_data</span><span class="p">(</span><span class="s2">&quot;fsaverage&quot;</span><span class="p">)</span></div>
+<span class="w">    </span><span class="sd">"""Load bundled fsaverage geometry metadata."""</span>
+    <span class="k">return</span> <span class="n">load_atlas_data</span><span class="p">(</span><span class="s2">"fsaverage"</span><span class="p">)</span></div>
 
 
 
 <div class="viewcode-block" id="load_atlas_centroids">
 <a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.atlas.load_atlas_centroids">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_atlas_centroids</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CentroidDict</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load centroid coordinates for a supported bundled target.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Load centroid coordinates for a supported bundled target."""</span>
     <span class="k">return</span> <span class="n">load_atlas_target</span><span class="p">(</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">centroids</span></div>
 
 
@@ -309,10 +309,10 @@
 <div class="viewcode-block" id="load_atlas_data">
 <a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.atlas.load_atlas_data">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">load_atlas_data</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">],</span> <span class="n">GeometryDict</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load geometry metadata for a supported bundled target.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Load geometry metadata for a supported bundled target."""</span>
     <span class="n">target</span> <span class="o">=</span> <span class="n">load_atlas_target</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">target</span><span class="o">.</span><span class="n">geometry</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Atlas &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; does not include bundled geometry metadata.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Atlas '</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">' does not include bundled geometry metadata."</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">affine_from_header</span><span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">geometry</span><span class="p">),</span> <span class="n">target</span><span class="o">.</span><span class="n">geometry</span></div>
 
 
@@ -320,11 +320,11 @@
 <div class="viewcode-block" id="affine_from_header">
 <a class="viewcode-back" href="../../../api/segreg.html#neuroreg.segreg.atlas.affine_from_header">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">affine_from_header</span><span class="p">(</span><span class="n">header</span><span class="p">:</span> <span class="n">GeometryDict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reconstruct a voxel-to-RAS affine from header-like geometry metadata.&quot;&quot;&quot;</span>
-    <span class="n">dims</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;dims&quot;</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
-    <span class="n">delta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;delta&quot;</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
-    <span class="n">mdc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;Mdc&quot;</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
-    <span class="n">pxyz_c</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;Pxyz_c&quot;</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+<span class="w">    </span><span class="sd">"""Reconstruct a voxel-to-RAS affine from header-like geometry metadata."""</span>
+    <span class="n">dims</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">header</span><span class="p">[</span><span class="s2">"dims"</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">delta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">header</span><span class="p">[</span><span class="s2">"delta"</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">mdc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">header</span><span class="p">[</span><span class="s2">"Mdc"</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">pxyz_c</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">header</span><span class="p">[</span><span class="s2">"Pxyz_c"</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
 
     <span class="n">affine</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
     <span class="n">affine</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">mdc</span><span class="o">.</span><span class="n">T</span> <span class="o">*</span> <span class="n">delta</span>

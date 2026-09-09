@@ -253,7 +253,7 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_is_nifti_like</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return whether a filename looks like a NIfTI/Analyze image path.</span>
+<span class="w">    </span><span class="sd">"""Return whether a filename looks like a NIfTI/Analyze image path.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -264,14 +264,14 @@
 <span class="sd">    -------</span>
 <span class="sd">    bool</span>
 <span class="sd">        ``True`` when the suffix matches one of the NIfTI/Analyze extensions</span>
-<span class="sd">        that trigger FSL&#39;s handedness convention adjustments.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">        that trigger FSL's handedness convention adjustments.</span>
+<span class="sd">    """</span>
     <span class="n">lower</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
-    <span class="k">return</span> <span class="n">lower</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.nii&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">lower</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.nii.gz&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">lower</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.img&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">lower</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.hdr&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">lower</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">'.nii'</span><span class="p">)</span> <span class="ow">or</span> <span class="n">lower</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">'.nii.gz'</span><span class="p">)</span> <span class="ow">or</span> <span class="n">lower</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">'.img'</span><span class="p">)</span> <span class="ow">or</span> <span class="n">lower</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">'.hdr'</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_diag_spacing</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct a diagonal voxel-size matrix from volume metadata.</span>
+<span class="w">    </span><span class="sd">"""Construct a diagonal voxel-size matrix from volume metadata.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -282,8 +282,8 @@
 <span class="sd">    -------</span>
 <span class="sd">    np.ndarray</span>
 <span class="sd">        ``(4, 4)`` diagonal spacing matrix.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">vs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;voxelsize&#39;</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+<span class="sd">    """</span>
+    <span class="n">vs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s1">'voxelsize'</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
     <span class="n">mat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
     <span class="n">mat</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">vs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
     <span class="n">mat</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">vs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
@@ -297,7 +297,7 @@
         <span class="n">d_ref</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
         <span class="n">d_mov</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply FSL&#39;s NIfTI handedness convention to spacing matrices.</span>
+<span class="w">    </span><span class="sd">"""Apply FSL's NIfTI handedness convention to spacing matrices.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -309,25 +309,25 @@
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    tuple[np.ndarray, np.ndarray]</span>
-<span class="sd">        Possibly adjusted ``(d_ref, d_mov)`` pair following FSL&#39;s NIfTI</span>
+<span class="sd">        Possibly adjusted ``(d_ref, d_mov)`` pair following FSL's NIfTI</span>
 <span class="sd">        convention for positive-determinant affines.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">ref_aff</span> <span class="o">=</span> <span class="n">affine_from_volume_info</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span>
     <span class="n">mov_aff</span> <span class="o">=</span> <span class="n">affine_from_volume_info</span><span class="p">(</span><span class="n">mov</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">mov_aff</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
         <span class="n">d_mov</span> <span class="o">=</span> <span class="n">d_mov</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="n">d_mov</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">*=</span> <span class="o">-</span><span class="mf">1.0</span>
-        <span class="n">d_mov</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">mov</span><span class="p">[</span><span class="s1">&#39;voxelsize&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">mov</span><span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span>
+        <span class="n">d_mov</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">mov</span><span class="p">[</span><span class="s1">'voxelsize'</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">mov</span><span class="p">[</span><span class="s1">'volume'</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">ref_aff</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
         <span class="n">d_ref</span> <span class="o">=</span> <span class="n">d_ref</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="n">d_ref</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">*=</span> <span class="o">-</span><span class="mf">1.0</span>
-        <span class="n">d_ref</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">ref</span><span class="p">[</span><span class="s1">&#39;voxelsize&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">ref</span><span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span>
+        <span class="n">d_ref</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">ref</span><span class="p">[</span><span class="s1">'voxelsize'</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">ref</span><span class="p">[</span><span class="s1">'volume'</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">d_ref</span><span class="p">,</span> <span class="n">d_mov</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_fsl_to_tkreg</span><span class="p">(</span><span class="n">ref</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">mov</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">fsl_matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert an FSL voxel-to-voxel matrix to tkregister convention.</span>
+<span class="w">    </span><span class="sd">"""Convert an FSL voxel-to-voxel matrix to tkregister convention.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -340,11 +340,11 @@
 <span class="sd">    -------</span>
 <span class="sd">    np.ndarray</span>
 <span class="sd">        Equivalent ``(4, 4)`` affine in tkregister voxel-space convention.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">inv_d_mov</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">_diag_spacing</span><span class="p">(</span><span class="n">mov</span><span class="p">))</span>
     <span class="n">d_ref</span> <span class="o">=</span> <span class="n">_diag_spacing</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span>
-    <span class="n">mov_path</span> <span class="o">=</span> <span class="n">mov</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;filename&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
-    <span class="n">ref_path</span> <span class="o">=</span> <span class="n">ref</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;filename&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="n">mov_path</span> <span class="o">=</span> <span class="n">mov</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'filename'</span><span class="p">,</span> <span class="s1">''</span><span class="p">)</span>
+    <span class="n">ref_path</span> <span class="o">=</span> <span class="n">ref</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'filename'</span><span class="p">,</span> <span class="s1">''</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">_is_nifti_like</span><span class="p">(</span><span class="n">mov_path</span><span class="p">)</span> <span class="ow">or</span> <span class="n">_is_nifti_like</span><span class="p">(</span><span class="n">ref_path</span><span class="p">):</span>
         <span class="n">d_ref</span><span class="p">,</span> <span class="n">d_mov</span> <span class="o">=</span> <span class="n">_apply_fsl_nifti_convention</span><span class="p">(</span><span class="n">ref</span><span class="p">,</span> <span class="n">mov</span><span class="p">,</span> <span class="n">d_ref</span><span class="p">,</span> <span class="n">_diag_spacing</span><span class="p">(</span><span class="n">mov</span><span class="p">))</span>
         <span class="n">inv_d_mov</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">d_mov</span><span class="p">)</span>
@@ -354,7 +354,7 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_tkreg_to_fsl</span><span class="p">(</span><span class="n">ref</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">mov</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">tkreg_matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert a tkregister voxel-to-voxel matrix to FSL convention.</span>
+<span class="w">    </span><span class="sd">"""Convert a tkregister voxel-to-voxel matrix to FSL convention.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -367,11 +367,11 @@
 <span class="sd">    -------</span>
 <span class="sd">    np.ndarray</span>
 <span class="sd">        Equivalent ``(4, 4)`` affine in FSL voxel-space convention.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">d_mov</span> <span class="o">=</span> <span class="n">_diag_spacing</span><span class="p">(</span><span class="n">mov</span><span class="p">)</span>
     <span class="n">d_ref</span> <span class="o">=</span> <span class="n">_diag_spacing</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span>
-    <span class="n">mov_path</span> <span class="o">=</span> <span class="n">mov</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;filename&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
-    <span class="n">ref_path</span> <span class="o">=</span> <span class="n">ref</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;filename&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="n">mov_path</span> <span class="o">=</span> <span class="n">mov</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'filename'</span><span class="p">,</span> <span class="s1">''</span><span class="p">)</span>
+    <span class="n">ref_path</span> <span class="o">=</span> <span class="n">ref</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'filename'</span><span class="p">,</span> <span class="s1">''</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">_is_nifti_like</span><span class="p">(</span><span class="n">mov_path</span><span class="p">)</span> <span class="ow">or</span> <span class="n">_is_nifti_like</span><span class="p">(</span><span class="n">ref_path</span><span class="p">):</span>
         <span class="n">d_ref</span><span class="p">,</span> <span class="n">d_mov</span> <span class="o">=</span> <span class="n">_apply_fsl_nifti_convention</span><span class="p">(</span><span class="n">ref</span><span class="p">,</span> <span class="n">mov</span><span class="p">,</span> <span class="n">d_ref</span><span class="p">,</span> <span class="n">d_mov</span><span class="p">)</span>
     <span class="n">t_mov</span> <span class="o">=</span> <span class="n">vox2tkras_from_volume_info</span><span class="p">(</span><span class="n">mov</span><span class="p">)</span>
@@ -383,12 +383,12 @@
 <a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.FSLMat">[docs]</a>
 <span class="nd">@dataclass</span><span class="p">(</span><span class="n">slots</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">FSLMat</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;FSL FLIRT affine matrix file.</span>
+<span class="w">    </span><span class="sd">"""FSL FLIRT affine matrix file.</span>
 
 <span class="sd">    The stored matrix maps moving voxels to reference voxels in FSL conventions,</span>
 <span class="sd">    so conversion to canonical scanner-RAS space requires explicit moving and</span>
 <span class="sd">    reference image geometry.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="n">matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
 
@@ -399,7 +399,7 @@
 <a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.FSLMat.read">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FSLMat</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Read an FSL FLIRT matrix file.</span>
+<span class="w">        </span><span class="sd">"""Read an FSL FLIRT matrix file.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -415,7 +415,7 @@
 <span class="sd">        ------</span>
 <span class="sd">        ValueError</span>
 <span class="sd">            If the file does not contain exactly four rows of four values.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
         <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">path</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span><span class="o">.</span><span class="n">splitlines</span><span class="p">():</span>
@@ -424,10 +424,10 @@
                 <span class="k">continue</span>
             <span class="n">values</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">stripped</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">4</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1">: expected 4 columns per row in FSL matrix&#39;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1">: expected 4 columns per row in FSL matrix'</span><span class="p">)</span>
             <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">4</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1">: expected 4 rows in FSL matrix&#39;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1">: expected 4 rows in FSL matrix'</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">))</span></div>
 
 
@@ -435,7 +435,7 @@
 <a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.FSLMat.from_lta">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">from_lta</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">lta</span><span class="p">:</span> <span class="n">LTA</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FSLMat</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create an FSL matrix wrapper from a canonical LTA.</span>
+<span class="w">        </span><span class="sd">"""Create an FSL matrix wrapper from a canonical LTA.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -446,7 +446,7 @@
 <span class="sd">        -------</span>
 <span class="sd">        FSLMat</span>
 <span class="sd">            Wrapper containing the equivalent FLIRT voxel-space affine.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">reg</span> <span class="o">=</span> <span class="n">RegisterDat</span><span class="o">.</span><span class="n">from_lta</span><span class="p">(</span><span class="n">lta</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">_tkreg_to_fsl</span><span class="p">(</span><span class="n">lta</span><span class="o">.</span><span class="n">dst</span><span class="p">,</span> <span class="n">lta</span><span class="o">.</span><span class="n">src</span><span class="p">,</span> <span class="n">reg</span><span class="o">.</span><span class="n">matrix</span><span class="p">))</span></div>
 
@@ -461,7 +461,7 @@
             <span class="n">dst_fname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
             <span class="n">dst_img</span><span class="p">:</span> <span class="n">_AnyHeader</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">LTA</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert the FSL matrix to canonical scanner-RAS LTA form.</span>
+<span class="w">        </span><span class="sd">"""Convert the FSL matrix to canonical scanner-RAS LTA form.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -475,7 +475,7 @@
 <span class="sd">        -------</span>
 <span class="sd">        LTA</span>
 <span class="sd">            Canonical RAS-to-RAS transform wrapper.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">src</span> <span class="o">=</span> <span class="n">_header_to_vol_info</span><span class="p">(</span><span class="n">_header_info</span><span class="p">(</span><span class="n">src_img</span><span class="p">),</span> <span class="n">src_fname</span><span class="p">)</span>
         <span class="n">dst</span> <span class="o">=</span> <span class="n">_header_to_vol_info</span><span class="p">(</span><span class="n">_header_info</span><span class="p">(</span><span class="n">dst_img</span><span class="p">),</span> <span class="n">dst_fname</span><span class="p">)</span>
         <span class="n">reg_matrix</span> <span class="o">=</span> <span class="n">_fsl_to_tkreg</span><span class="p">(</span><span class="n">dst</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">)</span>
@@ -490,7 +490,7 @@
 <div class="viewcode-block" id="FSLMat.write">
 <a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.FSLMat.write">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Write the matrix in FSL text format.</span>
+<span class="w">        </span><span class="sd">"""Write the matrix in FSL text format.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -501,11 +501,11 @@
 <span class="sd">        -------</span>
 <span class="sd">        None</span>
 <span class="sd">            Writes the transform to ``filename``.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
-        <span class="k">with</span> <span class="n">path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">'w'</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="p">:</span>
-                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span><span class="si">:</span><span class="s1">.8f</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">row</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span></div>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">' '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span><span class="si">:</span><span class="s1">.8f</span><span class="si">}</span><span class="s1">'</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">row</span><span class="p">)</span> <span class="o">+</span> <span class="s1">'</span><span class="se">\n</span><span class="s1">'</span><span class="p">)</span></div>
 </div>
 
 </pre></div>

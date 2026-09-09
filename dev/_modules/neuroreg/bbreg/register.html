@@ -270,11 +270,11 @@
         <span class="n">seg</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">lta_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">dof</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span>
-        <span class="n">contrast</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;t1&quot;</span><span class="p">,</span> <span class="s2">&quot;t2&quot;</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">init_type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;header&quot;</span><span class="p">,</span> <span class="s2">&quot;lta&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;header&quot;</span><span class="p">,</span>
+        <span class="n">contrast</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">"t1"</span><span class="p">,</span> <span class="s2">"t2"</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">init_type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">"header"</span><span class="p">,</span> <span class="s2">"lta"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"header"</span><span class="p">,</span>
         <span class="n">init_lta</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">init_ras</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">cost_type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;contrast&quot;</span><span class="p">,</span> <span class="s2">&quot;gradient&quot;</span><span class="p">,</span> <span class="s2">&quot;both&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;contrast&quot;</span><span class="p">,</span>
+        <span class="n">cost_type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">"contrast"</span><span class="p">,</span> <span class="s2">"gradient"</span><span class="p">,</span> <span class="s2">"both"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"contrast"</span><span class="p">,</span>
         <span class="n">wm_proj_abs</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.4</span><span class="p">,</span>
         <span class="n">gm_proj_frac</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span>
         <span class="n">gm_proj_abs</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -286,10 +286,10 @@
         <span class="n">n_iters</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">200</span><span class="p">,</span>
         <span class="n">lr</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01</span><span class="p">,</span>
         <span class="n">early_stop_patience</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
-        <span class="n">device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span><span class="p">,</span>
+        <span class="n">device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"cpu"</span><span class="p">,</span>
         <span class="n">return_model</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">BBRModel</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Register a moving image to cortical surface boundaries using BBR.</span>
+<span class="w">    </span><span class="sd">"""Register a moving image to cortical surface boundaries using BBR.</span>
 
 <span class="sd">    This is the main Python API for the boundary-based registration path. The</span>
 <span class="sd">    moving image is aligned to a target anatomical space defined either by a</span>
@@ -324,10 +324,10 @@
 <span class="sd">        Output path for a written LTA in public ``moving -&gt; target`` direction.</span>
 <span class="sd">    dof : int, default=6</span>
 <span class="sd">        Transformation degrees of freedom.</span>
-<span class="sd">    contrast : {&quot;t1&quot;, &quot;t2&quot;}, optional</span>
+<span class="sd">    contrast : {"t1", "t2"}, optional</span>
 <span class="sd">        Expected image contrast for the BBR intensity model. When ``None``, the</span>
 <span class="sd">        model auto-detects the polarity.</span>
-<span class="sd">    init_type : {&quot;header&quot;, &quot;lta&quot;}, default=&quot;header&quot;</span>
+<span class="sd">    init_type : {"header", "lta"}, default="header"</span>
 <span class="sd">        Initialization source when ``init_ras`` is not supplied.</span>
 <span class="sd">    init_lta : str, optional</span>
 <span class="sd">        Existing LTA used for initialization. It must encode a</span>
@@ -335,7 +335,7 @@
 <span class="sd">    init_ras : ndarray, optional</span>
 <span class="sd">        Initial 4x4 RAS-to-RAS transform in public ``moving/source -&gt;</span>
 <span class="sd">        target/reference`` direction.</span>
-<span class="sd">    cost_type : {&quot;contrast&quot;, &quot;gradient&quot;, &quot;both&quot;}, default=&quot;contrast&quot;</span>
+<span class="sd">    cost_type : {"contrast", "gradient", "both"}, default="contrast"</span>
 <span class="sd">        Cost terms included in the BBR objective.</span>
 <span class="sd">    wm_proj_abs : float, default=1.4</span>
 <span class="sd">        White-matter sampling depth in millimetres.</span>
@@ -348,7 +348,7 @@
 <span class="sd">    slope : float, default=0.5</span>
 <span class="sd">        Slope of the sigmoid used in the contrast cost.</span>
 <span class="sd">    gradient_weight : float, default=0.0</span>
-<span class="sd">        Relative weight of the gradient term when ``cost_type=&#39;both&#39;``.</span>
+<span class="sd">        Relative weight of the gradient term when ``cost_type='both'``.</span>
 <span class="sd">    subsample : int, default=1</span>
 <span class="sd">        Use every ``subsample``-th surface vertex during optimization.</span>
 <span class="sd">    n_iters : int, default=200</span>
@@ -358,7 +358,7 @@
 <span class="sd">    early_stop_patience : int, default=20</span>
 <span class="sd">        Stop after this many non-improving iterations. Set ``0`` to disable</span>
 <span class="sd">        early stopping.</span>
-<span class="sd">    device : str, default=&quot;cpu&quot;</span>
+<span class="sd">    device : str, default="cpu"</span>
 <span class="sd">        Torch device on which to run the optimization.</span>
 <span class="sd">    return_model : bool, default=False</span>
 <span class="sd">        If ``True``, also return the fitted ``BBRModel`` for debugging or</span>
@@ -377,7 +377,7 @@
 <span class="sd">        If the requested input mode is incomplete or unsupported.</span>
 <span class="sd">    RuntimeError</span>
 <span class="sd">        If optimization fails to produce any valid iterate.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
 
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">mov</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
@@ -385,40 +385,40 @@
         <span class="n">mov_path</span> <span class="o">=</span> <span class="n">mov</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">mov_img</span> <span class="o">=</span> <span class="n">mov</span>
-        <span class="n">mov_path</span> <span class="o">=</span> <span class="n">mov</span><span class="o">.</span><span class="n">get_filename</span><span class="p">()</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">mov</span><span class="p">,</span> <span class="s2">&quot;get_filename&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">mov_path</span> <span class="o">=</span> <span class="n">mov</span><span class="o">.</span><span class="n">get_filename</span><span class="p">()</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">mov</span><span class="p">,</span> <span class="s2">"get_filename"</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
 
     <span class="n">mov_data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">mov_img</span><span class="o">.</span><span class="n">get_fdata</span><span class="p">())</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
 
     <span class="k">if</span> <span class="n">subject_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Loading surfaces from subject directory: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">subject_dir</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Loading surfaces from subject directory: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">subject_dir</span><span class="p">)</span>
         <span class="n">lh_data</span> <span class="o">=</span> <span class="n">load_surface_from_subject</span><span class="p">(</span>
             <span class="n">subject_dir</span><span class="p">,</span>
-            <span class="n">hemi</span><span class="o">=</span><span class="s2">&quot;lh&quot;</span><span class="p">,</span>
-            <span class="n">surf_name</span><span class="o">=</span><span class="s2">&quot;white&quot;</span><span class="p">,</span>
+            <span class="n">hemi</span><span class="o">=</span><span class="s2">"lh"</span><span class="p">,</span>
+            <span class="n">surf_name</span><span class="o">=</span><span class="s2">"white"</span><span class="p">,</span>
             <span class="n">load_thickness</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
             <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">rh_data</span> <span class="o">=</span> <span class="n">load_surface_from_subject</span><span class="p">(</span>
             <span class="n">subject_dir</span><span class="p">,</span>
-            <span class="n">hemi</span><span class="o">=</span><span class="s2">&quot;rh&quot;</span><span class="p">,</span>
-            <span class="n">surf_name</span><span class="o">=</span><span class="s2">&quot;white&quot;</span><span class="p">,</span>
+            <span class="n">hemi</span><span class="o">=</span><span class="s2">"rh"</span><span class="p">,</span>
+            <span class="n">surf_name</span><span class="o">=</span><span class="s2">"white"</span><span class="p">,</span>
             <span class="n">load_thickness</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
             <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
         <span class="p">)</span>
 
-        <span class="n">orig_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">subject_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;mri&quot;</span> <span class="o">/</span> <span class="s2">&quot;orig.mgz&quot;</span>
+        <span class="n">orig_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">subject_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">"mri"</span> <span class="o">/</span> <span class="s2">"orig.mgz"</span>
         <span class="k">if</span> <span class="n">orig_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
             <span class="n">trg_img</span> <span class="o">=</span> <span class="n">load_image</span><span class="p">(</span><span class="n">orig_path</span><span class="p">)</span>
             <span class="n">trg_header</span> <span class="o">=</span> <span class="n">trg_img</span><span class="o">.</span><span class="n">header</span>
             <span class="n">trg_path</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">orig_path</span><span class="p">)</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                <span class="s2">&quot;Target reference: </span><span class="si">%s</span><span class="s2">  shape=</span><span class="si">%s</span><span class="s2">  voxel size=</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="s2">"Target reference: </span><span class="si">%s</span><span class="s2">  shape=</span><span class="si">%s</span><span class="s2">  voxel size=</span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span>
                 <span class="n">orig_path</span><span class="p">,</span>
                 <span class="n">trg_header</span><span class="o">.</span><span class="n">get_data_shape</span><span class="p">()[:</span><span class="mi">3</span><span class="p">],</span>
                 <span class="n">trg_header</span><span class="o">.</span><span class="n">get_zooms</span><span class="p">()[:</span><span class="mi">3</span><span class="p">],</span>
             <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;orig.mgz not found at </span><span class="si">%s</span><span class="s2"> — using moving image as target reference&quot;</span><span class="p">,</span> <span class="n">orig_path</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">"orig.mgz not found at </span><span class="si">%s</span><span class="s2"> — using moving image as target reference"</span><span class="p">,</span> <span class="n">orig_path</span><span class="p">)</span>
             <span class="n">trg_img</span> <span class="o">=</span> <span class="n">mov_img</span>
             <span class="n">trg_header</span> <span class="o">=</span> <span class="n">mov_img</span><span class="o">.</span><span class="n">header</span>
             <span class="n">trg_path</span> <span class="o">=</span> <span class="n">mov_path</span>
@@ -426,31 +426,31 @@
     <span class="k">elif</span> <span class="n">seg</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">..image.segmentation</span><span class="w"> </span><span class="kn">import</span> <span class="n">surfaces_from_segmentation</span>
 
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Extracting WM surfaces from segmentation: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">seg</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Extracting WM surfaces from segmentation: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">seg</span><span class="p">)</span>
         <span class="n">seg_img</span> <span class="o">=</span> <span class="n">load_image</span><span class="p">(</span><span class="n">seg</span><span class="p">)</span>
         <span class="n">trg_img</span> <span class="o">=</span> <span class="n">seg_img</span>
-        <span class="n">lh_data</span><span class="p">,</span> <span class="n">rh_data</span> <span class="o">=</span> <span class="n">surfaces_from_segmentation</span><span class="p">(</span><span class="n">seg_img</span><span class="p">,</span> <span class="n">hemispheres</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;lh&quot;</span><span class="p">,</span> <span class="s2">&quot;rh&quot;</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">lh_data</span><span class="p">,</span> <span class="n">rh_data</span> <span class="o">=</span> <span class="n">surfaces_from_segmentation</span><span class="p">(</span><span class="n">seg_img</span><span class="p">,</span> <span class="n">hemispheres</span><span class="o">=</span><span class="p">(</span><span class="s2">"lh"</span><span class="p">,</span> <span class="s2">"rh"</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
         <span class="n">trg_header</span> <span class="o">=</span> <span class="n">seg_img</span><span class="o">.</span><span class="n">header</span>
         <span class="n">trg_path</span> <span class="o">=</span> <span class="n">seg</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-            <span class="s2">&quot;Target reference from segmentation header: shape=</span><span class="si">%s</span><span class="s2">  voxel size=</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">"Target reference from segmentation header: shape=</span><span class="si">%s</span><span class="s2">  voxel size=</span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span>
             <span class="n">trg_header</span><span class="o">.</span><span class="n">get_data_shape</span><span class="p">()[:</span><span class="mi">3</span><span class="p">],</span>
             <span class="n">trg_header</span><span class="o">.</span><span class="n">get_zooms</span><span class="p">()[:</span><span class="mi">3</span><span class="p">],</span>
         <span class="p">)</span>
 
     <span class="k">else</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">lh_surf</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">rh_surf</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Must provide either subject_dir or lh_surf/rh_surf&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Must provide either subject_dir or lh_surf/rh_surf"</span><span class="p">)</span>
 
         <span class="n">lh_data</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="n">rh_data</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="k">if</span> <span class="n">lh_surf</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Loading left hemisphere surface: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">lh_surf</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Loading left hemisphere surface: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">lh_surf</span><span class="p">)</span>
             <span class="n">lh_data</span> <span class="o">=</span> <span class="n">load_surface</span><span class="p">(</span><span class="n">lh_surf</span><span class="p">,</span> <span class="n">lh_thickness</span><span class="p">,</span> <span class="n">lh_cortex_label</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">rh_surf</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Loading right hemisphere surface: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">rh_surf</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Loading right hemisphere surface: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">rh_surf</span><span class="p">)</span>
             <span class="n">rh_data</span> <span class="o">=</span> <span class="n">load_surface</span><span class="p">(</span><span class="n">rh_surf</span><span class="p">,</span> <span class="n">rh_thickness</span><span class="p">,</span> <span class="n">rh_cortex_label</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">ref</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -459,13 +459,13 @@
             <span class="n">trg_path</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="n">ref</span>
                 <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ref</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
-                <span class="k">else</span> <span class="p">(</span><span class="n">trg_header</span><span class="o">.</span><span class="n">get_filename</span><span class="p">()</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">trg_header</span><span class="p">,</span> <span class="s2">&quot;get_filename&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="k">else</span> <span class="p">(</span><span class="n">trg_header</span><span class="o">.</span><span class="n">get_filename</span><span class="p">()</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">trg_header</span><span class="p">,</span> <span class="s2">"get_filename"</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span>
             <span class="p">)</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Target reference: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">trg_path</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Target reference: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">trg_path</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                <span class="s2">&quot;No --ref provided for Mode B; using moving image as target reference. &quot;</span>
-                <span class="s2">&quot;This is only correct if surfaces were built on the moving image.&quot;</span>
+                <span class="s2">"No --ref provided for Mode B; using moving image as target reference. "</span>
+                <span class="s2">"This is only correct if surfaces were built on the moving image."</span>
             <span class="p">)</span>
             <span class="n">trg_img</span> <span class="o">=</span> <span class="n">mov_img</span>
             <span class="n">trg_header</span> <span class="o">=</span> <span class="n">mov_img</span><span class="o">.</span><span class="n">header</span>
@@ -475,50 +475,50 @@
     <span class="n">trg_tkras2ras_t</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">trg_tkras2ras</span><span class="p">)</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
     <span class="n">mov_affine_t</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">mov_img</span><span class="o">.</span><span class="n">affine</span><span class="p">)</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
 
-    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Moving image shape: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">mov_data</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Target tkRAS→RAS:</span><span class="se">\n</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">trg_tkras2ras</span><span class="p">)</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Moving affine:</span><span class="se">\n</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">mov_img</span><span class="o">.</span><span class="n">affine</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Moving image shape: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">mov_data</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Target tkRAS→RAS:</span><span class="se">\n</span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">trg_tkras2ras</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Moving affine:</span><span class="se">\n</span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">mov_img</span><span class="o">.</span><span class="n">affine</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">lh_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;LH surface: </span><span class="si">%d</span><span class="s2"> vertices&quot;</span><span class="p">,</span> <span class="n">lh_data</span><span class="p">[</span><span class="s2">&quot;vertices&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"LH surface: </span><span class="si">%d</span><span class="s2"> vertices"</span><span class="p">,</span> <span class="n">lh_data</span><span class="p">[</span><span class="s2">"vertices"</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
     <span class="k">if</span> <span class="n">rh_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;RH surface: </span><span class="si">%d</span><span class="s2"> vertices&quot;</span><span class="p">,</span> <span class="n">rh_data</span><span class="p">[</span><span class="s2">&quot;vertices&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"RH surface: </span><span class="si">%d</span><span class="s2"> vertices"</span><span class="p">,</span> <span class="n">rh_data</span><span class="p">[</span><span class="s2">"vertices"</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
 
     <span class="k">if</span> <span class="n">init_ras</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">ras_mov_to_trg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">init_ras</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
         <span class="n">init_transform</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">ras_mov_to_trg</span><span class="p">))</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Using provided RAS-to-RAS init (mov_RAS→trg_RAS):</span><span class="se">\n</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">ras_mov_to_trg</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">init_type</span> <span class="o">==</span> <span class="s2">&quot;lta&quot;</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Using provided RAS-to-RAS init (mov_RAS→trg_RAS):</span><span class="se">\n</span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">ras_mov_to_trg</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">init_type</span> <span class="o">==</span> <span class="s2">"lta"</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">init_lta</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;init_lta must be provided when init_type=&#39;lta&#39;&quot;</span><span class="p">)</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Loading init transform from LTA: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">init_lta</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"init_lta must be provided when init_type='lta'"</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Loading init transform from LTA: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">init_lta</span><span class="p">)</span>
         <span class="n">ras_mov_to_trg</span> <span class="o">=</span> <span class="n">LTA</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">init_lta</span><span class="p">)</span><span class="o">.</span><span class="n">r2r</span><span class="p">()</span>
         <span class="n">init_transform</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">ras_mov_to_trg</span><span class="p">))</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Loaded init transform (mov_RAS→trg_RAS) from </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">init_lta</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">init_type</span> <span class="o">==</span> <span class="s2">&quot;centroid&quot;</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Loaded init transform (mov_RAS→trg_RAS) from </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">init_lta</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">init_type</span> <span class="o">==</span> <span class="s2">"centroid"</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="s2">&quot;init_type=&#39;centroid&#39; is not supported for surface-based registration: &quot;</span>
-            <span class="s2">&quot;centroid alignment requires a pair of image volumes, but register_surface &quot;</span>
-            <span class="s2">&quot;operates on surface meshes without a target image tensor. &quot;</span>
-            <span class="s2">&quot;Use init_type=&#39;header&#39; (identity) or supply an existing transform via &quot;</span>
-            <span class="s2">&quot;init_type=&#39;lta&#39; / init_ras.&quot;</span>
+            <span class="s2">"init_type='centroid' is not supported for surface-based registration: "</span>
+            <span class="s2">"centroid alignment requires a pair of image volumes, but register_surface "</span>
+            <span class="s2">"operates on surface meshes without a target image tensor. "</span>
+            <span class="s2">"Use init_type='header' (identity) or supply an existing transform via "</span>
+            <span class="s2">"init_type='lta' / init_ras."</span>
         <span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">init_transform</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
 
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-        <span class="s2">&quot;Initializing BBR model  dof=</span><span class="si">%d</span><span class="s2">  contrast=</span><span class="si">%s</span><span class="s2">  cost=</span><span class="si">%s</span><span class="s2">  subsample=</span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">dof</span><span class="p">,</span> <span class="n">contrast</span><span class="p">,</span> <span class="n">cost_type</span><span class="p">,</span> <span class="n">subsample</span>
+        <span class="s2">"Initializing BBR model  dof=</span><span class="si">%d</span><span class="s2">  contrast=</span><span class="si">%s</span><span class="s2">  cost=</span><span class="si">%s</span><span class="s2">  subsample=</span><span class="si">%d</span><span class="s2">"</span><span class="p">,</span> <span class="n">dof</span><span class="p">,</span> <span class="n">contrast</span><span class="p">,</span> <span class="n">cost_type</span><span class="p">,</span> <span class="n">subsample</span>
     <span class="p">)</span>
 
     <span class="n">model</span> <span class="o">=</span> <span class="n">BBRModel</span><span class="p">(</span>
         <span class="n">moving_volume</span><span class="o">=</span><span class="n">mov_data</span><span class="p">,</span>
-        <span class="n">lh_white_vertices</span><span class="o">=</span><span class="n">lh_data</span><span class="p">[</span><span class="s2">&quot;vertices&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">lh_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">lh_faces</span><span class="o">=</span><span class="n">lh_data</span><span class="p">[</span><span class="s2">&quot;faces&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">lh_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">rh_white_vertices</span><span class="o">=</span><span class="n">rh_data</span><span class="p">[</span><span class="s2">&quot;vertices&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">rh_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">rh_faces</span><span class="o">=</span><span class="n">rh_data</span><span class="p">[</span><span class="s2">&quot;faces&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">rh_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">lh_thickness</span><span class="o">=</span><span class="n">lh_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;thickness&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">lh_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">rh_thickness</span><span class="o">=</span><span class="n">rh_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;thickness&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">rh_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">lh_cortex_mask</span><span class="o">=</span><span class="n">lh_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cortex_mask&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">lh_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">rh_cortex_mask</span><span class="o">=</span><span class="n">rh_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cortex_mask&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">rh_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">lh_white_vertices</span><span class="o">=</span><span class="n">lh_data</span><span class="p">[</span><span class="s2">"vertices"</span><span class="p">]</span> <span class="k">if</span> <span class="n">lh_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">lh_faces</span><span class="o">=</span><span class="n">lh_data</span><span class="p">[</span><span class="s2">"faces"</span><span class="p">]</span> <span class="k">if</span> <span class="n">lh_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">rh_white_vertices</span><span class="o">=</span><span class="n">rh_data</span><span class="p">[</span><span class="s2">"vertices"</span><span class="p">]</span> <span class="k">if</span> <span class="n">rh_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">rh_faces</span><span class="o">=</span><span class="n">rh_data</span><span class="p">[</span><span class="s2">"faces"</span><span class="p">]</span> <span class="k">if</span> <span class="n">rh_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">lh_thickness</span><span class="o">=</span><span class="n">lh_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"thickness"</span><span class="p">)</span> <span class="k">if</span> <span class="n">lh_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">rh_thickness</span><span class="o">=</span><span class="n">rh_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"thickness"</span><span class="p">)</span> <span class="k">if</span> <span class="n">rh_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">lh_cortex_mask</span><span class="o">=</span><span class="n">lh_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"cortex_mask"</span><span class="p">)</span> <span class="k">if</span> <span class="n">lh_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">rh_cortex_mask</span><span class="o">=</span><span class="n">rh_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"cortex_mask"</span><span class="p">)</span> <span class="k">if</span> <span class="n">rh_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">trg_tkras2ras</span><span class="o">=</span><span class="n">trg_tkras2ras_t</span><span class="p">,</span>
         <span class="n">mov_affine</span><span class="o">=</span><span class="n">mov_affine_t</span><span class="p">,</span>
         <span class="n">dof</span><span class="o">=</span><span class="n">dof</span><span class="p">,</span>
@@ -535,7 +535,7 @@
     <span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
 
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-        <span class="s2">&quot;Optimizing: </span><span class="si">%d</span><span class="s2"> iterations  lr=</span><span class="si">%.4f</span><span class="s2">  early_stop_patience=</span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="s2">"Optimizing: </span><span class="si">%d</span><span class="s2"> iterations  lr=</span><span class="si">%.4f</span><span class="s2">  early_stop_patience=</span><span class="si">%d</span><span class="s2">"</span><span class="p">,</span>
         <span class="n">n_iters</span><span class="p">,</span>
         <span class="n">lr</span><span class="p">,</span>
         <span class="n">early_stop_patience</span><span class="p">,</span>
@@ -543,7 +543,7 @@
     <span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">RMSprop</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="n">lr</span><span class="p">)</span>
 
     <span class="n">losses</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="n">best_cost</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>
+    <span class="n">best_cost</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">"inf"</span><span class="p">)</span>
     <span class="n">best_iteration</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
     <span class="n">iters_since_best</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="n">best_transform</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
@@ -568,11 +568,11 @@
                 <span class="n">iters_since_best</span> <span class="o">+=</span> <span class="mi">1</span>
 
         <span class="k">if</span> <span class="n">iteration</span> <span class="o">%</span> <span class="mi">10</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">iteration</span> <span class="o">==</span> <span class="n">n_iters</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  iter </span><span class="si">%4d</span><span class="s2">  cost = </span><span class="si">%.6f</span><span class="s2">  best = </span><span class="si">%.6f</span><span class="s2"> @ </span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">iteration</span><span class="p">,</span> <span class="n">current_cost</span><span class="p">,</span> <span class="n">best_cost</span><span class="p">,</span> <span class="n">best_iteration</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"  iter </span><span class="si">%4d</span><span class="s2">  cost = </span><span class="si">%.6f</span><span class="s2">  best = </span><span class="si">%.6f</span><span class="s2"> @ </span><span class="si">%d</span><span class="s2">"</span><span class="p">,</span> <span class="n">iteration</span><span class="p">,</span> <span class="n">current_cost</span><span class="p">,</span> <span class="n">best_cost</span><span class="p">,</span> <span class="n">best_iteration</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">early_stop_patience</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">iters_since_best</span> <span class="o">&gt;=</span> <span class="n">early_stop_patience</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                <span class="s2">&quot;Early stopping at iter </span><span class="si">%d</span><span class="s2"> after </span><span class="si">%d</span><span class="s2"> iterations without improvement; best cost </span><span class="si">%.6f</span><span class="s2"> at iter </span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="s2">"Early stopping at iter </span><span class="si">%d</span><span class="s2"> after </span><span class="si">%d</span><span class="s2"> iterations without improvement; best cost </span><span class="si">%.6f</span><span class="s2"> at iter </span><span class="si">%d</span><span class="s2">"</span><span class="p">,</span>
                 <span class="n">iteration</span><span class="p">,</span>
                 <span class="n">iters_since_best</span><span class="p">,</span>
                 <span class="n">best_cost</span><span class="p">,</span>
@@ -581,7 +581,7 @@
             <span class="k">break</span>
 
     <span class="k">if</span> <span class="n">best_transform</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">best_params</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;BBR optimization did not produce any iterate.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">"BBR optimization did not produce any iterate."</span><span class="p">)</span>
 
     <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
         <span class="n">model</span><span class="o">.</span><span class="n">transform_params</span><span class="o">.</span><span class="n">copy_</span><span class="p">(</span><span class="n">best_params</span><span class="p">)</span>
@@ -590,12 +590,12 @@
     <span class="n">ras_transform_np</span> <span class="o">=</span> <span class="n">final_transform</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
     <span class="n">ras_mov_to_trg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">ras_transform_np</span><span class="p">)</span>
     <span class="n">elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Registration finished in </span><span class="si">%.2f</span><span class="s2"> s&quot;</span><span class="p">,</span> <span class="n">elapsed</span><span class="p">)</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Using best iterate: cost = </span><span class="si">%.6f</span><span class="s2"> at iter </span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">best_cost</span><span class="p">,</span> <span class="n">best_iteration</span><span class="p">)</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Final transform (mov_RAS→trg_RAS):</span><span class="se">\n</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">ras_mov_to_trg</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Registration finished in </span><span class="si">%.2f</span><span class="s2"> s"</span><span class="p">,</span> <span class="n">elapsed</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Using best iterate: cost = </span><span class="si">%.6f</span><span class="s2"> at iter </span><span class="si">%d</span><span class="s2">"</span><span class="p">,</span> <span class="n">best_cost</span><span class="p">,</span> <span class="n">best_iteration</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Final transform (mov_RAS→trg_RAS):</span><span class="se">\n</span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">ras_mov_to_trg</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">lta_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Writing LTA file: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">lta_name</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Writing LTA file: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">lta_name</span><span class="p">)</span>
         <span class="n">vox_transform</span> <span class="o">=</span> <span class="n">convert_transform_type</span><span class="p">(</span>
             <span class="n">ras_mov_to_trg</span><span class="p">,</span>
             <span class="n">mov_img</span><span class="o">.</span><span class="n">affine</span><span class="p">,</span>
@@ -603,12 +603,12 @@
             <span class="n">from_type</span><span class="o">=</span><span class="n">LINEAR_RAS_TO_RAS</span><span class="p">,</span>
             <span class="n">to_type</span><span class="o">=</span><span class="n">LINEAR_VOX_TO_VOX</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Vox-to-vox transform (src→target):</span><span class="se">\n</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">vox_transform</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Vox-to-vox transform (src→target):</span><span class="se">\n</span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">vox_transform</span><span class="p">)</span>
         <span class="n">LTA</span><span class="o">.</span><span class="n">from_matrix</span><span class="p">(</span>
             <span class="n">vox_transform</span><span class="p">,</span>
-            <span class="n">mov_path</span> <span class="k">if</span> <span class="n">mov_path</span> <span class="k">else</span> <span class="s2">&quot;moving.mgz&quot;</span><span class="p">,</span>
+            <span class="n">mov_path</span> <span class="k">if</span> <span class="n">mov_path</span> <span class="k">else</span> <span class="s2">"moving.mgz"</span><span class="p">,</span>
             <span class="n">mov_img</span><span class="p">,</span>
-            <span class="n">trg_path</span> <span class="k">if</span> <span class="n">trg_path</span> <span class="k">else</span> <span class="s2">&quot;target.mgz&quot;</span><span class="p">,</span>
+            <span class="n">trg_path</span> <span class="k">if</span> <span class="n">trg_path</span> <span class="k">else</span> <span class="s2">"target.mgz"</span><span class="p">,</span>
             <span class="n">trg_img</span><span class="p">,</span>
             <span class="n">lta_type</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
         <span class="p">)</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">lta_name</span><span class="p">)</span>
@@ -620,7 +620,7 @@
 
 
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;register_surface&quot;</span><span class="p">]</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"register_surface"</span><span class="p">]</span>
 </pre></div>
         </article>
       </div>

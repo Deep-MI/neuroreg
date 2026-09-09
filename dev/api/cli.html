@@ -320,7 +320,7 @@ closely matching FreeSurfer’s mri_robust_register algorithm.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
 </dd>
 <dt><kbd>--outliers</kbd></dt>
-<dd><p>Save outlier map (1 - Tukey weights) to this file (MGZ format). High values indicate poorly registered regions (outliers), low values indicate well-registered regions. Use with heat colormap in freeview for visualization.</p>
+<dd><p>Save outlier map (1 - Tukey weights) to this file. High values indicate poorly registered regions (outliers), low values indicate well-registered regions. Use with heat colormap in freeview for visualization. The extension selects the output format and is required.</p>
 </dd>
 <dt><kbd>--device</kbd></dt>
 <dd><p>Torch device string, e.g. ‘cpu’, ‘cuda’, ‘mps’, or ‘gpu’. IRLS falls back to CPU on MPS (float64 limitation).</p>
@@ -932,7 +932,7 @@ apply on the native grid without reslicing. To mask a volume, use
 <dd><p>Optional target/reference image geometry. Overrides geometry stored in the transform.</p>
 </dd>
 <dt><kbd>--out, --o</kbd></dt>
-<dd><p>Output image filename. The extension selects the output format (any nibabel format).</p>
+<dd><p>Output image filename. The extension selects the output format and is required.</p>
 </dd>
 <dt><kbd>--interp</kbd></dt>
 <dd><p>Possible choices: linear, cubic, nearest</p>

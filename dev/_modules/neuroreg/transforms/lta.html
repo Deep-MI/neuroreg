@@ -280,7 +280,7 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_header_info</span><span class="p">(</span><span class="n">src</span><span class="p">:</span> <span class="n">_AnyHeader</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract LTA volume-info fields from various input types.</span>
+<span class="w">    </span><span class="sd">"""Extract LTA volume-info fields from various input types.</span>
 
 <span class="sd">    Accepted inputs</span>
 <span class="sd">    ---------------</span>
@@ -295,19 +295,19 @@
 
 <span class="sd">    Convention</span>
 <span class="sd">    ----------</span>
-<span class="sd">    ``Mdc`` follows FreeSurfer / nibabel ``MGHHeader[&#39;Mdc&#39;]`` semantics, where</span>
+<span class="sd">    ``Mdc`` follows FreeSurfer / nibabel ``MGHHeader['Mdc']`` semantics, where</span>
 <span class="sd">    each *row* stores the unit direction cosines of a voxel axis in</span>
 <span class="sd">    scanner-RAS. The voxel-to-RAS linear part is therefore reconstructed as</span>
-<span class="sd">    ``Mdc.T * delta``. ``Pxyz_c`` uses FreeSurfer&#39;s ``shape/2`` centre-voxel</span>
+<span class="sd">    ``Mdc.T * delta``. ``Pxyz_c`` uses FreeSurfer's ``shape/2`` centre-voxel</span>
 <span class="sd">    convention.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">src</span>
 
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">)):</span>
         <span class="n">src</span> <span class="o">=</span> <span class="n">load_image</span><span class="p">(</span><span class="n">src</span><span class="p">)</span><span class="o">.</span><span class="n">header</span>
 
-    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="s2">&quot;affine&quot;</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="s2">"affine"</span><span class="p">):</span>
         <span class="n">affine</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">affine</span>
         <span class="n">header</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">header</span>
     <span class="k">else</span><span class="p">:</span>
@@ -318,41 +318,41 @@
     <span class="n">zooms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">header</span><span class="o">.</span><span class="n">get_zooms</span><span class="p">()[:</span><span class="mi">3</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="p">{</span>
-        <span class="s2">&quot;dims&quot;</span><span class="p">:</span> <span class="n">shape</span><span class="p">,</span>
-        <span class="s2">&quot;delta&quot;</span><span class="p">:</span> <span class="n">zooms</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
-        <span class="s2">&quot;Mdc&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">affine</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">/</span> <span class="n">zooms</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="p">,</span>
-        <span class="s2">&quot;Pxyz_c&quot;</span><span class="p">:</span> <span class="n">affine</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">@</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">)</span> <span class="o">+</span> <span class="n">affine</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+        <span class="s2">"dims"</span><span class="p">:</span> <span class="n">shape</span><span class="p">,</span>
+        <span class="s2">"delta"</span><span class="p">:</span> <span class="n">zooms</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+        <span class="s2">"Mdc"</span><span class="p">:</span> <span class="p">(</span><span class="n">affine</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">/</span> <span class="n">zooms</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="p">,</span>
+        <span class="s2">"Pxyz_c"</span><span class="p">:</span> <span class="n">affine</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">@</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">)</span> <span class="o">+</span> <span class="n">affine</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
     <span class="p">}</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_invalid_vol_info</span><span class="p">(</span><span class="n">fname</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a placeholder LTA volume-info block with ``valid = 0``.&quot;&quot;&quot;</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_invalid_vol_info</span><span class="p">(</span><span class="n">fname</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return a placeholder LTA volume-info block with ``valid = 0``."""</span>
     <span class="k">return</span> <span class="p">{</span>
-        <span class="s2">&quot;valid&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-        <span class="s2">&quot;filename&quot;</span><span class="p">:</span> <span class="n">fname</span><span class="p">,</span>
-        <span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
-        <span class="s2">&quot;voxelsize&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
-        <span class="s2">&quot;xras&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
-        <span class="s2">&quot;yras&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
-        <span class="s2">&quot;zras&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
-        <span class="s2">&quot;cras&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+        <span class="s2">"valid"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">"filename"</span><span class="p">:</span> <span class="n">fname</span><span class="p">,</span>
+        <span class="s2">"volume"</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+        <span class="s2">"voxelsize"</span><span class="p">:</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
+        <span class="s2">"xras"</span><span class="p">:</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+        <span class="s2">"yras"</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+        <span class="s2">"zras"</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
+        <span class="s2">"cras"</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
     <span class="p">}</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_safe_getuser</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a username-like value even when the UID lacks a passwd entry.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Return a username-like value even when the UID lacks a passwd entry."""</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">getpass</span>
 
     <span class="k">try</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">getpass</span><span class="o">.</span><span class="n">getuser</span><span class="p">()</span>
     <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;getpass.getuser() failed; falling back to numeric uid&quot;</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">getuid</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">os</span><span class="p">,</span> <span class="s2">&quot;getuid&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">getuid</span><span class="p">())</span> <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">getuid</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;UNKNOWN&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"getpass.getuser() failed; falling back to numeric uid"</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">getuid</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">os</span><span class="p">,</span> <span class="s2">"getuid"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">getuid</span><span class="p">())</span> <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">getuid</span><span class="p">)</span> <span class="k">else</span> <span class="s2">"UNKNOWN"</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">affine_from_volume_info</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reconstruct a 4×4 voxel-to-RAS affine from LTA volume-info metadata.</span>
+<span class="w">    </span><span class="sd">"""Reconstruct a 4×4 voxel-to-RAS affine from LTA volume-info metadata.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -369,42 +369,42 @@
 <span class="sd">    ------</span>
 <span class="sd">    ValueError</span>
 <span class="sd">        If the volume-info block is marked invalid or lacks required fields.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;valid&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;LTA volume info is marked invalid (valid = 0); geometry-dependent conversion is unavailable.&quot;</span><span class="p">)</span>
-    <span class="n">required</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;xras&quot;</span><span class="p">,</span> <span class="s2">&quot;yras&quot;</span><span class="p">,</span> <span class="s2">&quot;zras&quot;</span><span class="p">,</span> <span class="s2">&quot;cras&quot;</span><span class="p">,</span> <span class="s2">&quot;voxelsize&quot;</span><span class="p">,</span> <span class="s2">&quot;volume&quot;</span><span class="p">)</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"valid"</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"LTA volume info is marked invalid (valid = 0); geometry-dependent conversion is unavailable."</span><span class="p">)</span>
+    <span class="n">required</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"xras"</span><span class="p">,</span> <span class="s2">"yras"</span><span class="p">,</span> <span class="s2">"zras"</span><span class="p">,</span> <span class="s2">"cras"</span><span class="p">,</span> <span class="s2">"voxelsize"</span><span class="p">,</span> <span class="s2">"volume"</span><span class="p">)</span>
     <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">required</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">info</span><span class="p">]</span>
     <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;LTA volume info is missing required fields: </span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="n">vs</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s2">&quot;voxelsize&quot;</span><span class="p">]</span>
-    <span class="n">dims</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;volume&quot;</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"LTA volume info is missing required fields: </span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">vs</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s2">"voxelsize"</span><span class="p">]</span>
+    <span class="n">dims</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s2">"volume"</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
     <span class="n">A</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
-    <span class="n">A</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;xras&quot;</span><span class="p">])</span> <span class="o">*</span> <span class="n">vs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-    <span class="n">A</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;yras&quot;</span><span class="p">])</span> <span class="o">*</span> <span class="n">vs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-    <span class="n">A</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;zras&quot;</span><span class="p">])</span> <span class="o">*</span> <span class="n">vs</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
-    <span class="n">A</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;cras&quot;</span><span class="p">])</span> <span class="o">-</span> <span class="n">A</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">@</span> <span class="p">(</span><span class="n">dims</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">)</span>
+    <span class="n">A</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s2">"xras"</span><span class="p">])</span> <span class="o">*</span> <span class="n">vs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">A</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s2">"yras"</span><span class="p">])</span> <span class="o">*</span> <span class="n">vs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">A</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s2">"zras"</span><span class="p">])</span> <span class="o">*</span> <span class="n">vs</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">A</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s2">"cras"</span><span class="p">])</span> <span class="o">-</span> <span class="n">A</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">@</span> <span class="p">(</span><span class="n">dims</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">A</span>
 
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_header_to_vol_info</span><span class="p">(</span><span class="n">hdr</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">fname</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert a :func:`_header_info` dict to LTA volume-info format.</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_header_to_vol_info</span><span class="p">(</span><span class="n">hdr</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">fname</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Convert a :func:`_header_info` dict to LTA volume-info format.</span>
 
 <span class="sd">    Maps the FreeSurfer-style ``Mdc`` / ``Pxyz_c`` / ``dims`` / ``delta`` keys</span>
 <span class="sd">    produced by :func:`_header_info` to the ``xras`` / ``yras`` / ``zras`` /</span>
 <span class="sd">    ``cras`` / ``voxelsize`` / ``volume`` keys expected by</span>
 <span class="sd">    :func:`affine_from_volume_info` and stored in ``.lta`` files.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">Mdc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">hdr</span><span class="p">[</span><span class="s2">&quot;Mdc&quot;</span><span class="p">])</span>
-    <span class="n">Pxyz_c</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">hdr</span><span class="p">[</span><span class="s2">&quot;Pxyz_c&quot;</span><span class="p">])</span>
+<span class="sd">    """</span>
+    <span class="n">Mdc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">hdr</span><span class="p">[</span><span class="s2">"Mdc"</span><span class="p">])</span>
+    <span class="n">Pxyz_c</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">hdr</span><span class="p">[</span><span class="s2">"Pxyz_c"</span><span class="p">])</span>
     <span class="k">return</span> <span class="p">{</span>
-        <span class="s2">&quot;filename&quot;</span><span class="p">:</span> <span class="n">fname</span><span class="p">,</span>
-        <span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">hdr</span><span class="p">[</span><span class="s2">&quot;dims&quot;</span><span class="p">]),</span>
-        <span class="s2">&quot;voxelsize&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">hdr</span><span class="p">[</span><span class="s2">&quot;delta&quot;</span><span class="p">]),</span>
-        <span class="s2">&quot;xras&quot;</span><span class="p">:</span> <span class="n">Mdc</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
-        <span class="s2">&quot;yras&quot;</span><span class="p">:</span> <span class="n">Mdc</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
-        <span class="s2">&quot;zras&quot;</span><span class="p">:</span> <span class="n">Mdc</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
-        <span class="s2">&quot;cras&quot;</span><span class="p">:</span> <span class="n">Pxyz_c</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+        <span class="s2">"filename"</span><span class="p">:</span> <span class="n">fname</span><span class="p">,</span>
+        <span class="s2">"volume"</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">hdr</span><span class="p">[</span><span class="s2">"dims"</span><span class="p">]),</span>
+        <span class="s2">"voxelsize"</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">hdr</span><span class="p">[</span><span class="s2">"delta"</span><span class="p">]),</span>
+        <span class="s2">"xras"</span><span class="p">:</span> <span class="n">Mdc</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+        <span class="s2">"yras"</span><span class="p">:</span> <span class="n">Mdc</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+        <span class="s2">"zras"</span><span class="p">:</span> <span class="n">Mdc</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+        <span class="s2">"cras"</span><span class="p">:</span> <span class="n">Pxyz_c</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
     <span class="p">}</span>
 
 
@@ -414,18 +414,18 @@
 <div class="viewcode-block" id="LTA">
 <a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.LTA">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">LTA</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;FreeSurfer Linear Transform Array.</span>
+<span class="w">    </span><span class="sd">"""FreeSurfer Linear Transform Array.</span>
 
 <span class="sd">    Wraps a 4×4 affine matrix together with source and destination volume</span>
 <span class="sd">    geometry, mirroring the ``.lta`` file format used by FreeSurfer.</span>
 
 <span class="sd">    Typical usage::</span>
 
-<span class="sd">        lta = LTA.read(&quot;T2_to_T1.lta&quot;)</span>
+<span class="sd">        lta = LTA.read("T2_to_T1.lta")</span>
 <span class="sd">        print(lta.affine_dist())        # distance to identity</span>
 <span class="sd">        print(lta.affine_dist(other))   # distance to another LTA</span>
-<span class="sd">        lta.invert().write(&quot;T1_to_T2.lta&quot;)</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">        lta.invert().write("T1_to_T2.lta")</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span>
@@ -436,7 +436,7 @@
             <span class="n">subject</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
             <span class="n">fscale</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        matrix : array-like, shape (4, 4)</span>
@@ -450,9 +450,9 @@
 <span class="sd">            Optional top-level FreeSurfer subject metadata.</span>
 <span class="sd">        fscale : float, optional</span>
 <span class="sd">            Optional top-level FreeSurfer intensity scaling metadata.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">if</span> <span class="n">lta_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;lta_type must be 0 (LINEAR_VOX_TO_VOX) or 1 (LINEAR_RAS_TO_RAS), got </span><span class="si">{</span><span class="n">lta_type</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"lta_type must be 0 (LINEAR_VOX_TO_VOX) or 1 (LINEAR_RAS_TO_RAS), got </span><span class="si">{</span><span class="n">lta_type</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">matrix</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">=</span> <span class="n">lta_type</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">src</span> <span class="o">=</span> <span class="n">src</span>
@@ -466,7 +466,7 @@
 <a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.LTA.read">[docs]</a>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span> <span class="n">lta_type</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">LTA</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Read a FreeSurfer ``.lta`` file.</span>
+<span class="w">        </span><span class="sd">"""Read a FreeSurfer ``.lta`` file.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -477,11 +477,11 @@
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        LTA</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">filename</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">lta_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">lta_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;lta_type must be 0 (LINEAR_VOX_TO_VOX) or 1 (LINEAR_RAS_TO_RAS), got </span><span class="si">{</span><span class="n">lta_type</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"lta_type must be 0 (LINEAR_VOX_TO_VOX) or 1 (LINEAR_RAS_TO_RAS), got </span><span class="si">{</span><span class="n">lta_type</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
 
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
             <span class="n">lines</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
@@ -490,48 +490,48 @@
         <span class="n">nxforms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
         <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
             <span class="n">stripped</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-            <span class="k">if</span> <span class="n">stripped</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;=&quot;</span> <span class="ow">in</span> <span class="n">stripped</span><span class="p">:</span>
-                <span class="n">stored_type</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">stripped</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;#&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
-            <span class="k">elif</span> <span class="n">stripped</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;nxforms&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;=&quot;</span> <span class="ow">in</span> <span class="n">stripped</span><span class="p">:</span>
-                <span class="n">nxforms</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">stripped</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;#&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
-            <span class="k">elif</span> <span class="n">stripped</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;1 4 4&quot;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">stripped</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"type"</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">"="</span> <span class="ow">in</span> <span class="n">stripped</span><span class="p">:</span>
+                <span class="n">stored_type</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">stripped</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"="</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"#"</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+            <span class="k">elif</span> <span class="n">stripped</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"nxforms"</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">"="</span> <span class="ow">in</span> <span class="n">stripped</span><span class="p">:</span>
+                <span class="n">nxforms</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">stripped</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"="</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"#"</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+            <span class="k">elif</span> <span class="n">stripped</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"1 4 4"</span><span class="p">):</span>
                 <span class="k">break</span>  <span class="c1"># reached matrix; header fields are all above this</span>
 
         <span class="k">if</span> <span class="n">nxforms</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">: nxforms = </span><span class="si">%d</span><span class="s2">; only the first transform will be read.&quot;</span><span class="p">,</span>
+                <span class="s2">"</span><span class="si">%s</span><span class="s2">: nxforms = </span><span class="si">%d</span><span class="s2">; only the first transform will be read."</span><span class="p">,</span>
                 <span class="n">filename</span><span class="p">,</span>
                 <span class="n">nxforms</span><span class="p">,</span>
             <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">stored_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">: unsupported transform type </span><span class="si">{</span><span class="n">stored_type</span><span class="si">!r}</span><span class="s2">; &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;expected 0 (LINEAR_VOX_TO_VOX) or 1 (LINEAR_RAS_TO_RAS)&quot;</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">: unsupported transform type </span><span class="si">{</span><span class="n">stored_type</span><span class="si">!r}</span><span class="s2">; "</span>
+                <span class="sa">f</span><span class="s2">"expected 0 (LINEAR_VOX_TO_VOX) or 1 (LINEAR_RAS_TO_RAS)"</span>
             <span class="p">)</span>
 
         <span class="n">mat</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">matrix_start</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">lines</span><span class="p">):</span>
-            <span class="k">if</span> <span class="s2">&quot;1 4 4&quot;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s2">"1 4 4"</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
                 <span class="n">matrix_start</span> <span class="o">=</span> <span class="n">i</span>
                 <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">5</span><span class="p">]:</span>
                     <span class="n">mat</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">row</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()])</span>
                 <span class="k">break</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">mat</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">4</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not parse 4×4 matrix from </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Could not parse 4×4 matrix from </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
         <span class="n">volume_field_prefixes</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="s2">&quot;valid&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;filename&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;fname&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;subject&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;volume&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;voxelsize&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;xras&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;yras&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;zras&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;cras&quot;</span><span class="p">,</span>
+            <span class="s2">"valid"</span><span class="p">,</span>
+            <span class="s2">"filename"</span><span class="p">,</span>
+            <span class="s2">"fname"</span><span class="p">,</span>
+            <span class="s2">"subject"</span><span class="p">,</span>
+            <span class="s2">"volume"</span><span class="p">,</span>
+            <span class="s2">"voxelsize"</span><span class="p">,</span>
+            <span class="s2">"xras"</span><span class="p">,</span>
+            <span class="s2">"yras"</span><span class="p">,</span>
+            <span class="s2">"zras"</span><span class="p">,</span>
+            <span class="s2">"cras"</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="k">def</span><span class="w"> </span><span class="nf">_parse_vol_block</span><span class="p">(</span><span class="n">start</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
@@ -539,39 +539,39 @@
             <span class="n">end</span> <span class="o">=</span> <span class="n">start</span>
             <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">)):</span>
                 <span class="n">line</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-                <span class="k">if</span> <span class="ow">not</span> <span class="n">line</span> <span class="ow">or</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;#&quot;</span><span class="p">):</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">line</span> <span class="ow">or</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"#"</span><span class="p">):</span>
                     <span class="k">continue</span>
-                <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">((</span><span class="s2">&quot;src volume info&quot;</span><span class="p">,</span> <span class="s2">&quot;dst volume info&quot;</span><span class="p">)):</span>
+                <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">((</span><span class="s2">"src volume info"</span><span class="p">,</span> <span class="s2">"dst volume info"</span><span class="p">)):</span>
                     <span class="k">break</span>
                 <span class="k">if</span> <span class="ow">not</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">volume_field_prefixes</span><span class="p">):</span>
                     <span class="k">break</span>
                 <span class="n">end</span> <span class="o">=</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span>
-                <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;valid&quot;</span><span class="p">):</span>
-                    <span class="n">info</span><span class="p">[</span><span class="s2">&quot;valid&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;#&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
-                <span class="k">elif</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;filename&quot;</span><span class="p">):</span>
-                    <span class="n">info</span><span class="p">[</span><span class="s2">&quot;filename&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-                <span class="k">elif</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;fname&quot;</span><span class="p">):</span>
-                    <span class="c1"># Old-style alias; only fill in if &#39;filename&#39; not yet seen</span>
-                    <span class="n">info</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;filename&quot;</span><span class="p">,</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
-                <span class="k">elif</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;subject&quot;</span><span class="p">):</span>
-                    <span class="c1"># FreeSurfer writes &quot;subject &lt;name&gt;&quot; (no &#39;=&#39;)</span>
+                <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"valid"</span><span class="p">):</span>
+                    <span class="n">info</span><span class="p">[</span><span class="s2">"valid"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"="</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"#"</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+                <span class="k">elif</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"filename"</span><span class="p">):</span>
+                    <span class="n">info</span><span class="p">[</span><span class="s2">"filename"</span><span class="p">]</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"="</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                <span class="k">elif</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"fname"</span><span class="p">):</span>
+                    <span class="c1"># Old-style alias; only fill in if 'filename' not yet seen</span>
+                    <span class="n">info</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">"filename"</span><span class="p">,</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"="</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+                <span class="k">elif</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"subject"</span><span class="p">):</span>
+                    <span class="c1"># FreeSurfer writes "subject &lt;name&gt;" (no '=')</span>
                     <span class="n">parts</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
                     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
-                        <span class="n">info</span><span class="p">[</span><span class="s2">&quot;subject&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-                    <span class="k">elif</span> <span class="s2">&quot;=&quot;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
-                        <span class="n">info</span><span class="p">[</span><span class="s2">&quot;subject&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-                <span class="k">elif</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;volume&quot;</span><span class="p">):</span>
-                    <span class="n">info</span><span class="p">[</span><span class="s2">&quot;volume&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span>
-                <span class="k">elif</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;voxelsize&quot;</span><span class="p">):</span>
-                    <span class="n">info</span><span class="p">[</span><span class="s2">&quot;voxelsize&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span>
-                <span class="k">elif</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;xras&quot;</span><span class="p">):</span>
-                    <span class="n">info</span><span class="p">[</span><span class="s2">&quot;xras&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span>
-                <span class="k">elif</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;yras&quot;</span><span class="p">):</span>
-                    <span class="n">info</span><span class="p">[</span><span class="s2">&quot;yras&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span>
-                <span class="k">elif</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;zras&quot;</span><span class="p">):</span>
-                    <span class="n">info</span><span class="p">[</span><span class="s2">&quot;zras&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span>
-                <span class="k">elif</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;cras&quot;</span><span class="p">):</span>
-                    <span class="n">info</span><span class="p">[</span><span class="s2">&quot;cras&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span>
+                        <span class="n">info</span><span class="p">[</span><span class="s2">"subject"</span><span class="p">]</span> <span class="o">=</span> <span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                    <span class="k">elif</span> <span class="s2">"="</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+                        <span class="n">info</span><span class="p">[</span><span class="s2">"subject"</span><span class="p">]</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"="</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                <span class="k">elif</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"volume"</span><span class="p">):</span>
+                    <span class="n">info</span><span class="p">[</span><span class="s2">"volume"</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"="</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span>
+                <span class="k">elif</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"voxelsize"</span><span class="p">):</span>
+                    <span class="n">info</span><span class="p">[</span><span class="s2">"voxelsize"</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"="</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span>
+                <span class="k">elif</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"xras"</span><span class="p">):</span>
+                    <span class="n">info</span><span class="p">[</span><span class="s2">"xras"</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"="</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span>
+                <span class="k">elif</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"yras"</span><span class="p">):</span>
+                    <span class="n">info</span><span class="p">[</span><span class="s2">"yras"</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"="</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span>
+                <span class="k">elif</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"zras"</span><span class="p">):</span>
+                    <span class="n">info</span><span class="p">[</span><span class="s2">"zras"</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"="</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span>
+                <span class="k">elif</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"cras"</span><span class="p">):</span>
+                    <span class="n">info</span><span class="p">[</span><span class="s2">"cras"</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"="</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span>
                     <span class="k">break</span>
             <span class="k">return</span> <span class="n">info</span><span class="p">,</span> <span class="n">end</span>
 
@@ -579,15 +579,15 @@
         <span class="n">dst</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="n">footer_start</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="k">if</span> <span class="n">matrix_start</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">matrix_start</span> <span class="o">+</span> <span class="mi">5</span>
         <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">lines</span><span class="p">):</span>
-            <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;src volume info&quot;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"src volume info"</span><span class="p">):</span>
                 <span class="n">src</span><span class="p">,</span> <span class="n">footer_start</span> <span class="o">=</span> <span class="n">_parse_vol_block</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
-            <span class="k">elif</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;dst volume info&quot;</span><span class="p">):</span>
+            <span class="k">elif</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"dst volume info"</span><span class="p">):</span>
                 <span class="n">dst</span><span class="p">,</span> <span class="n">footer_start</span> <span class="o">=</span> <span class="n">_parse_vol_block</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
 
-        <span class="k">for</span> <span class="n">role</span><span class="p">,</span> <span class="n">info</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">&quot;src&quot;</span><span class="p">,</span> <span class="n">src</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;dst&quot;</span><span class="p">,</span> <span class="n">dst</span><span class="p">)):</span>
-            <span class="k">if</span> <span class="n">info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;valid&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">role</span><span class="p">,</span> <span class="n">info</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">"src"</span><span class="p">,</span> <span class="n">src</span><span class="p">),</span> <span class="p">(</span><span class="s2">"dst"</span><span class="p">,</span> <span class="n">dst</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"valid"</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                    <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2"> volume info has valid = 0; geometry may be unreliable.&quot;</span><span class="p">,</span>
+                    <span class="s2">"</span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2"> volume info has valid = 0; geometry may be unreliable."</span><span class="p">,</span>
                     <span class="n">filename</span><span class="p">,</span>
                     <span class="n">role</span><span class="p">,</span>
                 <span class="p">)</span>
@@ -596,12 +596,12 @@
         <span class="n">fscale</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">[</span><span class="n">footer_start</span><span class="p">:]:</span>
             <span class="n">stripped</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-            <span class="k">if</span> <span class="n">stripped</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;subject &quot;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">stripped</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"subject "</span><span class="p">):</span>
                 <span class="n">parts</span> <span class="o">=</span> <span class="n">stripped</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
                 <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
                     <span class="n">subject</span> <span class="o">=</span> <span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-            <span class="k">elif</span> <span class="n">stripped</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;fscale&quot;</span><span class="p">):</span>
-                <span class="n">value</span> <span class="o">=</span> <span class="n">stripped</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">if</span> <span class="s2">&quot;=&quot;</span> <span class="ow">in</span> <span class="n">stripped</span> <span class="k">else</span> <span class="n">stripped</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="k">elif</span> <span class="n">stripped</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"fscale"</span><span class="p">):</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">stripped</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"="</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">if</span> <span class="s2">"="</span> <span class="ow">in</span> <span class="n">stripped</span> <span class="k">else</span> <span class="n">stripped</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
                 <span class="n">fscale</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
 
         <span class="n">lta</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">mat</span><span class="p">),</span> <span class="n">stored_type</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="n">subject</span><span class="p">,</span> <span class="n">fscale</span><span class="o">=</span><span class="n">fscale</span><span class="p">)</span>
@@ -635,7 +635,7 @@
             <span class="n">dst_img</span><span class="p">:</span> <span class="n">_AnyHeader</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
             <span class="n">lta_type</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">LTA</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create an LTA from a matrix and image geometry.</span>
+<span class="w">        </span><span class="sd">"""Create an LTA from a matrix and image geometry.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -652,8 +652,8 @@
 <span class="sd">            is written with ``valid = 0`` to indicate unknown geometry.</span>
 <span class="sd">        lta_type : {0, 1}</span>
 <span class="sd">            0 = LINEAR_VOX_TO_VOX, 1 = LINEAR_RAS_TO_RAS (default).</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">matrix</span><span class="p">,</span> <span class="s2">&quot;detach&quot;</span><span class="p">):</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">matrix</span><span class="p">,</span> <span class="s2">"detach"</span><span class="p">):</span>
             <span class="n">matrix</span> <span class="o">=</span> <span class="n">matrix</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
         <span class="n">M</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">matrix</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
         <span class="n">src</span> <span class="o">=</span> <span class="n">_header_to_vol_info</span><span class="p">(</span><span class="n">_header_info</span><span class="p">(</span><span class="n">src_img</span><span class="p">),</span> <span class="n">src_fname</span><span class="p">)</span>
@@ -664,7 +664,7 @@
 <div class="viewcode-block" id="LTA.write">
 <a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.LTA.write">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span> <span class="n">lta_type</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Write to a FreeSurfer ``.lta`` file.</span>
+<span class="w">        </span><span class="sd">"""Write to a FreeSurfer ``.lta`` file.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -674,11 +674,11 @@
 <span class="sd">            ``1`` = LINEAR_RAS_TO_RAS.  When ``None`` (default) the matrix is</span>
 <span class="sd">            written as stored.  When given and different from the stored type,</span>
 <span class="sd">            the matrix is converted before writing; ``self`` is not mutated.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
 
         <span class="k">if</span> <span class="n">lta_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">lta_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;lta_type must be 0 or 1, got </span><span class="si">{</span><span class="n">lta_type</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"lta_type must be 0 or 1, got </span><span class="si">{</span><span class="n">lta_type</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
 
         <span class="n">out_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="k">if</span> <span class="n">lta_type</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">lta_type</span>
         <span class="n">out_matrix</span> <span class="o">=</span> <span class="p">(</span>
@@ -694,56 +694,56 @@
         <span class="p">)</span>
 
         <span class="n">filename</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
-        <span class="n">type_name</span> <span class="o">=</span> <span class="s2">&quot;LINEAR_RAS_TO_RAS&quot;</span> <span class="k">if</span> <span class="n">out_type</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="s2">&quot;LINEAR_VOX_TO_VOX&quot;</span>
+        <span class="n">type_name</span> <span class="o">=</span> <span class="s2">"LINEAR_RAS_TO_RAS"</span> <span class="k">if</span> <span class="n">out_type</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="s2">"LINEAR_VOX_TO_VOX"</span>
 
         <span class="k">def</span><span class="w"> </span><span class="nf">_fmt</span><span class="p">(</span><span class="n">vals</span><span class="p">:</span> <span class="nb">list</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-            <span class="k">return</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span><span class="si">:</span><span class="s2">.15e</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">vals</span><span class="p">)</span>
+            <span class="k">return</span> <span class="s2">" "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span><span class="si">:</span><span class="s2">.15e</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">vals</span><span class="p">)</span>
 
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;# transform file </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;# created by </span><span class="si">{</span><span class="n">_safe_getuser</span><span class="p">()</span><span class="si">}</span><span class="s2"> on </span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">ctime</span><span class="p">()</span><span class="si">}</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;type      = </span><span class="si">{</span><span class="n">out_type</span><span class="si">}</span><span class="s2"> # </span><span class="si">{</span><span class="n">type_name</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;nxforms   = 1</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;mean      = 0.0 0.0 0.0</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;sigma     = 1.0</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;1 4 4</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">"w"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">"# transform file </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">"# created by </span><span class="si">{</span><span class="n">_safe_getuser</span><span class="p">()</span><span class="si">}</span><span class="s2"> on </span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">ctime</span><span class="p">()</span><span class="si">}</span><span class="se">\n\n</span><span class="s2">"</span><span class="p">)</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">"type      = </span><span class="si">{</span><span class="n">out_type</span><span class="si">}</span><span class="s2"> # </span><span class="si">{</span><span class="n">type_name</span><span class="si">}</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">"nxforms   = 1</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">"mean      = 0.0 0.0 0.0</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">"sigma     = 1.0</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">"1 4 4</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">out_matrix</span><span class="p">:</span>
-                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">_fmt</span><span class="p">(</span><span class="n">row</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">role</span><span class="p">,</span> <span class="n">info</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">&quot;src&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;dst&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dst</span><span class="p">)):</span>
-                <span class="n">dims_str</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">info</span><span class="p">[</span><span class="s2">&quot;volume&quot;</span><span class="p">])</span>
-                <span class="n">valid</span> <span class="o">=</span> <span class="n">info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;valid&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">role</span><span class="si">}</span><span class="s2"> volume info</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;valid = </span><span class="si">{</span><span class="n">valid</span><span class="si">}</span><span class="s2">  # volume info valid</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;filename = </span><span class="si">{</span><span class="n">info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;filename&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="k">if</span> <span class="s2">&quot;subject&quot;</span> <span class="ow">in</span> <span class="n">info</span><span class="p">:</span>
-                    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;subject </span><span class="si">{</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;subject&#39;</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;volume = </span><span class="si">{</span><span class="n">dims_str</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;voxelsize = </span><span class="si">{</span><span class="n">_fmt</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;voxelsize&#39;</span><span class="p">])</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;xras   = </span><span class="si">{</span><span class="n">_fmt</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;xras&#39;</span><span class="p">])</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;yras   = </span><span class="si">{</span><span class="n">_fmt</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;yras&#39;</span><span class="p">])</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;zras   = </span><span class="si">{</span><span class="n">_fmt</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;zras&#39;</span><span class="p">])</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;cras   = </span><span class="si">{</span><span class="n">_fmt</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;cras&#39;</span><span class="p">])</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">_fmt</span><span class="p">(</span><span class="n">row</span><span class="p">)</span> <span class="o">+</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">role</span><span class="p">,</span> <span class="n">info</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">"src"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="p">),</span> <span class="p">(</span><span class="s2">"dst"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dst</span><span class="p">)):</span>
+                <span class="n">dims_str</span> <span class="o">=</span> <span class="s2">" "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">info</span><span class="p">[</span><span class="s2">"volume"</span><span class="p">])</span>
+                <span class="n">valid</span> <span class="o">=</span> <span class="n">info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"valid"</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">role</span><span class="si">}</span><span class="s2"> volume info</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">"valid = </span><span class="si">{</span><span class="n">valid</span><span class="si">}</span><span class="s2">  # volume info valid</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">"filename = </span><span class="si">{</span><span class="n">info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'filename'</span><span class="p">,</span><span class="w"> </span><span class="s1">''</span><span class="p">)</span><span class="si">}</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
+                <span class="k">if</span> <span class="s2">"subject"</span> <span class="ow">in</span> <span class="n">info</span><span class="p">:</span>
+                    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">"subject </span><span class="si">{</span><span class="n">info</span><span class="p">[</span><span class="s1">'subject'</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">"volume = </span><span class="si">{</span><span class="n">dims_str</span><span class="si">}</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">"voxelsize = </span><span class="si">{</span><span class="n">_fmt</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s1">'voxelsize'</span><span class="p">])</span><span class="si">}</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">"xras   = </span><span class="si">{</span><span class="n">_fmt</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s1">'xras'</span><span class="p">])</span><span class="si">}</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">"yras   = </span><span class="si">{</span><span class="n">_fmt</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s1">'yras'</span><span class="p">])</span><span class="si">}</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">"zras   = </span><span class="si">{</span><span class="n">_fmt</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s1">'zras'</span><span class="p">])</span><span class="si">}</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">"cras   = </span><span class="si">{</span><span class="n">_fmt</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s1">'cras'</span><span class="p">])</span><span class="si">}</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">subject</span><span class="p">:</span>
-                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;subject </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">subject</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">"subject </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">subject</span><span class="si">}</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fscale</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;fscale </span><span class="si">{</span><span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fscale</span><span class="p">)</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">"fscale </span><span class="si">{</span><span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fscale</span><span class="p">)</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
 
-        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Wrote LTA (</span><span class="si">%s</span><span class="s2">): </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">type_name</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span></div>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Wrote LTA (</span><span class="si">%s</span><span class="s2">): </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">type_name</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span></div>
 
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="n">type_str</span> <span class="o">=</span> <span class="s2">&quot;R2R&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="s2">&quot;V2V&quot;</span>
-        <span class="n">src_fn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;filename&quot;</span><span class="p">,</span> <span class="s2">&quot;?&quot;</span><span class="p">)</span>
-        <span class="n">dst_fn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dst</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;filename&quot;</span><span class="p">,</span> <span class="s2">&quot;?&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;LTA(</span><span class="si">{</span><span class="n">type_str</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">src_fn</span><span class="si">!r}</span><span class="s2"> → </span><span class="si">{</span><span class="n">dst_fn</span><span class="si">!r}</span><span class="s2">)&quot;</span>
+        <span class="n">type_str</span> <span class="o">=</span> <span class="s2">"R2R"</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="s2">"V2V"</span>
+        <span class="n">src_fn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"filename"</span><span class="p">,</span> <span class="s2">"?"</span><span class="p">)</span>
+        <span class="n">dst_fn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dst</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"filename"</span><span class="p">,</span> <span class="s2">"?"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"LTA(</span><span class="si">{</span><span class="n">type_str</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">src_fn</span><span class="si">!r}</span><span class="s2"> → </span><span class="si">{</span><span class="n">dst_fn</span><span class="si">!r}</span><span class="s2">)"</span>
 
     <span class="c1"># ── matrix extraction ───────────────────────────────────────────────────</span>
 
 <div class="viewcode-block" id="LTA.r2r">
 <a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.LTA.r2r">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">r2r</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the 4×4 RAS-to-RAS matrix.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Return the 4×4 RAS-to-RAS matrix."""</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">convert_transform_type</span><span class="p">(</span>
@@ -758,7 +758,7 @@
 <div class="viewcode-block" id="LTA.v2v">
 <a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.LTA.v2v">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">v2v</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the 4×4 voxel-to-voxel matrix.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Return the 4×4 voxel-to-voxel matrix."""</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">convert_transform_type</span><span class="p">(</span>
@@ -775,21 +775,21 @@
 <div class="viewcode-block" id="LTA.invert">
 <a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.LTA.invert">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">invert</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">LTA</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return an inverted copy with src/dst swapped, stored as R2R.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Return an inverted copy with src/dst swapped, stored as R2R."""</span>
         <span class="k">return</span> <span class="n">LTA</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">r2r</span><span class="p">()),</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dst</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="n">fscale</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fscale</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="LTA.concat">
 <a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.LTA.concat">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">concat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">LTA</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">LTA</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Concatenate two transforms: ``self`` (A→B) followed by ``other`` (B→C).</span>
+<span class="w">        </span><span class="sd">"""Concatenate two transforms: ``self`` (A→B) followed by ``other`` (B→C).</span>
 
 <span class="sd">        Returns a new LTA that maps directly from A to C, stored as R2R.</span>
 <span class="sd">        The src geometry is taken from ``self`` and the dst geometry from</span>
 <span class="sd">        ``other``; the caller is responsible for ensuring that the intermediate</span>
 <span class="sd">        spaces (``self.dst`` / ``other.src``) are compatible.</span>
 
-<span class="sd">        Equivalent to FreeSurfer&#39;s ``mri_concatenate_lta``.</span>
+<span class="sd">        Equivalent to FreeSurfer's ``mri_concatenate_lta``.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -801,7 +801,7 @@
 <span class="sd">        LTA</span>
 <span class="sd">            New LTA whose matrix is ``other.r2r() @ self.r2r()``,</span>
 <span class="sd">            with ``src`` from ``self`` and ``dst`` from ``other``.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="n">LTA</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">r2r</span><span class="p">()</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">r2r</span><span class="p">(),</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="p">,</span> <span class="n">other</span><span class="o">.</span><span class="n">dst</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="n">fscale</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fscale</span><span class="p">)</span></div>
 
 
@@ -810,16 +810,16 @@
 <div class="viewcode-block" id="LTA.decompose">
 <a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.LTA.decompose">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">decompose</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Polar decomposition of the R2R matrix.</span>
+<span class="w">        </span><span class="sd">"""Polar decomposition of the R2R matrix.</span>
 
 <span class="sd">        See :func:`decompose_transform` for the return dict keys.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="n">decompose_transform</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">r2r</span><span class="p">())</span></div>
 
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">det</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Determinant of the R2R matrix.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Determinant of the R2R matrix."""</span>
         <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">r2r</span><span class="p">()))</span>
 
     <span class="c1"># ── distance methods ────────────────────────────────────────────────────</span>
@@ -827,29 +827,29 @@
 <div class="viewcode-block" id="LTA.rigid_dist">
 <a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.LTA.rigid_dist">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">rigid_dist</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">LTA</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Rigid-transform distance to *other* (or identity).</span>
+<span class="w">        </span><span class="sd">"""Rigid-transform distance to *other* (or identity).</span>
 
 <span class="sd">        Operates on the RAS-to-RAS representation (converts automatically if</span>
 <span class="sd">        stored as vox-to-vox).  Delegates to :func:`rigid_dist`.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="n">rigid_dist</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">r2r</span><span class="p">(),</span> <span class="n">other</span><span class="o">.</span><span class="n">r2r</span><span class="p">()</span> <span class="k">if</span> <span class="n">other</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="LTA.affine_dist">
 <a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.LTA.affine_dist">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">affine_dist</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">LTA</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Affine RMS distance to *other* (Jenkinson 1999).</span>
+<span class="w">        </span><span class="sd">"""Affine RMS distance to *other* (Jenkinson 1999).</span>
 
 <span class="sd">        Operates on the RAS-to-RAS representation (converts automatically if</span>
 <span class="sd">        stored as vox-to-vox).  Delegates to :func:`affine_dist`.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="n">affine_dist</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">r2r</span><span class="p">(),</span> <span class="n">other</span><span class="o">.</span><span class="n">r2r</span><span class="p">()</span> <span class="k">if</span> <span class="n">other</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">radius</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="LTA.corner_dist">
 <a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.LTA.corner_dist">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">corner_dist</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">LTA</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Mean displacement at the 8 source-volume corners in RAS mm.</span>
+<span class="w">        </span><span class="sd">"""Mean displacement at the 8 source-volume corners in RAS mm.</span>
 
 <span class="sd">        Operates on the RAS-to-RAS representation (converts automatically if</span>
 <span class="sd">        stored as vox-to-vox). **Image-specific**: depends on source volume</span>
@@ -859,7 +859,7 @@
 <span class="sd">        * *other* is ``None`` - measures how far each corner moves from its</span>
 <span class="sd">          original RAS position under this transform.</span>
 <span class="sd">        * *other* is given - measures the separation between the two</span>
-<span class="sd">          transforms&#39; mappings of each corner; both LTAs must share the same</span>
+<span class="sd">          transforms' mappings of each corner; both LTAs must share the same</span>
 <span class="sd">          source image.</span>
 
 <span class="sd">        Parameters</span>
@@ -871,8 +871,8 @@
 <span class="sd">        -------</span>
 <span class="sd">        float</span>
 <span class="sd">            Mean corner displacement in mm. Delegates to :func:`corner_dist`.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">src_volume</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="p">[</span><span class="s2">&quot;volume&quot;</span><span class="p">]</span>
+<span class="sd">        """</span>
+        <span class="n">src_volume</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="p">[</span><span class="s2">"volume"</span><span class="p">]</span>
         <span class="n">src_shape</span> <span class="o">=</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">src_volume</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">src_volume</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">src_volume</span><span class="p">[</span><span class="mi">2</span><span class="p">]))</span>
         <span class="n">M2</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">r2r</span><span class="p">()</span> <span class="k">if</span> <span class="n">other</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="n">corner_dist</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">r2r</span><span class="p">(),</span> <span class="n">src_shape</span><span class="p">,</span> <span class="n">M2</span><span class="o">=</span><span class="n">M2</span><span class="p">,</span> <span class="n">src_affine</span><span class="o">=</span><span class="n">affine_from_volume_info</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="p">))</span></div>
@@ -881,12 +881,12 @@
 <div class="viewcode-block" id="LTA.sphere_dist">
 <a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.LTA.sphere_dist">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">sphere_dist</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">LTA</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Max displacement on a sphere of given radius in RAS mm.</span>
+<span class="w">        </span><span class="sd">"""Max displacement on a sphere of given radius in RAS mm.</span>
 
 <span class="sd">        Operates on the RAS-to-RAS representation (converts automatically if</span>
 <span class="sd">        stored as vox-to-vox).  **Image-independent**: result depends only on</span>
 <span class="sd">        the transform, not source/dst geometry.  Delegates to :func:`sphere_dist`.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="n">sphere_dist</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">r2r</span><span class="p">(),</span> <span class="n">other</span><span class="o">.</span><span class="n">r2r</span><span class="p">()</span> <span class="k">if</span> <span class="n">other</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">radius</span><span class="p">)</span></div>
 </div>
 

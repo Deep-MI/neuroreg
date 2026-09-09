@@ -259,13 +259,13 @@ from pathlib import Path
 from urllib.request import urlretrieve
 
 # Allow unsupported MPS ops to fall back to CPU so the notebook can still test MPS.
-os.environ.setdefault(&quot;PYTORCH_ENABLE_MPS_FALLBACK&quot;, &quot;1&quot;)
+os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 
 import nibabel as nib
 import torch
 
 REPO_ROOT = Path.cwd().resolve()
-if not (REPO_ROOT / &quot;neuroreg&quot;).exists():
+if not (REPO_ROOT / "neuroreg").exists():
     REPO_ROOT = REPO_ROOT.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
@@ -276,22 +276,22 @@ from neuroreg.image.map import map_r2r
 from neuroreg.transforms import LTA, affine_dist
 from neuroreg.transforms.matrices import get_affine
 
-DATA_DIR = Path(&quot;.&quot;)
-orig_path = DATA_DIR / &quot;140_orig.mgz&quot;
-trg_path = DATA_DIR / &quot;140_trg.mgz&quot;
-reg_path = DATA_DIR / &quot;140_reg.mgz&quot;
-lta_path = DATA_DIR / &quot;140.lta&quot;
-gt_lta_path = DATA_DIR / &quot;140_ground_truth.lta&quot;
+DATA_DIR = Path(".")
+orig_path = DATA_DIR / "140_orig.mgz"
+trg_path = DATA_DIR / "140_trg.mgz"
+reg_path = DATA_DIR / "140_reg.mgz"
+lta_path = DATA_DIR / "140.lta"
+gt_lta_path = DATA_DIR / "140_ground_truth.lta"
 
 
-device = &quot;cpu&quot;
+device = "cpu"
 if torch.cuda.is_available():
-    device = &quot;cuda&quot;
+    device = "cuda"
 elif torch.backends.mps.is_available():
-    device = &quot;mps&quot;
-    print(&quot;MPS detected; unsupported ops will fall back to CPU via PYTORCH_ENABLE_MPS_FALLBACK=1.&quot;)
+    device = "mps"
+    print("MPS detected; unsupported ops will fall back to CPU via PYTORCH_ENABLE_MPS_FALLBACK=1.")
 
-print(f&quot;Running on device: {device}&quot;)
+print(f"Running on device: {device}")
 <br/></pre></div>
 </div>
 </div>
@@ -300,11 +300,11 @@ print(f&quot;Running on device: {device}&quot;)
 </pre></div>
 </div>
 <div class="input_area highlight-none notranslate"><div class="highlight"><pre><span></span># Download a test image.
-url = &quot;https://surfer.nmr.mgh.harvard.edu/pub/data/tutorial_data/buckner_data/tutorial_subjs/140/mri/orig.mgz&quot;
+url = "https://surfer.nmr.mgh.harvard.edu/pub/data/tutorial_data/buckner_data/tutorial_subjs/140/mri/orig.mgz"
 if not orig_path.exists():
     urlretrieve(url, orig_path)
 else:
-    print(f&quot;File {orig_path} already exists, skipping download&quot;)
+    print(f"File {orig_path} already exists, skipping download")
 </pre></div>
 </div>
 </div>
@@ -322,8 +322,8 @@ rotation_rad = torch.tensor([0.08, 0.04, 0.02])
 v2v_gt = get_affine(translation=translation_mm, rotvec=rotation_rad).float()
 r2r_gt = img_affine @ v2v_gt @ torch.linalg.inv(img_affine)
 
-print(f&quot;Applied Vox-to-Vox matrix:\n{v2v_gt}&quot;)
-print(f&quot;Ground-truth RAS-to-RAS matrix:\n{r2r_gt}&quot;)
+print(f"Applied Vox-to-Vox matrix:\n{v2v_gt}")
+print(f"Ground-truth RAS-to-RAS matrix:\n{r2r_gt}")
 
 # Map the image and save the moved volume.
 mapped_data = map(idata, transform=v2v_gt, is_torch_mat=False)
@@ -332,8 +332,8 @@ target_img.to_filename(str(trg_path))
 
 # Save the ground-truth transform as an LTA.
 LTA.from_matrix(r2r_gt.numpy(), str(orig_path), img, str(trg_path), target_img).write(str(gt_lta_path))
-print(f&quot;Saved synthetic target image to: {trg_path}&quot;)
-print(f&quot;Saved ground-truth LTA to: {gt_lta_path}&quot;)
+print(f"Saved synthetic target image to: {trg_path}")
+print(f"Saved ground-truth LTA to: {gt_lta_path}")
 </pre></div>
 </div>
 </div>
@@ -356,7 +356,7 @@ recovered_data = map_r2r(
     source_affine=img_affine,
     target_affine=img_affine,
     target_shape=tuple(int(v) for v in img.shape[:3]),
-    mode=&quot;bilinear&quot;,
+    mode="bilinear",
 )
 recovered_img = nib.MGHImage(recovered_data.detach().cpu().numpy(), img.affine, img.header)
 recovered_img.to_filename(str(reg_path))
@@ -368,12 +368,12 @@ saved_lta_distance = float(
     affine_dist(torch.from_numpy(recovered_lta.r2r()).float(), r2r_gt.float(), radius=100.0)
 )
 
-print(f&quot;\nRecovered RAS-to-RAS matrix:\n{Mr2r_cpu}&quot;)
-print(f&quot;\nSaved LTA RAS-to-RAS matrix:\n{torch.from_numpy(recovered_lta.r2r()).float()}&quot;)
-print(f&quot;\nAffine distance to the ground-truth transform (r=100 mm): {affine_distance:.4f}&quot;)
-print(f&quot;Affine distance for the saved LTA (r=100 mm): {saved_lta_distance:.4f}&quot;)
-print(f&quot;Mapped output saved to: {reg_path}&quot;)
-print(f&quot;Recovered LTA saved to: {lta_path}&quot;)
+print(f"\nRecovered RAS-to-RAS matrix:\n{Mr2r_cpu}")
+print(f"\nSaved LTA RAS-to-RAS matrix:\n{torch.from_numpy(recovered_lta.r2r()).float()}")
+print(f"\nAffine distance to the ground-truth transform (r=100 mm): {affine_distance:.4f}")
+print(f"Affine distance for the saved LTA (r=100 mm): {saved_lta_distance:.4f}")
+print(f"Mapped output saved to: {reg_path}")
+print(f"Recovered LTA saved to: {lta_path}")
 <br/></pre></div>
 </div>
 </div>

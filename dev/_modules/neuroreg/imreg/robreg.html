@@ -240,7 +240,7 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for neuroreg.imreg.robreg</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Public IRLS-backed robust image-registration API.&quot;&quot;&quot;</span>
+<span></span><span class="sd">"""Public IRLS-backed robust image-registration API."""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -254,7 +254,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">torch</span><span class="w"> </span><span class="kn">import</span> <span class="n">Tensor</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">..image</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_gaussian_pyramid</span><span class="p">,</span> <span class="n">get_pyramid_limits</span><span class="p">,</span> <span class="n">load_image</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..image</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_gaussian_pyramid</span><span class="p">,</span> <span class="n">get_pyramid_limits</span><span class="p">,</span> <span class="n">load_image</span><span class="p">,</span> <span class="n">save_image</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..image.map</span><span class="w"> </span><span class="kn">import</span> <span class="n">coerce_image_data_3d</span><span class="p">,</span> <span class="n">resample_isotropic_tensor</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..image.masking</span><span class="w"> </span><span class="kn">import</span> <span class="n">as_mask_tensor_and_affine</span><span class="p">,</span> <span class="n">build_binary_mask_pyramid</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..transforms</span><span class="w"> </span><span class="kn">import</span> <span class="n">LINEAR_RAS_TO_RAS</span><span class="p">,</span> <span class="n">LINEAR_VOX_TO_VOX</span><span class="p">,</span> <span class="n">LTA</span><span class="p">,</span> <span class="n">convert_transform_type</span>
@@ -269,16 +269,16 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_robreg_device</span><span class="p">(</span><span class="n">device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve the requested robreg device, warning on unsupported MPS.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Resolve the requested robreg device, warning on unsupported MPS."""</span>
     <span class="n">resolved</span> <span class="o">=</span> <span class="n">resolve_torch_device</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">resolved</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;mps&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">resolved</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">"mps"</span><span class="p">:</span>
         <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-            <span class="s2">&quot;IRLS robreg does not support MPS due to lack of float64; falling back to CPU. &quot;</span>
-            <span class="s2">&quot;Keep using the device argument for CPU/CUDA selection.&quot;</span><span class="p">,</span>
+            <span class="s2">"IRLS robreg does not support MPS due to lack of float64; falling back to CPU. "</span>
+            <span class="s2">"Keep using the device argument for CPU/CUDA selection."</span><span class="p">,</span>
             <span class="ne">RuntimeWarning</span><span class="p">,</span>
             <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">"cpu"</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">resolved</span>
 
 
@@ -286,7 +286,7 @@
     <span class="n">image</span><span class="p">:</span> <span class="n">ImageLike</span><span class="p">,</span>
     <span class="n">affine</span><span class="p">:</span> <span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">Tensor</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert a supported image input into tensor data and a voxel-to-RAS affine.</span>
+<span class="w">    </span><span class="sd">"""Convert a supported image input into tensor data and a voxel-to-RAS affine.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -309,24 +309,24 @@
 <span class="sd">    ------</span>
 <span class="sd">    TypeError</span>
 <span class="sd">        If ``image`` is not one of the supported input types.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">)):</span>
         <span class="n">img</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Any</span><span class="p">,</span> <span class="n">load_image</span><span class="p">(</span><span class="n">image</span><span class="p">))</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">coerce_image_data_3d</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">get_fdata</span><span class="p">(),</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;moving image&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">coerce_image_data_3d</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">get_fdata</span><span class="p">(),</span> <span class="n">name</span><span class="o">=</span><span class="s2">"moving image"</span><span class="p">))</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">data</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">affine</span><span class="p">)</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
 
-    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s2">&quot;get_fdata&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s2">&quot;affine&quot;</span><span class="p">):</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">coerce_image_data_3d</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">get_fdata</span><span class="p">(),</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;image&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s2">"get_fdata"</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s2">"affine"</span><span class="p">):</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">coerce_image_data_3d</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">get_fdata</span><span class="p">(),</span> <span class="n">name</span><span class="o">=</span><span class="s2">"image"</span><span class="p">))</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">data</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">affine</span><span class="p">)</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
 
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">image</span><span class="o">.</span><span class="n">float</span><span class="p">(),</span> <span class="p">(</span><span class="n">affine</span><span class="o">.</span><span class="n">float</span><span class="p">()</span> <span class="k">if</span> <span class="n">affine</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span>
 
-    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported image type: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Unsupported image type: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_save_outlier_map</span><span class="p">(</span><span class="n">all_info</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span> <span class="n">outliers_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Write the final IRLS outlier volume to disk.</span>
+<span class="w">    </span><span class="sd">"""Write the final IRLS outlier volume to disk.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -334,32 +334,32 @@
 <span class="sd">        Per-level information dictionaries returned by the pyramid registration</span>
 <span class="sd">        loop. The final entry is used.</span>
 <span class="sd">    outliers_name : str</span>
-<span class="sd">        Output filename. ``.nii`` and ``.nii.gz`` produce NIfTI output;</span>
-<span class="sd">        other suffixes default to MGH/MGZ.</span>
+<span class="sd">        Output filename. The on-disk format follows its extension (see</span>
+<span class="sd">        :func:`neuroreg.image.save_image`).</span>
 <span class="sd">    verbose : bool, default=False</span>
 <span class="sd">        If ``True``, emit logging about the saved outlier statistics.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">all_info</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Cannot save outlier map: no pyramid levels were executed&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">"Cannot save outlier map: no pyramid levels were executed"</span><span class="p">)</span>
         <span class="k">return</span>
 
     <span class="n">final_info</span> <span class="o">=</span> <span class="n">all_info</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-    <span class="k">if</span> <span class="s2">&quot;weights&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">final_info</span> <span class="ow">or</span> <span class="s2">&quot;valid_mask&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">final_info</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Cannot save outlier map: no weights in final level&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s2">"weights"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">final_info</span> <span class="ow">or</span> <span class="s2">"valid_mask"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">final_info</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">"Cannot save outlier map: no weights in final level"</span><span class="p">)</span>
         <span class="k">return</span>
 
-    <span class="n">weights_sqrt</span> <span class="o">=</span> <span class="n">final_info</span><span class="p">[</span><span class="s2">&quot;weights&quot;</span><span class="p">]</span>
-    <span class="n">valid_mask</span> <span class="o">=</span> <span class="n">final_info</span><span class="p">[</span><span class="s2">&quot;valid_mask&quot;</span><span class="p">]</span>
+    <span class="n">weights_sqrt</span> <span class="o">=</span> <span class="n">final_info</span><span class="p">[</span><span class="s2">"weights"</span><span class="p">]</span>
+    <span class="n">valid_mask</span> <span class="o">=</span> <span class="n">final_info</span><span class="p">[</span><span class="s2">"valid_mask"</span><span class="p">]</span>
     <span class="k">if</span> <span class="n">weights_sqrt</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">valid_mask</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Cannot save outlier map: final IRLS level did not produce usable weights&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">"Cannot save outlier map: final IRLS level did not produce usable weights"</span><span class="p">)</span>
         <span class="k">return</span>
 
-    <span class="n">reg_affine</span> <span class="o">=</span> <span class="n">final_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;iso_affine&quot;</span><span class="p">)</span>
+    <span class="n">reg_affine</span> <span class="o">=</span> <span class="n">final_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"iso_affine"</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">reg_affine</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Cannot save outlier map: no affine available&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">"Cannot save outlier map: no affine available"</span><span class="p">)</span>
         <span class="k">return</span>
 
-    <span class="n">reg_shape</span> <span class="o">=</span> <span class="n">final_info</span><span class="p">[</span><span class="s2">&quot;image_shape&quot;</span><span class="p">]</span>
+    <span class="n">reg_shape</span> <span class="o">=</span> <span class="n">final_info</span><span class="p">[</span><span class="s2">"image_shape"</span><span class="p">]</span>
     <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">is_tensor</span><span class="p">(</span><span class="n">reg_affine</span><span class="p">):</span>
         <span class="n">reg_affine</span> <span class="o">=</span> <span class="n">reg_affine</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
 
@@ -368,16 +368,12 @@
     <span class="n">weight_volume</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)[</span><span class="n">valid_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">weights</span>
     <span class="n">outlier_volume</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">weight_volume</span><span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span>
 
-    <span class="k">if</span> <span class="n">outliers_name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.nii&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">outliers_name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.nii.gz&quot;</span><span class="p">):</span>
-        <span class="n">outlier_img</span> <span class="o">=</span> <span class="n">nib</span><span class="o">.</span><span class="n">Nifti1Image</span><span class="p">(</span><span class="n">outlier_volume</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">reg_affine</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">outlier_img</span> <span class="o">=</span> <span class="n">nib</span><span class="o">.</span><span class="n">MGHImage</span><span class="p">(</span><span class="n">outlier_volume</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">reg_affine</span><span class="p">)</span>
-
-    <span class="n">outlier_img</span><span class="o">.</span><span class="n">to_filename</span><span class="p">(</span><span class="n">outliers_name</span><span class="p">)</span>
+    <span class="n">outlier_img</span> <span class="o">=</span> <span class="n">nib</span><span class="o">.</span><span class="n">Nifti1Image</span><span class="p">(</span><span class="n">outlier_volume</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">reg_affine</span><span class="p">)</span>
+    <span class="n">save_image</span><span class="p">(</span><span class="n">outlier_img</span><span class="p">,</span> <span class="n">outliers_name</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
         <span class="n">outlier_pct</span> <span class="o">=</span> <span class="p">(</span><span class="n">outlier_volume</span> <span class="o">&gt;</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="o">/</span> <span class="n">outlier_volume</span><span class="o">.</span><span class="n">numel</span><span class="p">()</span> <span class="o">*</span> <span class="mi">100</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Saved outlier map: </span><span class="si">%s</span><span class="s2"> (</span><span class="si">%.1f%%</span><span class="s2"> high outliers)&quot;</span><span class="p">,</span> <span class="n">outliers_name</span><span class="p">,</span> <span class="n">outlier_pct</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Saved outlier map: </span><span class="si">%s</span><span class="s2"> (</span><span class="si">%.1f%%</span><span class="s2"> high outliers)"</span><span class="p">,</span> <span class="n">outliers_name</span><span class="p">,</span> <span class="n">outlier_pct</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_convert_vox_transform_between_grids</span><span class="p">(</span>
@@ -387,7 +383,7 @@
     <span class="n">src_affine_to</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
     <span class="n">trg_affine_to</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Re-express a source→target vox2vox transform in different voxel grids.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Re-express a source→target vox2vox transform in different voxel grids."""</span>
     <span class="n">calc_dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float64</span>
     <span class="n">T</span> <span class="o">=</span> <span class="n">transform</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">transform</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">calc_dtype</span><span class="p">)</span>
     <span class="n">src_from</span> <span class="o">=</span> <span class="n">move_tensor</span><span class="p">(</span><span class="n">src_affine_from</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">transform</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">calc_dtype</span><span class="p">)</span>
@@ -408,7 +404,7 @@
     <span class="n">init_lta</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">initial_r2r</span><span class="p">:</span> <span class="n">Tensor</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve explicit transform initialization into voxel coordinates.</span>
+<span class="w">    </span><span class="sd">"""Resolve explicit transform initialization into voxel coordinates.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -439,29 +435,29 @@
 <span class="sd">        If more than one explicit initialization input is provided.</span>
 <span class="sd">    TypeError</span>
 <span class="sd">        If the provided transform specification is unsupported.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">provided</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="p">(</span><span class="s2">&quot;init_transform&quot;</span><span class="p">,</span> <span class="n">init_transform</span><span class="p">),</span>
-        <span class="p">(</span><span class="s2">&quot;init_lta&quot;</span><span class="p">,</span> <span class="n">init_lta</span><span class="p">),</span>
-        <span class="p">(</span><span class="s2">&quot;initial_r2r&quot;</span><span class="p">,</span> <span class="n">initial_r2r</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">"init_transform"</span><span class="p">,</span> <span class="n">init_transform</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">"init_lta"</span><span class="p">,</span> <span class="n">init_lta</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">"initial_r2r"</span><span class="p">,</span> <span class="n">initial_r2r</span><span class="p">),</span>
     <span class="p">]</span>
     <span class="n">non_null</span> <span class="o">=</span> <span class="p">[(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">provided</span> <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">]</span>
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">non_null</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="n">names</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">non_null</span><span class="p">)</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Specify at most one explicit initialization transform, got: </span><span class="si">{</span><span class="n">names</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+        <span class="n">names</span> <span class="o">=</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">non_null</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Specify at most one explicit initialization transform, got: </span><span class="si">{</span><span class="n">names</span><span class="si">}</span><span class="s2">."</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">non_null</span><span class="p">:</span>
         <span class="k">return</span> <span class="kc">None</span>
 
     <span class="n">_</span><span class="p">,</span> <span class="n">spec</span> <span class="o">=</span> <span class="n">non_null</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">)):</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Loading init transform from LTA: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">spec</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Loading init transform from LTA: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">spec</span><span class="p">)</span>
         <span class="n">init_r2r</span> <span class="o">=</span> <span class="n">LTA</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span><span class="o">.</span><span class="n">r2r</span><span class="p">()</span>
     <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="n">LTA</span><span class="p">):</span>
         <span class="n">init_r2r</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">r2r</span><span class="p">()</span>
-    <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="s2">&quot;detach&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
-        <span class="n">init_r2r</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="s2">&quot;detach&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="n">spec</span>
+    <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="s2">"detach"</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+        <span class="n">init_r2r</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="s2">"detach"</span><span class="p">)</span> <span class="k">else</span> <span class="n">spec</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported init_transform specification: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Unsupported init_transform specification: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span>
         <span class="n">convert_transform_type</span><span class="p">(</span>
@@ -484,7 +480,7 @@
     <span class="n">src_affine</span><span class="p">:</span> <span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">trg_affine</span><span class="p">:</span> <span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">initial_transform</span><span class="p">:</span> <span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">init_type</span><span class="p">:</span> <span class="n">InitType</span> <span class="o">=</span> <span class="s2">&quot;centroid&quot;</span><span class="p">,</span>
+    <span class="n">init_type</span><span class="p">:</span> <span class="n">InitType</span> <span class="o">=</span> <span class="s2">"centroid"</span><span class="p">,</span>
     <span class="n">min_voxels</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span>
     <span class="n">max_voxels</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">nmax</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
@@ -500,7 +496,7 @@
     <span class="n">stop_level</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
     <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Tensor</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run the tensor-level IRLS pyramid registration pipeline.</span>
+<span class="w">    </span><span class="sd">"""Run the tensor-level IRLS pyramid registration pipeline.</span>
 
 <span class="sd">    This is the high-level multiresolution orchestration used by the public</span>
 <span class="sd">    :func:`robreg` API. It keeps the solver logic in</span>
@@ -520,9 +516,9 @@
 <span class="sd">    initial_transform : Tensor, optional</span>
 <span class="sd">        Initial voxel-to-voxel transform. If provided, it takes precedence over</span>
 <span class="sd">        the requested initialization mode.</span>
-<span class="sd">    init_type : {&quot;header&quot;, &quot;centroid&quot;, &quot;image_center&quot;}, default=&quot;centroid&quot;</span>
+<span class="sd">    init_type : {"header", "centroid", "image_center"}, default="centroid"</span>
 <span class="sd">        Explicit initialization mode used when ``initial_transform`` is not</span>
-<span class="sd">        provided. ``&quot;image_center&quot;`` matches FreeSurfer&#39;s cras0-style center start.</span>
+<span class="sd">        provided. ``"image_center"`` matches FreeSurfer's cras0-style center start.</span>
 <span class="sd">    min_voxels : int, default=16</span>
 <span class="sd">        Minimum size constraint passed to the shared pyramid builder.</span>
 <span class="sd">    max_voxels : int, optional</span>
@@ -555,7 +551,7 @@
 <span class="sd">    stop_level : int, default=0</span>
 <span class="sd">        Finest pyramid level to process. ``0`` processes all levels including</span>
 <span class="sd">        full resolution. ``1`` skips the finest level; ``3`` skips the three</span>
-<span class="sd">        finest levels. Mirrors FreeSurfer&#39;s ``stopres`` parameter in</span>
+<span class="sd">        finest levels. Mirrors FreeSurfer's ``stopres`` parameter in</span>
 <span class="sd">        ``computeMultiresRegistration``. Clamped to the available range.</span>
 <span class="sd">    verbose : bool, default=False</span>
 <span class="sd">        If ``True``, emit progress logging.</span>
@@ -572,31 +568,31 @@
 <span class="sd">    ValueError</span>
 <span class="sd">        If isotropic registration is requested without both affines, or if no</span>
 <span class="sd">        pyramid level satisfies ``min_voxels``.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">src</span><span class="o">.</span><span class="n">device</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;mps&quot;</span> <span class="ow">or</span> <span class="n">trg</span><span class="o">.</span><span class="n">device</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;mps&quot;</span><span class="p">:</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">src</span><span class="o">.</span><span class="n">device</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">"mps"</span> <span class="ow">or</span> <span class="n">trg</span><span class="o">.</span><span class="n">device</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">"mps"</span><span class="p">:</span>
         <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-            <span class="s2">&quot;IRLS robreg does not support MPS due to lack of float64; falling back to CPU.&quot;</span><span class="p">,</span>
+            <span class="s2">"IRLS robreg does not support MPS due to lack of float64; falling back to CPU."</span><span class="p">,</span>
             <span class="ne">RuntimeWarning</span><span class="p">,</span>
             <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="n">src</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
-        <span class="n">trg</span> <span class="o">=</span> <span class="n">trg</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+        <span class="n">src</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">)</span>
+        <span class="n">trg</span> <span class="o">=</span> <span class="n">trg</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">src_mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">src_mask</span> <span class="o">=</span> <span class="n">src_mask</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+            <span class="n">src_mask</span> <span class="o">=</span> <span class="n">src_mask</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">trg_mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">trg_mask</span> <span class="o">=</span> <span class="n">trg_mask</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+            <span class="n">trg_mask</span> <span class="o">=</span> <span class="n">trg_mask</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">src_affine</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">src_affine</span> <span class="o">=</span> <span class="n">src_affine</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+            <span class="n">src_affine</span> <span class="o">=</span> <span class="n">src_affine</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">trg_affine</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">trg_affine</span> <span class="o">=</span> <span class="n">trg_affine</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+            <span class="n">trg_affine</span> <span class="o">=</span> <span class="n">trg_affine</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">initial_transform</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">initial_transform</span> <span class="o">=</span> <span class="n">initial_transform</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+            <span class="n">initial_transform</span> <span class="o">=</span> <span class="n">initial_transform</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">)</span>
 
-    <span class="n">resolved_init_type</span> <span class="o">=</span> <span class="n">resolve_init_type</span><span class="p">(</span><span class="n">init_type</span><span class="o">=</span><span class="n">init_type</span><span class="p">,</span> <span class="n">default_init_type</span><span class="o">=</span><span class="s2">&quot;centroid&quot;</span><span class="p">)</span>
+    <span class="n">resolved_init_type</span> <span class="o">=</span> <span class="n">resolve_init_type</span><span class="p">(</span><span class="n">init_type</span><span class="o">=</span><span class="n">init_type</span><span class="p">,</span> <span class="n">default_init_type</span><span class="o">=</span><span class="s2">"centroid"</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">isotropic</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">src_affine</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">trg_affine</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;src_affine and trg_affine required when isotropic=True&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"src_affine and trg_affine required when isotropic=True"</span><span class="p">)</span>
 
         <span class="n">src_affine_np</span> <span class="o">=</span> <span class="n">src_affine</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
         <span class="n">trg_affine_np</span> <span class="o">=</span> <span class="n">trg_affine</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
@@ -605,18 +601,18 @@
         <span class="n">isosize</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">isotropic_size</span><span class="p">)</span> <span class="k">if</span> <span class="n">isotropic_size</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">src_zooms</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">trg_zooms</span><span class="o">.</span><span class="n">min</span><span class="p">()))</span>
 
         <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Isotropic resampling: isosize=</span><span class="si">%.4f</span><span class="s2"> mm&quot;</span><span class="p">,</span> <span class="n">isosize</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Isotropic resampling: isosize=</span><span class="si">%.4f</span><span class="s2"> mm"</span><span class="p">,</span> <span class="n">isosize</span><span class="p">)</span>
 
-        <span class="c1"># FreeSurfer&#39;s Registration::makeIsotropic resamples to the common isotropic</span>
+        <span class="c1"># FreeSurfer's Registration::makeIsotropic resamples to the common isotropic</span>
         <span class="c1"># grid with SAMPLE_CUBIC_BSPLINE (not trilinear); match that here.</span>
-        <span class="c1"># padding_mode=&quot;border&quot; keeps the spline&#39;s mirror-extrapolated value just past</span>
+        <span class="c1"># padding_mode="border" keeps the spline's mirror-extrapolated value just past</span>
         <span class="c1"># the source FOV (as FreeSurfer does) instead of zeroing it, which would delete</span>
         <span class="c1"># a brain slab when the iso grid extends slightly beyond the moving image.</span>
         <span class="n">src_iso</span><span class="p">,</span> <span class="n">src_iso_aff</span><span class="p">,</span> <span class="n">Rsrc</span> <span class="o">=</span> <span class="n">resample_isotropic_tensor</span><span class="p">(</span>
-            <span class="n">src</span><span class="p">,</span> <span class="n">src_affine_np</span><span class="p">,</span> <span class="n">isosize</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;cubic&quot;</span><span class="p">,</span> <span class="n">padding_mode</span><span class="o">=</span><span class="s2">&quot;border&quot;</span>
+            <span class="n">src</span><span class="p">,</span> <span class="n">src_affine_np</span><span class="p">,</span> <span class="n">isosize</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"cubic"</span><span class="p">,</span> <span class="n">padding_mode</span><span class="o">=</span><span class="s2">"border"</span>
         <span class="p">)</span>
         <span class="n">trg_iso</span><span class="p">,</span> <span class="n">trg_iso_aff</span><span class="p">,</span> <span class="n">Rtrg</span> <span class="o">=</span> <span class="n">resample_isotropic_tensor</span><span class="p">(</span>
-            <span class="n">trg</span><span class="p">,</span> <span class="n">trg_affine_np</span><span class="p">,</span> <span class="n">isosize</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;cubic&quot;</span><span class="p">,</span> <span class="n">padding_mode</span><span class="o">=</span><span class="s2">&quot;border&quot;</span>
+            <span class="n">trg</span><span class="p">,</span> <span class="n">trg_affine_np</span><span class="p">,</span> <span class="n">isosize</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"cubic"</span><span class="p">,</span> <span class="n">padding_mode</span><span class="o">=</span><span class="s2">"border"</span>
         <span class="p">)</span>
         <span class="n">src_mask_iso</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="n">trg_mask_iso</span> <span class="o">=</span> <span class="kc">None</span>
@@ -626,7 +622,7 @@
                 <span class="n">src_affine_np</span><span class="p">,</span>
                 <span class="n">isosize</span><span class="p">,</span>
                 <span class="n">out_shape</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">src_iso</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span>
-                <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;nearest&quot;</span><span class="p">,</span>
+                <span class="n">mode</span><span class="o">=</span><span class="s2">"nearest"</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="n">src_mask_iso</span> <span class="o">=</span> <span class="p">(</span><span class="n">src_mask_iso</span> <span class="o">&gt;</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">trg_mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -635,13 +631,13 @@
                 <span class="n">trg_affine_np</span><span class="p">,</span>
                 <span class="n">isosize</span><span class="p">,</span>
                 <span class="n">out_shape</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">trg_iso</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span>
-                <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;nearest&quot;</span><span class="p">,</span>
+                <span class="n">mode</span><span class="o">=</span><span class="s2">"nearest"</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="n">trg_mask_iso</span> <span class="o">=</span> <span class="p">(</span><span class="n">trg_mask_iso</span> <span class="o">&gt;</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
 
         <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  Src resampled: </span><span class="si">%s</span><span class="s2"> → </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">src</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">src_iso</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;  Trg resampled: </span><span class="si">%s</span><span class="s2"> → </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">trg</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">trg_iso</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"  Src resampled: </span><span class="si">%s</span><span class="s2"> → </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">src</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">src_iso</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"  Trg resampled: </span><span class="si">%s</span><span class="s2"> → </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">trg</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">trg_iso</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">initial_transform</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># FreeSurfer stores explicit init transforms in the original voxel grids.</span>
@@ -669,7 +665,7 @@
             <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
                 <span class="n">t</span> <span class="o">=</span> <span class="n">T_iso</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                    <span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> initialization (isotropic space): [</span><span class="si">%.6f</span><span class="s2">, </span><span class="si">%.6f</span><span class="s2">, </span><span class="si">%.6f</span><span class="s2">]&quot;</span><span class="p">,</span>
+                    <span class="s2">"</span><span class="si">%s</span><span class="s2"> initialization (isotropic space): [</span><span class="si">%.6f</span><span class="s2">, </span><span class="si">%.6f</span><span class="s2">, </span><span class="si">%.6f</span><span class="s2">]"</span><span class="p">,</span>
                     <span class="n">resolved_init_type</span><span class="p">,</span>
                     <span class="n">t</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
                     <span class="n">t</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
@@ -734,7 +730,7 @@
             <span class="p">)</span>
             <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
                 <span class="n">t</span> <span class="o">=</span> <span class="n">T_iso</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> initialization: [</span><span class="si">%.6f</span><span class="s2">, </span><span class="si">%.6f</span><span class="s2">, </span><span class="si">%.6f</span><span class="s2">]&quot;</span><span class="p">,</span> <span class="n">resolved_init_type</span><span class="p">,</span> <span class="n">t</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">t</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">t</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"</span><span class="si">%s</span><span class="s2"> initialization: [</span><span class="si">%.6f</span><span class="s2">, </span><span class="si">%.6f</span><span class="s2">, </span><span class="si">%.6f</span><span class="s2">]"</span><span class="p">,</span> <span class="n">resolved_init_type</span><span class="p">,</span> <span class="n">t</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">t</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">t</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
         <span class="n">Rsrc</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
         <span class="n">Rtrg</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
         <span class="n">iso_affine</span> <span class="o">=</span> <span class="n">trg_affine</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span> <span class="k">if</span> <span class="n">trg_affine</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
@@ -743,9 +739,9 @@
 
     <span class="k">if</span> <span class="ow">not</span> <span class="n">pyramid_src</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">pyramid_trg</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="s2">&quot;Pyramid construction returned no levels. &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;Source levels: </span><span class="si">{</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">level</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">level</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">pyramid_src</span><span class="p">]</span><span class="si">}</span><span class="s2">; &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;Target levels: </span><span class="si">{</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">level</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">level</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">pyramid_trg</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="s2">"Pyramid construction returned no levels. "</span>
+            <span class="sa">f</span><span class="s2">"Source levels: </span><span class="si">{</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">level</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">level</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">pyramid_src</span><span class="p">]</span><span class="si">}</span><span class="s2">; "</span>
+            <span class="sa">f</span><span class="s2">"Target levels: </span><span class="si">{</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">level</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">level</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">pyramid_trg</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span>
         <span class="p">)</span>
 
     <span class="n">T</span> <span class="o">=</span> <span class="n">T_iso</span> <span class="k">if</span> <span class="n">T_iso</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
@@ -770,7 +766,7 @@
         <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Pyramid level </span><span class="si">%d</span><span class="s2">  shape=</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">lvl</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Pyramid level </span><span class="si">%d</span><span class="s2">  shape=</span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">lvl</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>
 
         <span class="n">T_lvl</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">register_irls</span><span class="p">(</span>
             <span class="n">s</span><span class="p">,</span>
@@ -791,7 +787,7 @@
         <span class="n">T</span> <span class="o">=</span> <span class="n">T_lvl</span>
         <span class="n">current_src_affine</span> <span class="o">=</span> <span class="n">src_level_affine</span>
         <span class="n">current_trg_affine</span> <span class="o">=</span> <span class="n">trg_level_affine</span>
-        <span class="n">info</span><span class="p">[</span><span class="s2">&quot;iso_affine&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">iso_affine</span>
+        <span class="n">info</span><span class="p">[</span><span class="s2">"iso_affine"</span><span class="p">]</span> <span class="o">=</span> <span class="n">iso_affine</span>
         <span class="n">all_info</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">info</span><span class="p">)</span>
 
     <span class="n">T</span> <span class="o">=</span> <span class="n">_convert_vox_transform_between_grids</span><span class="p">(</span>
@@ -821,7 +817,7 @@
     <span class="n">src_mask</span><span class="p">:</span> <span class="n">ImageLike</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">trg_mask</span><span class="p">:</span> <span class="n">ImageLike</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">return_v2v</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-    <span class="n">init_type</span><span class="p">:</span> <span class="n">InitType</span> <span class="o">=</span> <span class="s2">&quot;centroid&quot;</span><span class="p">,</span>
+    <span class="n">init_type</span><span class="p">:</span> <span class="n">InitType</span> <span class="o">=</span> <span class="s2">"centroid"</span><span class="p">,</span>
     <span class="n">init_transform</span><span class="p">:</span> <span class="n">InitTransformLike</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">init_lta</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">initial_r2r</span><span class="p">:</span> <span class="n">Tensor</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -836,9 +832,9 @@
     <span class="n">outliers_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">stop_level</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
     <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-    <span class="n">device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cpu&quot;</span><span class="p">,</span>
+    <span class="n">device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"cpu"</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Register two images with the public IRLS robust-registration path.</span>
+<span class="w">    </span><span class="sd">"""Register two images with the public IRLS robust-registration path.</span>
 
 <span class="sd">    Parameters are intentionally close to the tensor-level IRLS pyramid</span>
 <span class="sd">    implementation, but this wrapper also accepts filenames and nibabel images.</span>
@@ -857,10 +853,10 @@
 <span class="sd">    return_v2v : bool, default=False</span>
 <span class="sd">        If ``True``, return the estimated transform in voxel coordinates. If</span>
 <span class="sd">        ``False``, return the corresponding RAS-to-RAS transform.</span>
-<span class="sd">    init_type : {&quot;header&quot;, &quot;centroid&quot;, &quot;image_center&quot;}, default=&quot;centroid&quot;</span>
+<span class="sd">    init_type : {"header", "centroid", "image_center"}, default="centroid"</span>
 <span class="sd">        Explicit initialization mode used when no explicit transform is</span>
 <span class="sd">        supplied.</span>
-<span class="sd">        ``&quot;image_center&quot;`` matches FreeSurfer&#39;s cras0-style center start.</span>
+<span class="sd">        ``"image_center"`` matches FreeSurfer's cras0-style center start.</span>
 <span class="sd">    init_transform : InitTransformLike, optional</span>
 <span class="sd">        Unified explicit initialization transform. This may be an LTA filename,</span>
 <span class="sd">        an in-memory :class:`LTA`, or a 4 x 4 RAS-to-RAS matrix stored as a</span>
@@ -897,10 +893,10 @@
 <span class="sd">    stop_level : int, default=0</span>
 <span class="sd">        Finest pyramid level to process. ``0`` processes all levels. Higher</span>
 <span class="sd">        values skip the finest levels for faster coarse-only registration.</span>
-<span class="sd">        Mirrors FreeSurfer&#39;s ``stopres`` in ``computeMultiresRegistration``.</span>
+<span class="sd">        Mirrors FreeSurfer's ``stopres`` in ``computeMultiresRegistration``.</span>
 <span class="sd">    verbose : bool, default=False</span>
 <span class="sd">        If ``True``, emit progress logging from the IRLS implementation.</span>
-<span class="sd">    device : str, default=&quot;cpu&quot;</span>
+<span class="sd">    device : str, default="cpu"</span>
 <span class="sd">        Torch device on which to place the image tensors before registration.</span>
 
 <span class="sd">    Returns</span>
@@ -914,14 +910,14 @@
 <span class="sd">    ValueError</span>
 <span class="sd">        If ``dof`` is anything other than ``6``, or if multiple explicit</span>
 <span class="sd">        initialization transforms are provided.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="n">dof</span> <span class="o">!=</span> <span class="mi">6</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;IRLS robreg currently supports rigid registration only (dof=6).&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"IRLS robreg currently supports rigid registration only (dof=6)."</span><span class="p">)</span>
 
     <span class="n">src_data</span><span class="p">,</span> <span class="n">src_aff</span> <span class="o">=</span> <span class="n">_as_tensor_and_affine</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">src_affine</span><span class="p">)</span>
     <span class="n">trg_data</span><span class="p">,</span> <span class="n">trg_aff</span> <span class="o">=</span> <span class="n">_as_tensor_and_affine</span><span class="p">(</span><span class="n">trg</span><span class="p">,</span> <span class="n">trg_affine</span><span class="p">)</span>
-    <span class="n">src_mask_data</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">as_mask_tensor_and_affine</span><span class="p">(</span><span class="n">src_mask</span><span class="p">,</span> <span class="n">affine</span><span class="o">=</span><span class="n">src_affine</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;moving mask&quot;</span><span class="p">)</span>
-    <span class="n">trg_mask_data</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">as_mask_tensor_and_affine</span><span class="p">(</span><span class="n">trg_mask</span><span class="p">,</span> <span class="n">affine</span><span class="o">=</span><span class="n">trg_affine</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;reference mask&quot;</span><span class="p">)</span>
+    <span class="n">src_mask_data</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">as_mask_tensor_and_affine</span><span class="p">(</span><span class="n">src_mask</span><span class="p">,</span> <span class="n">affine</span><span class="o">=</span><span class="n">src_affine</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"moving mask"</span><span class="p">)</span>
+    <span class="n">trg_mask_data</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">as_mask_tensor_and_affine</span><span class="p">(</span><span class="n">trg_mask</span><span class="p">,</span> <span class="n">affine</span><span class="o">=</span><span class="n">trg_affine</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"reference mask"</span><span class="p">)</span>
     <span class="n">initial_transform</span> <span class="o">=</span> <span class="n">_resolve_initial_transform</span><span class="p">(</span>
         <span class="n">src_affine</span><span class="o">=</span><span class="n">src_aff</span><span class="p">,</span>
         <span class="n">trg_affine</span><span class="o">=</span><span class="n">trg_aff</span><span class="p">,</span>
@@ -975,7 +971,7 @@
 
 
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;register_irls_pyramid&quot;</span><span class="p">,</span> <span class="s2">&quot;robreg&quot;</span><span class="p">]</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"register_irls_pyramid"</span><span class="p">,</span> <span class="s2">"robreg"</span><span class="p">]</span>
 </pre></div>
         </article>
       </div>

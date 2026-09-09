@@ -240,12 +240,12 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for neuroreg.transforms.metrics</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Pure transform-metric utilities.</span>
+<span></span><span class="sd">"""Pure transform-metric utilities.</span>
 
 <span class="sd">These functions operate on raw affine matrices (and, for corner-based metrics,</span>
 <span class="sd">explicit source geometry) without any knowledge of the FreeSurfer ``.lta`` file</span>
 <span class="sd">format. Geometry-aware LTA wrappers live in :mod:`neuroreg.transforms.lta`.</span>
-<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">"""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -255,7 +255,7 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_rot_log_norm</span><span class="p">(</span><span class="n">R</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Frobenius norm of the matrix logarithm of a 3×3 rotation matrix.</span>
+<span class="w">    </span><span class="sd">"""Frobenius norm of the matrix logarithm of a 3×3 rotation matrix.</span>
 
 <span class="sd">    Equal to ``sqrt(2) * theta`` where *theta* is the rotation angle in</span>
 <span class="sd">    radians. Equivalent to the geodesic distance on SO(3).</span>
@@ -269,7 +269,7 @@
 <span class="sd">    -------</span>
 <span class="sd">    float</span>
 <span class="sd">        Frobenius norm of ``log(R)``.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">cos_theta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">trace</span><span class="p">(</span><span class="n">R</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">])</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">),</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
     <span class="n">theta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arccos</span><span class="p">(</span><span class="n">cos_theta</span><span class="p">)</span>
     <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">2.0</span><span class="p">)</span> <span class="o">*</span> <span class="n">theta</span><span class="p">)</span>
@@ -281,7 +281,7 @@
         <span class="n">M1</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span>
         <span class="n">M2</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Rigid-transform distance between *M1* and *M2* (or *M1* vs identity).</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">"""Rigid-transform distance between *M1* and *M2* (or *M1* vs identity).</span>
 
 <span class="sd">    Both matrices must be **RAS-to-RAS**; the translation component is then</span>
 <span class="sd">    in mm and the result has consistent physical units.</span>
@@ -295,7 +295,7 @@
 <span class="sd">    the Frobenius norm of the rotation-matrix logarithm (``sqrt(2)`` × rotation</span>
 <span class="sd">    angle in radians).</span>
 
-<span class="sd">    Corresponds to **dist type 1** in FreeSurfer&#39;s ``lta_diff``.</span>
+<span class="sd">    Corresponds to **dist type 1** in FreeSurfer's ``lta_diff``.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -309,7 +309,7 @@
 <span class="sd">    -------</span>
 <span class="sd">    float</span>
 <span class="sd">        Rigid-transform distance (mm and radians added in quadrature).</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">M1a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">M1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
     <span class="n">d</span> <span class="o">=</span> <span class="n">M1a</span> <span class="k">if</span> <span class="n">M2</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">M1a</span><span class="p">)</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">M2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">))</span>
     <span class="n">tdq</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">d</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">d</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]))</span>
@@ -325,7 +325,7 @@
         <span class="n">M2</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span> <span class="o">|</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;RMS affine-transform distance (Jenkinson 1999).</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">"""RMS affine-transform distance (Jenkinson 1999).</span>
 
 <span class="sd">    Both matrices must be **RAS-to-RAS**; the translation component is then</span>
 <span class="sd">    in mm and *radius* has a consistent mm interpretation.</span>
@@ -341,7 +341,7 @@
 <span class="sd">    Reference: Jenkinson (1999), *A method for motion correction of</span>
 <span class="sd">    fMRI time-series*, FMRIB Technical Report TR99MJ1.</span>
 
-<span class="sd">    Corresponds to **dist type 2** in FreeSurfer&#39;s ``lta_diff``.</span>
+<span class="sd">    Corresponds to **dist type 2** in FreeSurfer's ``lta_diff``.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -363,7 +363,7 @@
 <span class="sd">    The function accepts either NumPy-like arrays or torch tensors. When torch</span>
 <span class="sd">    tensors are passed, the computation stays in torch until the final scalar</span>
 <span class="sd">    conversion, which keeps it suitable for CPU/GPU registration loops.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">M1</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">M2</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
         <span class="n">M1_t</span> <span class="o">=</span> <span class="n">M1</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">M1</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="n">M1</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">M2</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -372,7 +372,7 @@
             <span class="n">M2_t</span> <span class="o">=</span> <span class="n">M2</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">M1_t</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">M2_t</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="n">M2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">M1_t</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">M1_t</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-        <span class="n">work_dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float32</span> <span class="k">if</span> <span class="n">M1_t</span><span class="o">.</span><span class="n">device</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;mps&quot;</span> <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">float64</span>
+        <span class="n">work_dtype</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">float32</span> <span class="k">if</span> <span class="n">M1_t</span><span class="o">.</span><span class="n">device</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">"mps"</span> <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">float64</span>
         <span class="n">dT</span> <span class="o">=</span> <span class="n">M1_t</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">work_dtype</span><span class="p">)</span> <span class="o">-</span> <span class="n">M2_t</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">work_dtype</span><span class="p">)</span>
         <span class="n">tdq</span> <span class="o">=</span> <span class="p">(</span><span class="n">dT</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
         <span class="n">dR</span> <span class="o">=</span> <span class="n">dT</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span>
@@ -394,7 +394,7 @@
         <span class="n">M2</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">src_affine</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Mean displacement at the 8 corners of the source volume.</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">"""Mean displacement at the 8 corners of the source volume.</span>
 
 <span class="sd">    For a **single transform** (*M2* is ``None``), places each of the 8 source</span>
 <span class="sd">    corners in RAS space via *src_affine* and measures how far *M* moves each</span>
@@ -421,7 +421,7 @@
 <span class="sd">    be far from brain tissue, making the result less representative than</span>
 <span class="sd">    :func:`sphere_dist` for typical neuroimaging use.</span>
 
-<span class="sd">    Corresponds to **dist type 3** in FreeSurfer&#39;s ``lta_diff``.</span>
+<span class="sd">    Corresponds to **dist type 3** in FreeSurfer's ``lta_diff``.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -442,7 +442,7 @@
 <span class="sd">    -------</span>
 <span class="sd">    float</span>
 <span class="sd">        Mean corner displacement in mm (or voxels if *src_affine* is ``None``).</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">Si</span><span class="p">,</span> <span class="n">Sj</span><span class="p">,</span> <span class="n">Sk</span> <span class="o">=</span> <span class="n">src_shape</span>
     <span class="n">corners_vox</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
         <span class="p">[[</span><span class="n">i</span> <span class="o">*</span> <span class="p">(</span><span class="n">Si</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),</span> <span class="n">j</span> <span class="o">*</span> <span class="p">(</span><span class="n">Sj</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),</span> <span class="n">k</span> <span class="o">*</span> <span class="p">(</span><span class="n">Sk</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),</span> <span class="mf">1.0</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)],</span>
@@ -462,7 +462,7 @@
         <span class="n">M2</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Maximum displacement on a sphere of given radius (mm).</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">"""Maximum displacement on a sphere of given radius (mm).</span>
 
 <span class="sd">    Samples approximately 1,600 points on a sphere of *radius* mm centred at</span>
 <span class="sd">    the RAS origin and returns the **peak** displacement caused by the transform</span>
@@ -482,7 +482,7 @@
 <span class="sd">    is a canonical approximation of the head and the result depends only on the</span>
 <span class="sd">    transforms, not on source volume geometry.</span>
 
-<span class="sd">    Corresponds to **dist type 4** in FreeSurfer&#39;s ``lta_diff``.</span>
+<span class="sd">    Corresponds to **dist type 4** in FreeSurfer's ``lta_diff``.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -498,7 +498,7 @@
 <span class="sd">    -------</span>
 <span class="sd">    float</span>
 <span class="sd">        Maximum displacement in mm over all sampled sphere points.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">M1a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">M1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
     <span class="n">Md</span> <span class="o">=</span> <span class="n">M1a</span> <span class="k">if</span> <span class="n">M2</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">M1a</span><span class="p">)</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">M2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">))</span>
 
@@ -523,7 +523,7 @@
 <div class="viewcode-block" id="decompose_transform">
 <a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.decompose_transform">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">decompose_transform</span><span class="p">(</span><span class="n">M</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Polar decomposition of a 4×4 affine matrix.</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">"""Polar decomposition of a 4×4 affine matrix.</span>
 
 <span class="sd">    Decomposes the upper-left 3×3 linear part as</span>
 
@@ -535,7 +535,7 @@
 <span class="sd">    diagonal), and *diag(scales)* captures anisotropic scaling. The translation</span>
 <span class="sd">    vector is in mm because the input is expected to be RAS-to-RAS.</span>
 
-<span class="sd">    Corresponds to **dist type 7** in FreeSurfer&#39;s ``lta_diff`` (decompose).</span>
+<span class="sd">    Corresponds to **dist type 7** in FreeSurfer's ``lta_diff`` (decompose).</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -563,7 +563,7 @@
 <span class="sd">            Euclidean norm of the translation vector (mm).</span>
 <span class="sd">        ``determinant`` : float</span>
 <span class="sd">            Determinant of the full 4×4 matrix.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.linalg</span><span class="w"> </span><span class="kn">import</span> <span class="n">polar</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.spatial.transform</span><span class="w"> </span><span class="kn">import</span> <span class="n">Rotation</span>
 
@@ -571,7 +571,7 @@
     <span class="n">A</span> <span class="o">=</span> <span class="n">M_arr</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span>
     <span class="n">t</span> <span class="o">=</span> <span class="n">M_arr</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
-    <span class="n">R</span><span class="p">,</span> <span class="n">P</span> <span class="o">=</span> <span class="n">polar</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">side</span><span class="o">=</span><span class="s2">&quot;right&quot;</span><span class="p">)</span>
+    <span class="n">R</span><span class="p">,</span> <span class="n">P</span> <span class="o">=</span> <span class="n">polar</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">side</span><span class="o">=</span><span class="s2">"right"</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">R</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
         <span class="n">R</span><span class="p">,</span> <span class="n">P</span> <span class="o">=</span> <span class="o">-</span><span class="n">R</span><span class="p">,</span> <span class="o">-</span><span class="n">P</span>
 
@@ -583,24 +583,24 @@
     <span class="n">rot_angle_deg</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">degrees</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">rot_vec</span><span class="p">)))</span>
 
     <span class="k">return</span> <span class="p">{</span>
-        <span class="s2">&quot;rotation&quot;</span><span class="p">:</span> <span class="n">R</span><span class="p">,</span>
-        <span class="s2">&quot;rot_vec&quot;</span><span class="p">:</span> <span class="n">rot_vec</span><span class="p">,</span>
-        <span class="s2">&quot;rot_angle_deg&quot;</span><span class="p">:</span> <span class="n">rot_angle_deg</span><span class="p">,</span>
-        <span class="s2">&quot;shear&quot;</span><span class="p">:</span> <span class="n">S</span><span class="p">,</span>
-        <span class="s2">&quot;scales&quot;</span><span class="p">:</span> <span class="n">scales</span><span class="p">,</span>
-        <span class="s2">&quot;translation&quot;</span><span class="p">:</span> <span class="n">t</span><span class="p">,</span>
-        <span class="s2">&quot;abs_trans&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">t</span><span class="p">)),</span>
-        <span class="s2">&quot;determinant&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">M_arr</span><span class="p">)),</span>
+        <span class="s2">"rotation"</span><span class="p">:</span> <span class="n">R</span><span class="p">,</span>
+        <span class="s2">"rot_vec"</span><span class="p">:</span> <span class="n">rot_vec</span><span class="p">,</span>
+        <span class="s2">"rot_angle_deg"</span><span class="p">:</span> <span class="n">rot_angle_deg</span><span class="p">,</span>
+        <span class="s2">"shear"</span><span class="p">:</span> <span class="n">S</span><span class="p">,</span>
+        <span class="s2">"scales"</span><span class="p">:</span> <span class="n">scales</span><span class="p">,</span>
+        <span class="s2">"translation"</span><span class="p">:</span> <span class="n">t</span><span class="p">,</span>
+        <span class="s2">"abs_trans"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">t</span><span class="p">)),</span>
+        <span class="s2">"determinant"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">M_arr</span><span class="p">)),</span>
     <span class="p">}</span></div>
 
 
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="s2">&quot;affine_dist&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;corner_dist&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;decompose_transform&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;rigid_dist&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;sphere_dist&quot;</span><span class="p">,</span>
+    <span class="s2">"affine_dist"</span><span class="p">,</span>
+    <span class="s2">"corner_dist"</span><span class="p">,</span>
+    <span class="s2">"decompose_transform"</span><span class="p">,</span>
+    <span class="s2">"rigid_dist"</span><span class="p">,</span>
+    <span class="s2">"sphere_dist"</span><span class="p">,</span>
 <span class="p">]</span>
 </pre></div>
         </article>

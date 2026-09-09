@@ -257,10 +257,10 @@
 <p>Wraps a 4×4 affine matrix together with source and destination volume
 geometry, mirroring the <code class="docutils literal notranslate"><span class="pre">.lta</span></code> file format used by FreeSurfer.</p>
 <p>Typical usage:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">lta</span> <span class="o">=</span> <span class="n">LTA</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s2">&quot;T2_to_T1.lta&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">lta</span> <span class="o">=</span> <span class="n">LTA</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s2">"T2_to_T1.lta"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">lta</span><span class="o">.</span><span class="n">affine_dist</span><span class="p">())</span>        <span class="c1"># distance to identity</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">lta</span><span class="o">.</span><span class="n">affine_dist</span><span class="p">(</span><span class="n">other</span><span class="p">))</span>   <span class="c1"># distance to another LTA</span>
-<span class="n">lta</span><span class="o">.</span><span class="n">invert</span><span class="p">()</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;T1_to_T2.lta&quot;</span><span class="p">)</span>
+<span class="n">lta</span><span class="o">.</span><span class="n">invert</span><span class="p">()</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">"T1_to_T2.lta"</span><span class="p">)</span>
 </pre></div>
 </div>
 <dl class="field-list simple">

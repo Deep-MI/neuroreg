@@ -240,12 +240,12 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for neuroreg.segreg.register</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;High-level segmentation-based registration APIs.</span>
+<span></span><span class="sd">"""High-level segmentation-based registration APIs.</span>
 
 <span class="sd">This layer ties together centroid extraction, bundled target resources, label</span>
 <span class="sd">presets, and point-set solvers to expose one public ``segreg`` workflow that</span>
 <span class="sd">returns a transform plus the metadata needed for LTA writing.</span>
-<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">"""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -275,7 +275,7 @@
 <a class="viewcode-back" href="../../../api/segreg.html#neuroreg.RegistrationResult">[docs]</a>
 <span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">RegistrationResult</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Result returned by :func:`segreg`.</span>
+<span class="w">    </span><span class="sd">"""Result returned by :func:`segreg`.</span>
 
 <span class="sd">    Attributes</span>
 <span class="sd">    ----------</span>
@@ -295,7 +295,7 @@
 <span class="sd">        Target voxel-to-RAS affine when explicit target geometry is available.</span>
 <span class="sd">    target_shape : tuple[int, int, int] or None</span>
 <span class="sd">        Target spatial shape when explicit target geometry is available.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="n">r2r</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
     <span class="n">labels</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
@@ -308,7 +308,7 @@
 
 <span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">_GeometryInfo</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Internal representation of target geometry metadata.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Internal representation of target geometry metadata."""</span>
 
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">geometry</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span>
@@ -317,7 +317,7 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_default_min_common_labels</span><span class="p">(</span><span class="n">dof</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the default correspondence count for a given transform family.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Return the default correspondence count for a given transform family."""</span>
     <span class="k">if</span> <span class="n">dof</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
         <span class="k">return</span> <span class="mi">1</span>
     <span class="k">return</span> <span class="mi">4</span> <span class="k">if</span> <span class="n">dof</span> <span class="ow">in</span> <span class="p">{</span><span class="mi">9</span><span class="p">,</span> <span class="mi">12</span><span class="p">}</span> <span class="k">else</span> <span class="mi">3</span>
@@ -330,22 +330,22 @@
         <span class="n">label_set</span><span class="p">:</span> <span class="n">LabelSetName</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">target_centroids</span><span class="p">:</span> <span class="n">CentroidDict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve the label IDs to evaluate for the selected registration mode.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Resolve the label IDs to evaluate for the selected registration mode."""</span>
     <span class="k">if</span> <span class="n">explicit_labels</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">label</span><span class="p">)</span> <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">explicit_labels</span><span class="p">]</span>
-    <span class="k">if</span> <span class="n">label_set</span> <span class="o">==</span> <span class="s2">&quot;cortex_lr_pairs&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">label_set</span> <span class="o">==</span> <span class="s2">"cortex_lr_pairs"</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">get_cortex_lr_labels</span><span class="p">()</span>
-    <span class="k">if</span> <span class="n">label_set</span> <span class="o">==</span> <span class="s2">&quot;target_centroids&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">label_set</span> <span class="o">==</span> <span class="s2">"target_centroids"</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">target_centroids</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;label_set=&#39;target_centroids&#39; requires centroid targets.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"label_set='target_centroids' requires centroid targets."</span><span class="p">)</span>
         <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">target_centroids</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
-    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;centroids&quot;</span> <span class="ow">and</span> <span class="n">target_centroids</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">"centroids"</span> <span class="ow">and</span> <span class="n">target_centroids</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">target_centroids</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
     <span class="k">return</span> <span class="kc">None</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_geometry_from_image</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">fallback_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_GeometryInfo</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build an internal geometry descriptor from an image object.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Build an internal geometry descriptor from an image object."""</span>
     <span class="k">return</span> <span class="n">_GeometryInfo</span><span class="p">(</span>
         <span class="n">name</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">get_filename</span><span class="p">()</span> <span class="ow">or</span> <span class="n">fallback_name</span><span class="p">,</span>
         <span class="n">geometry</span><span class="o">=</span><span class="n">image</span><span class="p">,</span>
@@ -355,31 +355,31 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_geometry_from_header</span><span class="p">(</span><span class="n">header</span><span class="p">:</span> <span class="n">GeometryDict</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_GeometryInfo</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build an internal geometry descriptor from target JSON geometry metadata.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Build an internal geometry descriptor from target JSON geometry metadata."""</span>
     <span class="n">affine</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">affine_from_header</span><span class="p">(</span><span class="n">header</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">_GeometryInfo</span><span class="p">(</span>
         <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
         <span class="n">geometry</span><span class="o">=</span><span class="n">header</span><span class="p">,</span>
         <span class="n">affine</span><span class="o">=</span><span class="n">affine</span><span class="p">,</span>
-        <span class="n">shape</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">header</span><span class="p">[</span><span class="s2">&quot;dims&quot;</span><span class="p">]),</span>
+        <span class="n">shape</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">header</span><span class="p">[</span><span class="s2">"dims"</span><span class="p">]),</span>
     <span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_load_centroid_target</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">TargetFile</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load a centroid target from either a JSON path or a bundled atlas name.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Load a centroid target from either a JSON path or a bundled atlas name."""</span>
     <span class="n">source_name</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
     <span class="n">source_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">source_name</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">source_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">source_name</span><span class="p">,</span> <span class="n">read_target_json</span><span class="p">(</span><span class="n">source_path</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid centroid target file &#39;</span><span class="si">{</span><span class="n">source_name</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Invalid centroid target file '</span><span class="si">{</span><span class="n">source_name</span><span class="si">}</span><span class="s2">': </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
     <span class="k">if</span> <span class="n">source_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid centroid target file &#39;</span><span class="si">{</span><span class="n">source_name</span><span class="si">}</span><span class="s2">&#39;: expected a JSON file.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Invalid centroid target file '</span><span class="si">{</span><span class="n">source_name</span><span class="si">}</span><span class="s2">': expected a JSON file."</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">source_name</span> <span class="ow">in</span> <span class="n">available_atlases</span><span class="p">():</span>
         <span class="k">return</span> <span class="n">source_name</span><span class="p">,</span> <span class="n">load_atlas_target</span><span class="p">(</span><span class="n">source_name</span><span class="p">)</span>
     <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-        <span class="sa">f</span><span class="s2">&quot;Unknown centroid target &#39;</span><span class="si">{</span><span class="n">source_name</span><span class="si">}</span><span class="s2">&#39;. Provide a JSON path or one of: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">available_atlases</span><span class="p">())</span><span class="si">}</span><span class="s2">.&quot;</span>
+        <span class="sa">f</span><span class="s2">"Unknown centroid target '</span><span class="si">{</span><span class="n">source_name</span><span class="si">}</span><span class="s2">'. Provide a JSON path or one of: </span><span class="si">{</span><span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">available_atlases</span><span class="p">())</span><span class="si">}</span><span class="s2">."</span>
     <span class="p">)</span>
 
 
@@ -388,10 +388,10 @@
         <span class="n">target_seg</span><span class="p">:</span> <span class="n">ImageLike</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">centroids</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">CentroidDict</span><span class="p">,</span> <span class="n">_GeometryInfo</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve target centroids and optional target geometry for registration.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Resolve target centroids and optional target geometry for registration."""</span>
     <span class="n">modes</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="p">(</span><span class="n">target_seg</span><span class="p">,</span> <span class="n">centroids</span><span class="p">))</span>
     <span class="k">if</span> <span class="n">modes</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Choose exactly one registration target: target_seg or centroids.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Choose exactly one registration target: target_seg or centroids."</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">target_seg</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">target_img</span> <span class="o">=</span> <span class="n">load_image</span><span class="p">(</span><span class="n">target_seg</span><span class="p">)</span>
@@ -400,12 +400,12 @@
             <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">point</span> <span class="ow">in</span> <span class="n">compute_ras_centroids_from_seg</span><span class="p">(</span><span class="n">target_img</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
             <span class="k">if</span> <span class="n">point</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
         <span class="p">}</span>
-        <span class="k">return</span> <span class="s2">&quot;target_seg&quot;</span><span class="p">,</span> <span class="n">target_centroid_dict</span><span class="p">,</span> <span class="n">_geometry_from_image</span><span class="p">(</span><span class="n">target_img</span><span class="p">,</span> <span class="n">fallback_name</span><span class="o">=</span><span class="s2">&quot;target_seg.mgz&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s2">"target_seg"</span><span class="p">,</span> <span class="n">target_centroid_dict</span><span class="p">,</span> <span class="n">_geometry_from_image</span><span class="p">(</span><span class="n">target_img</span><span class="p">,</span> <span class="n">fallback_name</span><span class="o">=</span><span class="s2">"target_seg.mgz"</span><span class="p">)</span>
 
     <span class="k">assert</span> <span class="n">centroids</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
     <span class="n">source_name</span><span class="p">,</span> <span class="n">target</span> <span class="o">=</span> <span class="n">_load_centroid_target</span><span class="p">(</span><span class="n">centroids</span><span class="p">)</span>
     <span class="n">geometry</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">target</span><span class="o">.</span><span class="n">geometry</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">_geometry_from_header</span><span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">geometry</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">source_name</span><span class="p">)</span>
-    <span class="k">return</span> <span class="s2">&quot;centroids&quot;</span><span class="p">,</span> <span class="n">target</span><span class="o">.</span><span class="n">centroids</span><span class="p">,</span> <span class="n">geometry</span>
+    <span class="k">return</span> <span class="s2">"centroids"</span><span class="p">,</span> <span class="n">target</span><span class="o">.</span><span class="n">centroids</span><span class="p">,</span> <span class="n">geometry</span>
 
 
 <div class="viewcode-block" id="segreg">
@@ -422,7 +422,7 @@
         <span class="n">flipped</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">midslice</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RegistrationResult</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Register a moving segmentation to another target via label centroids.</span>
+<span class="w">    </span><span class="sd">"""Register a moving segmentation to another target via label centroids.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -432,7 +432,7 @@
 <span class="sd">        Target segmentation image for segmentation-to-segmentation registration.</span>
 <span class="sd">    centroids : str or Path or None, optional</span>
 <span class="sd">        Path to a centroid target JSON file or the name of a bundled centroid</span>
-<span class="sd">        target such as ``&quot;fsaverage&quot;``.</span>
+<span class="sd">        target such as ``"fsaverage"``.</span>
 <span class="sd">    dof : {3, 6, 7, 9, 12}, default=6</span>
 <span class="sd">        Degrees of freedom for the closed-form fit. ``3`` selects</span>
 <span class="sd">        translation-only, ``6`` rigid, ``7`` rigid plus global scale, ``9``</span>
@@ -440,7 +440,7 @@
 <span class="sd">        registration.</span>
 <span class="sd">    labels : list[int] or None, optional</span>
 <span class="sd">        Explicit label subset override.</span>
-<span class="sd">    label_set : {&#39;all_shared&#39;, &#39;target_centroids&#39;, &#39;cortex_lr_pairs&#39;} or None, optional</span>
+<span class="sd">    label_set : {'all_shared', 'target_centroids', 'cortex_lr_pairs'} or None, optional</span>
 <span class="sd">        Named label preset. Mode-specific defaults are used when omitted.</span>
 <span class="sd">    min_common_labels : int or None, optional</span>
 <span class="sd">        Minimum number of matched labels required to proceed. When omitted, the</span>
@@ -465,16 +465,16 @@
 <span class="sd">    ValueError</span>
 <span class="sd">        If the arguments define no valid target, define multiple targets, or do</span>
 <span class="sd">        not provide enough matched labels for the requested fit.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">mov_img</span> <span class="o">=</span> <span class="n">load_image</span><span class="p">(</span><span class="n">seg</span><span class="p">)</span>
-    <span class="n">mov_name</span> <span class="o">=</span> <span class="n">mov_img</span><span class="o">.</span><span class="n">get_filename</span><span class="p">()</span> <span class="ow">or</span> <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">seg</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">seg</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">))</span> <span class="k">else</span> <span class="s2">&quot;moving.mgz&quot;</span><span class="p">)</span>
+    <span class="n">mov_name</span> <span class="o">=</span> <span class="n">mov_img</span><span class="o">.</span><span class="n">get_filename</span><span class="p">()</span> <span class="ow">or</span> <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">seg</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">seg</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">))</span> <span class="k">else</span> <span class="s2">"moving.mgz"</span><span class="p">)</span>
     <span class="n">mov_affine</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mov_img</span><span class="o">.</span><span class="n">affine</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">dof</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">12</span><span class="p">}:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;Unsupported dof=</span><span class="si">{</span><span class="n">dof</span><span class="si">}</span><span class="s2">. Segmentation registration supports &quot;</span>
-            <span class="s2">&quot;3 (translation-only), 6 (rigid), 7 (similarity), &quot;</span>
-            <span class="s2">&quot;9 (anisotropic scale without shear), or 12 (affine).&quot;</span>
+            <span class="sa">f</span><span class="s2">"Unsupported dof=</span><span class="si">{</span><span class="n">dof</span><span class="si">}</span><span class="s2">. Segmentation registration supports "</span>
+            <span class="s2">"3 (translation-only), 6 (rigid), 7 (similarity), "</span>
+            <span class="s2">"9 (anisotropic scale without shear), or 12 (affine)."</span>
         <span class="p">)</span>
 
     <span class="k">if</span> <span class="n">min_common_labels</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -482,9 +482,9 @@
 
     <span class="k">if</span> <span class="n">flipped</span><span class="p">:</span>
         <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="p">(</span><span class="n">target_seg</span><span class="p">,</span> <span class="n">centroids</span><span class="p">)):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;--flipped cannot be combined with target_seg or centroids targets.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"--flipped cannot be combined with target_seg or centroids targets."</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">dof</span> <span class="o">!=</span> <span class="mi">6</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;--flipped currently supports rigid registration only.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"--flipped currently supports rigid registration only."</span><span class="p">)</span>
 
         <span class="n">voxel_centroids</span> <span class="o">=</span> <span class="n">compute_voxel_centroids_from_seg</span><span class="p">(</span><span class="n">mov_img</span><span class="p">,</span> <span class="n">label_ids</span><span class="o">=</span><span class="n">labels</span> <span class="ow">or</span> <span class="n">get_cortex_lr_labels</span><span class="p">())</span>
         <span class="n">resolved_midslice</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">mov_img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span> <span class="k">if</span> <span class="n">midslice</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">midslice</span><span class="p">)</span>
@@ -552,7 +552,7 @@
         <span class="n">geometry</span><span class="p">:</span> <span class="n">ImageLike</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">labels</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute segmentation centroids and write a centroid target JSON file.</span>
+<span class="w">    </span><span class="sd">"""Compute segmentation centroids and write a centroid target JSON file.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -571,7 +571,7 @@
 <span class="sd">    -------</span>
 <span class="sd">    None</span>
 <span class="sd">        Writes the selected centroid target payload to ``out_path``.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">centroids_payload</span> <span class="o">=</span> <span class="n">compute_ras_centroids_from_seg</span><span class="p">(</span><span class="n">seg</span><span class="p">,</span> <span class="n">label_ids</span><span class="o">=</span><span class="n">labels</span><span class="p">)</span>
     <span class="n">geometry_source</span> <span class="o">=</span> <span class="n">seg</span> <span class="k">if</span> <span class="n">geometry</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">geometry</span>
     <span class="n">write_target_json</span><span class="p">(</span><span class="n">out_path</span><span class="p">,</span> <span class="n">centroids_payload</span><span class="p">,</span> <span class="n">geometry</span><span class="o">=</span><span class="n">geometry_from_image</span><span class="p">(</span><span class="n">geometry_source</span><span class="p">))</span></div>

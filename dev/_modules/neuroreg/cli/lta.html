@@ -241,7 +241,7 @@
         <article role="main" id="furo-main-content">
           <h1>Source code for neuroreg.cli.lta</h1><div class="highlight"><pre>
 <span></span><span class="ch">#!/usr/bin/env python3</span>
-<span class="sd">&quot;&quot;&quot;Unified LTA transform manipulation CLI.</span>
+<span class="sd">"""Unified LTA transform manipulation CLI.</span>
 
 <span class="sd">Available subcommands are ``diff`` to compare transforms, ``invert`` to invert</span>
 <span class="sd">an LTA, ``concat`` to chain two LTAs, and ``convert`` to translate between</span>
@@ -249,7 +249,7 @@
 <span class="sd">experimental AFNI affine text, NiftyReg affine text matrices, and</span>
 <span class="sd">tkregister ``register.dat`` transforms. Run ``lta --help`` or</span>
 <span class="sd">``lta &lt;subcommand&gt; --help`` for the full command syntax.</span>
-<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">"""</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
@@ -268,61 +268,61 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_positive_float</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Argparse type that accepts only strictly positive floats.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Argparse type that accepts only strictly positive floats."""</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">f</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentTypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2"> is not a valid float&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+        <span class="k">raise</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentTypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2"> is not a valid float"</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
     <span class="k">if</span> <span class="n">f</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentTypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;--normdiv must be a positive, non-zero value (got </span><span class="si">{</span><span class="n">f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentTypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"--normdiv must be a positive, non-zero value (got </span><span class="si">{</span><span class="n">f</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">f</span>
 
 
-<span class="n">_VOL_FIELDS</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;xras&quot;</span><span class="p">,</span> <span class="s2">&quot;yras&quot;</span><span class="p">,</span> <span class="s2">&quot;zras&quot;</span><span class="p">,</span> <span class="s2">&quot;cras&quot;</span><span class="p">,</span> <span class="s2">&quot;voxelsize&quot;</span><span class="p">,</span> <span class="s2">&quot;volume&quot;</span><span class="p">)</span>
+<span class="n">_VOL_FIELDS</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"xras"</span><span class="p">,</span> <span class="s2">"yras"</span><span class="p">,</span> <span class="s2">"zras"</span><span class="p">,</span> <span class="s2">"cras"</span><span class="p">,</span> <span class="s2">"voxelsize"</span><span class="p">,</span> <span class="s2">"volume"</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_check_vol_info</span><span class="p">(</span>
         <span class="n">parser</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">,</span>
         <span class="n">lta</span><span class="p">:</span> <span class="n">LTA</span><span class="p">,</span>
         <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-        <span class="n">blocks</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;src&quot;</span><span class="p">,</span> <span class="s2">&quot;dst&quot;</span><span class="p">),</span>
+        <span class="n">blocks</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"src"</span><span class="p">,</span> <span class="s2">"dst"</span><span class="p">),</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Emit a parser.error if any required volume-info field is absent.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Emit a parser.error if any required volume-info field is absent."""</span>
     <span class="k">for</span> <span class="n">block</span> <span class="ow">in</span> <span class="n">blocks</span><span class="p">:</span>
         <span class="n">info</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">lta</span><span class="p">,</span> <span class="n">block</span><span class="p">)</span>
         <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">_VOL_FIELDS</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">info</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
-            <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">block</span><span class="si">}</span><span class="s2"> volume info is missing required fields: </span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">block</span><span class="si">}</span><span class="s2"> volume info is missing required fields: </span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_needs_vol_info</span><span class="p">(</span><span class="n">lta</span><span class="p">:</span> <span class="n">LTA</span><span class="p">,</span> <span class="n">dist</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return True when the chosen metric path will access volume-info fields.</span>
+<span class="w">    </span><span class="sd">"""Return True when the chosen metric path will access volume-info fields.</span>
 
 <span class="sd">    False only for R2R-stored LTAs on a plain r2r() call (fast path, no</span>
 <span class="sd">    affine needed).  V2V conversion and dist-3 corner placement both require</span>
 <span class="sd">    both src and dst volume info.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">return</span> <span class="n">dist</span> <span class="o">==</span> <span class="mi">3</span> <span class="ow">or</span> <span class="n">lta</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="mi">0</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_run_dist</span><span class="p">(</span><span class="n">ns</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">,</span> <span class="n">lta1</span><span class="p">:</span> <span class="n">LTA</span><span class="p">,</span> <span class="n">lta2</span><span class="p">:</span> <span class="n">LTA</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Execute the distance computation for the diff subcommand.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Execute the distance computation for the diff subcommand."""</span>
     <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">dist</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">lta1</span><span class="o">.</span><span class="n">rigid_dist</span><span class="p">(</span><span class="n">lta2</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">ns</span><span class="o">.</span><span class="n">normdiv</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">lta1</span><span class="o">.</span><span class="n">rigid_dist</span><span class="p">(</span><span class="n">lta2</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">ns</span><span class="o">.</span><span class="n">normdiv</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
     <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">dist</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">lta1</span><span class="o">.</span><span class="n">affine_dist</span><span class="p">(</span><span class="n">lta2</span><span class="p">,</span><span class="w"> </span><span class="n">radius</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">radius</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">ns</span><span class="o">.</span><span class="n">normdiv</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">lta1</span><span class="o">.</span><span class="n">affine_dist</span><span class="p">(</span><span class="n">lta2</span><span class="p">,</span><span class="w"> </span><span class="n">radius</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">radius</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">ns</span><span class="o">.</span><span class="n">normdiv</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
     <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">dist</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">lta1</span><span class="o">.</span><span class="n">corner_dist</span><span class="p">(</span><span class="n">lta2</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">ns</span><span class="o">.</span><span class="n">normdiv</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">lta1</span><span class="o">.</span><span class="n">corner_dist</span><span class="p">(</span><span class="n">lta2</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">ns</span><span class="o">.</span><span class="n">normdiv</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
     <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">dist</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">lta1</span><span class="o">.</span><span class="n">sphere_dist</span><span class="p">(</span><span class="n">lta2</span><span class="p">,</span><span class="w"> </span><span class="n">radius</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">radius</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">ns</span><span class="o">.</span><span class="n">normdiv</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">lta1</span><span class="o">.</span><span class="n">sphere_dist</span><span class="p">(</span><span class="n">lta2</span><span class="p">,</span><span class="w"> </span><span class="n">radius</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">radius</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">ns</span><span class="o">.</span><span class="n">normdiv</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
     <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">dist</span> <span class="o">==</span> <span class="mi">5</span><span class="p">:</span>
         <span class="c1"># Concatenation determinant: det(M1 @ M2) = det(M1) * det(M2).</span>
         <span class="n">result</span> <span class="o">=</span> <span class="n">lta1</span><span class="o">.</span><span class="n">det</span> <span class="k">if</span> <span class="n">lta2</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">lta1</span><span class="o">.</span><span class="n">det</span> <span class="o">*</span> <span class="n">lta2</span><span class="o">.</span><span class="n">det</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">result</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">ns</span><span class="o">.</span><span class="n">normdiv</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">result</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">ns</span><span class="o">.</span><span class="n">normdiv</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
     <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">dist</span> <span class="o">==</span> <span class="mi">7</span><span class="p">:</span>
         <span class="c1"># Decompose the concatenation M1 @ M2 (not the difference inv(M1) @ M2).</span>
@@ -330,17 +330,17 @@
         <span class="c1"># Two transforms: compose M1 @ M2 first, then decompose.</span>
         <span class="n">d</span> <span class="o">=</span> <span class="n">lta1</span><span class="o">.</span><span class="n">decompose</span><span class="p">()</span> <span class="k">if</span> <span class="n">lta2</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">decompose_transform</span><span class="p">(</span><span class="n">lta1</span><span class="o">.</span><span class="n">r2r</span><span class="p">()</span> <span class="o">@</span> <span class="n">lta2</span><span class="o">.</span><span class="n">r2r</span><span class="p">())</span>
         <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">printoptions</span><span class="p">(</span><span class="n">precision</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">suppress</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Decompose into Rot · Shear · diag(Scales) + Trans:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Rot =&quot;</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s2">&quot;rotation&quot;</span><span class="p">])</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">RotVec   = </span><span class="si">{</span><span class="n">d</span><span class="p">[</span><span class="s1">&#39;rot_vec&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">  (rad)&quot;</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;RotAngle = </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s1">&#39;rot_angle_deg&#39;</span><span class="p">])</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2"> rad  = </span><span class="si">{</span><span class="n">d</span><span class="p">[</span><span class="s1">&#39;rot_angle_deg&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2"> deg&quot;</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Shear =&quot;</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s2">&quot;shear&quot;</span><span class="p">])</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Scales   = </span><span class="si">{</span><span class="n">d</span><span class="p">[</span><span class="s1">&#39;scales&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Trans    = </span><span class="si">{</span><span class="n">d</span><span class="p">[</span><span class="s1">&#39;translation&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;AbsTrans = </span><span class="si">{</span><span class="n">d</span><span class="p">[</span><span class="s1">&#39;abs_trans&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2"> mm&quot;</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Determinant = </span><span class="si">{</span><span class="n">d</span><span class="p">[</span><span class="s1">&#39;determinant&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Decompose into Rot · Shear · diag(Scales) + Trans:</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">"Rot ="</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s2">"rotation"</span><span class="p">])</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">RotVec   = </span><span class="si">{</span><span class="n">d</span><span class="p">[</span><span class="s1">'rot_vec'</span><span class="p">]</span><span class="si">}</span><span class="s2">  (rad)"</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"RotAngle = </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s1">'rot_angle_deg'</span><span class="p">])</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2"> rad  = </span><span class="si">{</span><span class="n">d</span><span class="p">[</span><span class="s1">'rot_angle_deg'</span><span class="p">]</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2"> deg"</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Shear ="</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s2">"shear"</span><span class="p">])</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Scales   = </span><span class="si">{</span><span class="n">d</span><span class="p">[</span><span class="s1">'scales'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Trans    = </span><span class="si">{</span><span class="n">d</span><span class="p">[</span><span class="s1">'translation'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"AbsTrans = </span><span class="si">{</span><span class="n">d</span><span class="p">[</span><span class="s1">'abs_trans'</span><span class="p">]</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2"> mm"</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Determinant = </span><span class="si">{</span><span class="n">d</span><span class="p">[</span><span class="s1">'determinant'</span><span class="p">]</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
 
 <span class="c1"># ── parser ────────────────────────────────────────────────────────────────────</span>
@@ -348,171 +348,171 @@
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_build_parser</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">:</span>
     <span class="n">p</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span>
-        <span class="n">prog</span><span class="o">=</span><span class="s2">&quot;lta&quot;</span><span class="p">,</span>
-        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;LTA transform manipulation utilities.&quot;</span><span class="p">,</span>
+        <span class="n">prog</span><span class="o">=</span><span class="s2">"lta"</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">"LTA transform manipulation utilities."</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">sub</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">add_subparsers</span><span class="p">(</span><span class="n">dest</span><span class="o">=</span><span class="s2">&quot;command&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;COMMAND&quot;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">sub</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">add_subparsers</span><span class="p">(</span><span class="n">dest</span><span class="o">=</span><span class="s2">"command"</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"COMMAND"</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
     <span class="c1"># ── diff ──────────────────────────────────────────────────────────────────</span>
     <span class="n">diff_p</span> <span class="o">=</span> <span class="n">sub</span><span class="o">.</span><span class="n">add_parser</span><span class="p">(</span>
-        <span class="s2">&quot;diff&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Compute a distance metric between two LTAs, or one vs identity.&quot;</span><span class="p">,</span>
+        <span class="s2">"diff"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Compute a distance metric between two LTAs, or one vs identity."</span><span class="p">,</span>
         <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">RawDescriptionHelpFormatter</span><span class="p">,</span>
         <span class="n">description</span><span class="o">=</span><span class="p">(</span>
-            <span class="s2">&quot;Compute distance metrics between two LTA transforms, or between</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;one transform and identity.</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;All metrics operate on the RAS-to-RAS representation of the stored</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;transforms (vox-to-vox LTAs are converted automatically).</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;Distance types:</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;  1   Rigid transform distance  sqrt(||log R||² + ||T||²)</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;      D = inv(M1) @ M2  (or M1 vs identity)</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;      R = upper-left 3×3 rotation block of D</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;      T = upper-right 3×1 translation column of D</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;      Units: mixed (mm and rad added in quadrature)</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;  2   Affine RMS distance (Jenkinson 1999)  [default]</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;      sqrt(r²/5 · Tr(AᵀA) + ‖T‖²),  D = M1 − M2  (or M1 − I)</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;      A = upper-left 3×3 of D; r = --radius (default 100 mm)</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;      T = upper-right 3×1 translation column of D</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;      Units: mm (RMS displacement over a sphere of radius r)</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;  3   8-corner mean displacement (mm, image-specific)</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;      One transform:  mean‖M1·c − c‖ for each src corner c in RAS.</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;      Two transforms: mean‖M1·c − M2·c‖  (same src corners).</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;  4   Max displacement on a sphere of radius r (mm, image-independent)</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;      Md = inv(M1) @ M2  (or M1 vs identity)</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;      displacement(p) = ‖Md·p − p‖  over ~1600 sphere samples</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;  5   Determinant  det(M1)  (or det(M1 @ M2) = det(M1)*det(M2) when M2 given)</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;      Uses matrix concatenation (not the difference); det is order-independent.</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;  7   Polar decomposition of M1 (or M1 @ M2, i.e. concatenation):</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;      prints Rot, RotVec, RotAngle, Shear, Scales, Trans, abs(Trans), det</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">"Compute distance metrics between two LTA transforms, or between</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"one transform and identity.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"All metrics operate on the RAS-to-RAS representation of the stored</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"transforms (vox-to-vox LTAs are converted automatically).</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"Distance types:</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"  1   Rigid transform distance  sqrt(||log R||² + ||T||²)</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"      D = inv(M1) @ M2  (or M1 vs identity)</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"      R = upper-left 3×3 rotation block of D</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"      T = upper-right 3×1 translation column of D</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"      Units: mixed (mm and rad added in quadrature)</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"  2   Affine RMS distance (Jenkinson 1999)  [default]</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"      sqrt(r²/5 · Tr(AᵀA) + ‖T‖²),  D = M1 − M2  (or M1 − I)</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"      A = upper-left 3×3 of D; r = --radius (default 100 mm)</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"      T = upper-right 3×1 translation column of D</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"      Units: mm (RMS displacement over a sphere of radius r)</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"  3   8-corner mean displacement (mm, image-specific)</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"      One transform:  mean‖M1·c − c‖ for each src corner c in RAS.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"      Two transforms: mean‖M1·c − M2·c‖  (same src corners).</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"  4   Max displacement on a sphere of radius r (mm, image-independent)</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"      Md = inv(M1) @ M2  (or M1 vs identity)</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"      displacement(p) = ‖Md·p − p‖  over ~1600 sphere samples</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"  5   Determinant  det(M1)  (or det(M1 @ M2) = det(M1)*det(M2) when M2 given)</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"      Uses matrix concatenation (not the difference); det is order-independent.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"  7   Polar decomposition of M1 (or M1 @ M2, i.e. concatenation):</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"      prints Rot, RotVec, RotAngle, Shear, Scales, Trans, abs(Trans), det</span><span class="se">\n</span><span class="s2">"</span>
         <span class="p">),</span>
     <span class="p">)</span>
-    <span class="n">diff_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;lta1&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;LTA1&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;First (or only) LTA transform file.&quot;</span><span class="p">)</span>
+    <span class="n">diff_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"lta1"</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"LTA1"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"First (or only) LTA transform file."</span><span class="p">)</span>
     <span class="n">diff_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;lta2&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;LTA2&quot;</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="s2">&quot;?&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Second LTA file.  Omit to compare LTA1 against identity.&quot;</span>
+        <span class="s2">"lta2"</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"LTA2"</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="s2">"?"</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Second LTA file.  Omit to compare LTA1 against identity."</span>
     <span class="p">)</span>
     <span class="n">diff_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--dist&quot;</span><span class="p">,</span>
+        <span class="s2">"--dist"</span><span class="p">,</span>
         <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
         <span class="n">default</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
         <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">],</span>
-        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;{1,2,3,4,5,7}&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Distance type (default: 2).&quot;</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"{1,2,3,4,5,7}"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Distance type (default: 2)."</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">diff_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--radius&quot;</span><span class="p">,</span>
+        <span class="s2">"--radius"</span><span class="p">,</span>
         <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
         <span class="n">default</span><span class="o">=</span><span class="mf">100.0</span><span class="p">,</span>
-        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;MM&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Sphere / RMS radius in mm (dist 2 and 4, default: 100).&quot;</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"MM"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Sphere / RMS radius in mm (dist 2 and 4, default: 100)."</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">diff_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--normdiv&quot;</span><span class="p">,</span>
+        <span class="s2">"--normdiv"</span><span class="p">,</span>
         <span class="nb">type</span><span class="o">=</span><span class="n">_positive_float</span><span class="p">,</span>
         <span class="n">default</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
-        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FLOAT&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Divide the final distance by this value (must be &gt; 0, default: 1).&quot;</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"FLOAT"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Divide the final distance by this value (must be &gt; 0, default: 1)."</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">diff_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--invert1&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Invert the first transform before comparison.&quot;</span><span class="p">)</span>
-    <span class="n">diff_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--invert2&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Invert the second transform before comparison.&quot;</span><span class="p">)</span>
+    <span class="n">diff_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--invert1"</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">"store_true"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Invert the first transform before comparison."</span><span class="p">)</span>
+    <span class="n">diff_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--invert2"</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">"store_true"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Invert the second transform before comparison."</span><span class="p">)</span>
 
     <span class="c1"># ── invert ────────────────────────────────────────────────────────────────</span>
     <span class="n">inv_p</span> <span class="o">=</span> <span class="n">sub</span><span class="o">.</span><span class="n">add_parser</span><span class="p">(</span>
-        <span class="s2">&quot;invert&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Invert an LTA transform and write it to a new file.&quot;</span><span class="p">,</span>
+        <span class="s2">"invert"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Invert an LTA transform and write it to a new file."</span><span class="p">,</span>
         <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">RawDescriptionHelpFormatter</span><span class="p">,</span>
         <span class="n">description</span><span class="o">=</span><span class="p">(</span>
-            <span class="s2">&quot;Invert a FreeSurfer LTA transform.</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;The output is always stored as LINEAR_RAS_TO_RAS (type 1)</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;with src and dst geometry blocks swapped.&quot;</span>
+            <span class="s2">"Invert a FreeSurfer LTA transform.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"The output is always stored as LINEAR_RAS_TO_RAS (type 1)</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"with src and dst geometry blocks swapped."</span>
         <span class="p">),</span>
     <span class="p">)</span>
-    <span class="n">inv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;input&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;INPUT&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Input LTA file.&quot;</span><span class="p">)</span>
-    <span class="n">inv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;OUTPUT&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Output (inverted) LTA file.&quot;</span><span class="p">)</span>
+    <span class="n">inv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"input"</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"INPUT"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Input LTA file."</span><span class="p">)</span>
+    <span class="n">inv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"output"</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"OUTPUT"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Output (inverted) LTA file."</span><span class="p">)</span>
 
     <span class="c1"># ── concat ────────────────────────────────────────────────────────────────</span>
     <span class="n">cat_p</span> <span class="o">=</span> <span class="n">sub</span><span class="o">.</span><span class="n">add_parser</span><span class="p">(</span>
-        <span class="s2">&quot;concat&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Concatenate two LTAs (A→B then B→C) into one (A→C).&quot;</span><span class="p">,</span>
+        <span class="s2">"concat"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Concatenate two LTAs (A→B then B→C) into one (A→C)."</span><span class="p">,</span>
         <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">RawDescriptionHelpFormatter</span><span class="p">,</span>
         <span class="n">description</span><span class="o">=</span><span class="p">(</span>
-            <span class="s2">&quot;Concatenate two LTA transforms.</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;LTA1 maps A → B and LTA2 maps B → C.</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;The output maps A → C with matrix  M_LTA2 @ M_LTA1.</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;src geometry is taken from LTA1; dst geometry from LTA2.</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;Equivalent to FreeSurfer&#39;s mri_concatenate_lta.&quot;</span>
+            <span class="s2">"Concatenate two LTA transforms.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"LTA1 maps A → B and LTA2 maps B → C.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"The output maps A → C with matrix  M_LTA2 @ M_LTA1.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"src geometry is taken from LTA1; dst geometry from LTA2.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"Equivalent to FreeSurfer's mri_concatenate_lta."</span>
         <span class="p">),</span>
     <span class="p">)</span>
-    <span class="n">cat_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;lta1&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;LTA1&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;First transform  (A → B).&quot;</span><span class="p">)</span>
-    <span class="n">cat_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;lta2&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;LTA2&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Second transform (B → C).&quot;</span><span class="p">)</span>
-    <span class="n">cat_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;OUTPUT&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Output LTA file  (A → C).&quot;</span><span class="p">)</span>
+    <span class="n">cat_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"lta1"</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"LTA1"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"First transform  (A → B)."</span><span class="p">)</span>
+    <span class="n">cat_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"lta2"</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"LTA2"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Second transform (B → C)."</span><span class="p">)</span>
+    <span class="n">cat_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"output"</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"OUTPUT"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Output LTA file  (A → C)."</span><span class="p">)</span>
 
     <span class="c1"># ── convert ───────────────────────────────────────────────────────────────</span>
     <span class="n">conv_p</span> <span class="o">=</span> <span class="n">sub</span><span class="o">.</span><span class="n">add_parser</span><span class="p">(</span>
-        <span class="s2">&quot;convert&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Convert between LTA, XFM, FSL, ITK/ANTs, ANTs .mat, AFNI, NiftyReg, and register.dat transforms.&quot;</span><span class="p">,</span>
+        <span class="s2">"convert"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Convert between LTA, XFM, FSL, ITK/ANTs, ANTs .mat, AFNI, NiftyReg, and register.dat transforms."</span><span class="p">,</span>
         <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">RawDescriptionHelpFormatter</span><span class="p">,</span>
         <span class="n">description</span><span class="o">=</span><span class="p">(</span>
-            <span class="s2">&quot;Convert between FreeSurfer-adjacent linear transform formats.</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;Supported formats are usually inferred from file suffixes:</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;  .lta  FreeSurfer Linear Transform Array</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;  .xfm  MNI/MINC linear transform</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;  .mat/.fslmat  FSL FLIRT affine matrix</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;  .dat/.reg  tkregister volumetric register.dat format</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;  .tfm  ITK/ANTs 3D affine text transform</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;  </span><span class="se">\\</span><span class="s2">*GenericAffine.mat  experimental ANTs / ITK Matlab affine</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;  .aff12.1D  experimental AFNI affine text matrix</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;  .niftyreg.txt  NiftyReg 3D affine text matrix</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;Use --in-format/--out-format for ambiguous text outputs such as .txt, .1D, or .mat.</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;FSL and register.dat conversion require both --src-img and --dst-img</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;because the stored matrices depend on image geometry rather than being</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;plain scanner-RAS affines. ITK/ANTs text affines, experimental ANTs .mat,</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;experimental AFNI affine text, and NiftyReg affine text matrices are</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;scanner-space transforms and can be read without images, though</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;--src-img/--dst-img still enrich the resulting LTA geometry blocks.</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;ANTs .mat support is currently based on SciPy + ITK Matlab IO semantics</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;and should be considered experimental until validated on real files.</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;AFNI support currently targets affine text matrices in DICOM/LPS</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;coordinates and should likewise be considered experimental.</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;NiftyReg affine text matrices store the inverse target-to-source RAS matrix.&quot;</span>
+            <span class="s2">"Convert between FreeSurfer-adjacent linear transform formats.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"Supported formats are usually inferred from file suffixes:</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"  .lta  FreeSurfer Linear Transform Array</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"  .xfm  MNI/MINC linear transform</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"  .mat/.fslmat  FSL FLIRT affine matrix</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"  .dat/.reg  tkregister volumetric register.dat format</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"  .tfm  ITK/ANTs 3D affine text transform</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"  </span><span class="se">\\</span><span class="s2">*GenericAffine.mat  experimental ANTs / ITK Matlab affine</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"  .aff12.1D  experimental AFNI affine text matrix</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"  .niftyreg.txt  NiftyReg 3D affine text matrix</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"Use --in-format/--out-format for ambiguous text outputs such as .txt, .1D, or .mat.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"FSL and register.dat conversion require both --src-img and --dst-img</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"because the stored matrices depend on image geometry rather than being</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"plain scanner-RAS affines. ITK/ANTs text affines, experimental ANTs .mat,</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"experimental AFNI affine text, and NiftyReg affine text matrices are</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"scanner-space transforms and can be read without images, though</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"--src-img/--dst-img still enrich the resulting LTA geometry blocks.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"ANTs .mat support is currently based on SciPy + ITK Matlab IO semantics</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"and should be considered experimental until validated on real files.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"AFNI support currently targets affine text matrices in DICOM/LPS</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"coordinates and should likewise be considered experimental.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"NiftyReg affine text matrices store the inverse target-to-source RAS matrix."</span>
         <span class="p">),</span>
     <span class="p">)</span>
-    <span class="n">conv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;input&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;INPUT&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Input transform file.&quot;</span><span class="p">)</span>
-    <span class="n">conv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;output&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;OUTPUT&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Output transform file.&quot;</span><span class="p">)</span>
+    <span class="n">conv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"input"</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"INPUT"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Input transform file."</span><span class="p">)</span>
+    <span class="n">conv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"output"</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"OUTPUT"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Output transform file."</span><span class="p">)</span>
     <span class="n">conv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--in-format&quot;</span><span class="p">,</span>
+        <span class="s2">"--in-format"</span><span class="p">,</span>
         <span class="n">choices</span><span class="o">=</span><span class="n">TRANSFORM_FORMATS</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Override input format inference for ambiguous files.&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Override input format inference for ambiguous files."</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">conv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--out-format&quot;</span><span class="p">,</span>
+        <span class="s2">"--out-format"</span><span class="p">,</span>
         <span class="n">choices</span><span class="o">=</span><span class="n">TRANSFORM_FORMATS</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Override output format inference for ambiguous files.&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Override output format inference for ambiguous files."</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">conv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--src-img&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Moving/source image geometry for conversion when needed.&quot;</span><span class="p">)</span>
-    <span class="n">conv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--dst-img&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Reference/target image geometry for conversion when needed.&quot;</span><span class="p">)</span>
+    <span class="n">conv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--src-img"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Moving/source image geometry for conversion when needed."</span><span class="p">)</span>
+    <span class="n">conv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--dst-img"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Reference/target image geometry for conversion when needed."</span><span class="p">)</span>
     <span class="n">conv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--out-type&quot;</span><span class="p">,</span>
-        <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ras2ras&quot;</span><span class="p">,</span> <span class="s2">&quot;vox2vox&quot;</span><span class="p">],</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Output LTA storage type when OUTPUT ends in .lta (default: preserve the input LTA storage type).&quot;</span><span class="p">,</span>
+        <span class="s2">"--out-type"</span><span class="p">,</span>
+        <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">"ras2ras"</span><span class="p">,</span> <span class="s2">"vox2vox"</span><span class="p">],</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Output LTA storage type when OUTPUT ends in .lta (default: preserve the input LTA storage type)."</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">conv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--subject&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Subject metadata to store when writing .lta or register.dat.&quot;</span><span class="p">)</span>
+    <span class="n">conv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--subject"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Subject metadata to store when writing .lta or register.dat."</span><span class="p">)</span>
     <span class="n">conv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--fscale&quot;</span><span class="p">,</span>
+        <span class="s2">"--fscale"</span><span class="p">,</span>
         <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Intensity/fscale metadata to store when writing .lta or register.dat.&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Intensity/fscale metadata to store when writing .lta or register.dat."</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">conv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--float2int&quot;</span><span class="p">,</span>
-        <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;tkregister&quot;</span><span class="p">,</span> <span class="s2">&quot;round&quot;</span><span class="p">,</span> <span class="s2">&quot;floor&quot;</span><span class="p">],</span>
-        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;round&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Float-to-int footer when writing register.dat (default: round).&quot;</span><span class="p">,</span>
+        <span class="s2">"--float2int"</span><span class="p">,</span>
+        <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">"tkregister"</span><span class="p">,</span> <span class="s2">"round"</span><span class="p">,</span> <span class="s2">"floor"</span><span class="p">],</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">"round"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Float-to-int footer when writing register.dat (default: round)."</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="k">return</span> <span class="n">p</span>
@@ -523,12 +523,12 @@
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_main_diff</span><span class="p">(</span><span class="n">parser</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">,</span> <span class="n">ns</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">invert2</span> <span class="ow">and</span> <span class="n">ns</span><span class="o">.</span><span class="n">lta2</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;lta diff: --invert2 requires a second LTA file.&quot;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"lta diff: --invert2 requires a second LTA file."</span><span class="p">)</span>
 
     <span class="k">try</span><span class="p">:</span>
         <span class="n">lta1</span> <span class="o">=</span> <span class="n">LTA</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">lta1</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ERROR: cannot read </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">lta1</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ERROR: cannot read </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">lta1</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
         <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 
     <span class="n">lta2</span> <span class="o">=</span> <span class="kc">None</span>
@@ -536,10 +536,10 @@
         <span class="k">try</span><span class="p">:</span>
             <span class="n">lta2</span> <span class="o">=</span> <span class="n">LTA</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">lta2</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ERROR: cannot read </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">lta2</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ERROR: cannot read </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">lta2</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
             <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 
-    <span class="n">ltas</span> <span class="o">=</span> <span class="p">[(</span><span class="n">lta1</span><span class="p">,</span> <span class="s2">&quot;LTA1&quot;</span><span class="p">)]</span> <span class="o">+</span> <span class="p">([(</span><span class="n">lta2</span><span class="p">,</span> <span class="s2">&quot;LTA2&quot;</span><span class="p">)]</span> <span class="k">if</span> <span class="n">lta2</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[])</span>
+    <span class="n">ltas</span> <span class="o">=</span> <span class="p">[(</span><span class="n">lta1</span><span class="p">,</span> <span class="s2">"LTA1"</span><span class="p">)]</span> <span class="o">+</span> <span class="p">([(</span><span class="n">lta2</span><span class="p">,</span> <span class="s2">"LTA2"</span><span class="p">)]</span> <span class="k">if</span> <span class="n">lta2</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[])</span>
     <span class="k">for</span> <span class="n">lta</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">ltas</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">_needs_vol_info</span><span class="p">(</span><span class="n">lta</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">dist</span><span class="p">):</span>
             <span class="n">_check_vol_info</span><span class="p">(</span><span class="n">parser</span><span class="p">,</span> <span class="n">lta</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
@@ -552,7 +552,7 @@
     <span class="k">try</span><span class="p">:</span>
         <span class="n">_run_dist</span><span class="p">(</span><span class="n">ns</span><span class="p">,</span> <span class="n">lta1</span><span class="p">,</span> <span class="n">lta2</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ERROR: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ERROR: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
         <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 
 
@@ -560,13 +560,13 @@
     <span class="k">try</span><span class="p">:</span>
         <span class="n">lta</span> <span class="o">=</span> <span class="n">LTA</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">input</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ERROR: cannot read </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">input</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ERROR: cannot read </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">input</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
         <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 
     <span class="k">try</span><span class="p">:</span>
         <span class="n">lta</span><span class="o">.</span><span class="n">invert</span><span class="p">()</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">output</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ERROR: cannot write </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">output</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ERROR: cannot write </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">output</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
         <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 
 
@@ -574,19 +574,19 @@
     <span class="k">try</span><span class="p">:</span>
         <span class="n">lta1</span> <span class="o">=</span> <span class="n">LTA</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">lta1</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ERROR: cannot read </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">lta1</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ERROR: cannot read </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">lta1</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
         <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 
     <span class="k">try</span><span class="p">:</span>
         <span class="n">lta2</span> <span class="o">=</span> <span class="n">LTA</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">lta2</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ERROR: cannot read </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">lta2</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ERROR: cannot read </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">lta2</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
         <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 
     <span class="k">try</span><span class="p">:</span>
         <span class="n">lta1</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">lta2</span><span class="p">)</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">output</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ERROR: cannot write </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">output</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ERROR: cannot write </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">output</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
         <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 
 
@@ -594,7 +594,7 @@
     <span class="k">try</span><span class="p">:</span>
         <span class="n">lta</span> <span class="o">=</span> <span class="n">read_transform_as_lta</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">input</span><span class="p">,</span> <span class="n">src_img</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">src_img</span><span class="p">,</span> <span class="n">dst_img</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">dst_img</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">in_format</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ERROR: cannot read </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">input</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ERROR: cannot read </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">input</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
         <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 
     <span class="k">try</span><span class="p">:</span>
@@ -608,7 +608,7 @@
             <span class="n">float2int</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">float2int</span><span class="p">,</span>
         <span class="p">)</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ERROR: cannot write </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">output</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ERROR: cannot write </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">output</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
         <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 
 
@@ -618,22 +618,22 @@
 <div class="viewcode-block" id="main">
 <a class="viewcode-back" href="../../../api/cli.html#neuroreg.cli.lta.main">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Entry point for the ``lta`` command.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Entry point for the ``lta`` command."""</span>
     <span class="n">parser</span> <span class="o">=</span> <span class="n">_build_parser</span><span class="p">()</span>
     <span class="n">ns</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
 
-    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">command</span> <span class="o">==</span> <span class="s2">&quot;diff&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">command</span> <span class="o">==</span> <span class="s2">"diff"</span><span class="p">:</span>
         <span class="n">_main_diff</span><span class="p">(</span><span class="n">parser</span><span class="p">,</span> <span class="n">ns</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">command</span> <span class="o">==</span> <span class="s2">&quot;invert&quot;</span><span class="p">:</span>
+    <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">command</span> <span class="o">==</span> <span class="s2">"invert"</span><span class="p">:</span>
         <span class="n">_main_invert</span><span class="p">(</span><span class="n">ns</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">command</span> <span class="o">==</span> <span class="s2">&quot;concat&quot;</span><span class="p">:</span>
+    <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">command</span> <span class="o">==</span> <span class="s2">"concat"</span><span class="p">:</span>
         <span class="n">_main_concat</span><span class="p">(</span><span class="n">ns</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">command</span> <span class="o">==</span> <span class="s2">&quot;convert&quot;</span><span class="p">:</span>
+    <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">command</span> <span class="o">==</span> <span class="s2">"convert"</span><span class="p">:</span>
         <span class="n">_main_convert</span><span class="p">(</span><span class="n">ns</span><span class="p">)</span></div>
 
 
 
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
     <span class="n">main</span><span class="p">()</span>
 </pre></div>
         </article>

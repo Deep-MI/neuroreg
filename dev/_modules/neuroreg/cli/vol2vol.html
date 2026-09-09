@@ -241,7 +241,7 @@
         <article role="main" id="furo-main-content">
           <h1>Source code for neuroreg.cli.vol2vol</h1><div class="highlight"><pre>
 <span></span><span class="ch">#!/usr/bin/env python3</span>
-<span class="sd">&quot;&quot;&quot;Command-line image mapping and reslicing utility.&quot;&quot;&quot;</span>
+<span class="sd">"""Command-line image mapping and reslicing utility."""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -253,6 +253,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..image</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">check_dtype_storable</span><span class="p">,</span>
     <span class="n">clip_and_cast_dtype</span><span class="p">,</span>
     <span class="n">create_image_like</span><span class="p">,</span>
     <span class="n">header_map_image</span><span class="p">,</span>
@@ -261,10 +262,11 @@
     <span class="n">save_image</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..transforms</span><span class="w"> </span><span class="kn">import</span> <span class="n">TRANSFORM_FORMATS</span><span class="p">,</span> <span class="n">affine_from_volume_info</span><span class="p">,</span> <span class="n">read_transform_as_lta</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._outputs</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_image_outputs</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_parse_pad</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parse a padding argument as a named mode or numeric constant.</span>
+<span class="w">    </span><span class="sd">"""Parse a padding argument as a named mode or numeric constant.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -274,27 +276,27 @@
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    str or float</span>
-<span class="sd">        One of ``&quot;zero&quot;``, ``&quot;border&quot;``, ``&quot;reflection&quot;``, ``&quot;brightest&quot;``,</span>
+<span class="sd">        One of ``"zero"``, ``"border"``, ``"reflection"``, ``"brightest"``,</span>
 <span class="sd">        or a numeric constant.</span>
 
 <span class="sd">    Raises</span>
 <span class="sd">    ------</span>
 <span class="sd">    argparse.ArgumentTypeError</span>
 <span class="sd">        If the argument is neither a supported named mode nor a valid float.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">lowered</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
-    <span class="k">if</span> <span class="n">lowered</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;zero&quot;</span><span class="p">,</span> <span class="s2">&quot;border&quot;</span><span class="p">,</span> <span class="s2">&quot;reflection&quot;</span><span class="p">,</span> <span class="s2">&quot;brightest&quot;</span><span class="p">}:</span>
+    <span class="k">if</span> <span class="n">lowered</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">"zero"</span><span class="p">,</span> <span class="s2">"border"</span><span class="p">,</span> <span class="s2">"reflection"</span><span class="p">,</span> <span class="s2">"brightest"</span><span class="p">}:</span>
         <span class="k">return</span> <span class="n">lowered</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentTypeError</span><span class="p">(</span>
-            <span class="s2">&quot;--pad must be one of zero, border, reflection, brightest, or a numeric constant&quot;</span>
+            <span class="s2">"--pad must be one of zero, border, reflection, brightest, or a numeric constant"</span>
         <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_parse_out_dtype</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Normalize an output-dtype argument to a NumPy dtype name.</span>
+<span class="w">    </span><span class="sd">"""Normalize an output-dtype argument to a NumPy dtype name.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -304,156 +306,176 @@
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    str</span>
-<span class="sd">        Normalized dtype name or the literal string ``&quot;input&quot;``.</span>
+<span class="sd">        Normalized dtype name or the literal string ``"input"``.</span>
 
 <span class="sd">    Raises</span>
 <span class="sd">    ------</span>
 <span class="sd">    argparse.ArgumentTypeError</span>
 <span class="sd">        If the argument cannot be resolved to a supported dtype.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">lowered</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
-    <span class="k">if</span> <span class="n">lowered</span> <span class="o">==</span> <span class="s2">&quot;input&quot;</span><span class="p">:</span>
-        <span class="k">return</span> <span class="s2">&quot;input&quot;</span>
+    <span class="k">if</span> <span class="n">lowered</span> <span class="o">==</span> <span class="s2">"input"</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">"input"</span>
     <span class="n">aliases</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s2">&quot;uchar&quot;</span><span class="p">:</span> <span class="s2">&quot;uint8&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;short&quot;</span><span class="p">:</span> <span class="s2">&quot;int16&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;int&quot;</span><span class="p">:</span> <span class="s2">&quot;int32&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;float&quot;</span><span class="p">:</span> <span class="s2">&quot;float32&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;double&quot;</span><span class="p">:</span> <span class="s2">&quot;float64&quot;</span><span class="p">,</span>
+        <span class="s2">"uchar"</span><span class="p">:</span> <span class="s2">"uint8"</span><span class="p">,</span>
+        <span class="s2">"short"</span><span class="p">:</span> <span class="s2">"int16"</span><span class="p">,</span>
+        <span class="s2">"int"</span><span class="p">:</span> <span class="s2">"int32"</span><span class="p">,</span>
+        <span class="s2">"float"</span><span class="p">:</span> <span class="s2">"float32"</span><span class="p">,</span>
+        <span class="s2">"double"</span><span class="p">:</span> <span class="s2">"float64"</span><span class="p">,</span>
     <span class="p">}</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="n">aliases</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">lowered</span><span class="p">,</span> <span class="n">lowered</span><span class="p">))</span><span class="o">.</span><span class="n">name</span>
     <span class="k">except</span> <span class="ne">TypeError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentTypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported output dtype </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2">.&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+        <span class="k">raise</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentTypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Unsupported output dtype </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2">."</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_build_parser</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build the argument parser for the ``vol2vol`` command.</span>
+<span class="w">    </span><span class="sd">"""Build the argument parser for the ``vol2vol`` command.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    argparse.ArgumentParser</span>
 <span class="sd">        Configured CLI parser.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span>
-        <span class="n">prog</span><span class="o">=</span><span class="s2">&quot;vol2vol&quot;</span><span class="p">,</span>
+        <span class="n">prog</span><span class="o">=</span><span class="s2">"vol2vol"</span><span class="p">,</span>
         <span class="n">description</span><span class="o">=</span><span class="p">(</span>
-            <span class="s2">&quot;Apply a linear transform to an image, reslice into a target geometry,</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;or update the header only. This is the project-native analogue of</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;FreeSurfer&#39;s mri_vol2vol for linear transforms.</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;With no --transform and no --ref the image is read and written as-is</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;(no mapping or reslicing); the output format is taken from the --out</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;file extension, so this converts between any formats nibabel supports</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;(e.g. .mgz, .nii, .nii.gz, .img/.hdr). The dtype/scaling flags also</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;apply on the native grid without reslicing. To mask a volume, use</span><span class="se">\n</span><span class="s2">&quot;</span>
-            <span class="s2">&quot;&#39;mri mask&#39;.&quot;</span>
+            <span class="s2">"Apply a linear transform to an image, reslice into a target geometry,</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"or update the header only. This is the project-native analogue of</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"FreeSurfer's mri_vol2vol for linear transforms.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"With no --transform and no --ref the image is read and written as-is</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"(no mapping or reslicing); the output format is taken from the --out</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"file extension, so this converts between any formats nibabel supports</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"(e.g. .mgz, .nii, .nii.gz, .img/.hdr). The dtype/scaling flags also</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"apply on the native grid without reslicing. To mask a volume, use</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"'mri mask'."</span>
         <span class="p">),</span>
         <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentDefaultsHelpFormatter</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--in&quot;</span><span class="p">,</span> <span class="s2">&quot;--i&quot;</span><span class="p">,</span> <span class="s2">&quot;--mov&quot;</span><span class="p">,</span>
-        <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;input_file&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FILE&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Input (moving) image.&quot;</span>
+        <span class="s2">"--in"</span><span class="p">,</span> <span class="s2">"--i"</span><span class="p">,</span> <span class="s2">"--mov"</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">"input_file"</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"FILE"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Input (moving) image."</span>
     <span class="p">)</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--transform&quot;</span><span class="p">,</span> <span class="s2">&quot;--lta&quot;</span><span class="p">,</span>
-        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FILE&quot;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;transform&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Optional linear transform to apply (any format: .lta, .xfm, FSL .mat, …).&quot;</span><span class="p">,</span>
+        <span class="s2">"--transform"</span><span class="p">,</span>
+        <span class="s2">"--lta"</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"FILE"</span><span class="p">,</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s2">"transform"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Optional linear transform to apply (any format: .lta, .xfm, FSL .mat, …)."</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--transform-format&quot;</span><span class="p">,</span>
+        <span class="s2">"--transform-format"</span><span class="p">,</span>
         <span class="n">choices</span><span class="o">=</span><span class="n">TRANSFORM_FORMATS</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Override transform format inference for ambiguous files such as .txt or .mat.&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Override transform format inference for ambiguous files such as .txt or .mat."</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--ref&quot;</span><span class="p">,</span> <span class="s2">&quot;--targ&quot;</span><span class="p">,</span>
-        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FILE&quot;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;ref&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Optional target/reference image geometry. Overrides geometry stored in the transform.&quot;</span><span class="p">,</span>
+        <span class="s2">"--ref"</span><span class="p">,</span>
+        <span class="s2">"--targ"</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"FILE"</span><span class="p">,</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s2">"ref"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Optional target/reference image geometry. Overrides geometry stored in the transform."</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--out&quot;</span><span class="p">,</span> <span class="s2">&quot;--o&quot;</span><span class="p">,</span>
-        <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FILE&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Output image filename. The extension selects the output format (any nibabel format).&quot;</span><span class="p">,</span>
+        <span class="s2">"--out"</span><span class="p">,</span>
+        <span class="s2">"--o"</span><span class="p">,</span>
+        <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"FILE"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Output image filename. The extension selects the output format and is required."</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">interp_group</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">add_mutually_exclusive_group</span><span class="p">()</span>
     <span class="n">interp_group</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--interp&quot;</span><span class="p">,</span>
-        <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span> <span class="s2">&quot;cubic&quot;</span><span class="p">,</span> <span class="s2">&quot;nearest&quot;</span><span class="p">],</span>
-        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Interpolation mode for resampled output.&quot;</span><span class="p">,</span>
+        <span class="s2">"--interp"</span><span class="p">,</span>
+        <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">"linear"</span><span class="p">,</span> <span class="s2">"cubic"</span><span class="p">,</span> <span class="s2">"nearest"</span><span class="p">],</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">"linear"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Interpolation mode for resampled output."</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">interp_group</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--trilin&quot;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;interp&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_const&quot;</span><span class="p">,</span> <span class="n">const</span><span class="o">=</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Trilinear interpolation. Alias for --interp linear.&quot;</span><span class="p">,</span>
+        <span class="s2">"--trilin"</span><span class="p">,</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s2">"interp"</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">"store_const"</span><span class="p">,</span>
+        <span class="n">const</span><span class="o">=</span><span class="s2">"linear"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Trilinear interpolation. Alias for --interp linear."</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">interp_group</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--nearest&quot;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;interp&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_const&quot;</span><span class="p">,</span> <span class="n">const</span><span class="o">=</span><span class="s2">&quot;nearest&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Nearest-neighbour interpolation. Alias for --interp nearest.&quot;</span><span class="p">,</span>
+        <span class="s2">"--nearest"</span><span class="p">,</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s2">"interp"</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">"store_const"</span><span class="p">,</span>
+        <span class="n">const</span><span class="o">=</span><span class="s2">"nearest"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Nearest-neighbour interpolation. Alias for --interp nearest."</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">interp_group</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--cubic&quot;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;interp&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_const&quot;</span><span class="p">,</span> <span class="n">const</span><span class="o">=</span><span class="s2">&quot;cubic&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Cubic interpolation. Alias for --interp cubic.&quot;</span><span class="p">,</span>
+        <span class="s2">"--cubic"</span><span class="p">,</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s2">"interp"</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">"store_const"</span><span class="p">,</span>
+        <span class="n">const</span><span class="o">=</span><span class="s2">"cubic"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Cubic interpolation. Alias for --interp cubic."</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--pad&quot;</span><span class="p">,</span>
+        <span class="s2">"--pad"</span><span class="p">,</span>
         <span class="nb">type</span><span class="o">=</span><span class="n">_parse_pad</span><span class="p">,</span>
-        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;zero&quot;</span><span class="p">,</span>
-        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;MODE|VALUE&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Out-of-bounds padding: zero, border, reflection, brightest, or a numeric constant.&quot;</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">"zero"</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"MODE|VALUE"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Out-of-bounds padding: zero, border, reflection, brightest, or a numeric constant."</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--header-only&quot;</span><span class="p">,</span> <span class="s2">&quot;--no-resample&quot;</span><span class="p">,</span>
-        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;header_only&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Apply the transform to the header only and skip interpolation.&quot;</span><span class="p">,</span>
+        <span class="s2">"--header-only"</span><span class="p">,</span>
+        <span class="s2">"--no-resample"</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">"store_true"</span><span class="p">,</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s2">"header_only"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Apply the transform to the header only and skip interpolation."</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--inverse&quot;</span><span class="p">,</span> <span class="s2">&quot;--inv&quot;</span><span class="p">,</span>
-        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;inverse&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Apply the inverse of the supplied transform.&quot;</span><span class="p">,</span>
+        <span class="s2">"--inverse"</span><span class="p">,</span>
+        <span class="s2">"--inv"</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">"store_true"</span><span class="p">,</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s2">"inverse"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Apply the inverse of the supplied transform."</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">dtype_group</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">add_mutually_exclusive_group</span><span class="p">()</span>
     <span class="n">dtype_group</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--out-dtype&quot;</span><span class="p">,</span>
+        <span class="s2">"--out-dtype"</span><span class="p">,</span>
         <span class="nb">type</span><span class="o">=</span><span class="n">_parse_out_dtype</span><span class="p">,</span>
-        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;DTYPE&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Explicit final output dtype, or &#39;input&#39; to preserve the moving-image dtype.&quot;</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"DTYPE"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Explicit final output dtype, or 'input' to preserve the moving-image dtype."</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">dtype_group</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--keep-dtype&quot;</span><span class="p">,</span> <span class="s2">&quot;--keep-precision&quot;</span><span class="p">,</span>
-        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;keep_dtype&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Write output in the moving-image dtype. Equivalent to --out-dtype input.&quot;</span><span class="p">,</span>
+        <span class="s2">"--keep-dtype"</span><span class="p">,</span>
+        <span class="s2">"--keep-precision"</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">"store_true"</span><span class="p">,</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s2">"keep_dtype"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Write output in the moving-image dtype. Equivalent to --out-dtype input."</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--scale-mode&quot;</span><span class="p">,</span>
-        <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;clamp&quot;</span><span class="p">,</span> <span class="s2">&quot;rescale&quot;</span><span class="p">,</span> <span class="s2">&quot;robust&quot;</span><span class="p">],</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Optional final intensity policy before dtype conversion.&quot;</span><span class="p">,</span>
+        <span class="s2">"--scale-mode"</span><span class="p">,</span>
+        <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">"clamp"</span><span class="p">,</span> <span class="s2">"rescale"</span><span class="p">,</span> <span class="s2">"robust"</span><span class="p">],</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Optional final intensity policy before dtype conversion."</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--target-max&quot;</span><span class="p">,</span>
+        <span class="s2">"--target-max"</span><span class="p">,</span>
         <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Upper target value for zero-anchored rescale or robust-rescale output.&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Upper target value for zero-anchored rescale or robust-rescale output."</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--robust-low&quot;</span><span class="p">,</span>
+        <span class="s2">"--robust-low"</span><span class="p">,</span>
         <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
         <span class="n">default</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
-        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FRAC&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Lower robust quantile used to trim the source intensity distribution.&quot;</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"FRAC"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Lower robust quantile used to trim the source intensity distribution."</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">&quot;--robust-high&quot;</span><span class="p">,</span>
+        <span class="s2">"--robust-high"</span><span class="p">,</span>
         <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
         <span class="n">default</span><span class="o">=</span><span class="mf">0.999</span><span class="p">,</span>
-        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;FRAC&quot;</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Upper robust quantile used to estimate the source intensity ceiling.&quot;</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"FRAC"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Upper robust quantile used to estimate the source intensity ceiling."</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--verbose&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Enable INFO-level logging.&quot;</span><span class="p">)</span>
-    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--debug&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Enable DEBUG-level logging.&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--verbose"</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">"store_true"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Enable INFO-level logging."</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--debug"</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">"store_true"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Enable DEBUG-level logging."</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">parser</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_validate_args</span><span class="p">(</span><span class="n">ns</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">,</span> <span class="n">parser</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate cross-argument constraints for the mapping CLI.</span>
+<span class="w">    </span><span class="sd">"""Validate cross-argument constraints for the mapping CLI.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -472,33 +494,33 @@
 <span class="sd">    SystemExit</span>
 <span class="sd">        Raised indirectly via :meth:`argparse.ArgumentParser.error` when the</span>
 <span class="sd">        argument combination is invalid.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">transform_format</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">ns</span><span class="o">.</span><span class="n">transform</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;--transform-format requires --transform.&quot;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--transform-format requires --transform."</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">header_only</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">interp</span> <span class="o">!=</span> <span class="s2">&quot;linear&quot;</span><span class="p">:</span>
-            <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;--header-only cannot be combined with --interp.&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">pad</span> <span class="o">!=</span> <span class="s2">&quot;zero&quot;</span><span class="p">:</span>
-            <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;--header-only cannot be combined with --pad.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">interp</span> <span class="o">!=</span> <span class="s2">"linear"</span><span class="p">:</span>
+            <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--header-only cannot be combined with --interp."</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">pad</span> <span class="o">!=</span> <span class="s2">"zero"</span><span class="p">:</span>
+            <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--header-only cannot be combined with --pad."</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">out_dtype</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">ns</span><span class="o">.</span><span class="n">keep_dtype</span><span class="p">:</span>
-            <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;--header-only cannot be combined with output-dtype flags.&quot;</span><span class="p">)</span>
+            <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--header-only cannot be combined with output-dtype flags."</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">scale_mode</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">ns</span><span class="o">.</span><span class="n">target_max</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;--header-only cannot be combined with scaling flags.&quot;</span><span class="p">)</span>
+            <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--header-only cannot be combined with scaling flags."</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">robust_low</span> <span class="o">!=</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">ns</span><span class="o">.</span><span class="n">robust_high</span> <span class="o">!=</span> <span class="mf">0.999</span><span class="p">:</span>
-            <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;--header-only cannot be combined with robust scaling flags.&quot;</span><span class="p">)</span>
+            <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--header-only cannot be combined with robust scaling flags."</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">scale_mode</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">target_max</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;--target-max requires --scale-mode rescale or --scale-mode robust.&quot;</span><span class="p">)</span>
+            <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--target-max requires --scale-mode rescale or --scale-mode robust."</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">robust_low</span> <span class="o">!=</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">ns</span><span class="o">.</span><span class="n">robust_high</span> <span class="o">!=</span> <span class="mf">0.999</span><span class="p">:</span>
-            <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;--robust-low and --robust-high require --scale-mode robust.&quot;</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">scale_mode</span> <span class="o">!=</span> <span class="s2">&quot;robust&quot;</span> <span class="ow">and</span> <span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">robust_low</span> <span class="o">!=</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">ns</span><span class="o">.</span><span class="n">robust_high</span> <span class="o">!=</span> <span class="mf">0.999</span><span class="p">):</span>
-        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;--robust-low and --robust-high require --scale-mode robust.&quot;</span><span class="p">)</span>
+            <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--robust-low and --robust-high require --scale-mode robust."</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">scale_mode</span> <span class="o">!=</span> <span class="s2">"robust"</span> <span class="ow">and</span> <span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">robust_low</span> <span class="o">!=</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">ns</span><span class="o">.</span><span class="n">robust_high</span> <span class="o">!=</span> <span class="mf">0.999</span><span class="p">):</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--robust-low and --robust-high require --scale-mode robust."</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">ns</span><span class="o">.</span><span class="n">robust_low</span> <span class="o">&lt;=</span> <span class="n">ns</span><span class="o">.</span><span class="n">robust_high</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">:</span>
-        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;--robust-low and --robust-high must satisfy 0 &lt;= low &lt;= high &lt;= 1.&quot;</span><span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--robust-low and --robust-high must satisfy 0 &lt;= low &lt;= high &lt;= 1."</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_target_dtype</span><span class="p">(</span><span class="n">ns</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">,</span> <span class="n">source_dtype</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve the final output dtype requested by the user.</span>
+<span class="w">    </span><span class="sd">"""Resolve the final output dtype requested by the user.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -512,12 +534,12 @@
 <span class="sd">    np.dtype or None</span>
 <span class="sd">        Requested output dtype, or ``None`` when no explicit conversion was</span>
 <span class="sd">        requested.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">keep_dtype</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">source_dtype</span>
     <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">out_dtype</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="kc">None</span>
-    <span class="k">return</span> <span class="n">source_dtype</span> <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">out_dtype</span> <span class="o">==</span> <span class="s2">&quot;input&quot;</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">out_dtype</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">source_dtype</span> <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">out_dtype</span> <span class="o">==</span> <span class="s2">"input"</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">out_dtype</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_target_geometry</span><span class="p">(</span>
@@ -525,7 +547,7 @@
     <span class="n">ref_img</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">effective_lta</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve the target affine and shape for resampled output.</span>
+<span class="w">    </span><span class="sd">"""Resolve the target affine and shape for resampled output.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -546,18 +568,18 @@
 <span class="sd">    ------</span>
 <span class="sd">    ValueError</span>
 <span class="sd">        If no valid target geometry can be resolved.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="n">ref_img</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">ref_img</span><span class="o">.</span><span class="n">affine</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ref_img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">3</span><span class="p">])</span>
     <span class="k">if</span> <span class="n">effective_lta</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mov_img</span><span class="o">.</span><span class="n">affine</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">mov_img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">3</span><span class="p">])</span>
     <span class="n">info</span> <span class="o">=</span> <span class="n">effective_lta</span><span class="o">.</span><span class="n">dst</span>
     <span class="n">affine</span> <span class="o">=</span> <span class="n">affine_from_volume_info</span><span class="p">(</span><span class="n">info</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">affine</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">info</span><span class="p">[</span><span class="s2">&quot;volume&quot;</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">affine</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">info</span><span class="p">[</span><span class="s2">"volume"</span><span class="p">])</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_padding</span><span class="p">(</span><span class="n">pad</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="n">mov_img</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve CLI padding configuration to mapping-helper arguments.</span>
+<span class="w">    </span><span class="sd">"""Resolve CLI padding configuration to mapping-helper arguments.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -571,21 +593,21 @@
 <span class="sd">    tuple[str, float | None]</span>
 <span class="sd">        Padding mode for the shared mapping helpers and optional constant fill</span>
 <span class="sd">        value.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pad</span><span class="p">,</span> <span class="nb">float</span><span class="p">):</span>
-        <span class="k">return</span> <span class="s2">&quot;zeros&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">pad</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">pad</span> <span class="o">==</span> <span class="s2">&quot;zero&quot;</span><span class="p">:</span>
-        <span class="k">return</span> <span class="s2">&quot;zeros&quot;</span><span class="p">,</span> <span class="kc">None</span>
-    <span class="k">if</span> <span class="n">pad</span> <span class="o">==</span> <span class="s2">&quot;brightest&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">"zeros"</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">pad</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">pad</span> <span class="o">==</span> <span class="s2">"zero"</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">"zeros"</span><span class="p">,</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">pad</span> <span class="o">==</span> <span class="s2">"brightest"</span><span class="p">:</span>
         <span class="n">image_max</span> <span class="o">=</span> <span class="n">_finite_max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mov_img</span><span class="o">.</span><span class="n">dataobj</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span>
         <span class="k">if</span> <span class="n">image_max</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;--pad brightest requires at least one finite source intensity.&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="s2">&quot;zeros&quot;</span><span class="p">,</span> <span class="n">image_max</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"--pad brightest requires at least one finite source intensity."</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s2">"zeros"</span><span class="p">,</span> <span class="n">image_max</span>
     <span class="k">return</span> <span class="n">pad</span><span class="p">,</span> <span class="kc">None</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_infer_target_max</span><span class="p">(</span><span class="n">target_dtype</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Infer a sensible zero-anchored target maximum from an output dtype.</span>
+<span class="w">    </span><span class="sd">"""Infer a sensible zero-anchored target maximum from an output dtype.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -596,7 +618,7 @@
 <span class="sd">    -------</span>
 <span class="sd">    float or None</span>
 <span class="sd">        Inferred upper bound, or ``None`` when no obvious default exists.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="n">target_dtype</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="kc">None</span>
     <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">target_dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">bool_</span><span class="p">):</span>
@@ -607,7 +629,7 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_finite_max</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">positive_only</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the maximum finite value, optionally restricted to positives.</span>
+<span class="w">    </span><span class="sd">"""Return the maximum finite value, optionally restricted to positives.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -622,7 +644,7 @@
 <span class="sd">    float or None</span>
 <span class="sd">        Maximum finite value satisfying the requested filter, or ``None`` when</span>
 <span class="sd">        no such value exists.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
     <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">positive_only</span><span class="p">:</span>
@@ -633,7 +655,7 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_robust_upper_bound</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">low</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">high</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Estimate a robust positive upper bound for zero-anchored rescaling.</span>
+<span class="w">    </span><span class="sd">"""Estimate a robust positive upper bound for zero-anchored rescaling.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -649,7 +671,7 @@
 <span class="sd">    float</span>
 <span class="sd">        Robust upper bound. Returns ``0.0`` when the image has no positive</span>
 <span class="sd">        finite intensities.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">positive</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
     <span class="n">positive</span> <span class="o">=</span> <span class="n">positive</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">positive</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">positive</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)]</span>
     <span class="k">if</span> <span class="n">positive</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
@@ -671,7 +693,7 @@
     <span class="n">robust_low</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
     <span class="n">robust_high</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply final dtype conversion and optional intensity scaling.</span>
+<span class="w">    </span><span class="sd">"""Apply final dtype conversion and optional intensity scaling.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -683,7 +705,7 @@
 <span class="sd">    target_dtype : np.dtype or None</span>
 <span class="sd">        Requested output dtype. When ``None``, the mapped image is returned</span>
 <span class="sd">        unchanged unless scaling is requested.</span>
-<span class="sd">    scale_mode : {&#39;clamp&#39;, &#39;rescale&#39;, &#39;robust&#39;} or None</span>
+<span class="sd">    scale_mode : {'clamp', 'rescale', 'robust'} or None</span>
 <span class="sd">        Optional output intensity policy.</span>
 <span class="sd">    target_max : float or None</span>
 <span class="sd">        Requested zero-anchored output maximum.</span>
@@ -702,31 +724,31 @@
 <span class="sd">    ValueError</span>
 <span class="sd">        If the scaling request is inconsistent with the available dtype or</span>
 <span class="sd">        target-range information.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">effective_mode</span> <span class="o">=</span> <span class="n">scale_mode</span>
     <span class="k">if</span> <span class="p">(</span>
         <span class="n">effective_mode</span> <span class="ow">is</span> <span class="kc">None</span>
         <span class="ow">and</span> <span class="n">target_dtype</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
         <span class="ow">and</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">target_dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">bool_</span><span class="p">)</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">target_dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">))</span>
     <span class="p">):</span>
-        <span class="n">effective_mode</span> <span class="o">=</span> <span class="s2">&quot;clamp&quot;</span>
-    <span class="k">if</span> <span class="n">effective_mode</span> <span class="o">==</span> <span class="s2">&quot;clamp&quot;</span> <span class="ow">and</span> <span class="n">target_dtype</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;scale_mode=&#39;clamp&#39; requires --out-dtype or --keep-dtype.&quot;</span><span class="p">)</span>
+        <span class="n">effective_mode</span> <span class="o">=</span> <span class="s2">"clamp"</span>
+    <span class="k">if</span> <span class="n">effective_mode</span> <span class="o">==</span> <span class="s2">"clamp"</span> <span class="ow">and</span> <span class="n">target_dtype</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"scale_mode='clamp' requires --out-dtype or --keep-dtype."</span><span class="p">)</span>
 
     <span class="n">resolved_target_max</span> <span class="o">=</span> <span class="n">target_max</span> <span class="k">if</span> <span class="n">target_max</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">_infer_target_max</span><span class="p">(</span><span class="n">target_dtype</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">effective_mode</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;rescale&quot;</span><span class="p">,</span> <span class="s2">&quot;robust&quot;</span><span class="p">}</span> <span class="ow">and</span> <span class="n">resolved_target_max</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;rescale and robust scaling require --target-max or an integer/bool output dtype.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">effective_mode</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">"rescale"</span><span class="p">,</span> <span class="s2">"robust"</span><span class="p">}</span> <span class="ow">and</span> <span class="n">resolved_target_max</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"rescale and robust scaling require --target-max or an integer/bool output dtype."</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">effective_mode</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">target_dtype</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">mapped_img</span>
 
-    <span class="n">working_dtype</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span> <span class="k">if</span> <span class="n">effective_mode</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;rescale&quot;</span><span class="p">,</span> <span class="s2">&quot;robust&quot;</span><span class="p">}</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span>
+    <span class="n">working_dtype</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span> <span class="k">if</span> <span class="n">effective_mode</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">"rescale"</span><span class="p">,</span> <span class="s2">"robust"</span><span class="p">}</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span>
     <span class="n">mapped_np</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mapped_img</span><span class="o">.</span><span class="n">dataobj</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">working_dtype</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">effective_mode</span> <span class="o">==</span> <span class="s2">&quot;rescale&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">effective_mode</span> <span class="o">==</span> <span class="s2">"rescale"</span><span class="p">:</span>
         <span class="n">source_upper</span> <span class="o">=</span> <span class="n">_finite_max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">source_img</span><span class="o">.</span><span class="n">dataobj</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">positive_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="n">scale</span> <span class="o">=</span> <span class="mf">0.0</span> <span class="k">if</span> <span class="n">source_upper</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">source_upper</span> <span class="o">&lt;=</span> <span class="mf">0.0</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">resolved_target_max</span><span class="p">)</span> <span class="o">/</span> <span class="n">source_upper</span>
         <span class="n">mapped_np</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">mapped_np</span> <span class="o">*</span> <span class="n">scale</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">resolved_target_max</span><span class="p">))</span>
-    <span class="k">elif</span> <span class="n">effective_mode</span> <span class="o">==</span> <span class="s2">&quot;robust&quot;</span><span class="p">:</span>
+    <span class="k">elif</span> <span class="n">effective_mode</span> <span class="o">==</span> <span class="s2">"robust"</span><span class="p">:</span>
         <span class="n">source_upper</span> <span class="o">=</span> <span class="n">_robust_upper_bound</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">source_img</span><span class="o">.</span><span class="n">dataobj</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">robust_low</span><span class="p">,</span> <span class="n">robust_high</span><span class="p">)</span>
         <span class="n">scale</span> <span class="o">=</span> <span class="mf">0.0</span> <span class="k">if</span> <span class="n">source_upper</span> <span class="o">&lt;=</span> <span class="mf">0.0</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">resolved_target_max</span><span class="p">)</span> <span class="o">/</span> <span class="n">source_upper</span>
         <span class="n">mapped_np</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">mapped_np</span> <span class="o">*</span> <span class="n">scale</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">resolved_target_max</span><span class="p">))</span>
@@ -740,7 +762,7 @@
 <div class="viewcode-block" id="main">
 <a class="viewcode-back" href="../../../api/cli.html#neuroreg.cli.vol2vol.main">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Entry point for the ``vol2vol`` command-line interface.</span>
+<span class="w">    </span><span class="sd">"""Entry point for the ``vol2vol`` command-line interface.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -759,14 +781,15 @@
 <span class="sd">    SystemExit</span>
 <span class="sd">        If argument parsing fails, required geometry is unavailable, or image /</span>
 <span class="sd">        transform loading or writing raises an exception.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">parser</span> <span class="o">=</span> <span class="n">_build_parser</span><span class="p">()</span>
     <span class="n">ns</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+    <span class="n">validate_image_outputs</span><span class="p">(</span><span class="n">parser</span><span class="p">,</span> <span class="n">ns</span><span class="p">,</span> <span class="s2">"out"</span><span class="p">)</span>
     <span class="n">_validate_args</span><span class="p">(</span><span class="n">ns</span><span class="p">,</span> <span class="n">parser</span><span class="p">)</span>
 
     <span class="n">level</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span> <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">debug</span> <span class="k">else</span> <span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span> <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">verbose</span> <span class="k">else</span> <span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span><span class="p">)</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">level</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%(levelname)s</span><span class="s2"> </span><span class="si">%(name)s</span><span class="s2">: </span><span class="si">%(message)s</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;neuroreg.cli.vol2vol&quot;</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">level</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">"</span><span class="si">%(levelname)s</span><span class="s2"> </span><span class="si">%(name)s</span><span class="s2">: </span><span class="si">%(message)s</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">"neuroreg.cli.vol2vol"</span><span class="p">)</span>
 
     <span class="k">try</span><span class="p">:</span>
         <span class="n">mov_img</span> <span class="o">=</span> <span class="n">load_image</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">input_file</span><span class="p">)</span>
@@ -784,6 +807,10 @@
         <span class="n">effective_lta</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">lta</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">(</span><span class="n">lta</span><span class="o">.</span><span class="n">invert</span><span class="p">()</span> <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">inverse</span> <span class="k">else</span> <span class="n">lta</span><span class="p">)</span>
         <span class="n">r2r</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span> <span class="k">if</span> <span class="n">effective_lta</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">effective_lta</span><span class="o">.</span><span class="n">r2r</span><span class="p">()</span>
         <span class="n">target_dtype</span> <span class="o">=</span> <span class="n">_resolve_target_dtype</span><span class="p">(</span><span class="n">ns</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="n">mov_img</span><span class="o">.</span><span class="n">get_data_dtype</span><span class="p">()))</span>
+        <span class="k">if</span> <span class="n">target_dtype</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># --out-dtype/--keep-dtype name a type explicitly; refuse rather than</span>
+            <span class="c1"># write a different one than was asked for.</span>
+            <span class="n">check_dtype_storable</span><span class="p">(</span><span class="n">target_dtype</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">header_only</span><span class="p">:</span>
             <span class="n">mapped_img</span> <span class="o">=</span> <span class="n">header_map_image</span><span class="p">(</span><span class="n">mov_img</span><span class="p">,</span> <span class="n">r2r</span><span class="p">)</span>
         <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">transform</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">ns</span><span class="o">.</span><span class="n">ref</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -826,15 +853,15 @@
             <span class="p">)</span>
         <span class="n">save_image</span><span class="p">(</span><span class="n">mapped_img</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;vol2vol failed&quot;</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ERROR: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"vol2vol failed"</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ERROR: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
         <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Output: </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Output: </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span></div>
 
 
 
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
     <span class="n">main</span><span class="p">()</span>
 </pre></div>
         </article>

@@ -240,12 +240,12 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for neuroreg.segreg.centroids</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Centroid extraction and matching helpers for label images.</span>
+<span></span><span class="sd">"""Centroid extraction and matching helpers for label images.</span>
 
 <span class="sd">These utilities keep image loading, centroid computation, and shared-label</span>
 <span class="sd">assembly in one place so higher-level registration code can focus on transform</span>
 <span class="sd">estimation rather than segmentation bookkeeping.</span>
-<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">"""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -262,7 +262,7 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_label_ids</span><span class="p">(</span><span class="n">seg_data</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">],</span> <span class="n">label_ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve the segmentation labels that should be processed.</span>
+<span class="w">    </span><span class="sd">"""Resolve the segmentation labels that should be processed.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -276,7 +276,7 @@
 <span class="sd">    -------</span>
 <span class="sd">    list[int]</span>
 <span class="sd">        Label IDs to include in centroid extraction.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="n">label_ids</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">seg_data</span><span class="p">)</span>
         <span class="n">labels</span> <span class="o">=</span> <span class="n">labels</span><span class="p">[</span><span class="n">labels</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
@@ -290,7 +290,7 @@
     <span class="n">seg_img</span><span class="p">:</span> <span class="n">ImageLike</span><span class="p">,</span>
     <span class="n">label_ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute voxel-space centroids for labels in a segmentation image.</span>
+<span class="w">    </span><span class="sd">"""Compute voxel-space centroids for labels in a segmentation image.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -305,7 +305,7 @@
 <span class="sd">    dict[int, np.ndarray or None]</span>
 <span class="sd">        Mapping from label ID to centroid in voxel coordinates. Labels with no</span>
 <span class="sd">        matching voxels are assigned ``None``.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">image</span> <span class="o">=</span> <span class="n">load_image</span><span class="p">(</span><span class="n">seg_img</span><span class="p">)</span>
     <span class="n">seg_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">dataobj</span><span class="p">)</span>
     <span class="n">labels</span> <span class="o">=</span> <span class="n">_resolve_label_ids</span><span class="p">(</span><span class="n">seg_data</span><span class="p">,</span> <span class="n">label_ids</span><span class="p">)</span>
@@ -324,7 +324,7 @@
     <span class="n">seg_img</span><span class="p">:</span> <span class="n">ImageLike</span><span class="p">,</span>
     <span class="n">label_ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute scanner-RAS centroids for labels in a segmentation image.</span>
+<span class="w">    </span><span class="sd">"""Compute scanner-RAS centroids for labels in a segmentation image.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -339,7 +339,7 @@
 <span class="sd">    dict[int, np.ndarray or None]</span>
 <span class="sd">        Mapping from label ID to centroid in scanner-RAS coordinates. Labels</span>
 <span class="sd">        with no matching voxels are assigned ``None``.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">image</span> <span class="o">=</span> <span class="n">load_image</span><span class="p">(</span><span class="n">seg_img</span><span class="p">)</span>
     <span class="n">voxel_centroids</span> <span class="o">=</span> <span class="n">compute_voxel_centroids_from_seg</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">label_ids</span><span class="o">=</span><span class="n">label_ids</span><span class="p">)</span>
     <span class="n">affine</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">affine</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
@@ -363,7 +363,7 @@
     <span class="o">*</span><span class="p">,</span>
     <span class="n">min_common_labels</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">],</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Collect matched centroid arrays for labels present in both inputs.</span>
+<span class="w">    </span><span class="sd">"""Collect matched centroid arrays for labels present in both inputs.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -387,7 +387,7 @@
 <span class="sd">    ------</span>
 <span class="sd">    ValueError</span>
 <span class="sd">        If fewer than ``min_common_labels`` valid correspondences are found.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span>
         <span class="n">label</span>
         <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">mov_point</span> <span class="ow">in</span> <span class="n">mov_centroids</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
@@ -397,7 +397,7 @@
 
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">min_common_labels</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;Need at least </span><span class="si">{</span><span class="n">min_common_labels</span><span class="si">}</span><span class="s2"> shared labels, but found only </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">labels</span><span class="si">}</span><span class="s2">.&quot;</span>
+            <span class="sa">f</span><span class="s2">"Need at least </span><span class="si">{</span><span class="n">min_common_labels</span><span class="si">}</span><span class="s2"> shared labels, but found only </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">labels</span><span class="si">}</span><span class="s2">."</span>
         <span class="p">)</span>
 
     <span class="n">mov_points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mov_centroids</span><span class="p">[</span><span class="n">label</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span> <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">labels</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
@@ -415,7 +415,7 @@
     <span class="n">mid_slice</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
     <span class="n">min_common_labels</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">],</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build paired voxel centroids for left-right flipped self-registration.</span>
+<span class="w">    </span><span class="sd">"""Build paired voxel centroids for left-right flipped self-registration.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -441,7 +441,7 @@
 <span class="sd">    ------</span>
 <span class="sd">    ValueError</span>
 <span class="sd">        If fewer than ``min_common_labels`` mirrored correspondences are found.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">source_points</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">target_points</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">labels</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
@@ -466,7 +466,7 @@
 
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">min_common_labels</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;Need at least </span><span class="si">{</span><span class="n">min_common_labels</span><span class="si">}</span><span class="s2"> flipped label correspondences, but found only </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span><span class="si">}</span><span class="s2"> labels.&quot;</span>
+            <span class="sa">f</span><span class="s2">"Need at least </span><span class="si">{</span><span class="n">min_common_labels</span><span class="si">}</span><span class="s2"> flipped label correspondences, but found only </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span><span class="si">}</span><span class="s2"> labels."</span>
         <span class="p">)</span>
 
     <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">source_points</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">target_points</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="n">labels</span></div>

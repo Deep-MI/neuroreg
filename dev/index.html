@@ -998,9 +998,9 @@ Selector flags print only the requested value(s), one per line, for scripting.</
 mri<span class="w"> </span>info<span class="w"> </span>orig.mgz
 
 <span class="c1"># Scriptable single fields</span>
-mri<span class="w"> </span>info<span class="w"> </span>orig.mgz<span class="w"> </span>--dim<span class="w">          </span><span class="c1"># e.g. &quot;256 256 256&quot;</span>
-mri<span class="w"> </span>info<span class="w"> </span>orig.mgz<span class="w"> </span>--res<span class="w">          </span><span class="c1"># e.g. &quot;1.000000 1.000000 1.000000&quot;</span>
-mri<span class="w"> </span>info<span class="w"> </span>orig.mgz<span class="w"> </span>--orientation<span class="w">  </span><span class="c1"># e.g. &quot;LIA&quot;</span>
+mri<span class="w"> </span>info<span class="w"> </span>orig.mgz<span class="w"> </span>--dim<span class="w">          </span><span class="c1"># e.g. "256 256 256"</span>
+mri<span class="w"> </span>info<span class="w"> </span>orig.mgz<span class="w"> </span>--res<span class="w">          </span><span class="c1"># e.g. "1.000000 1.000000 1.000000"</span>
+mri<span class="w"> </span>info<span class="w"> </span>orig.mgz<span class="w"> </span>--orientation<span class="w">  </span><span class="c1"># e.g. "LIA"</span>
 </pre></div>
 </div>
 </section>
@@ -1106,7 +1106,7 @@ are not performed.</p>
 </div>
 <p><strong>Examples</strong></p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Quick equality check (use the exit code in scripts)</span>
-mri<span class="w"> </span>diff<span class="w"> </span>a.mgz<span class="w"> </span>b.mgz<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;identical&quot;</span>
+mri<span class="w"> </span>diff<span class="w"> </span>a.mgz<span class="w"> </span>b.mgz<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"identical"</span>
 
 <span class="c1"># Tolerant comparison with a differing-voxel count</span>
 mri<span class="w"> </span>diff<span class="w"> </span>a.mgz<span class="w"> </span>b.mgz<span class="w"> </span>--thresh<span class="w"> </span>1e-4<span class="w"> </span>--count
@@ -1511,49 +1511,49 @@ known bug in the C++ single-transform corner metric, which is fixed here).</p></
 <span class="c1"># Public robust image-to-image registration (IRLS-backed).</span>
 <span class="c1"># Intended for same-/similar-contrast pairs; symmetric mode is the default.</span>
 <span class="c1"># On Apple MPS, this path currently warns and falls back to CPU.</span>
-<span class="n">transform_robreg</span> <span class="o">=</span> <span class="n">robreg</span><span class="p">(</span><span class="s2">&quot;T1_repeat.nii.gz&quot;</span><span class="p">,</span> <span class="s2">&quot;T1_baseline.mgz&quot;</span><span class="p">)</span>
+<span class="n">transform_robreg</span> <span class="o">=</span> <span class="n">robreg</span><span class="p">(</span><span class="s2">"T1_repeat.nii.gz"</span><span class="p">,</span> <span class="s2">"T1_baseline.mgz"</span><span class="p">)</span>
 
 <span class="c1"># The same public robreg path with pre-loaded nibabel images.</span>
-<span class="n">mov_img</span> <span class="o">=</span> <span class="n">nib</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;T1_repeat.nii.gz&quot;</span><span class="p">)</span>
-<span class="n">ref_img</span> <span class="o">=</span> <span class="n">nib</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;T1_baseline.mgz&quot;</span><span class="p">)</span>
+<span class="n">mov_img</span> <span class="o">=</span> <span class="n">nib</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">"T1_repeat.nii.gz"</span><span class="p">)</span>
+<span class="n">ref_img</span> <span class="o">=</span> <span class="n">nib</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">"T1_baseline.mgz"</span><span class="p">)</span>
 <span class="n">transform_robreg_loaded</span> <span class="o">=</span> <span class="n">robreg</span><span class="p">(</span><span class="n">mov_img</span><span class="p">,</span> <span class="n">ref_img</span><span class="p">)</span>
 
 <span class="c1"># Image-based cross-modal registration path for cases where no</span>
 <span class="c1"># white-matter surface or segmentation is available. By default this</span>
 <span class="c1"># uses the Powell-based MRI_coreg-style path.</span>
-<span class="n">transform_coreg</span> <span class="o">=</span> <span class="n">coreg</span><span class="p">(</span><span class="s2">&quot;T2.nii.gz&quot;</span><span class="p">,</span> <span class="s2">&quot;T1.mgz&quot;</span><span class="p">)</span>
+<span class="n">transform_coreg</span> <span class="o">=</span> <span class="n">coreg</span><span class="p">(</span><span class="s2">"T2.nii.gz"</span><span class="p">,</span> <span class="s2">"T1.mgz"</span><span class="p">)</span>
 
 <span class="c1"># Surface-based (BBR) registration — Mode A: subject directory</span>
 <span class="n">transform_bbreg</span> <span class="o">=</span> <span class="n">bbreg</span><span class="p">(</span>
-    <span class="n">mov</span><span class="o">=</span><span class="s2">&quot;fMRI.nii.gz&quot;</span><span class="p">,</span>
-    <span class="n">subject_dir</span><span class="o">=</span><span class="s2">&quot;/data/subjects/sub-01&quot;</span><span class="p">,</span>
-    <span class="n">lta_name</span><span class="o">=</span><span class="s2">&quot;fMRI_to_T1.lta&quot;</span><span class="p">,</span>
+    <span class="n">mov</span><span class="o">=</span><span class="s2">"fMRI.nii.gz"</span><span class="p">,</span>
+    <span class="n">subject_dir</span><span class="o">=</span><span class="s2">"/data/subjects/sub-01"</span><span class="p">,</span>
+    <span class="n">lta_name</span><span class="o">=</span><span class="s2">"fMRI_to_T1.lta"</span><span class="p">,</span>
     <span class="n">dof</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
 <span class="p">)</span>
 
 <span class="c1"># Surface-based (BBR) registration — Mode B: explicit surface files</span>
 <span class="n">transform_bbreg</span> <span class="o">=</span> <span class="n">bbreg</span><span class="p">(</span>
-    <span class="n">mov</span><span class="o">=</span><span class="s2">&quot;T2.nii.gz&quot;</span><span class="p">,</span>
-    <span class="n">lh_surf</span><span class="o">=</span><span class="s2">&quot;/data/subjects/sub-01/surf/lh.white&quot;</span><span class="p">,</span>
-    <span class="n">rh_surf</span><span class="o">=</span><span class="s2">&quot;/data/subjects/sub-01/surf/rh.white&quot;</span><span class="p">,</span>
-    <span class="n">lh_thickness</span><span class="o">=</span><span class="s2">&quot;/data/subjects/sub-01/surf/lh.thickness&quot;</span><span class="p">,</span>
-    <span class="n">rh_thickness</span><span class="o">=</span><span class="s2">&quot;/data/subjects/sub-01/surf/rh.thickness&quot;</span><span class="p">,</span>
-    <span class="n">ref</span><span class="o">=</span><span class="s2">&quot;/data/subjects/sub-01/mri/orig.mgz&quot;</span><span class="p">,</span>
-    <span class="n">lta_name</span><span class="o">=</span><span class="s2">&quot;T2_to_T1.lta&quot;</span><span class="p">,</span>
-    <span class="n">contrast</span><span class="o">=</span><span class="s2">&quot;t2&quot;</span><span class="p">,</span>
+    <span class="n">mov</span><span class="o">=</span><span class="s2">"T2.nii.gz"</span><span class="p">,</span>
+    <span class="n">lh_surf</span><span class="o">=</span><span class="s2">"/data/subjects/sub-01/surf/lh.white"</span><span class="p">,</span>
+    <span class="n">rh_surf</span><span class="o">=</span><span class="s2">"/data/subjects/sub-01/surf/rh.white"</span><span class="p">,</span>
+    <span class="n">lh_thickness</span><span class="o">=</span><span class="s2">"/data/subjects/sub-01/surf/lh.thickness"</span><span class="p">,</span>
+    <span class="n">rh_thickness</span><span class="o">=</span><span class="s2">"/data/subjects/sub-01/surf/rh.thickness"</span><span class="p">,</span>
+    <span class="n">ref</span><span class="o">=</span><span class="s2">"/data/subjects/sub-01/mri/orig.mgz"</span><span class="p">,</span>
+    <span class="n">lta_name</span><span class="o">=</span><span class="s2">"T2_to_T1.lta"</span><span class="p">,</span>
+    <span class="n">contrast</span><span class="o">=</span><span class="s2">"t2"</span><span class="p">,</span>
 <span class="p">)</span>
 
 <span class="c1"># Surface-based (BBR) registration — Mode C: segmentation (no surface files needed)</span>
 <span class="n">transform_bbreg</span> <span class="o">=</span> <span class="n">bbreg</span><span class="p">(</span>
-    <span class="n">mov</span><span class="o">=</span><span class="s2">&quot;fMRI.nii.gz&quot;</span><span class="p">,</span>
-    <span class="n">seg</span><span class="o">=</span><span class="s2">&quot;/data/subjects/sub-01/mri/aparc+aseg.mgz&quot;</span><span class="p">,</span>
-    <span class="n">lta_name</span><span class="o">=</span><span class="s2">&quot;fMRI_to_T1.lta&quot;</span><span class="p">,</span>
+    <span class="n">mov</span><span class="o">=</span><span class="s2">"fMRI.nii.gz"</span><span class="p">,</span>
+    <span class="n">seg</span><span class="o">=</span><span class="s2">"/data/subjects/sub-01/mri/aparc+aseg.mgz"</span><span class="p">,</span>
+    <span class="n">lta_name</span><span class="o">=</span><span class="s2">"fMRI_to_T1.lta"</span><span class="p">,</span>
 <span class="p">)</span>
 
 <span class="c1"># For debugging or inspection, request the fitted model explicitly.</span>
 <span class="n">transform_bbreg</span><span class="p">,</span> <span class="n">model_bbreg</span> <span class="o">=</span> <span class="n">bbreg</span><span class="p">(</span>
-    <span class="n">mov</span><span class="o">=</span><span class="s2">&quot;fMRI.nii.gz&quot;</span><span class="p">,</span>
-    <span class="n">subject_dir</span><span class="o">=</span><span class="s2">&quot;/data/subjects/sub-01&quot;</span><span class="p">,</span>
+    <span class="n">mov</span><span class="o">=</span><span class="s2">"fMRI.nii.gz"</span><span class="p">,</span>
+    <span class="n">subject_dir</span><span class="o">=</span><span class="s2">"/data/subjects/sub-01"</span><span class="p">,</span>
     <span class="n">return_model</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>

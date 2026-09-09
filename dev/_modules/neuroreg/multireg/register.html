@@ -240,7 +240,7 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for neuroreg.multireg.register</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Public orchestration for multi-timepoint registration.&quot;&quot;&quot;</span>
+<span></span><span class="sd">"""Public orchestration for multi-timepoint registration."""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -278,7 +278,7 @@
 
 <span class="nd">@dataclass</span><span class="p">(</span><span class="n">slots</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">MultiRegResult</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Outputs of the FreeSurfer-style multi-timepoint registration pipeline.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Outputs of the FreeSurfer-style multi-timepoint registration pipeline."""</span>
 
     <span class="n">template_image</span><span class="p">:</span> <span class="n">Any</span>
     <span class="n">transforms_r2r</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
@@ -291,7 +291,7 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_c_rand_choice</span><span class="p">(</span><span class="n">start</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">end</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Match FreeSurfer&#39;s libc-backed pseudo-random choice helper.</span>
+<span class="w">    </span><span class="sd">"""Match FreeSurfer's libc-backed pseudo-random choice helper.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -313,9 +313,9 @@
 <span class="sd">        If the platform C runtime cannot be loaded.</span>
 <span class="sd">    AttributeError</span>
 <span class="sd">        If the loaded C runtime does not expose ``srand`` or ``rand``.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;nt&quot;</span><span class="p">:</span>
-        <span class="n">libc</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">CDLL</span><span class="p">(</span><span class="s2">&quot;msvcrt&quot;</span><span class="p">)</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">"nt"</span><span class="p">:</span>
+        <span class="n">libc</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">CDLL</span><span class="p">(</span><span class="s2">"msvcrt"</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">libc</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">CDLL</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
     <span class="n">libc</span><span class="o">.</span><span class="n">srand</span><span class="o">.</span><span class="n">argtypes</span> <span class="o">=</span> <span class="p">[</span><span class="n">ctypes</span><span class="o">.</span><span class="n">c_uint</span><span class="p">]</span>
@@ -331,7 +331,7 @@
     <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
 <span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve precomputed LTAs into template geometry and RAS transforms.</span>
+<span class="w">    </span><span class="sd">"""Resolve precomputed LTAs into template geometry and RAS transforms.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -352,22 +352,22 @@
 <span class="sd">    ValueError</span>
 <span class="sd">        If ``init_ltas`` is empty or the LTAs do not share identical destination</span>
 <span class="sd">        geometry.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">loaded_ltas</span> <span class="o">=</span> <span class="p">[</span><span class="n">LTA</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">transform</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">transform</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="k">else</span> <span class="n">transform</span> <span class="k">for</span> <span class="n">transform</span> <span class="ow">in</span> <span class="n">init_ltas</span><span class="p">]</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">loaded_ltas</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;init_ltas must not be empty when provided.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"init_ltas must not be empty when provided."</span><span class="p">)</span>
     <span class="n">template_shape</span><span class="p">,</span> <span class="n">template_affine</span> <span class="o">=</span> <span class="n">template_geometry_from_lta</span><span class="p">(</span><span class="n">loaded_ltas</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
     <span class="n">transforms_r2r</span> <span class="o">=</span> <span class="p">[</span><span class="n">loaded_ltas</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">r2r</span><span class="p">()]</span>
     <span class="k">for</span> <span class="n">transform</span> <span class="ow">in</span> <span class="n">loaded_ltas</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
         <span class="n">current_shape</span><span class="p">,</span> <span class="n">current_affine</span> <span class="o">=</span> <span class="n">template_geometry_from_lta</span><span class="p">(</span><span class="n">transform</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">current_shape</span> <span class="o">!=</span> <span class="n">template_shape</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">current_affine</span><span class="p">,</span> <span class="n">template_affine</span><span class="p">,</span> <span class="n">atol</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;All init_ltas must share identical destination geometry.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"All init_ltas must share identical destination geometry."</span><span class="p">)</span>
         <span class="n">transforms_r2r</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">transform</span><span class="o">.</span><span class="n">r2r</span><span class="p">())</span>
     <span class="k">return</span> <span class="n">template_shape</span><span class="p">,</span> <span class="n">template_affine</span><span class="p">,</span> <span class="n">transforms_r2r</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_iterations</span><span class="p">(</span><span class="n">template_iterations</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">n_images</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve the requested number of global template-refinement iterations.</span>
+<span class="w">    </span><span class="sd">"""Resolve the requested number of global template-refinement iterations.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -386,14 +386,14 @@
 <span class="sd">    ------</span>
 <span class="sd">    ValueError</span>
 <span class="sd">        If ``template_iterations`` is negative.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="n">template_iterations</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">n_images</span> <span class="o">&lt;=</span> <span class="mi">2</span> <span class="k">else</span> <span class="mi">6</span>
     <span class="n">resolved</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">template_iterations</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">resolved</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;template_iterations must be &gt;= 0.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"template_iterations must be &gt;= 0."</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">n_images</span> <span class="o">&lt;=</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">resolved</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Skipping iterative template refinement because only two time points were provided.&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Skipping iterative template refinement because only two time points were provided."</span><span class="p">)</span>
         <span class="k">return</span> <span class="mi">0</span>
     <span class="k">return</span> <span class="n">resolved</span>
 
@@ -412,7 +412,7 @@
     <span class="n">fix_target</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
     <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build the initial common space from pairwise registrations.</span>
+<span class="w">    </span><span class="sd">"""Build the initial common space from pairwise registrations.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -454,14 +454,14 @@
 <span class="sd">    ------</span>
 <span class="sd">    ValueError</span>
 <span class="sd">        If the composed mean-space transform is measurably non-rigid.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">pairwise_r2r</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">images</span><span class="p">]</span>
     <span class="n">target_image</span> <span class="o">=</span> <span class="n">images</span><span class="p">[</span><span class="n">target_index</span><span class="p">]</span>
     <span class="n">target_mask</span> <span class="o">=</span> <span class="n">masks</span><span class="p">[</span><span class="n">target_index</span><span class="p">]</span>
     <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">mask</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">masks</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">False</span><span class="p">)):</span>
         <span class="k">if</span> <span class="n">index</span> <span class="o">==</span> <span class="n">target_index</span><span class="p">:</span>
             <span class="k">continue</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Registering TP </span><span class="si">%d</span><span class="s2"> to initial target TP </span><span class="si">%d</span><span class="s2">.&quot;</span><span class="p">,</span> <span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">target_index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Registering TP </span><span class="si">%d</span><span class="s2"> to initial target TP </span><span class="si">%d</span><span class="s2">."</span><span class="p">,</span> <span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">target_index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
         <span class="n">pairwise_result</span> <span class="o">=</span> <span class="n">robreg</span><span class="p">(</span>
             <span class="n">image</span><span class="p">,</span>
             <span class="n">target_image</span><span class="p">,</span>
@@ -476,7 +476,7 @@
             <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
             <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pairwise_result</span><span class="p">,</span> <span class="s2">&quot;detach&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pairwise_result</span><span class="p">,</span> <span class="s2">"detach"</span><span class="p">):</span>
             <span class="n">pairwise_r2r</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pairwise_result</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">pairwise_r2r</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pairwise_result</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
@@ -488,7 +488,7 @@
         <span class="p">)</span>
 
     <span class="n">target_to_each</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">matrix</span><span class="p">)</span> <span class="k">for</span> <span class="n">matrix</span> <span class="ow">in</span> <span class="n">pairwise_r2r</span><span class="p">]</span>
-    <span class="c1"># Build the unbiased mean space exactly as FreeSurfer&#39;s MultiRegistration:</span>
+    <span class="c1"># Build the unbiased mean space exactly as FreeSurfer's MultiRegistration:</span>
     <span class="c1"># average the translation parts arithmetically and average the rotation parts</span>
     <span class="c1"># via their axis-angle rotation vectors (log-Euclidean mean on SO(3)).</span>
     <span class="c1"># Averaging the rotation matrices directly and SVD-projecting (the previous</span>
@@ -516,11 +516,11 @@
     <span class="k">for</span> <span class="n">matrix</span> <span class="ow">in</span> <span class="n">pairwise_r2r</span><span class="p">:</span>
         <span class="n">combined</span> <span class="o">=</span> <span class="n">mean_space_from_target_r2r</span> <span class="o">@</span> <span class="n">matrix</span>
         <span class="n">projected</span> <span class="o">=</span> <span class="n">project_to_rotation</span><span class="p">(</span><span class="n">combined</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">])</span>
-        <span class="n">error</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">projected</span> <span class="o">-</span> <span class="n">combined</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">],</span> <span class="nb">ord</span><span class="o">=</span><span class="s2">&quot;fro&quot;</span><span class="p">)</span>
+        <span class="n">error</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">projected</span> <span class="o">-</span> <span class="n">combined</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">],</span> <span class="nb">ord</span><span class="o">=</span><span class="s2">"fro"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">error</span> <span class="o">&gt;</span> <span class="mf">1e-4</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="s2">&quot;Computed mean-space transform is not rigid after composition. &quot;</span>
-                <span class="s2">&quot;Make sure all inputs share identical voxel sizes.&quot;</span>
+                <span class="s2">"Computed mean-space transform is not rigid after composition. "</span>
+                <span class="s2">"Make sure all inputs share identical voxel sizes."</span>
             <span class="p">)</span>
         <span class="n">combined</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">projected</span>
         <span class="n">final_r2r</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">combined</span><span class="p">)</span>
@@ -528,7 +528,7 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">compute_seed</span><span class="p">(</span><span class="n">movables</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">ImageLike</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute the deterministic FreeSurfer-style seed from input intensities.</span>
+<span class="w">    </span><span class="sd">"""Compute the deterministic FreeSurfer-style seed from input intensities.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -544,13 +544,13 @@
 <span class="sd">    ------</span>
 <span class="sd">    ValueError</span>
 <span class="sd">        If fewer than two input images are provided.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">movables</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;multireg requires at least two input images.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"multireg requires at least two input images."</span><span class="p">)</span>
     <span class="n">images</span> <span class="o">=</span> <span class="p">[</span><span class="n">load_image</span><span class="p">(</span><span class="n">image</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="k">else</span> <span class="n">image</span> <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">movables</span><span class="p">]</span>
     <span class="n">dseed</span> <span class="o">=</span> <span class="mf">0.0</span>
     <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">images</span><span class="p">:</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="n">coerce_image_data_3d</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">dataobj</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;movable image&quot;</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">coerce_image_data_3d</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">dataobj</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s2">"movable image"</span><span class="p">)</span>
         <span class="n">x</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
         <span class="n">y</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
         <span class="n">z</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
@@ -579,7 +579,7 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">choose_initial_target</span><span class="p">(</span><span class="n">movables</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">ImageLike</span><span class="p">],</span> <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Choose the deterministic initial target time point.</span>
+<span class="w">    </span><span class="sd">"""Choose the deterministic initial target time point.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -599,9 +599,9 @@
 <span class="sd">    ------</span>
 <span class="sd">    ValueError</span>
 <span class="sd">        If fewer than two input images are provided.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">movables</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;multireg requires at least two input images.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"multireg requires at least two input images."</span><span class="p">)</span>
     <span class="n">resolved_seed</span> <span class="o">=</span> <span class="n">compute_seed</span><span class="p">(</span><span class="n">movables</span><span class="p">)</span> <span class="k">if</span> <span class="n">seed</span> <span class="ow">in</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">else</span> <span class="nb">int</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">target</span> <span class="o">=</span> <span class="n">_c_rand_choice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">movables</span><span class="p">),</span> <span class="n">resolved_seed</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
@@ -617,7 +617,7 @@
     <span class="o">*</span><span class="p">,</span>
     <span class="n">masks</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">ImageLike</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">init_ltas</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">TransformLike</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">average</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">int</span> <span class="o">=</span> <span class="s2">&quot;median&quot;</span><span class="p">,</span>
+    <span class="n">average</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">int</span> <span class="o">=</span> <span class="s2">"median"</span><span class="p">,</span>
     <span class="n">init_target_index</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">fix_target</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -625,7 +625,7 @@
     <span class="n">nmax</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
     <span class="n">sat</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">6.0</span><span class="p">,</span>
     <span class="n">symmetric</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-    <span class="n">device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;gpu&quot;</span><span class="p">,</span>
+    <span class="n">device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"gpu"</span><span class="p">,</span>
     <span class="n">use_cras_center</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="n">template_iterations</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">template_eps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.03</span><span class="p">,</span>
@@ -633,7 +633,7 @@
     <span class="n">mapped_keep_dtype</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MultiRegResult</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run the FreeSurfer-style multi-timepoint registration pipeline.</span>
+<span class="w">    </span><span class="sd">"""Run the FreeSurfer-style multi-timepoint registration pipeline.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -644,7 +644,7 @@
 <span class="sd">    init_ltas : sequence of TransformLike or None, optional</span>
 <span class="sd">        Optional precomputed LTAs defining the initial timepoint-to-template</span>
 <span class="sd">        mappings and template geometry.</span>
-<span class="sd">    average : {&quot;mean&quot;, &quot;median&quot;, 0, 1}, default=&quot;median&quot;</span>
+<span class="sd">    average : {"mean", "median", 0, 1}, default="median"</span>
 <span class="sd">        Template aggregation mode. Integer aliases match the FreeSurfer CLI.</span>
 <span class="sd">    init_target_index : int or None, optional</span>
 <span class="sd">        Zero-based initial target index. If omitted, select one deterministically</span>
@@ -663,7 +663,7 @@
 <span class="sd">        Tukey biweight saturation threshold for robust pairwise registration.</span>
 <span class="sd">    symmetric : bool, default=True</span>
 <span class="sd">        Whether pairwise registrations should use symmetric halfway-space updates.</span>
-<span class="sd">    device : str, default=&quot;gpu&quot;</span>
+<span class="sd">    device : str, default="gpu"</span>
 <span class="sd">        Torch device string forwarded to the pairwise kernel.</span>
 <span class="sd">    use_cras_center : bool, default=False</span>
 <span class="sd">        If ``True``, center the template geometry on the average CRAS instead of</span>
@@ -678,7 +678,7 @@
 <span class="sd">        If ``True``, include mapped images in the returned result.</span>
 <span class="sd">    mapped_keep_dtype : bool, default=False</span>
 <span class="sd">        If ``True``, preserve source dtypes for returned mapped images and cast</span>
-<span class="sd">        the output template to the initial target time point&#39;s dtype (clipping</span>
+<span class="sd">        the output template to the initial target time point's dtype (clipping</span>
 <span class="sd">        cubic-interpolation over/undershoot instead of rescaling).</span>
 <span class="sd">    verbose : bool, default=False</span>
 <span class="sd">        Whether to enable verbose pairwise-registration logging.</span>
@@ -694,39 +694,39 @@
 <span class="sd">    ValueError</span>
 <span class="sd">        If the inputs are invalid, incompatible in geometry, or the requested</span>
 <span class="sd">        iteration settings are inconsistent.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">movables</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;multireg requires at least two input images.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"multireg requires at least two input images."</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">template_eps</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;template_eps must be &gt; 0.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"template_eps must be &gt; 0."</span><span class="p">)</span>
 
     <span class="n">images</span> <span class="o">=</span> <span class="p">[</span><span class="n">load_image</span><span class="p">(</span><span class="n">image</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="k">else</span> <span class="n">image</span> <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">movables</span><span class="p">]</span>
-    <span class="n">source_names</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">image</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span> <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">movables</span><span class="p">]</span>
+    <span class="n">source_names</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">image</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="k">else</span> <span class="s2">""</span> <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">movables</span><span class="p">]</span>
     <span class="n">resolved_average</span> <span class="o">=</span> <span class="n">resolve_average_mode</span><span class="p">(</span><span class="n">average</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">masks</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">loaded_masks</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">masks</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">images</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Number of masks must match the number of input images.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Number of masks must match the number of input images."</span><span class="p">)</span>
         <span class="n">loaded_masks</span> <span class="o">=</span> <span class="p">[</span>
             <span class="p">(</span><span class="n">load_image</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="k">else</span> <span class="n">mask</span><span class="p">)</span> <span class="k">if</span> <span class="n">mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">mask</span> <span class="ow">in</span> <span class="n">masks</span>
         <span class="p">]</span>
 
     <span class="k">if</span> <span class="n">init_ltas</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">init_ltas</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">images</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Number of init_ltas must match the number of input images.&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Number of init_ltas must match the number of input images."</span><span class="p">)</span>
 
     <span class="n">validate_input_geometries</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>
-    <span class="n">resolved_init_type</span> <span class="o">=</span> <span class="n">resolve_init_type</span><span class="p">(</span><span class="n">init_type</span><span class="p">,</span> <span class="n">default_init_type</span><span class="o">=</span><span class="s2">&quot;centroid&quot;</span><span class="p">)</span>
+    <span class="n">resolved_init_type</span> <span class="o">=</span> <span class="n">resolve_init_type</span><span class="p">(</span><span class="n">init_type</span><span class="p">,</span> <span class="n">default_init_type</span><span class="o">=</span><span class="s2">"centroid"</span><span class="p">)</span>
     <span class="n">resolved_template_iterations</span> <span class="o">=</span> <span class="n">_resolve_iterations</span><span class="p">(</span><span class="n">template_iterations</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">images</span><span class="p">))</span>
 
     <span class="k">if</span> <span class="n">init_target_index</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">init_target_index</span><span class="p">,</span> <span class="n">resolved_seed</span> <span class="o">=</span> <span class="n">choose_initial_target</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">init_target_index</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">images</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;init_target_index must be in [0, </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">images</span><span class="p">)</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">], got </span><span class="si">{</span><span class="n">init_target_index</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"init_target_index must be in [0, </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">images</span><span class="p">)</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">], got </span><span class="si">{</span><span class="n">init_target_index</span><span class="si">}</span><span class="s2">."</span><span class="p">)</span>
         <span class="n">resolved_seed</span> <span class="o">=</span> <span class="n">compute_seed</span><span class="p">(</span><span class="n">images</span><span class="p">)</span> <span class="k">if</span> <span class="n">seed</span> <span class="ow">in</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">else</span> <span class="nb">int</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Using TP </span><span class="si">%d</span><span class="s2"> as the initial target (seed=</span><span class="si">%d</span><span class="s2">).&quot;</span><span class="p">,</span> <span class="n">init_target_index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">resolved_seed</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Using TP </span><span class="si">%d</span><span class="s2"> as the initial target (seed=</span><span class="si">%d</span><span class="s2">)."</span><span class="p">,</span> <span class="n">init_target_index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">resolved_seed</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">init_ltas</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">template_shape</span><span class="p">,</span> <span class="n">template_affine</span><span class="p">,</span> <span class="n">current_transforms</span> <span class="o">=</span> <span class="n">_build_initial_space</span><span class="p">(</span>
@@ -744,7 +744,7 @@
         <span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">fix_target</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Ignoring fix_target because init_ltas already define the template geometry.&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Ignoring fix_target because init_ltas already define the template geometry."</span><span class="p">)</span>
         <span class="n">template_shape</span><span class="p">,</span> <span class="n">template_affine</span><span class="p">,</span> <span class="n">current_transforms</span> <span class="o">=</span> <span class="n">_resolve_init_ltas</span><span class="p">(</span><span class="n">init_ltas</span><span class="p">)</span>
 
     <span class="n">target_image</span> <span class="o">=</span> <span class="n">images</span><span class="p">[</span><span class="n">init_target_index</span><span class="p">]</span>
@@ -761,13 +761,13 @@
 
     <span class="n">iteration_distances</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">iteration</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">resolved_template_iterations</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Refining multireg template: iteration </span><span class="si">%d</span><span class="s2">/</span><span class="si">%d</span><span class="s2">.&quot;</span><span class="p">,</span> <span class="n">iteration</span><span class="p">,</span> <span class="n">resolved_template_iterations</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Refining multireg template: iteration </span><span class="si">%d</span><span class="s2">/</span><span class="si">%d</span><span class="s2">."</span><span class="p">,</span> <span class="n">iteration</span><span class="p">,</span> <span class="n">resolved_template_iterations</span><span class="p">)</span>
         <span class="n">next_transforms</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">distances</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">previous_r2r</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span>
             <span class="nb">zip</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">loaded_masks</span><span class="p">,</span> <span class="n">current_transforms</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
         <span class="p">):</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Registering TP </span><span class="si">%d</span><span class="s2"> to current template.&quot;</span><span class="p">,</span> <span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Registering TP </span><span class="si">%d</span><span class="s2"> to current template."</span><span class="p">,</span> <span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
             <span class="n">updated_result</span> <span class="o">=</span> <span class="n">robreg</span><span class="p">(</span>
                 <span class="n">image</span><span class="p">,</span>
                 <span class="n">current_template</span><span class="p">,</span>
@@ -783,15 +783,15 @@
                 <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
                 <span class="n">init_transform</span><span class="o">=</span><span class="n">previous_r2r</span><span class="p">,</span>
             <span class="p">)</span>
-            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">updated_result</span><span class="p">,</span> <span class="s2">&quot;detach&quot;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">updated_result</span><span class="p">,</span> <span class="s2">"detach"</span><span class="p">):</span>
                 <span class="n">updated_r2r</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">updated_result</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">updated_r2r</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">updated_result</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
             <span class="n">projected</span> <span class="o">=</span> <span class="n">project_to_rotation</span><span class="p">(</span><span class="n">updated_r2r</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">])</span>
-            <span class="n">projection_error</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">projected</span> <span class="o">-</span> <span class="n">updated_r2r</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">],</span> <span class="nb">ord</span><span class="o">=</span><span class="s2">&quot;fro&quot;</span><span class="p">)</span>
+            <span class="n">projection_error</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">projected</span> <span class="o">-</span> <span class="n">updated_r2r</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">],</span> <span class="nb">ord</span><span class="o">=</span><span class="s2">"fro"</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">projection_error</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">:</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
-                    <span class="s2">&quot;Projecting TP </span><span class="si">%d</span><span class="s2"> iterative update back to rigid rotation (error=</span><span class="si">%.6g</span><span class="s2">).&quot;</span><span class="p">,</span>
+                    <span class="s2">"Projecting TP </span><span class="si">%d</span><span class="s2"> iterative update back to rigid rotation (error=</span><span class="si">%.6g</span><span class="s2">)."</span><span class="p">,</span>
                     <span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
                     <span class="n">projection_error</span><span class="p">,</span>
                 <span class="p">)</span>
@@ -811,7 +811,7 @@
         <span class="p">)</span>
         <span class="n">max_change</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">distances</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
         <span class="n">iteration_distances</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">max_change</span><span class="p">)</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Template iteration </span><span class="si">%d</span><span class="s2"> max change: </span><span class="si">%.6f</span><span class="s2"> mm&quot;</span><span class="p">,</span> <span class="n">iteration</span><span class="p">,</span> <span class="n">max_change</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Template iteration </span><span class="si">%d</span><span class="s2"> max change: </span><span class="si">%.6f</span><span class="s2"> mm"</span><span class="p">,</span> <span class="n">iteration</span><span class="p">,</span> <span class="n">max_change</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">max_change</span> <span class="o">&lt;=</span> <span class="n">template_eps</span><span class="p">:</span>
             <span class="k">break</span>
 
@@ -845,12 +845,12 @@
 
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="s2">&quot;ImageLike&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;MultiRegResult&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;TransformLike&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;choose_initial_target&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;compute_seed&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;multireg&quot;</span><span class="p">,</span>
+    <span class="s2">"ImageLike"</span><span class="p">,</span>
+    <span class="s2">"MultiRegResult"</span><span class="p">,</span>
+    <span class="s2">"TransformLike"</span><span class="p">,</span>
+    <span class="s2">"choose_initial_target"</span><span class="p">,</span>
+    <span class="s2">"compute_seed"</span><span class="p">,</span>
+    <span class="s2">"multireg"</span><span class="p">,</span>
 <span class="p">]</span>
 </pre></div>
         </article>
