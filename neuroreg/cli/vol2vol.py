@@ -11,6 +11,7 @@ from typing import Any
 import numpy as np
 
 from ..image import (
+    check_dtype_storable,
     clip_and_cast_dtype,
     create_image_like,
     header_map_image,
@@ -19,6 +20,7 @@ from ..image import (
     save_image,
 )
 from ..transforms import TRANSFORM_FORMATS, affine_from_volume_info, read_transform_as_lta
+from ._outputs import validate_image_outputs
 
 
 def _parse_pad(value: str) -> str | float:
@@ -110,12 +112,13 @@ def _build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        "--in", "--i", "--mov",
-        required=True, dest="input_file", metavar="FILE", help="Input (moving) image."
+        "--in", "--i", "--mov", required=True, dest="input_file", metavar="FILE", help="Input (moving) image."
     )
     parser.add_argument(
-        "--transform", "--lta",
-        metavar="FILE", dest="transform",
+        "--transform",
+        "--lta",
+        metavar="FILE",
+        dest="transform",
         help="Optional linear transform to apply (any format: .lta, .xfm, FSL .mat, …).",
     )
     parser.add_argument(
@@ -124,14 +127,18 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Override transform format inference for ambiguous files such as .txt or .mat.",
     )
     parser.add_argument(
-        "--ref", "--targ",
-        metavar="FILE", dest="ref",
+        "--ref",
+        "--targ",
+        metavar="FILE",
+        dest="ref",
         help="Optional target/reference image geometry. Overrides geometry stored in the transform.",
     )
     parser.add_argument(
-        "--out", "--o",
-        required=True, metavar="FILE",
-        help="Output image filename. The extension selects the output format (any nibabel format).",
+        "--out",
+        "--o",
+        required=True,
+        metavar="FILE",
+        help="Output image filename. The extension selects the output format and is required.",
     )
     interp_group = parser.add_mutually_exclusive_group()
     interp_group.add_argument(
@@ -141,15 +148,24 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Interpolation mode for resampled output.",
     )
     interp_group.add_argument(
-        "--trilin", dest="interp", action="store_const", const="linear",
+        "--trilin",
+        dest="interp",
+        action="store_const",
+        const="linear",
         help="Trilinear interpolation. Alias for --interp linear.",
     )
     interp_group.add_argument(
-        "--nearest", dest="interp", action="store_const", const="nearest",
+        "--nearest",
+        dest="interp",
+        action="store_const",
+        const="nearest",
         help="Nearest-neighbour interpolation. Alias for --interp nearest.",
     )
     interp_group.add_argument(
-        "--cubic", dest="interp", action="store_const", const="cubic",
+        "--cubic",
+        dest="interp",
+        action="store_const",
+        const="cubic",
         help="Cubic interpolation. Alias for --interp cubic.",
     )
     parser.add_argument(
@@ -160,13 +176,17 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Out-of-bounds padding: zero, border, reflection, brightest, or a numeric constant.",
     )
     parser.add_argument(
-        "--header-only", "--no-resample",
-        action="store_true", dest="header_only",
+        "--header-only",
+        "--no-resample",
+        action="store_true",
+        dest="header_only",
         help="Apply the transform to the header only and skip interpolation.",
     )
     parser.add_argument(
-        "--inverse", "--inv",
-        action="store_true", dest="inverse",
+        "--inverse",
+        "--inv",
+        action="store_true",
+        dest="inverse",
         help="Apply the inverse of the supplied transform.",
     )
     dtype_group = parser.add_mutually_exclusive_group()
@@ -177,8 +197,10 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Explicit final output dtype, or 'input' to preserve the moving-image dtype.",
     )
     dtype_group.add_argument(
-        "--keep-dtype", "--keep-precision",
-        action="store_true", dest="keep_dtype",
+        "--keep-dtype",
+        "--keep-precision",
+        action="store_true",
+        dest="keep_dtype",
         help="Write output in the moving-image dtype. Equivalent to --out-dtype input.",
     )
     parser.add_argument(
@@ -518,6 +540,7 @@ def main(args=None) -> None:
     """
     parser = _build_parser()
     ns = parser.parse_args(args)
+    validate_image_outputs(parser, ns, "out")
     _validate_args(ns, parser)
 
     level = logging.DEBUG if ns.debug else (logging.INFO if ns.verbose else logging.WARNING)
@@ -540,6 +563,10 @@ def main(args=None) -> None:
         effective_lta = None if lta is None else (lta.invert() if ns.inverse else lta)
         r2r = np.eye(4, dtype=np.float64) if effective_lta is None else effective_lta.r2r()
         target_dtype = _resolve_target_dtype(ns, np.dtype(mov_img.get_data_dtype()))
+        if target_dtype is not None:
+            # --out-dtype/--keep-dtype name a type explicitly; refuse rather than
+            # write a different one than was asked for.
+            check_dtype_storable(target_dtype, ns.out)
         if ns.header_only:
             mapped_img = header_map_image(mov_img, r2r)
         elif ns.transform is None and ns.ref is None:

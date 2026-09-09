@@ -41,6 +41,88 @@ def _write_uint8_image(path: Path) -> None:
 
 
 class TestRobregCli:
+    @pytest.mark.parametrize("outliers", ["outliers", "outliers.txt"])
+    def test_outliers_needs_a_recognized_image_extension(
+        self, tmp_path: Path, outliers: str, capsys: pytest.CaptureFixture[str]
+    ):
+        mov_path = tmp_path / "mov.nii.gz"
+        ref_path = tmp_path / "ref.nii.gz"
+        _write_zero_image(mov_path)
+        _write_zero_image(ref_path)
+
+        with pytest.raises(SystemExit):
+            robreg_main(
+                [
+                    "--mov",
+                    str(mov_path),
+                    "--ref",
+                    str(ref_path),
+                    "--out",
+                    str(tmp_path / "out.lta"),
+                    "--outliers",
+                    str(tmp_path / outliers),
+                ]
+            )
+
+        assert "--outliers needs a recognized image extension" in capsys.readouterr().err
+
+    def test_mapmov_needs_a_recognized_image_extension(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+        mov_path = tmp_path / "mov.nii.gz"
+        ref_path = tmp_path / "ref.nii.gz"
+        _write_zero_image(mov_path)
+        _write_zero_image(ref_path)
+
+        with pytest.raises(SystemExit):
+            robreg_main(
+                [
+                    "--mov",
+                    str(mov_path),
+                    "--ref",
+                    str(ref_path),
+                    "--out",
+                    str(tmp_path / "out.lta"),
+                    "--mapmov",
+                    str(tmp_path / "mapped"),
+                ]
+            )
+
+        assert "--mapmov needs a recognized image extension" in capsys.readouterr().err
+
+    def test_outliers_path_is_forwarded_unchanged(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        mov_path = tmp_path / "mov.nii.gz"
+        ref_path = tmp_path / "ref.nii.gz"
+        outliers_path = tmp_path / "outliers.nii.gz"
+        _write_zero_image(mov_path)
+        _write_zero_image(ref_path)
+
+        captured: dict[str, object] = {}
+
+        def fake_register_pyramid(*args, **kwargs):
+            captured.update(kwargs)
+            return _TensorRequiringCpu(torch.eye(4))
+
+        class _DummyLTA:
+            def write(self, path):
+                Path(path).write_text("dummy")
+
+        monkeypatch.setattr("neuroreg.imreg.robreg.robreg", fake_register_pyramid)
+        monkeypatch.setattr("neuroreg.transforms.LTA.from_matrix", lambda *args, **kwargs: _DummyLTA())
+
+        robreg_main(
+            [
+                "--mov",
+                str(mov_path),
+                "--ref",
+                str(ref_path),
+                "--out",
+                str(tmp_path / "out.lta"),
+                "--outliers",
+                str(outliers_path),
+            ]
+        )
+
+        assert captured["outliers_name"] == str(outliers_path)
+
     def test_main_forwards_noinit_and_symmetric_default(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         mov_path = tmp_path / "mov.nii.gz"
         ref_path = tmp_path / "ref.nii.gz"
@@ -250,9 +332,9 @@ class TestRobregCli:
         assert mapped_hdr.affine == pytest.approx(expected_affine)
 
     def test_main_writes_mapmov_in_input_dtype_with_keep_dtype(
-            self,
-            monkeypatch: pytest.MonkeyPatch,
-            tmp_path: Path,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
     ):
         mov_path = tmp_path / "mov.nii.gz"
         ref_path = tmp_path / "ref.nii.gz"
@@ -313,11 +395,16 @@ class TestRobregCli:
 
         robreg_main(
             [
-                "--mov", str(mov_path),
-                "--ref", str(ref_path),
-                "--mov-mask", str(mov_mask_path),
-                "--ref-mask", str(ref_mask_path),
-                "--out", str(out_path),
+                "--mov",
+                str(mov_path),
+                "--ref",
+                str(ref_path),
+                "--mov-mask",
+                str(mov_mask_path),
+                "--ref-mask",
+                str(ref_mask_path),
+                "--out",
+                str(out_path),
             ]
         )
 
@@ -375,7 +462,7 @@ class TestCoregCli:
         ],
     )
     def test_main_forwards_init_mode(
-            self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, flag: str, expected_init: str
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, flag: str, expected_init: str
     ):
         mov_path = tmp_path / "mov.nii.gz"
         ref_path = tmp_path / "ref.nii.gz"
@@ -407,9 +494,9 @@ class TestCoregCli:
         assert out_path.exists()
 
     def test_main_defaults_to_powell_method_and_forwards_powell_knobs(
-            self,
-            monkeypatch: pytest.MonkeyPatch,
-            tmp_path: Path,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
     ):
         mov_path = tmp_path / "mov.nii.gz"
         ref_path = tmp_path / "ref.nii.gz"
@@ -465,11 +552,16 @@ class TestCoregCli:
 
         coreg_main(
             [
-                "--mov", str(mov_path),
-                "--ref", str(ref_path),
-                "--mov-mask", str(mov_mask_path),
-                "--ref-mask", str(ref_mask_path),
-                "--out", str(out_path),
+                "--mov",
+                str(mov_path),
+                "--ref",
+                str(ref_path),
+                "--mov-mask",
+                str(mov_mask_path),
+                "--ref-mask",
+                str(ref_mask_path),
+                "--out",
+                str(out_path),
             ]
         )
 

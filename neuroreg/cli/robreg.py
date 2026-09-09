@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from ..transforms import LTA
+from ._outputs import validate_image_outputs
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -21,12 +22,9 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     # ── required ────────────────────────────────────────────────────────────
-    p.add_argument("--mov", required=True, metavar="FILE",
-                   help="Moving (source) image (NIfTI or MGZ).")
-    p.add_argument("--ref", required=True, metavar="FILE",
-                   help="Reference (target/fixed) image (NIfTI or MGZ).")
-    p.add_argument("--out", required=True, metavar="LTA",
-                   help="Output LTA file for the recovered transformation.")
+    p.add_argument("--mov", required=True, metavar="FILE", help="Moving (source) image (NIfTI or MGZ).")
+    p.add_argument("--ref", required=True, metavar="FILE", help="Reference (target/fixed) image (NIfTI or MGZ).")
+    p.add_argument("--out", required=True, metavar="LTA", help="Output LTA file for the recovered transformation.")
     p.add_argument(
         "--mov-mask",
         metavar="FILE",
@@ -122,10 +120,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "--outliers",
         metavar="FILE",
         help=(
-            "Save outlier map (1 - Tukey weights) to this file (MGZ format). "
+            "Save outlier map (1 - Tukey weights) to this file. "
             "High values indicate poorly registered regions (outliers), "
             "low values indicate well-registered regions. "
-            "Use with heat colormap in freeview for visualization."
+            "Use with heat colormap in freeview for visualization. "
+            "The extension selects the output format and is required."
         ),
     )
 
@@ -165,11 +164,13 @@ def main(args=None) -> None:
     SystemExit
         If argument parsing fails or image loading raises an exception.
     """
+    parser = _build_parser()
+    ns = parser.parse_args(args)
+    validate_image_outputs(parser, ns, "mapmov", "mapmovhdr", "outliers")
+
     from ..image import load_image, save_header_mapped_image, save_resliced_r2r_image
     from ..imreg.robreg import robreg
 
-    parser = _build_parser()
-    ns = parser.parse_args(args)
     ns.symmetric = getattr(ns, "symmetric", True)
     if ns.init_lta is not None and ns.init_type is not None:
         logging.getLogger("neuroreg.cli.robreg").warning(

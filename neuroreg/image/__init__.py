@@ -6,7 +6,14 @@ from .centroid import compute_centroid
 from .compare import ImageDiff, compare_images
 from .geometry import get_ras2tkras, get_tkras2ras, get_vox2tkras, vox2tkras_from_volume_info
 from .info import describe_image, image_value_stats
-from .io import load_image, save_image
+from .io import (
+    IMAGE_SUFFIXES,
+    as_mgh_image,
+    check_dtype_storable,
+    load_image,
+    recognized_image_suffix,
+    save_image,
+)
 from .map import (
     cast_image_dtype,
     clip_and_cast_dtype,
@@ -39,6 +46,10 @@ __all__ = [
     "binarize_image",
     "load_image",
     "save_image",
+    "as_mgh_image",
+    "recognized_image_suffix",
+    "check_dtype_storable",
+    "IMAGE_SUFFIXES",
     "map",
     "map_r2r",
     "cast_image_dtype",

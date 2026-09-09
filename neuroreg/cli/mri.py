@@ -25,6 +25,7 @@ from ..image import (
     reslice_and_apply_mask,
     save_image,
 )
+from ._outputs import validate_image_outputs
 
 # ── parser ──────────────────────────────────────────────────────────────────
 
@@ -154,28 +155,37 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Report all differences instead of exiting at the first one.",
     )
     diff_p.add_argument(
-        "--skip-res", "--notallow-res",
-        action="store_true", dest="skip_res",
+        "--skip-res",
+        "--notallow-res",
+        action="store_true",
+        dest="skip_res",
         help="Skip the voxel-resolution check.",
     )
     diff_p.add_argument(
-        "--skip-geo", "--notallow-geo",
-        action="store_true", dest="skip_geo",
+        "--skip-geo",
+        "--notallow-geo",
+        action="store_true",
+        dest="skip_geo",
         help="Skip the geometry / vox2ras check.",
     )
     diff_p.add_argument(
-        "--skip-prec", "--notallow-prec",
-        action="store_true", dest="skip_prec",
+        "--skip-prec",
+        "--notallow-prec",
+        action="store_true",
+        dest="skip_prec",
         help="Skip the data-type / precision check.",
     )
     diff_p.add_argument(
-        "--skip-pix", "--notallow-pix",
-        action="store_true", dest="skip_pix",
+        "--skip-pix",
+        "--notallow-pix",
+        action="store_true",
+        dest="skip_pix",
         help="Skip the pixel-value check.",
     )
     diff_p.add_argument(
         "--notallow-acq",
-        action="store_true", dest="skip_acq",
+        action="store_true",
+        dest="skip_acq",
         help="Accepted for FreeSurfer compatibility; acquisition-parameter checks are not performed.",
     )
 
@@ -416,6 +426,7 @@ def main(args=None) -> None:
     """
     parser = _build_parser()
     ns = parser.parse_args(args)
+    validate_image_outputs(parser, ns, "out")
 
     if ns.command == "mask":
         _main_mask(ns)

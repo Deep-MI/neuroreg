@@ -9,6 +9,7 @@ import sys
 from typing import Any, cast
 
 from ..transforms import LINEAR_RAS_TO_RAS, LINEAR_VOX_TO_VOX, LTA, convert_transform_type
+from ._outputs import validate_image_outputs
 
 
 def _parse_int_csv(value: str) -> list[int]:
@@ -216,6 +217,7 @@ def main(args=None) -> None:
 
     parser = _build_parser()
     ns = parser.parse_args(args)
+    validate_image_outputs(parser, ns, "mapmov", "mapmovhdr")
     ns.symmetric = getattr(ns, "symmetric", True)
     if ns.init_lta is not None and ns.init_type is not None:
         logging.getLogger("neuroreg.cli.coreg").warning(

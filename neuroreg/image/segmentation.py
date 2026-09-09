@@ -30,12 +30,11 @@ import logging
 import os
 from typing import TYPE_CHECKING, Any
 
-import nibabel as nib
 import numpy as np
 from scipy.ndimage import uniform_filter
 
 from .geometry import get_vox2tkras
-from .io import load_image
+from .io import as_mgh_image, load_image, save_image
 
 if TYPE_CHECKING:
     import numpy.typing as npt
@@ -65,8 +64,8 @@ _RH_GM: int = 42
 
 
 def _mask_in_array(
-        arr: npt.NDArray[np.integer],
-        items: npt.ArrayLike,
+    arr: npt.NDArray[np.integer],
+    items: npt.ArrayLike,
 ) -> npt.NDArray[np.bool_]:
     """Return a boolean mask that is *True* where ``arr`` is in ``items``.
 
@@ -96,8 +95,8 @@ def _mask_in_array(
 
 
 def _mask_not_in_array(
-        arr: npt.NDArray[np.integer],
-        items: npt.ArrayLike,
+    arr: npt.NDArray[np.integer],
+    items: npt.ArrayLike,
 ) -> npt.NDArray[np.bool_]:
     """Inverse of :func:`_mask_in_array`."""
     _items = np.asarray(items)
@@ -112,8 +111,8 @@ def _mask_not_in_array(
 
 
 def _hemi_masks(
-        arr: npt.NDArray[np.integer],
-        window_size: int = 7,
+    arr: npt.NDArray[np.integer],
+    window_size: int = 7,
 ) -> tuple[npt.NDArray[np.bool_], npt.NDArray[np.bool_]]:
     """Determine per-voxel hemisphere assignment by local label voting.
 
@@ -146,8 +145,8 @@ def _hemi_masks(
 
 
 def simplify_segmentation(
-        seg_input: str | os.PathLike | Any,
-        output_path: str | os.PathLike | None = None,
+    seg_input: str | os.PathLike | Any,
+    output_path: str | os.PathLike | None = None,
 ) -> np.ndarray:
     """Reduce a detailed parcellation to a 4-class WM/GM segmentation.
 
@@ -285,20 +284,23 @@ def simplify_segmentation(
     seg_data[_mask_not_in_array(seg_data, (_LH_WM, _RH_WM, _LH_GM, _RH_GM))] = 0
 
     if output_path is not None:
-        out_img = nib.MGHImage(seg_data.astype(np.float32), seg_img.affine, seg_img.header)
-        nib.save(out_img, str(output_path))
+        # The step above restricts labels to {0, 2, 3, 41, 42}, so uint8 stores
+        # them exactly at a quarter the size of the int32 working array. The
+        # returned array stays int32 for callers that keep computing on it.
+        out_img = as_mgh_image(seg_data.astype(np.uint8), seg_img.affine, seg_img.header)
+        save_image(out_img, output_path)
         logger.info("Simplified segmentation saved to %s", output_path)
 
     return seg_data
 
 
 def extract_wm_surface(
-        seg_data: np.ndarray,
-        wm_label: int,
-        seg_header: Any,
-        smooth_sigma: float = 0.5,
-        marching_cubes_level: float = 0.45,
-        smooth_iterations: int = 50,
+    seg_data: np.ndarray,
+    wm_label: int,
+    seg_header: Any,
+    smooth_sigma: float = 0.5,
+    marching_cubes_level: float = 0.45,
+    smooth_iterations: int = 50,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Extract a white-matter surface from a simplified segmentation volume.
 
@@ -454,13 +456,13 @@ def extract_wm_surface(
 
 
 def surfaces_from_segmentation(
-        seg_path: str | os.PathLike | Any,
-        *,
-        hemispheres: tuple[str, ...] = ("lh", "rh"),
-        smooth_sigma: float = 0.5,
-        marching_cubes_level: float = 0.45,
-        smooth_iterations: int = 50,
-        device: str = "cpu",
+    seg_path: str | os.PathLike | Any,
+    *,
+    hemispheres: tuple[str, ...] = ("lh", "rh"),
+    smooth_sigma: float = 0.5,
+    marching_cubes_level: float = 0.45,
+    smooth_iterations: int = 50,
+    device: str = "cpu",
 ) -> tuple[dict | None, dict | None]:
     """Extract left and/or right WM surfaces from a parcellation file.
 
@@ -550,9 +552,9 @@ def surfaces_from_segmentation(
 
 
 def _compute_cortex_mask_8neighbors(
-        verts_vox: npt.NDArray[np.floating],
-        seg_data: npt.NDArray[np.integer],
-        gm_label: int,
+    verts_vox: npt.NDArray[np.floating],
+    seg_data: npt.NDArray[np.integer],
+    gm_label: int,
 ) -> npt.NDArray[np.bool_]:
     """Return a cortex mask by checking the 8 enclosing voxel corners for GM.
 
@@ -599,9 +601,9 @@ def _compute_cortex_mask_8neighbors(
 
 
 def compute_cortex_mask(
-        vertices_tkras: npt.NDArray[np.floating],
-        seg_input: str | os.PathLike | Any,
-        hemi: str,
+    vertices_tkras: npt.NDArray[np.floating],
+    seg_input: str | os.PathLike | Any,
+    hemi: str,
 ) -> npt.NDArray[np.bool_]:
     """Compute a cortex mask for an existing surface by sampling a segmentation.
 
@@ -659,11 +661,11 @@ def compute_cortex_mask(
 
 
 def _taubin_smooth_numpy(
-        verts: np.ndarray,
-        faces: np.ndarray,
-        n_iters: int = 50,
-        lam: float = 0.6307,
-        mu: float = -0.6732,
+    verts: np.ndarray,
+    faces: np.ndarray,
+    n_iters: int = 50,
+    lam: float = 0.6307,
+    mu: float = -0.6732,
 ) -> np.ndarray:
     """Volume-preserving Taubin smoothing (numpy, CPU only).
 
