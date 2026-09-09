@@ -9,7 +9,7 @@ import nibabel as nib
 import numpy as np
 import pytest
 
-from neuroreg.image import as_mgh_image, check_dtype_storable, save_image
+from neuroreg.image import IMAGE_SUFFIXES, as_mgh_image, check_dtype_storable, save_image
 
 
 def test_as_mgh_image_sets_fov_to_largest_physical_extent():
@@ -167,6 +167,28 @@ def test_save_image_rejects_a_read_only_format(tmp_path: Path):
 
     with pytest.raises(ValueError, match="Unsupported output image format"):
         save_image(src, tmp_path / "out.mnc")
+
+
+def test_image_suffixes_matches_what_nibabel_can_actually_write(tmp_path: Path):
+    """The CLI gate must accept exactly the formats ``save_image`` can write.
+
+    Accepting less would reject usable outputs; accepting more would restore the
+    late failure the up-front check exists to prevent. Probing nibabel directly
+    means this fails loudly if a future nibabel gains or loses a writable format.
+    """
+    src = nib.Nifti1Image(np.zeros((2, 2, 2), dtype=np.float32), np.eye(4))
+    declared = {ext for klass in nib.imageclasses.all_image_classes for ext in klass.valid_exts}
+    declared.add(".nii.gz")  # handled by nibabel's transparent compression, not valid_exts
+
+    writable = set()
+    for ext in sorted(declared):
+        try:
+            nib.save(src, str(tmp_path / f"probe{ext}"))
+        except Exception:  # noqa: BLE001 - capability probe: any failure means "not writable"
+            continue
+        writable.add(ext)
+
+    assert writable == set(IMAGE_SUFFIXES)
 
 
 def test_save_image_writes_analyze_pair(tmp_path: Path):

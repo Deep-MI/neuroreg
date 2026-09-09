@@ -359,10 +359,17 @@ def save_image(image: Any, path: str | Path) -> None:
     Unlike calling ``image.to_filename`` directly, the output format follows the
     extension of ``path`` rather than the in-memory image class. When the
     requested format differs from the image's native class, nibabel converts the
-    image (via ``from_image``) so any format nibabel can write is supported, for
-    example ``.mgz`` -> ``.nii.gz``. Geometry and voxel values are preserved; the
-    stored dtype may be coerced to one the target format supports (for example
-    MGH only stores uint8, int16, int32, and float32).
+    image (via ``from_image``), for example ``.mgz`` -> ``.nii.gz``. Geometry and
+    voxel values are preserved; the stored dtype may be coerced to one the target
+    format supports (for example MGH only stores uint8, int16, int32, and
+    float32).
+
+    Writable formats are the volume formats nibabel can construct from a foreign
+    header, namely those in :data:`IMAGE_SUFFIXES`: NIfTI (``.nii``, ``.nii.gz``),
+    MGH (``.mgz``, ``.mgh``) and Analyze/NIfTI pairs (``.img``, ``.hdr``). Other
+    formats nibabel *reads* cannot be written from a converted image: MINC and
+    GIFTI raise ``NotImplementedError``, while AFNI and PAR/REC only accept their
+    own header type.
 
     When the destination is MGH/MGZ, the image is routed through
     :func:`as_mgh_image` instead of nibabel's generic conversion, since the
