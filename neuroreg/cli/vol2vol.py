@@ -21,48 +21,24 @@ from __future__ import annotations
 
 import argparse
 import logging
-import re
 import sys
 from typing import Any
 
 import numpy as np
 
-from ._outputs import validate_image_outputs
 from ..image import (
     check_dtype_storable,
     clip_and_cast_dtype,
     create_image_like,
     header_map_image,
     load_image,
+    place_grid_at_cras,
     reslice_r2r_image,
     save_image,
 )
 from ..transforms import TRANSFORM_FORMATS, affine_from_volume_info, read_transform_as_lta
-
-
-class _NumberListParser(argparse.ArgumentParser):
-    """Parser that reads a leading-minus number list as a value, not a flag.
-
-    ``argparse`` treats any token starting with ``-`` as an option unless it
-    matches its private negative-number pattern, which covers ``-4`` and
-    ``-4.5`` but not lists such as ``-4.25,6.5,0``. Negative coordinates are
-    the common case for ``--ref-cras`` (a scanner ``c_ras`` is usually
-    negative in at least one axis), and without this the natural
-    ``--ref-cras -4,0,0`` fails with "expected one argument" and forces users
-    to discover the ``--ref-cras=-4,0,0`` spelling.
-
-    Widening the pattern to "minus followed by a digit or a decimal point" is
-    safe here because every option this CLI defines is a ``--word``, so no
-    flag can be shadowed. The check also runs only after argparse has failed
-    to resolve the token as a known option.
-    """
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        # argparse assigns this in _ActionsContainer.__init__, so it is an
-        # instance attribute and has to be replaced after the base class runs;
-        # a class-level override would simply be overwritten.
-        self._negative_number_matcher = re.compile(r"^-[\d.]")
+from ._args import NumberListParser, number_list
+from ._outputs import validate_image_outputs
 
 
 def _parse_pad(value: str) -> str | float:
@@ -129,42 +105,6 @@ def _parse_out_dtype(value: str) -> str:
         raise argparse.ArgumentTypeError(f"Unsupported output dtype {value!r}.") from exc
 
 
-def _parse_cras(value: str) -> np.ndarray:
-    """Parse a target-centre argument into a world-coordinate 3-vector.
-
-    Parameters
-    ----------
-    value : str
-        CLI argument passed to ``--ref-cras`` as ``X,Y,Z``. Surrounding
-        whitespace around the whole value or any component is ignored.
-
-    Returns
-    -------
-    numpy.ndarray, shape (3,)
-        Requested world coordinate of the target grid centre.
-
-    Raises
-    ------
-    argparse.ArgumentTypeError
-        If the argument is not exactly three comma-separated finite numbers.
-    """
-    parts = [part.strip() for part in value.split(",")]
-    if len(parts) != 3:
-        raise argparse.ArgumentTypeError(
-            f"--ref-cras must be three comma-separated numbers (X,Y,Z), got {len(parts)}: {value!r}"
-        )
-    try:
-        cras = np.array([float(part) for part in parts], dtype=np.float64)
-    except ValueError as exc:
-        raise argparse.ArgumentTypeError(
-            f"--ref-cras must be three comma-separated numbers (X,Y,Z), got: {value!r}"
-        ) from exc
-    if not np.all(np.isfinite(cras)):
-        # A non-finite centre would poison the whole output affine silently.
-        raise argparse.ArgumentTypeError(f"--ref-cras must be finite, got: {value!r}")
-    return cras
-
-
 def _build_parser() -> argparse.ArgumentParser:
     """Build the argument parser for the ``vol2vol`` command.
 
@@ -173,7 +113,7 @@ def _build_parser() -> argparse.ArgumentParser:
     argparse.ArgumentParser
         Configured CLI parser.
     """
-    parser = _NumberListParser(
+    parser = NumberListParser(
         prog="vol2vol",
         description=(
             "Apply a linear transform to an image, reslice into a target geometry,\n"
@@ -217,7 +157,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--ref-cras",
-        type=_parse_cras,
+        type=number_list("--ref-cras"),
         dest="ref_cras",
         metavar="X,Y,Z",
         help=(
@@ -398,39 +338,6 @@ def _resolve_target_dtype(ns: argparse.Namespace, source_dtype: np.dtype) -> np.
     return source_dtype if ns.out_dtype == "input" else np.dtype(ns.out_dtype)
 
 
-def _apply_ref_cras(
-        affine: np.ndarray,
-        shape: tuple[int, int, int],
-        cras: np.ndarray,
-) -> np.ndarray:
-    """Move a target grid so its centre sits at ``cras`` in world space.
-
-    ``c_ras`` is the world coordinate of the grid centre, taken at
-    ``shape / 2`` exactly rather than ``(shape - 1) / 2``, matching MGH and
-    :func:`neuroreg.image.describe_image`. Only the translation column changes,
-    so direction cosines, voxel sizes and matrix size are preserved by
-    construction, including for anisotropic and oblique grids.
-
-    Parameters
-    ----------
-    affine : numpy.ndarray, shape (4, 4)
-        Base target voxel-to-RAS affine.
-    shape : tuple of int
-        Target spatial shape, used to locate the grid centre.
-    cras : numpy.ndarray, shape (3,)
-        Requested world coordinate of the grid centre.
-
-    Returns
-    -------
-    numpy.ndarray, shape (4, 4)
-        Copy of ``affine`` whose grid centre lands on ``cras``.
-    """
-    out = np.array(affine, dtype=np.float64, copy=True)
-    center_vox = np.asarray(shape, dtype=np.float64) / 2.0
-    out[:3, 3] = np.asarray(cras, dtype=np.float64) - out[:3, :3] @ center_vox
-    return out
-
-
 def _resolve_target_geometry(
         mov_img: Any,
         ref_img: Any | None,
@@ -483,7 +390,7 @@ def _resolve_target_geometry(
         shape = tuple(int(v) for v in info["volume"])
 
     if ref_cras is not None:
-        affine = _apply_ref_cras(affine, shape, ref_cras)
+        affine = place_grid_at_cras(affine, shape, ref_cras)
     return affine, shape
 
 
