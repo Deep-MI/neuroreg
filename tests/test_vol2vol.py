@@ -271,6 +271,68 @@ class TestVol2VolCli:
         assert mapped_src.shape == (3, 3, 3)
         assert mapped_src.affine == pytest.approx(src_affine)
 
+    def test_transform_without_destination_geometry_falls_back_to_the_input_grid(self, tmp_path: Path):
+        # An ITK affine carries no geometry of its own, so read without --ref
+        # its LTA destination is marked invalid with a zero volume. The
+        # RAS-to-RAS matrix is still usable, so the documented fallback to the
+        # input grid applies rather than refusing the transform.
+        data = np.zeros((6, 6, 6), dtype=np.uint8)
+        data[1, 2, 3] = 200
+        mov_affine = np.diag([1.0, 1.0, 1.0, 1.0])
+        mov_affine[:3, 3] = [5.0, -7.0, 2.0]
+        mov_path = _write_image(tmp_path / "mov.nii.gz", data, affine=mov_affine)
+        itk_path = tmp_path / "shift.txt"
+        itk_path.write_text(
+            "#Insight Transform File V1.0\n"
+            "#Transform 0\n"
+            "Transform: MatrixOffsetTransformBase_double_3_3\n"
+            "Parameters: 1 0 0 0 1 0 0 0 1 1 0 0\n"
+            "FixedParameters: 0 0 0\n"
+        )
+        out_path = tmp_path / "out.nii.gz"
+
+        vol2vol_main(
+            [
+                "--in", str(mov_path),
+                "--transform", str(itk_path),
+                "--transform-format", "itk",
+                "--interp", "nearest",
+                "--out", str(out_path),
+            ]
+        )
+
+        mapped = nib.load(str(out_path))
+        assert mapped.shape == (6, 6, 6)
+        assert mapped.affine == pytest.approx(mov_affine)
+
+    def test_transform_without_destination_geometry_composes_with_ref_cras(self, tmp_path: Path):
+        mov_affine = np.diag([1.0, 1.0, 1.0, 1.0])
+        mov_affine[:3, 3] = [5.0, -7.0, 2.0]
+        mov_path = _write_image(tmp_path / "mov.nii.gz", np.ones((6, 6, 6), dtype=np.uint8), affine=mov_affine)
+        itk_path = tmp_path / "shift.txt"
+        itk_path.write_text(
+            "#Insight Transform File V1.0\n"
+            "#Transform 0\n"
+            "Transform: MatrixOffsetTransformBase_double_3_3\n"
+            "Parameters: 1 0 0 0 1 0 0 0 1 1 0 0\n"
+            "FixedParameters: 0 0 0\n"
+        )
+        out_path = tmp_path / "out.nii.gz"
+
+        vol2vol_main(
+            [
+                "--in", str(mov_path),
+                "--transform", str(itk_path),
+                "--transform-format", "itk",
+                "--ref-cras", "0,0,0",
+                "--out", str(out_path),
+            ]
+        )
+
+        mapped = nib.load(str(out_path))
+        assert mapped.shape == (6, 6, 6)
+        assert _cras(mapped.affine, mapped.shape) == pytest.approx([0.0, 0.0, 0.0], abs=1e-4)
+
     def test_header_only_updates_affine_and_preserves_payload(self, tmp_path: Path):
         data = np.arange(8, dtype=np.uint8).reshape(2, 2, 2)
         mov_path = _write_image(tmp_path / "mov.nii.gz", data)

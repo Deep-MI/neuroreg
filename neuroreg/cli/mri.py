@@ -569,8 +569,11 @@ def _resolve_geom_components(
 
 
 def _main_geom(ns: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
-    cosines, shape, vox_size, cras = _resolve_geom_components(ns, parser)
     try:
+        # Inside the boundary so an unreadable --like reports like the other
+        # subcommands. parser.error raises SystemExit, not Exception, so usage
+        # errors still surface as argparse messages rather than "ERROR: ...".
+        cosines, shape, vox_size, cras = _resolve_geom_components(ns, parser)
         affine = build_grid_affine(cosines=cosines, vox_size=vox_size, shape=shape, cras=cras)
         # uint8 zeros: the payload is irrelevant, only the header is, and this
         # keeps a 320^3 reference file a few KB once compressed.

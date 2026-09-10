@@ -26,6 +26,8 @@ from typing import Any
 
 import numpy as np
 
+from ._args import NumberListParser, number_list
+from ._outputs import validate_image_outputs
 from ..image import (
     check_dtype_storable,
     clip_and_cast_dtype,
@@ -37,8 +39,6 @@ from ..image import (
     save_image,
 )
 from ..transforms import TRANSFORM_FORMATS, affine_from_volume_info, read_transform_as_lta
-from ._args import NumberListParser, number_list
-from ._outputs import validate_image_outputs
 
 
 def _parse_pad(value: str) -> str | float:
@@ -338,6 +338,39 @@ def _resolve_target_dtype(ns: argparse.Namespace, source_dtype: np.dtype) -> np.
     return source_dtype if ns.out_dtype == "input" else np.dtype(ns.out_dtype)
 
 
+def _geometry_from_transform(effective_lta: Any) -> tuple[np.ndarray, tuple[int, int, int]] | None:
+    """Return a transform's destination geometry, or ``None`` if it carries none.
+
+    Some formats store no destination geometry at all: an ITK or AFNI affine
+    read without ``--ref`` leaves the LTA destination marked ``valid = 0`` with
+    a zero volume, even though its RAS-to-RAS matrix is perfectly usable.
+    Reporting that as "no geometry" lets the caller fall back to the input grid
+    instead of refusing a transform it can apply.
+
+    Parameters
+    ----------
+    effective_lta : Any
+        Transform as an LTA, after any requested inversion.
+
+    Returns
+    -------
+    tuple[numpy.ndarray, tuple[int, int, int]] or None
+        Destination affine and shape, or ``None`` when the transform has no
+        usable destination geometry.
+    """
+    info = effective_lta.dst
+    try:
+        affine = affine_from_volume_info(info)
+        shape = tuple(int(v) for v in info["volume"])
+    except (ValueError, KeyError, TypeError):
+        return None
+    if any(v <= 0 for v in shape):
+        # A "valid" block can still carry a zero volume, which would ask for an
+        # empty output grid.
+        return None
+    return affine, shape
+
+
 def _resolve_target_geometry(
         mov_img: Any,
         ref_img: Any | None,
@@ -363,7 +396,9 @@ def _resolve_target_geometry(
         Loaded reference image, if supplied.
     effective_lta : Any or None
         Effective transform as an LTA after applying any inversion requested by
-        the user. Overrides therefore act on the post-inversion target.
+        the user. Overrides therefore act on the post-inversion target. A
+        transform whose destination geometry is absent or invalid counts as not
+        supplying one, so resolution falls through to the input image.
     ref_cras : numpy.ndarray or None, optional
         Placement override: world coordinate of the target grid centre. When
         ``None`` the placement of the base geometry is kept.
@@ -378,16 +413,15 @@ def _resolve_target_geometry(
     ValueError
         If no valid target geometry can be resolved.
     """
+    from_transform = None if effective_lta is None else _geometry_from_transform(effective_lta)
     if ref_img is not None:
         affine = np.asarray(ref_img.affine, dtype=np.float64)
         shape = tuple(int(v) for v in ref_img.shape[:3])
-    elif effective_lta is None:
+    elif from_transform is not None:
+        affine, shape = from_transform
+    else:
         affine = np.asarray(mov_img.affine, dtype=np.float64)
         shape = tuple(int(v) for v in mov_img.shape[:3])
-    else:
-        info = effective_lta.dst
-        affine = affine_from_volume_info(info)
-        shape = tuple(int(v) for v in info["volume"])
 
     if ref_cras is not None:
         affine = place_grid_at_cras(affine, shape, ref_cras)

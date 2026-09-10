@@ -705,6 +705,16 @@ class TestGeom:
 
         assert "must be positive" in capsys.readouterr().err
 
+    def test_unreadable_like_reports_like_the_other_subcommands(self, tmp_path: Path, capsys):
+        # Not a usage error, so it must surface as "ERROR: ..." and exit 1
+        # rather than a Python traceback.
+        with pytest.raises(SystemExit):
+            mri_main(["geom", "--out", str(tmp_path / "o.mgz"), "--like", str(tmp_path / "missing.mgz")])
+
+        err = capsys.readouterr().err
+        assert err.startswith("ERROR:")
+        assert "Traceback" not in err
+
     def test_unsupported_output_extension_is_rejected(self, tmp_path: Path, capsys):
         with pytest.raises(SystemExit):
             mri_main(
