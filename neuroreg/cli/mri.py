@@ -16,8 +16,6 @@ import sys
 import nibabel as nib
 import numpy as np
 
-from ._args import NumberListParser, number_list
-from ._outputs import validate_image_outputs
 from ..image import (
     binarize_image,
     build_grid_affine,
@@ -31,7 +29,8 @@ from ..image import (
     save_image,
     shape_from_fov,
 )
-
+from ._args import NumberListParser, number_list
+from ._outputs import validate_image_outputs
 
 # ── parser ──────────────────────────────────────────────────────────────────
 

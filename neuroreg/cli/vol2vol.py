@@ -26,8 +26,6 @@ from typing import Any
 
 import numpy as np
 
-from ._args import NumberListParser, number_list
-from ._outputs import validate_image_outputs
 from ..image import (
     check_dtype_storable,
     clip_and_cast_dtype,
@@ -39,6 +37,8 @@ from ..image import (
     save_image,
 )
 from ..transforms import TRANSFORM_FORMATS, affine_from_volume_info, read_transform_as_lta
+from ._args import NumberListParser, number_list
+from ._outputs import validate_image_outputs
 
 
 def _parse_pad(value: str) -> str | float:
