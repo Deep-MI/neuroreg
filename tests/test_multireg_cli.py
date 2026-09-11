@@ -524,6 +524,31 @@ class TestMultiregCli:
         assert "--cras-center has no effect when --ixforms" in err
         assert "pass only one" in err
 
+    def test_main_rejects_fixtp_with_cras_center(self, tmp_path: Path, capsys):
+        # --fixtp keeps the initial target's own grid, so there is likewise
+        # nothing left for --cras-center to center.
+        mov1 = tmp_path / "tp1.nii.gz"
+        mov2 = tmp_path / "tp2.nii.gz"
+        _write_zero_image(mov1)
+        _write_zero_image(mov2)
+
+        with pytest.raises(SystemExit):
+            multireg_main(
+                [
+                    "--mov",
+                    str(mov1),
+                    str(mov2),
+                    "--template",
+                    str(tmp_path / "template.nii.gz"),
+                    "--fixtp",
+                    "--cras-center",
+                ]
+            )
+
+        err = capsys.readouterr().err
+        assert "--cras-center has no effect when --fixtp" in err
+        assert "pass only one" in err
+
     def test_main_rejects_template_geom_with_cras_center(self, tmp_path: Path, capsys):
         mov1 = tmp_path / "tp1.nii.gz"
         mov2 = tmp_path / "tp2.nii.gz"

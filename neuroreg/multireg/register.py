@@ -448,7 +448,8 @@ def multireg(
     fix_target : bool, default=False
         If ``True``, keep the initial target geometry instead of constructing an
         unbiased mean-space template grid. Mutually exclusive with ``init_ltas``
-        and ``template_geometry``, which choose the template space themselves.
+        and ``template_geometry``, which choose the template space themselves,
+        and with ``use_cras_center``, since no geometry is then derived.
     init_type : InitType or None, optional
         Pairwise registration initialization mode.
     nmax : int, default=5
@@ -462,8 +463,8 @@ def multireg(
     use_cras_center : bool, default=False
         If ``True``, center the template geometry on the average CRAS instead of
         the average mapped intensity centroid. Only selects how a derived
-        geometry is centered, so it is mutually exclusive with ``init_ltas`` and
-        ``template_geometry``, neither of which derives one.
+        geometry is centered, so it is mutually exclusive with ``init_ltas``,
+        ``template_geometry`` and ``fix_target``, none of which derives one.
     template_iterations : int or None, optional
         Maximum number of global template-refinement passes. ``None`` uses the
         built-in defaults for two versus three-or-more time points.
@@ -525,11 +526,21 @@ def multireg(
             "template_geometry takes it from the given image, fix_target from the initial target "
             "time point."
         )
-    if use_cras_center and (init_ltas is not None or template_geometry is not None):
-        # use_cras_center picks between two ways of centering a template grid
-        # that is being derived from the inputs. Both alternatives here supply a
-        # complete grid, placement included, so there is nothing left to center.
-        source = "init_ltas" if init_ltas is not None else "template_geometry"
+    # The template geometry is derived from the inputs only when nothing else
+    # supplies one. Both the centering choice and the orientation-averaging
+    # warning depend on that single fact, so it is settled once here.
+    derives_geometry = init_ltas is None and template_geometry is None and not fix_target
+    if use_cras_center and not derives_geometry:
+        # use_cras_center picks between two ways of centering a grid that is
+        # being derived. Each alternative supplies a complete grid, placement
+        # included, so there is nothing left to center.
+        source = (
+            "init_ltas"
+            if init_ltas is not None
+            else "template_geometry"
+            if template_geometry is not None
+            else "fix_target"
+        )
         raise ValueError(
             f"use_cras_center only selects how a derived template geometry is centered, and {source} "
             "supplies the geometry instead of deriving one; pass only one."
@@ -548,7 +559,7 @@ def multireg(
             np.asarray(geom_image.affine, dtype=np.float64),
         )
 
-    validate_input_geometries(images, derives_geometry=external_geometry is None)
+    validate_input_geometries(images, derives_geometry=derives_geometry)
     resolved_init_type = resolve_init_type(init_type, default_init_type="centroid")
     resolved_template_iterations = _resolve_iterations(template_iterations, len(images))
 

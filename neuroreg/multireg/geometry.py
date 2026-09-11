@@ -392,9 +392,15 @@ def check_template_grid_covers_inputs(
     A derived template grid covers all inputs by construction, but a grid taken
     from ``init_ltas`` or supplied outright can be placed anywhere, and a wrong
     ``c_ras`` then yields an empty or heavily cropped template with no other
-    symptom. Coverage is compared between axis-aligned bounding boxes in template
-    voxel space, which overstates an obliquely mapped extent and so errs toward
-    staying quiet.
+    symptom.
+
+    Coverage is compared between axis-aligned bounding boxes in template voxel
+    space, with two consequences. An obliquely mapped extent is overstated, so
+    the measure errs toward staying quiet: a reported miss is always a real one,
+    but two genuinely disjoint oblique boxes whose bounding boxes overlap go
+    unreported. And the measure is purely geometric, so a grid covering half an
+    image that is mostly background scores the same as one covering half of
+    dense anatomy.
 
     Parameters
     ----------
@@ -421,8 +427,8 @@ def check_template_grid_covers_inputs(
     -----
     RuntimeWarning
         Warns once per time point that overlaps the template grid by less than
-        ``_SMALL_OVERLAP_FRACTION``, which is a partial result rather than an
-        impossible one and can be intended.
+        50%, measured as the larger of the two containment fractions. That is a
+        partial result rather than an impossible one and can be intended.
     """
     unit_corners = np.array(
         [[i, j, k, 1.0] for i in (0, 1) for j in (0, 1) for k in (0, 1)],
@@ -431,20 +437,30 @@ def check_template_grid_covers_inputs(
     template_low = np.full(3, -0.5)
     template_high = np.asarray(template_shape, dtype=np.float64) - 0.5
     template_volume = float(np.prod(template_high - template_low))
-    template_inv = np.linalg.inv(np.asarray(template_affine, dtype=np.float64))
+    template_affine = np.asarray(template_affine, dtype=np.float64)
+    template_inv = np.linalg.inv(template_affine)
+    # Grid center at shape / 2, the c_ras convention used throughout.
+    template_center = (template_affine @ np.append(np.asarray(template_shape, dtype=np.float64) / 2.0, 1.0))[:3]
     for index, (image, r2r) in enumerate(zip(images, transforms_r2r, strict=False)):
+        image_affine = np.asarray(image.affine, dtype=np.float64)
+        image_shape = np.asarray(image.shape[:3], dtype=np.float64)
+        mapped_center = (np.asarray(r2r, dtype=np.float64) @ image_affine @ np.append(image_shape / 2.0, 1.0))[:3]
+        # Reported because it is the number that identifies a misplaced c_ras,
+        # and it stays meaningful whatever the two grids' orientations are.
+        center_distance = float(np.linalg.norm(mapped_center - template_center))
         corners = unit_corners.copy()
         # Voxel centers span 0 to shape - 1, so the covered region runs half a
         # voxel further out on each side.
-        corners[:, :3] = corners[:, :3] * np.asarray(image.shape[:3], dtype=np.float64) - 0.5
-        mapped = (corners @ (template_inv @ np.asarray(r2r, dtype=np.float64) @ np.asarray(image.affine)).T)[:, :3]
+        corners[:, :3] = corners[:, :3] * image_shape - 0.5
+        mapped = (corners @ (template_inv @ np.asarray(r2r, dtype=np.float64) @ image_affine).T)[:, :3]
         mapped_low = mapped.min(axis=0)
         mapped_high = mapped.max(axis=0)
         overlap_extent = np.minimum(mapped_high, template_high) - np.maximum(mapped_low, template_low)
         if np.any(overlap_extent <= 0.0):
             raise ValueError(
                 f"TP {index + 1} maps entirely outside the template grid, so it would contribute nothing to "
-                "the template. Check the placement (c_ras) of the template geometry and the input transforms."
+                f"the template. Its center lands {center_distance:.1f} mm from the grid center. Check the "
+                "placement (c_ras) of the template geometry and the input transforms."
             )
         overlap_volume = float(np.prod(overlap_extent))
         mapped_volume = max(float(np.prod(mapped_high - mapped_low)), np.finfo(np.float64).tiny)
@@ -452,8 +468,9 @@ def check_template_grid_covers_inputs(
         if covered < _SMALL_OVERLAP_FRACTION:
             warnings.warn(
                 f"TP {index + 1} overlaps the template grid by only {covered:.0%}, so most of the template "
-                "will be empty and most of the time point will be cropped away. Check the placement (c_ras) "
-                "and extent of the template geometry.",
+                "will be empty and most of the time point will be cropped away. Its center lands "
+                f"{center_distance:.1f} mm from the grid center. Check the placement (c_ras) and extent of "
+                "the template geometry.",
                 RuntimeWarning,
                 stacklevel=2,
             )

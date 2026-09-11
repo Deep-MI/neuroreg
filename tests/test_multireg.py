@@ -272,7 +272,7 @@ def _geom_affine(voxel_size: float, corner: tuple[float, float, float]) -> np.nd
     return affine
 
 
-def test_multireg_template_geom_overrides_derived_geometry(monkeypatch: pytest.MonkeyPatch):
+def test_multireg_template_geometry_overrides_derived_geometry(monkeypatch: pytest.MonkeyPatch):
     images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0)), _make_img(shift=(-2, 0, 0))]
     register_module = importlib.import_module("neuroreg.multireg.register")
     monkeypatch.setattr(
@@ -291,7 +291,7 @@ def test_multireg_template_geom_overrides_derived_geometry(monkeypatch: pytest.M
     assert derived.template_image.shape[:3] != (12, 13, 14)
 
 
-def test_multireg_template_geom_accepts_a_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def test_multireg_template_geometry_accepts_a_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0))]
     register_module = importlib.import_module("neuroreg.multireg.register")
     monkeypatch.setattr(
@@ -309,7 +309,7 @@ def test_multireg_template_geom_accepts_a_path(tmp_path: Path, monkeypatch: pyte
     assert np.asarray(result.template_image.affine) == pytest.approx(geom_affine)
 
 
-def test_multireg_template_geom_skips_deriving_a_geometry_it_would_discard(monkeypatch: pytest.MonkeyPatch):
+def test_multireg_template_geometry_skips_deriving_a_geometry_it_would_discard(monkeypatch: pytest.MonkeyPatch):
     # Orientations that no axis permutation relates make the derived geometry
     # path raise. Supplying the grid is exactly how a caller opts out of that
     # derivation, so it must not run at all.
@@ -336,9 +336,9 @@ def test_multireg_template_geom_skips_deriving_a_geometry_it_would_discard(monke
     assert result.template_image.shape[:3] == (12, 13, 14)
 
 
-def test_multireg_template_geom_rejects_cras_center(monkeypatch: pytest.MonkeyPatch):
+def test_multireg_template_geometry_rejects_cras_center(monkeypatch: pytest.MonkeyPatch):
     # use_cras_center only selects how a derived geometry is centered, and with
-    # template_geom nothing is derived.
+    # template_geometry nothing is derived.
     images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0))]
     register_module = importlib.import_module("neuroreg.multireg.register")
     monkeypatch.setattr(
@@ -378,6 +378,46 @@ def test_multireg_rejects_cras_center_with_init_ltas(monkeypatch: pytest.MonkeyP
         multireg(images, init_target_index=0, init_ltas=init_ltas, template_iterations=0, use_cras_center=True)
 
 
+def test_multireg_rejects_cras_center_with_fix_target(monkeypatch: pytest.MonkeyPatch):
+    # The third source of a geometry that is not derived: fix_target keeps the
+    # initial target's own grid, placement included.
+    images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0))]
+    register_module = importlib.import_module("neuroreg.multireg.register")
+    monkeypatch.setattr(
+        register_module,
+        "robreg",
+        lambda *args, **kwargs: pytest.fail("multireg must reject the pair before registering"),
+    )
+
+    with pytest.raises(ValueError, match="fix_target supplies the geometry"):
+        multireg(images, init_target_index=0, template_iterations=0, fix_target=True, use_cras_center=True)
+
+
+def test_multireg_does_not_claim_to_average_orientations_it_never_averages(monkeypatch: pytest.MonkeyPatch):
+    # The orientation warning describes the derived geometry path. init_ltas and
+    # fix_target both bypass it, so neither may emit that warning.
+    register_module = importlib.import_module("neuroreg.multireg.register")
+    monkeypatch.setattr(
+        register_module,
+        "robreg",
+        lambda *args, **kwargs: _fake_tensor(np.eye(4, dtype=np.float64)),
+    )
+    cos, sin = np.cos(np.pi / 4), np.sin(np.pi / 4)
+    rotated = np.eye(4, dtype=np.float32)
+    rotated[:3, :3] = np.array([[cos, -sin, 0.0], [sin, cos, 0.0], [0.0, 0.0, 1.0]], dtype=np.float32)
+    images = [_make_img(), _make_img(shift=(2, 0, 0), affine=rotated)]
+    identity = np.eye(4, dtype=np.float64)
+    init_ltas = [
+        LTA.from_matrix(identity, f"tp{index + 1}.nii.gz", image, "template.nii.gz", _make_img(), lta_type=1)
+        for index, image in enumerate(images)
+    ]
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        multireg(images, init_target_index=0, init_ltas=init_ltas, template_iterations=0)
+        multireg(images, init_target_index=0, template_iterations=0, fix_target=True)
+
+
 def test_multireg_rejects_a_template_grid_that_misses_a_timepoint(monkeypatch: pytest.MonkeyPatch):
     # A grid that is supplied rather than derived can be placed anywhere, and a
     # wrong c_ras otherwise shows up only as an empty template.
@@ -390,8 +430,15 @@ def test_multireg_rejects_a_template_grid_that_misses_a_timepoint(monkeypatch: p
     )
     far_away = _make_img(shape=(12, 13, 14), affine=_geom_affine(1.0, (500.0, 500.0, 500.0)))
 
-    with pytest.raises(ValueError, match="maps entirely outside the template grid"):
+    with pytest.raises(ValueError, match="maps entirely outside the template grid") as excinfo:
         multireg(images, init_target_index=0, nmax=1, template_iterations=0, template_geometry=far_away)
+
+    # The input is centered at RAS 10.5 (21 / 2) and the grid at 506, 506.5, 507
+    # (500 + shape / 2), so the message must quote that distance rather than a
+    # bare "outside": norm([495.5, 496, 496.5]) is 859.1 mm.
+    assert "mm from the grid center" in str(excinfo.value)
+    reported = float(str(excinfo.value).split("lands ")[1].split(" mm")[0])
+    assert reported == pytest.approx(859.1, abs=0.5)
 
 
 def test_multireg_warns_when_the_template_grid_barely_overlaps_a_timepoint(monkeypatch: pytest.MonkeyPatch):
@@ -429,7 +476,7 @@ def test_multireg_accepts_a_template_grid_framing_part_of_the_inputs(monkeypatch
     assert result.template_image.shape[:3] == (6, 6, 6)
 
 
-def test_multireg_template_geom_rejects_fix_target(monkeypatch: pytest.MonkeyPatch):
+def test_multireg_template_geometry_rejects_fix_target(monkeypatch: pytest.MonkeyPatch):
     images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0))]
     register_module = importlib.import_module("neuroreg.multireg.register")
     monkeypatch.setattr(
@@ -442,7 +489,7 @@ def test_multireg_template_geom_rejects_fix_target(monkeypatch: pytest.MonkeyPat
         multireg(images, init_target_index=0, template_iterations=0, template_geometry=_make_img(), fix_target=True)
 
 
-def test_multireg_template_geom_ignores_disagreeing_init_lta_geometry(monkeypatch: pytest.MonkeyPatch):
+def test_multireg_template_geometry_ignores_disagreeing_init_lta_geometry(monkeypatch: pytest.MonkeyPatch):
     # Deliberate: with the geometry supplied externally, the destination blocks of
     # the input transforms are never read, so they neither have to agree with each
     # other nor be present at all.
@@ -482,7 +529,7 @@ def test_multireg_template_geom_ignores_disagreeing_init_lta_geometry(monkeypatc
     assert np.asarray(result.template_image.affine) == pytest.approx(geom_image.affine)
 
 
-def test_multireg_template_geom_survives_template_iterations(monkeypatch: pytest.MonkeyPatch):
+def test_multireg_template_geometry_survives_template_iterations(monkeypatch: pytest.MonkeyPatch):
     images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0)), _make_img(shift=(-2, 0, 0))]
     register_module = importlib.import_module("neuroreg.multireg.register")
     monkeypatch.setattr(
@@ -499,7 +546,7 @@ def test_multireg_template_geom_survives_template_iterations(monkeypatch: pytest
     assert np.asarray(result.template_image.affine) == pytest.approx(geom_image.affine)
 
 
-def test_multireg_template_geom_preserves_native_voxel_size(monkeypatch: pytest.MonkeyPatch):
+def test_multireg_template_geometry_preserves_native_voxel_size(monkeypatch: pytest.MonkeyPatch):
     # Sub-millimeter inputs with a sub-millimeter template geometry must keep both
     # the voxel size and the image dimensions of that geometry, with no fallback
     # to a 1 mm grid. Scaled down from the 0.8 mm / 320 cubed production case.
@@ -523,7 +570,7 @@ def test_multireg_template_geom_preserves_native_voxel_size(monkeypatch: pytest.
     assert voxel_sizes == pytest.approx([0.8, 0.8, 0.8])
 
 
-def test_multireg_template_geom_maps_movables_onto_the_template_grid(monkeypatch: pytest.MonkeyPatch):
+def test_multireg_template_geometry_maps_movables_onto_the_template_grid(monkeypatch: pytest.MonkeyPatch):
     images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0)), _make_img(shift=(-2, 0, 0))]
     register_module = importlib.import_module("neuroreg.multireg.register")
     monkeypatch.setattr(

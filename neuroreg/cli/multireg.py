@@ -106,8 +106,8 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help=(
             "Center the template geometry at the average CRAS instead of the average mapped "
-            "centroid. Cannot be combined with --ixforms or --template-geom, neither of which "
-            "derives a geometry to center."
+            "centroid. Cannot be combined with --ixforms, --template-geom or --fixtp, none of "
+            "which derives a geometry to center."
         ),
     )
     iter_group = p.add_mutually_exclusive_group()
@@ -236,10 +236,15 @@ def main(args=None) -> None:
         # Same reasoning as above: --fixtp keeps the initial target time point's
         # grid, --template-geom supplies a grid outright.
         parser.error("--template-geom and --fixtp both determine the template space; pass only one.")
-    if ns.cras_center and (ns.ixforms is not None or ns.template_geom is not None):
-        # --cras-center only selects how a derived geometry is centered, and
-        # neither of these derives one: both supply a grid, placement included.
-        source = "--ixforms" if ns.ixforms is not None else "--template-geom"
+    if ns.cras_center and (ns.ixforms is not None or ns.template_geom is not None or ns.fixtp):
+        # --cras-center only selects how a derived geometry is centered, and none
+        # of these derives one: each supplies a grid, placement included.
+        if ns.ixforms is not None:
+            source = "--ixforms"
+        elif ns.template_geom is not None:
+            source = "--template-geom"
+        else:
+            source = "--fixtp"
         parser.error(f"--cras-center has no effect when {source} supplies the template space; pass only one.")
     if ns.mapmov is not None and len(ns.mapmov) != len(ns.mov):
         parser.error("--mapmov requires exactly one output path per --mov input.")
