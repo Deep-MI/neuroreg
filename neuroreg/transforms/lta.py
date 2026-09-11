@@ -513,6 +513,72 @@ class LTA:
 
     # ── operations ──────────────────────────────────────────────────────────
 
+    def with_geometry(
+            self,
+            *,
+            src_img: _AnyHeader | None = None,
+            dst_img: _AnyHeader | None = None,
+            src_fname: str | None = None,
+            dst_fname: str | None = None,
+    ) -> LTA:
+        """Return a copy with the source and/or destination geometry replaced.
+
+        This is how a transform that carries no destination geometry, such as
+        centroid-based atlas registration output whose ``dst`` block is marked
+        ``valid = 0``, is told where its target lives.
+
+        A LINEAR_RAS_TO_RAS matrix maps scanner coordinates and does not depend
+        on either voxel grid, so its geometry blocks are metadata and are simply
+        replaced. A LINEAR_VOX_TO_VOX matrix is defined relative to the stored
+        grids, so replacing a block would silently change what the transform
+        means; the matrix is therefore recomputed against the new grids to
+        preserve the mapping, which requires the stored blocks to be valid.
+
+        Parameters
+        ----------
+        src_img, dst_img : path, nibabel header/image, dict, or None
+            Replacement geometry. ``None`` keeps the existing block.
+        src_fname, dst_fname : str or None, optional
+            Filenames recorded with the replaced blocks. Default to the names
+            already stored.
+
+        Returns
+        -------
+        LTA
+            New transform. ``self`` is not modified.
+
+        Raises
+        ------
+        ValueError
+            If this is a LINEAR_VOX_TO_VOX transform whose stored geometry is
+            not valid, so the mapping cannot be re-expressed on the new grids.
+        """
+        src = (
+            dict(self.src)
+            if src_img is None
+            else _header_to_vol_info(_header_info(src_img), src_fname or str(self.src.get("filename", "")))
+        )
+        dst = (
+            dict(self.dst)
+            if dst_img is None
+            else _header_to_vol_info(_header_info(dst_img), dst_fname or str(self.dst.get("filename", "")))
+        )
+        if self.type == 1 or (src_img is None and dst_img is None):
+            matrix = self.matrix.copy()
+        else:
+            # Going through RAS keeps the mapping fixed while the grids change.
+            # r2r() raises here when the stored blocks are invalid, which is the
+            # correct outcome: a vox2vox matrix cannot be interpreted without
+            # the grids it was computed against.
+            matrix = convert_transform_type(
+                self.r2r(),
+                affine_from_volume_info(src),
+                affine_from_volume_info(dst),
+                from_type=1,
+                to_type=0,
+            )
+        return LTA(matrix, self.type, src, dst, subject=self.subject, fscale=self.fscale)
+
     def invert(self) -> LTA:
         """Return an inverted copy with src/dst swapped, stored as R2R."""
         return LTA(np.linalg.inv(self.r2r()), 1, self.dst, self.src, subject=self.subject, fscale=self.fscale)

@@ -7,6 +7,7 @@ import pytest
 
 from neuroreg.cli.multireg import main as multireg_main
 from neuroreg.multireg import MultiRegResult
+from neuroreg.transforms import LTA
 
 
 def _write_zero_image(path: Path) -> None:
@@ -241,3 +242,99 @@ class TestMultiregCli:
                     str(tmp_path / "only_one.lta"),
                 ]
             )
+
+    def test_main_rejects_ixforms_with_fixtp(self, tmp_path: Path, capsys):
+        # Both choose the template space, so accepting the pair would silently
+        # discard --fixtp rather than doing what was asked.
+        mov1 = tmp_path / "tp1.nii.gz"
+        mov2 = tmp_path / "tp2.nii.gz"
+        template = tmp_path / "template.nii.gz"
+        _write_zero_image(mov1)
+        _write_zero_image(mov2)
+
+        with pytest.raises(SystemExit):
+            multireg_main(
+                [
+                    "--mov",
+                    str(mov1),
+                    str(mov2),
+                    "--template",
+                    str(template),
+                    "--ixforms",
+                    str(tmp_path / "tp1.lta"),
+                    str(tmp_path / "tp2.lta"),
+                    "--fixtp",
+                ]
+            )
+
+        assert "pass only one" in capsys.readouterr().err
+
+    def test_main_reports_ixforms_without_destination_geometry(self, tmp_path: Path, capsys):
+        # LTAs from atlas registration with no target image (e.g. centroid-based
+        # segreg) carry valid = 0, so they cannot define the template space.
+        # That has to read as an error with a remedy, not as a traceback.
+        mov1 = tmp_path / "tp1.nii.gz"
+        mov2 = tmp_path / "tp2.nii.gz"
+        _write_zero_image(mov1)
+        _write_zero_image(mov2)
+        mov_img = nib.load(str(mov1))
+        lta_paths = []
+        for index, mov_path in enumerate((mov1, mov2), start=1):
+            lta_path = tmp_path / f"tp{index}_to_mni.lta"
+            LTA.from_matrix(np.eye(4, dtype=np.float64), str(mov_path), mov_img, "mni.mgz", None).write(lta_path)
+            lta_paths.append(str(lta_path))
+
+        with pytest.raises(SystemExit):
+            multireg_main(
+                [
+                    "--mov",
+                    str(mov1),
+                    str(mov2),
+                    "--template",
+                    str(tmp_path / "template.mgz"),
+                    "--ixforms",
+                    *lta_paths,
+                    "--noit",
+                ]
+            )
+
+        # LTA.read also logs its own valid = 0 warning to stderr, so assert on
+        # the parts unique to the failure and its remedy.
+        err = capsys.readouterr().err
+        assert "Traceback" not in err
+        assert "ERROR:" in err
+        assert "must include valid destination geometry" in err
+        assert "lta convert --dst-img" in err
+
+    def test_main_accepts_fixtp_without_ixforms(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        # The rejection must be specific to the combination, not to --fixtp.
+        mov1 = tmp_path / "tp1.nii.gz"
+        mov2 = tmp_path / "tp2.nii.gz"
+        template = tmp_path / "template.nii.gz"
+        _write_zero_image(mov1)
+        _write_zero_image(mov2)
+
+        captured: dict[str, Any] = {}
+
+        def fake_multireg(*args, **kwargs):
+            captured.update(kwargs)
+            identity = np.eye(4, dtype=np.float64)
+            return MultiRegResult(
+                template_image=nib.Nifti1Image(
+                    np.ones((8, 8, 8), dtype=np.float32), np.eye(4, dtype=np.float32)
+                ),
+                transforms_r2r=[identity, identity],
+                ltas=[],
+                initial_target_index=0,
+                seed=123,
+                mapped_images=None,
+                template_iterations_run=0,
+                iteration_distances=[],
+            )
+
+        monkeypatch.setattr("neuroreg.cli.multireg.multireg", fake_multireg)
+
+        multireg_main(["--mov", str(mov1), str(mov2), "--template", str(template), "--fixtp"])
+
+        assert captured["fix_target"] is True
+        assert captured["init_ltas"] is None

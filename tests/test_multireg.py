@@ -228,6 +228,43 @@ def test_multireg_rebuilds_template_from_precomputed_ltas(monkeypatch: pytest.Mo
     assert len(result.mapped_images) == 2
 
 
+def test_multireg_rejects_fix_target_with_init_ltas(monkeypatch: pytest.MonkeyPatch):
+    # Both determine the template space, so accepting the pair would silently
+    # discard one. A caller who passes both should be told, not have to find it
+    # in a log.
+    images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0))]
+    register_module = importlib.import_module("neuroreg.multireg.register")
+    template_image = _make_img()
+    identity = np.eye(4, dtype=np.float64)
+    init_ltas = [
+        LTA.from_matrix(identity, f"tp{index + 1}.nii.gz", image, "template.nii.gz", template_image, lta_type=1)
+        for index, image in enumerate(images)
+    ]
+    monkeypatch.setattr(
+        register_module,
+        "robreg",
+        lambda *args, **kwargs: pytest.fail("multireg must reject the pair before registering"),
+    )
+
+    with pytest.raises(ValueError, match="pass only one"):
+        multireg(images, init_target_index=0, init_ltas=init_ltas, template_iterations=0, fix_target=True)
+
+
+def test_multireg_accepts_fix_target_without_init_ltas(monkeypatch: pytest.MonkeyPatch):
+    # The rejection must be specific to the combination, not to fix_target.
+    images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0))]
+    register_module = importlib.import_module("neuroreg.multireg.register")
+    monkeypatch.setattr(
+        register_module,
+        "robreg",
+        lambda *args, **kwargs: _fake_tensor(np.eye(4, dtype=np.float64)),
+    )
+
+    result = multireg(images, init_target_index=0, nmax=1, template_iterations=0, fix_target=True)
+
+    assert result.template_image.shape == images[0].shape
+
+
 def test_cast_image_dtype_clips_cubic_overshoot_without_rescaling():
     data = np.array([-5.0, -0.4, 0.4, 128.0, 254.6, 300.0], dtype=np.float32).reshape(1, 1, 6)
     template_image = nib.Nifti1Image(data, np.eye(4, dtype=np.float32))

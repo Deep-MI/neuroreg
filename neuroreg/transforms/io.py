@@ -97,7 +97,13 @@ def read_transform_as_lta(
     """
     resolved_format = infer_transform_format(path, explicit=fmt)
     if resolved_format == "lta":
-        return LTA.read(path)
+        lta = LTA.read(path)
+        if src_img is None and dst_img is None:
+            return lta
+        # An LTA already carries geometry, but the caller naming images is
+        # asking for those blocks, which is the only way to give a transform a
+        # destination it was written without.
+        return lta.with_geometry(src_img=src_img, dst_img=dst_img, src_fname=src_img, dst_fname=dst_img)
     if resolved_format == "xfm":
         return XFM.read(path).to_lta(src_fname=src_img, src_img=src_img, dst_fname=dst_img, dst_img=dst_img)
     if resolved_format == "itk":

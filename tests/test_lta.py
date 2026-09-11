@@ -907,3 +907,87 @@ class TestConvertCLI:
         FSLMat(np.eye(4)).write(fsl)
         with pytest.raises(SystemExit):
             main(["convert", str(fsl), str(tmp_path / "out.lta")])
+
+
+class TestAttachGeometry:
+    """Giving an LTA a destination geometry it was written without."""
+
+    @staticmethod
+    def _img(shape, zoom, path=None):
+        img = nib.MGHImage(np.zeros(shape, dtype=np.uint8), np.diag([zoom, zoom, zoom, 1.0]))
+        if path is not None:
+            nib.save(img, path)
+        return img
+
+    def test_ras2ras_gains_a_destination_without_changing_the_mapping(self, tmp_path: Path):
+        # The motivating case: centroid-based atlas output has valid = 0 and so
+        # cannot say where its template lives.
+        src = self._img((8, 8, 8), 1.0, tmp_path / "tp1.mgz")
+        target = self._img((10, 10, 10), 2.0, tmp_path / "target.mgz")
+        matrix = np.eye(4)
+        matrix[:3, 3] = [1.0, -2.0, 3.0]
+        lta = LTA.from_matrix(matrix, "tp1.mgz", src, "atlas", None, lta_type=1)
+        assert lta.dst.get("valid") == 0
+
+        attached = lta.with_geometry(dst_img=target, dst_fname="target.mgz")
+
+        # A valid block carries no "valid" key; only invalid ones set it to 0.
+        assert attached.dst.get("valid", 1) != 0
+        assert list(attached.dst["volume"]) == [10, 10, 10]
+        # A RAS-to-RAS matrix does not depend on the grids, so it is unchanged.
+        assert attached.r2r() == pytest.approx(lta.r2r())
+
+    def test_vox2vox_is_recomputed_so_the_ras_mapping_is_preserved(self, tmp_path: Path):
+        # Replacing a grid under a vox2vox matrix would silently redefine it.
+        src = self._img((8, 8, 8), 1.0)
+        old_dst = self._img((8, 8, 8), 1.0)
+        new_dst = self._img((10, 10, 10), 2.0)
+        matrix = np.eye(4)
+        matrix[:3, 3] = [1.0, 0.0, 0.0]
+        lta = LTA.from_matrix(matrix, "src", src, "dst", old_dst, lta_type=0)
+        before = lta.r2r()
+
+        attached = lta.with_geometry(dst_img=new_dst)
+
+        assert attached.type == 0
+        assert list(attached.dst["volume"]) == [10, 10, 10]
+        assert attached.r2r() == pytest.approx(before)
+        assert not np.allclose(attached.matrix, lta.matrix)
+
+    def test_vox2vox_without_valid_geometry_is_refused(self, tmp_path: Path):
+        # Its matrix cannot be interpreted at all, so it cannot be re-expressed.
+        src = self._img((8, 8, 8), 1.0)
+        lta = LTA.from_matrix(np.eye(4), "src", src, "atlas", None, lta_type=0)
+
+        with pytest.raises(ValueError, match="valid"):
+            lta.with_geometry(dst_img=self._img((10, 10, 10), 2.0))
+
+    def test_convert_cli_attaches_the_destination_geometry(self, tmp_path: Path):
+        # 'lta convert --dst-img' documents that it enriches the geometry
+        # blocks; for LTA input it previously returned the file unchanged.
+        src = self._img((8, 8, 8), 1.0, tmp_path / "tp1.mgz")
+        self._img((10, 10, 10), 2.0, tmp_path / "target.mgz")
+        in_lta = tmp_path / "in.lta"
+        out_lta = tmp_path / "out.lta"
+        LTA.from_matrix(np.eye(4), str(tmp_path / "tp1.mgz"), src, "atlas", None, lta_type=1).write(in_lta)
+
+        main(["convert", str(in_lta), str(out_lta), "--dst-img", str(tmp_path / "target.mgz")])
+
+        written = LTA.read(out_lta)
+        assert written.dst["valid"] != 0
+        assert list(written.dst["volume"]) == [10, 10, 10]
+
+    def test_multireg_accepts_the_repaired_transforms(self, tmp_path: Path):
+        # The remedy named in multireg's error message has to actually work.
+        from neuroreg.multireg import multireg
+
+        images = [self._img((8, 8, 8), 1.0) for _ in range(2)]
+        target = self._img((8, 8, 8), 1.0)
+        repaired = [
+            LTA.from_matrix(np.eye(4), f"tp{i}", img, "atlas", None, lta_type=1).with_geometry(dst_img=target)
+            for i, img in enumerate(images)
+        ]
+
+        result = multireg(images, init_target_index=0, init_ltas=repaired, template_iterations=0)
+
+        assert result.template_image.shape == (8, 8, 8)
