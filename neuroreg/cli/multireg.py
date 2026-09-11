@@ -55,12 +55,10 @@ def _build_parser() -> argparse.ArgumentParser:
         nargs="*",
         metavar="FILE",
         help=(
-            "Optional input LTAs, one per --mov image. These initialize each time point's "
-            "registration and supply the template geometry from their (identical) destination "
-            "geometry, replacing the initial mean-space pass; a coarse pre-alignment is enough. "
-            "Template iterations then refine them, so the output LTAs generally differ from "
-            "these. Combine with --noit to use them exactly as given, e.g. to rebuild a "
-            "template in another image space."
+            "Optional input LTAs, one per --mov image. They initialize each registration and "
+            "supply the template geometry from their (shared) destination geometry, so a coarse "
+            "pre-alignment is enough. Template iterations refine them, meaning the output LTAs "
+            "usually differ; add --noit to use them exactly as given."
         ),
     )
     p.add_argument(
