@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from neuroreg.cli.multireg import main as multireg_main
+from neuroreg.cli.segreg import main as segreg_main
 from neuroreg.multireg import MultiRegResult
 from neuroreg.transforms import LTA
 
@@ -13,6 +14,52 @@ from neuroreg.transforms import LTA
 def _write_zero_image(path: Path) -> None:
     data = np.zeros((8, 8, 8), dtype=np.float32)
     nib.save(nib.Nifti1Image(data, affine=np.eye(4, dtype=np.float32)), path)
+
+
+def _write_point_image(path: Path, *, peak_voxel: tuple[int, int, int] = (2, 3, 4)) -> np.ndarray:
+    """Write an image with a single bright voxel and return its RAS coordinate.
+
+    Content that can be located lets a test tell a correctly placed output grid
+    from one the anatomy misses entirely, which an all-zero volume cannot.
+    """
+    data = np.zeros((8, 8, 8), dtype=np.float32)
+    data[peak_voxel] = 100.0
+    affine = np.eye(4, dtype=np.float32)
+    nib.save(nib.Nifti1Image(data, affine=affine), path)
+    return affine[:3, :3] @ np.asarray(peak_voxel, dtype=np.float64) + affine[:3, 3]
+
+
+def _peak_ras(image: Any) -> np.ndarray:
+    """Return the RAS coordinate of the brightest voxel of an image."""
+    data = np.asarray(image.dataobj)
+    peak = np.unravel_index(int(np.argmax(data)), data.shape[:3])
+    affine = np.asarray(image.affine, dtype=np.float64)
+    return affine[:3, :3] @ np.asarray(peak, dtype=np.float64) + affine[:3, 3]
+
+
+def _write_centroid_poses(tmp_path: Path, count: int) -> list[str]:
+    """Fit one pose per time point with segreg against bare centroids.
+
+    The resulting LTAs are the real case for --template-geom: the target is a set
+    of centroid coordinates with no image behind it, so each LTA carries
+    valid = 0 and cannot supply a template geometry.
+    """
+    centroids = tmp_path / "centroids.json"
+    centroids.write_text('{"1": [1.0, 1.0, 1.0], "2": [1.0, 5.0, 2.0], "3": [5.0, 2.0, 6.0], "4": [6.0, 6.0, 4.0]}\n')
+    lta_paths = []
+    for index in range(1, count + 1):
+        seg_path = tmp_path / f"tp{index}_seg.nii.gz"
+        seg = np.zeros((8, 8, 8), dtype=np.int16)
+        seg[1, 1, 1] = 1
+        seg[1, 5, 2] = 2
+        seg[5, 2, 6] = 3
+        seg[6, 6, 4] = 4
+        nib.save(nib.Nifti1Image(seg, affine=np.eye(4, dtype=np.float32)), seg_path)
+        lta_path = tmp_path / f"tp{index}_to_centroids.lta"
+        segreg_main(["--seg", str(seg_path), "--centroids", str(centroids), "--lta", str(lta_path)])
+        assert LTA.read(lta_path).dst["valid"] == 0
+        lta_paths.append(str(lta_path))
+    return lta_paths
 
 
 class TestMultiregCli:
@@ -338,3 +385,192 @@ class TestMultiregCli:
 
         assert captured["fix_target"] is True
         assert captured["init_ltas"] is None
+
+    def test_main_forwards_template_geom(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        mov1 = tmp_path / "tp1.nii.gz"
+        mov2 = tmp_path / "tp2.nii.gz"
+        geom = tmp_path / "std.nii.gz"
+        template = tmp_path / "template.nii.gz"
+        _write_zero_image(mov1)
+        _write_zero_image(mov2)
+        geom_affine = np.diag([0.8, 0.8, 0.8, 1.0]).astype(np.float32)
+        geom_affine[:3, 3] = (-4.0, -4.0, -4.0)
+        nib.save(nib.Nifti1Image(np.zeros((10, 11, 12), dtype=np.float32), geom_affine), geom)
+
+        captured: dict[str, Any] = {}
+
+        def fake_multireg(*args, **kwargs):
+            captured.update(kwargs)
+            identity = np.eye(4, dtype=np.float64)
+            return MultiRegResult(
+                template_image=nib.Nifti1Image(np.ones((10, 11, 12), dtype=np.float32), geom_affine),
+                transforms_r2r=[identity, identity],
+                ltas=[],
+                initial_target_index=0,
+                seed=123,
+                mapped_images=None,
+                template_iterations_run=0,
+                iteration_distances=[],
+            )
+
+        monkeypatch.setattr("neuroreg.cli.multireg.multireg", fake_multireg)
+
+        multireg_main(
+            ["--mov", str(mov1), str(mov2), "--template", str(template), "--template-geom", str(geom)]
+        )
+
+        forwarded = captured["template_geometry"]
+        assert forwarded is not None
+        assert forwarded.shape[:3] == (10, 11, 12)
+        assert np.asarray(forwarded.affine) == pytest.approx(geom_affine)
+
+    def test_main_accepts_ixforms_without_destination_geometry_when_template_geom_is_given(self, tmp_path: Path):
+        # The FastSurfer longitudinal base case: poses fitted by segreg against
+        # centroids have no destination image, so their LTAs carry valid = 0.
+        # With --template-geom they no longer need one.
+        mov1 = tmp_path / "tp1.nii.gz"
+        mov2 = tmp_path / "tp2.nii.gz"
+        geom = tmp_path / "std.nii.gz"
+        template = tmp_path / "base_brainmask.mgz"
+        mapmov1 = tmp_path / "tp1_mapped.mgz"
+        mapmov2 = tmp_path / "tp2_mapped.mgz"
+        source_peak_ras = _write_point_image(mov1)
+        _write_point_image(mov2)
+        geom_affine = np.diag([1.0, 1.0, 1.0, 1.0]).astype(np.float32)
+        geom_affine[:3, 3] = (-1.0, -1.0, -1.0)
+        nib.save(nib.Nifti1Image(np.zeros((10, 11, 12), dtype=np.float32), geom_affine), geom)
+        lta_paths = _write_centroid_poses(tmp_path, 2)
+
+        multireg_main(
+            [
+                "--mov",
+                str(mov1),
+                str(mov2),
+                "--template",
+                str(template),
+                "--ixforms",
+                *lta_paths,
+                "--template-geom",
+                str(geom),
+                "--mapmov",
+                str(mapmov1),
+                str(mapmov2),
+                "--noit",
+            ]
+        )
+
+        written = nib.load(str(template))
+        assert written.shape[:3] == (10, 11, 12)
+        assert np.asarray(written.affine) == pytest.approx(geom_affine)
+        # The grid changed but the world coordinate of the content did not, so
+        # this fails if the content is placed wrongly or misses the grid entirely.
+        assert _peak_ras(written) == pytest.approx(source_peak_ras, abs=1e-4)
+        for mapmov_path in (mapmov1, mapmov2):
+            mapped = nib.load(str(mapmov_path))
+            assert mapped.shape[:3] == (10, 11, 12)
+            assert np.asarray(mapped.affine) == pytest.approx(geom_affine)
+            assert _peak_ras(mapped) == pytest.approx(source_peak_ras, abs=1e-4)
+
+    def test_main_rejects_template_geom_with_fixtp(self, tmp_path: Path, capsys):
+        mov1 = tmp_path / "tp1.nii.gz"
+        mov2 = tmp_path / "tp2.nii.gz"
+        geom = tmp_path / "std.nii.gz"
+        _write_zero_image(mov1)
+        _write_zero_image(mov2)
+        _write_zero_image(geom)
+
+        with pytest.raises(SystemExit):
+            multireg_main(
+                [
+                    "--mov",
+                    str(mov1),
+                    str(mov2),
+                    "--template",
+                    str(tmp_path / "template.nii.gz"),
+                    "--template-geom",
+                    str(geom),
+                    "--fixtp",
+                ]
+            )
+
+        err = capsys.readouterr().err
+        assert "--template-geom and --fixtp" in err
+        assert "pass only one" in err
+
+    def test_main_rejects_ixforms_with_cras_center(self, tmp_path: Path, capsys):
+        # --ixforms supplies the template grid, placement included, so there is
+        # nothing left for --cras-center to center.
+        mov1 = tmp_path / "tp1.nii.gz"
+        mov2 = tmp_path / "tp2.nii.gz"
+        _write_zero_image(mov1)
+        _write_zero_image(mov2)
+
+        with pytest.raises(SystemExit):
+            multireg_main(
+                [
+                    "--mov",
+                    str(mov1),
+                    str(mov2),
+                    "--template",
+                    str(tmp_path / "template.nii.gz"),
+                    "--ixforms",
+                    str(tmp_path / "tp1.lta"),
+                    str(tmp_path / "tp2.lta"),
+                    "--cras-center",
+                ]
+            )
+
+        err = capsys.readouterr().err
+        assert "--cras-center has no effect when --ixforms" in err
+        assert "pass only one" in err
+
+    def test_main_rejects_fixtp_with_cras_center(self, tmp_path: Path, capsys):
+        # --fixtp keeps the initial target's own grid, so there is likewise
+        # nothing left for --cras-center to center.
+        mov1 = tmp_path / "tp1.nii.gz"
+        mov2 = tmp_path / "tp2.nii.gz"
+        _write_zero_image(mov1)
+        _write_zero_image(mov2)
+
+        with pytest.raises(SystemExit):
+            multireg_main(
+                [
+                    "--mov",
+                    str(mov1),
+                    str(mov2),
+                    "--template",
+                    str(tmp_path / "template.nii.gz"),
+                    "--fixtp",
+                    "--cras-center",
+                ]
+            )
+
+        err = capsys.readouterr().err
+        assert "--cras-center has no effect when --fixtp" in err
+        assert "pass only one" in err
+
+    def test_main_rejects_template_geom_with_cras_center(self, tmp_path: Path, capsys):
+        mov1 = tmp_path / "tp1.nii.gz"
+        mov2 = tmp_path / "tp2.nii.gz"
+        geom = tmp_path / "std.nii.gz"
+        _write_zero_image(mov1)
+        _write_zero_image(mov2)
+        _write_zero_image(geom)
+
+        with pytest.raises(SystemExit):
+            multireg_main(
+                [
+                    "--mov",
+                    str(mov1),
+                    str(mov2),
+                    "--template",
+                    str(tmp_path / "template.nii.gz"),
+                    "--template-geom",
+                    str(geom),
+                    "--cras-center",
+                ]
+            )
+
+        err = capsys.readouterr().err
+        assert "--cras-center has no effect" in err
+        assert "pass only one" in err

@@ -372,13 +372,121 @@ def template_geometry_from_lta(transform: LTA) -> tuple[tuple[int, int, int], np
     return shape, affine
 
 
-def validate_input_geometries(images: Sequence[Any]) -> None:
+#: Overlap below which a time point and the template grid are reported as barely
+#: related. The measure is the larger of the two containment fractions, so this
+#: only fires when little of the template is filled *and* little of the time
+#: point is kept: a grid framing one structure inside a larger image scores 1.0,
+#: as does a grid padded out around a smaller image.
+_SMALL_OVERLAP_FRACTION = 0.5
+
+
+def check_template_grid_covers_inputs(
+    images: Sequence[Any],
+    transforms_r2r: Sequence[np.ndarray],
+    *,
+    template_shape: tuple[int, int, int],
+    template_affine: np.ndarray,
+) -> None:
+    """Check that each mapped time point lands on the template grid.
+
+    A derived template grid covers all inputs by construction, but a grid taken
+    from ``init_ltas`` or supplied outright can be placed anywhere, and a wrong
+    ``c_ras`` then yields an empty or heavily cropped template with no other
+    symptom.
+
+    Coverage is compared between axis-aligned bounding boxes in template voxel
+    space, with two consequences. An obliquely mapped extent is overstated, so
+    the measure errs toward staying quiet: a reported miss is always a real one,
+    but two genuinely disjoint oblique boxes whose bounding boxes overlap go
+    unreported. And the measure is purely geometric, so a grid covering half an
+    image that is mostly background scores the same as one covering half of
+    dense anatomy.
+
+    Parameters
+    ----------
+    images : sequence of Any
+        Input images, exposing ``shape`` and ``affine``.
+    transforms_r2r : sequence of numpy.ndarray
+        Timepoint-to-template RAS transforms aligned with ``images``.
+    template_shape : tuple of int
+        Template grid shape.
+    template_affine : numpy.ndarray
+        Template voxel-to-RAS affine.
+
+    Returns
+    -------
+    None
+        This function returns ``None`` when every time point reaches the grid.
+
+    Raises
+    ------
+    ValueError
+        If a time point maps entirely outside the template grid.
+
+    Warns
+    -----
+    RuntimeWarning
+        Warns once per time point that overlaps the template grid by less than
+        50%, measured as the larger of the two containment fractions. That is a
+        partial result rather than an impossible one and can be intended.
+    """
+    unit_corners = np.array(
+        [[i, j, k, 1.0] for i in (0, 1) for j in (0, 1) for k in (0, 1)],
+        dtype=np.float64,
+    )
+    template_low = np.full(3, -0.5)
+    template_high = np.asarray(template_shape, dtype=np.float64) - 0.5
+    template_volume = float(np.prod(template_high - template_low))
+    template_affine = np.asarray(template_affine, dtype=np.float64)
+    template_inv = np.linalg.inv(template_affine)
+    # Grid center at shape / 2, the c_ras convention used throughout.
+    template_center = (template_affine @ np.append(np.asarray(template_shape, dtype=np.float64) / 2.0, 1.0))[:3]
+    for index, (image, r2r) in enumerate(zip(images, transforms_r2r, strict=False)):
+        image_affine = np.asarray(image.affine, dtype=np.float64)
+        image_shape = np.asarray(image.shape[:3], dtype=np.float64)
+        mapped_center = (np.asarray(r2r, dtype=np.float64) @ image_affine @ np.append(image_shape / 2.0, 1.0))[:3]
+        # Reported because it is the number that identifies a misplaced c_ras,
+        # and it stays meaningful whatever the two grids' orientations are.
+        center_distance = float(np.linalg.norm(mapped_center - template_center))
+        corners = unit_corners.copy()
+        # Voxel centers span 0 to shape - 1, so the covered region runs half a
+        # voxel further out on each side.
+        corners[:, :3] = corners[:, :3] * image_shape - 0.5
+        mapped = (corners @ (template_inv @ np.asarray(r2r, dtype=np.float64) @ image_affine).T)[:, :3]
+        mapped_low = mapped.min(axis=0)
+        mapped_high = mapped.max(axis=0)
+        overlap_extent = np.minimum(mapped_high, template_high) - np.maximum(mapped_low, template_low)
+        if np.any(overlap_extent <= 0.0):
+            raise ValueError(
+                f"TP {index + 1} maps entirely outside the template grid, so it would contribute nothing to "
+                f"the template. Its center lands {center_distance:.1f} mm from the grid center. Check the "
+                "placement (c_ras) of the template geometry and the input transforms."
+            )
+        overlap_volume = float(np.prod(overlap_extent))
+        mapped_volume = max(float(np.prod(mapped_high - mapped_low)), np.finfo(np.float64).tiny)
+        covered = max(overlap_volume / template_volume, overlap_volume / mapped_volume)
+        if covered < _SMALL_OVERLAP_FRACTION:
+            warnings.warn(
+                f"TP {index + 1} overlaps the template grid by only {covered:.0%}, so most of the template "
+                "will be empty and most of the time point will be cropped away. Its center lands "
+                f"{center_distance:.1f} mm from the grid center. Check the placement (c_ras) and extent of "
+                "the template geometry.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+
+
+def validate_input_geometries(images: Sequence[Any], *, derives_geometry: bool = True) -> None:
     """Validate the cross-timepoint geometry assumptions used by the current MVP.
 
     Parameters
     ----------
     images : sequence of Any
         Input images to validate.
+    derives_geometry : bool, default=True
+        Whether the caller will derive the template geometry from these images.
+        When ``False`` the geometry comes from elsewhere, so differing input
+        orientations are not averaged and are not worth reporting.
 
     Returns
     -------
@@ -404,7 +512,9 @@ def validate_input_geometries(images: Sequence[Any]) -> None:
                 stacklevel=2,
             )
             break
-    if any(not np.allclose(direction_cosines(image), direction_cosines(images[0]), atol=1e-9) for image in images[1:]):
+    if derives_geometry and any(
+        not np.allclose(direction_cosines(image), direction_cosines(images[0]), atol=1e-9) for image in images[1:]
+    ):
         warnings.warn(
             "Input direction cosines differ; multireg will average them when constructing the template geometry.",
             RuntimeWarning,
