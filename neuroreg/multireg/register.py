@@ -18,6 +18,7 @@ from ..imreg.init import InitType, resolve_init_type
 from ..imreg.robreg import robreg
 from ..transforms import LTA, affine_dist
 from .geometry import (
+    check_template_grid_covers_inputs,
     create_template_geometry,
     mean_mapped_centroid,
     project_to_rotation,
@@ -396,7 +397,7 @@ def multireg(
     *,
     masks: Sequence[ImageLike | None] | None = None,
     init_ltas: Sequence[TransformLike] | None = None,
-    template_geom: ImageLike | None = None,
+    template_geometry: ImageLike | None = None,
     average: str | int = "median",
     init_target_index: int | None = None,
     seed: int | None = None,
@@ -426,9 +427,11 @@ def multireg(
         transforms and, from their shared destination geometry, the template
         space. The transforms are starting points: each is refined by the
         template iterations unless ``template_iterations`` is 0. Mutually
-        exclusive with ``fix_target``. When ``template_geom`` is given the
-        destination geometry is ignored and need not be present.
-    template_geom : ImageLike or None, optional
+        exclusive with ``fix_target`` and ``use_cras_center``, which choose or
+        place a template space these transforms already fix. When
+        ``template_geometry`` is given the destination geometry is ignored and
+        need not be present.
+    template_geometry : ImageLike or None, optional
         Optional image (or path to one) supplying the output template geometry,
         replacing the geometry that would otherwise be taken from ``init_ltas``
         or derived from the inputs. Only the shape and affine are used, not the
@@ -445,7 +448,7 @@ def multireg(
     fix_target : bool, default=False
         If ``True``, keep the initial target geometry instead of constructing an
         unbiased mean-space template grid. Mutually exclusive with ``init_ltas``
-        and ``template_geom``, which choose the template space themselves.
+        and ``template_geometry``, which choose the template space themselves.
     init_type : InitType or None, optional
         Pairwise registration initialization mode.
     nmax : int, default=5
@@ -459,7 +462,8 @@ def multireg(
     use_cras_center : bool, default=False
         If ``True``, center the template geometry on the average CRAS instead of
         the average mapped intensity centroid. Only selects how a derived
-        geometry is centered, so it is mutually exclusive with ``template_geom``.
+        geometry is centered, so it is mutually exclusive with ``init_ltas`` and
+        ``template_geometry``, neither of which derives one.
     template_iterations : int or None, optional
         Maximum number of global template-refinement passes. ``None`` uses the
         built-in defaults for two versus three-or-more time points.
@@ -485,8 +489,9 @@ def multireg(
     ------
     ValueError
         If the inputs are invalid, incompatible in geometry, the requested
-        iteration settings are inconsistent, or mutually exclusive template-space
-        options are combined.
+        iteration settings are inconsistent, mutually exclusive template-space
+        options are combined, or a time point maps entirely outside the template
+        grid.
     """
     if len(movables) < 2:
         raise ValueError("multireg requires at least two input images.")
@@ -514,24 +519,29 @@ def multireg(
             "init_ltas take it from their shared destination geometry, fix_target from the "
             "initial target time point."
         )
-    if template_geom is not None and fix_target:
+    if template_geometry is not None and fix_target:
         raise ValueError(
-            "template_geom and fix_target both determine the template space; pass only one. "
-            "template_geom takes it from the given image, fix_target from the initial target "
+            "template_geometry and fix_target both determine the template space; pass only one. "
+            "template_geometry takes it from the given image, fix_target from the initial target "
             "time point."
         )
-    if template_geom is not None and use_cras_center:
+    if use_cras_center and (init_ltas is not None or template_geometry is not None):
+        # use_cras_center picks between two ways of centering a template grid
+        # that is being derived from the inputs. Both alternatives here supply a
+        # complete grid, placement included, so there is nothing left to center.
+        source = "init_ltas" if init_ltas is not None else "template_geometry"
         raise ValueError(
-            "use_cras_center only selects how a derived template geometry is centered, and "
-            "template_geom supplies the geometry instead of deriving one; pass only one."
+            f"use_cras_center only selects how a derived template geometry is centered, and {source} "
+            "supplies the geometry instead of deriving one; pass only one."
         )
 
     external_geometry: tuple[tuple[int, int, int], np.ndarray] | None = None
-    if template_geom is not None:
-        geom_image = load_image(template_geom) if isinstance(template_geom, str | Path) else template_geom
+    if template_geometry is not None:
+        geom_image = load_image(template_geometry) if isinstance(template_geometry, str | Path) else template_geometry
         if len(geom_image.shape) < 3:
             raise ValueError(
-                f"template_geom must describe a 3-D grid, but the given image has shape {tuple(geom_image.shape)}."
+                "template_geometry must describe a 3-D grid, but the given image has shape "
+                f"{tuple(geom_image.shape)}."
             )
         external_geometry = (
             tuple(int(v) for v in geom_image.shape[:3]),
@@ -570,6 +580,13 @@ def multireg(
             init_ltas,
             template_geometry=external_geometry,
         )
+
+    check_template_grid_covers_inputs(
+        images,
+        current_transforms,
+        template_shape=template_shape,
+        template_affine=template_affine,
+    )
 
     target_image = images[init_target_index]
     current_template, mapped_images = build_template(

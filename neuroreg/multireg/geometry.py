@@ -372,6 +372,93 @@ def template_geometry_from_lta(transform: LTA) -> tuple[tuple[int, int, int], np
     return shape, affine
 
 
+#: Overlap below which a time point and the template grid are reported as barely
+#: related. The measure is the larger of the two containment fractions, so this
+#: only fires when little of the template is filled *and* little of the time
+#: point is kept: a grid framing one structure inside a larger image scores 1.0,
+#: as does a grid padded out around a smaller image.
+_SMALL_OVERLAP_FRACTION = 0.5
+
+
+def check_template_grid_covers_inputs(
+    images: Sequence[Any],
+    transforms_r2r: Sequence[np.ndarray],
+    *,
+    template_shape: tuple[int, int, int],
+    template_affine: np.ndarray,
+) -> None:
+    """Check that each mapped time point lands on the template grid.
+
+    A derived template grid covers all inputs by construction, but a grid taken
+    from ``init_ltas`` or supplied outright can be placed anywhere, and a wrong
+    ``c_ras`` then yields an empty or heavily cropped template with no other
+    symptom. Coverage is compared between axis-aligned bounding boxes in template
+    voxel space, which overstates an obliquely mapped extent and so errs toward
+    staying quiet.
+
+    Parameters
+    ----------
+    images : sequence of Any
+        Input images, exposing ``shape`` and ``affine``.
+    transforms_r2r : sequence of numpy.ndarray
+        Timepoint-to-template RAS transforms aligned with ``images``.
+    template_shape : tuple of int
+        Template grid shape.
+    template_affine : numpy.ndarray
+        Template voxel-to-RAS affine.
+
+    Returns
+    -------
+    None
+        This function returns ``None`` when every time point reaches the grid.
+
+    Raises
+    ------
+    ValueError
+        If a time point maps entirely outside the template grid.
+
+    Warns
+    -----
+    RuntimeWarning
+        Warns once per time point that overlaps the template grid by less than
+        ``_SMALL_OVERLAP_FRACTION``, which is a partial result rather than an
+        impossible one and can be intended.
+    """
+    unit_corners = np.array(
+        [[i, j, k, 1.0] for i in (0, 1) for j in (0, 1) for k in (0, 1)],
+        dtype=np.float64,
+    )
+    template_low = np.full(3, -0.5)
+    template_high = np.asarray(template_shape, dtype=np.float64) - 0.5
+    template_volume = float(np.prod(template_high - template_low))
+    template_inv = np.linalg.inv(np.asarray(template_affine, dtype=np.float64))
+    for index, (image, r2r) in enumerate(zip(images, transforms_r2r, strict=False)):
+        corners = unit_corners.copy()
+        # Voxel centers span 0 to shape - 1, so the covered region runs half a
+        # voxel further out on each side.
+        corners[:, :3] = corners[:, :3] * np.asarray(image.shape[:3], dtype=np.float64) - 0.5
+        mapped = (corners @ (template_inv @ np.asarray(r2r, dtype=np.float64) @ np.asarray(image.affine)).T)[:, :3]
+        mapped_low = mapped.min(axis=0)
+        mapped_high = mapped.max(axis=0)
+        overlap_extent = np.minimum(mapped_high, template_high) - np.maximum(mapped_low, template_low)
+        if np.any(overlap_extent <= 0.0):
+            raise ValueError(
+                f"TP {index + 1} maps entirely outside the template grid, so it would contribute nothing to "
+                "the template. Check the placement (c_ras) of the template geometry and the input transforms."
+            )
+        overlap_volume = float(np.prod(overlap_extent))
+        mapped_volume = max(float(np.prod(mapped_high - mapped_low)), np.finfo(np.float64).tiny)
+        covered = max(overlap_volume / template_volume, overlap_volume / mapped_volume)
+        if covered < _SMALL_OVERLAP_FRACTION:
+            warnings.warn(
+                f"TP {index + 1} overlaps the template grid by only {covered:.0%}, so most of the template "
+                "will be empty and most of the time point will be cropped away. Check the placement (c_ras) "
+                "and extent of the template geometry.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+
+
 def validate_input_geometries(images: Sequence[Any], *, derives_geometry: bool = True) -> None:
     """Validate the cross-timepoint geometry assumptions used by the current MVP.
 

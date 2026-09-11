@@ -419,7 +419,7 @@ class TestMultiregCli:
             ["--mov", str(mov1), str(mov2), "--template", str(template), "--template-geom", str(geom)]
         )
 
-        forwarded = captured["template_geom"]
+        forwarded = captured["template_geometry"]
         assert forwarded is not None
         assert forwarded.shape[:3] == (10, 11, 12)
         assert np.asarray(forwarded.affine) == pytest.approx(geom_affine)
@@ -437,7 +437,7 @@ class TestMultiregCli:
         source_peak_ras = _write_point_image(mov1)
         _write_point_image(mov2)
         geom_affine = np.diag([1.0, 1.0, 1.0, 1.0]).astype(np.float32)
-        geom_affine[:3, 3] = (-5.0, -6.0, -7.0)
+        geom_affine[:3, 3] = (-1.0, -1.0, -1.0)
         nib.save(nib.Nifti1Image(np.zeros((10, 11, 12), dtype=np.float32), geom_affine), geom)
         lta_paths = _write_centroid_poses(tmp_path, 2)
 
@@ -495,6 +495,33 @@ class TestMultiregCli:
 
         err = capsys.readouterr().err
         assert "--template-geom and --fixtp" in err
+        assert "pass only one" in err
+
+    def test_main_rejects_ixforms_with_cras_center(self, tmp_path: Path, capsys):
+        # --ixforms supplies the template grid, placement included, so there is
+        # nothing left for --cras-center to center.
+        mov1 = tmp_path / "tp1.nii.gz"
+        mov2 = tmp_path / "tp2.nii.gz"
+        _write_zero_image(mov1)
+        _write_zero_image(mov2)
+
+        with pytest.raises(SystemExit):
+            multireg_main(
+                [
+                    "--mov",
+                    str(mov1),
+                    str(mov2),
+                    "--template",
+                    str(tmp_path / "template.nii.gz"),
+                    "--ixforms",
+                    str(tmp_path / "tp1.lta"),
+                    str(tmp_path / "tp2.lta"),
+                    "--cras-center",
+                ]
+            )
+
+        err = capsys.readouterr().err
+        assert "--cras-center has no effect when --ixforms" in err
         assert "pass only one" in err
 
     def test_main_rejects_template_geom_with_cras_center(self, tmp_path: Path, capsys):
