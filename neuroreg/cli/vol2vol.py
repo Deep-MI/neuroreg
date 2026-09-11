@@ -362,7 +362,9 @@ def _geometry_from_transform(effective_lta: Any) -> tuple[np.ndarray, tuple[int,
     try:
         affine = affine_from_volume_info(info)
         shape = tuple(int(v) for v in info["volume"])
-    except (ValueError, KeyError, TypeError):
+    except (IndexError, KeyError, TypeError, ValueError):
+        # Covers every way the metadata can be unusable: marked invalid,
+        # missing a required field, or holding a short/wrong-typed vector.
         return None
     if any(v <= 0 for v in shape):
         # A "valid" block can still carry a zero volume, which would ask for an
@@ -413,15 +415,20 @@ def _resolve_target_geometry(
     ValueError
         If no valid target geometry can be resolved.
     """
-    from_transform = None if effective_lta is None else _geometry_from_transform(effective_lta)
     if ref_img is not None:
         affine = np.asarray(ref_img.affine, dtype=np.float64)
         shape = tuple(int(v) for v in ref_img.shape[:3])
-    elif from_transform is not None:
-        affine, shape = from_transform
     else:
-        affine = np.asarray(mov_img.affine, dtype=np.float64)
-        shape = tuple(int(v) for v in mov_img.shape[:3])
+        # Inspect the transform's destination only once --ref is known to be
+        # absent. An explicit reference supplies the whole target geometry and
+        # the RAS-to-RAS matrix needs none of it, so malformed destination
+        # metadata must not fail a run that does not depend on it.
+        from_transform = None if effective_lta is None else _geometry_from_transform(effective_lta)
+        if from_transform is not None:
+            affine, shape = from_transform
+        else:
+            affine = np.asarray(mov_img.affine, dtype=np.float64)
+            shape = tuple(int(v) for v in mov_img.shape[:3])
 
     if ref_cras is not None:
         affine = place_grid_at_cras(affine, shape, ref_cras)

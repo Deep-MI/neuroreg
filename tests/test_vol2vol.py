@@ -333,6 +333,54 @@ class TestVol2VolCli:
         assert mapped.shape == (6, 6, 6)
         assert _cras(mapped.affine, mapped.shape) == pytest.approx([0.0, 0.0, 0.0], abs=1e-4)
 
+    def test_malformed_transform_geometry_does_not_defeat_an_explicit_ref(self, tmp_path: Path):
+        # --ref supplies the whole target geometry and the RAS-to-RAS matrix
+        # needs none of it, so unusable destination metadata must not be
+        # inspected at all, let alone fail the run.
+        from neuroreg.cli.vol2vol import _resolve_target_geometry
+
+        class _ShortVoxelSizeLTA:
+            dst = {
+                "valid": 1,
+                "volume": [4, 4, 4],
+                "voxelsize": [1.0],  # too short: affine_from_volume_info raises IndexError
+                "xras": [1.0, 0.0, 0.0],
+                "yras": [0.0, 1.0, 0.0],
+                "zras": [0.0, 0.0, 1.0],
+                "cras": [0.0, 0.0, 0.0],
+            }
+
+        mov_img = nib.Nifti1Image(np.ones((4, 4, 4), dtype=np.uint8), np.eye(4), dtype=np.uint8)
+        ref_affine = np.diag([2.0, 2.0, 2.0, 1.0])
+        ref_img = nib.Nifti1Image(np.zeros((7, 8, 9), dtype=np.uint8), ref_affine, dtype=np.uint8)
+
+        affine, shape = _resolve_target_geometry(mov_img, ref_img, _ShortVoxelSizeLTA())
+
+        assert shape == (7, 8, 9)
+        assert affine == pytest.approx(ref_affine)
+
+    def test_malformed_transform_geometry_falls_back_to_the_input_grid(self, tmp_path: Path):
+        from neuroreg.cli.vol2vol import _resolve_target_geometry
+
+        class _ShortVoxelSizeLTA:
+            dst = {
+                "valid": 1,
+                "volume": [4, 4, 4],
+                "voxelsize": [1.0],
+                "xras": [1.0, 0.0, 0.0],
+                "yras": [0.0, 1.0, 0.0],
+                "zras": [0.0, 0.0, 1.0],
+                "cras": [0.0, 0.0, 0.0],
+            }
+
+        mov_affine = np.diag([1.5, 1.5, 1.5, 1.0])
+        mov_img = nib.Nifti1Image(np.ones((5, 5, 5), dtype=np.uint8), mov_affine, dtype=np.uint8)
+
+        affine, shape = _resolve_target_geometry(mov_img, None, _ShortVoxelSizeLTA())
+
+        assert shape == (5, 5, 5)
+        assert affine == pytest.approx(mov_affine)
+
     def test_header_only_updates_affine_and_preserves_payload(self, tmp_path: Path):
         data = np.arange(8, dtype=np.uint8).reshape(2, 2, 2)
         mov_path = _write_image(tmp_path / "mov.nii.gz", data)

@@ -91,7 +91,12 @@ def number_list(
             raise argparse.ArgumentTypeError(f"{expected}, got: {value!r}") from exc
         if len(parsed) == 1:
             parsed = parsed * length
-        out = np.asarray(parsed, dtype=np.int64 if cast is int else np.float64)
+        try:
+            out = np.asarray(parsed, dtype=np.int64 if cast is int else np.float64)
+        except OverflowError as exc:
+            # Python integers are unbounded but the array dtype is not, and
+            # argparse does not translate OverflowError into a usage error.
+            raise argparse.ArgumentTypeError(f"{flag} is out of range, got: {value!r}") from exc
         if not np.all(np.isfinite(out.astype(np.float64))):
             # A non-finite component would poison the whole output affine silently.
             raise argparse.ArgumentTypeError(f"{flag} must be finite, got: {value!r}")

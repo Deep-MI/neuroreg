@@ -705,6 +705,43 @@ class TestGeom:
 
         assert "must be positive" in capsys.readouterr().err
 
+    def test_integer_beyond_int64_is_a_usage_error(self, tmp_path: Path, capsys):
+        # Python integers are unbounded, so int() accepts 2**63 and the overflow
+        # only surfaces at array conversion. argparse does not translate
+        # OverflowError, so it has to be caught before it escapes as a traceback.
+        with pytest.raises(SystemExit):
+            mri_main(
+                [
+                    "geom",
+                    "--out", str(tmp_path / "o.mgz"),
+                    "--shape", str(2 ** 63),
+                    "--vox-size", "1",
+                    "--orientation", "LIA",
+                ]
+            )
+
+        err = capsys.readouterr().err
+        assert "Traceback" not in err
+        assert "--shape is out of range" in err
+
+    @pytest.mark.parametrize("flag", ["--vox-size", "--fov", "--cras"])
+    def test_non_finite_floats_are_usage_errors(self, tmp_path: Path, capsys, flag: str):
+        # float() accepts these; only the finiteness check rejects them, and an
+        # inf or nan would otherwise poison the whole output affine.
+        args = ["geom", "--out", str(tmp_path / "o.mgz"), "--orientation", "LIA"]
+        if flag != "--vox-size":
+            args += ["--vox-size", "1"]
+        if flag != "--fov":
+            args += ["--shape", "8"]
+        args += [flag, "1e400" if flag != "--cras" else "1e400,0,0"]
+
+        with pytest.raises(SystemExit):
+            mri_main(args)
+
+        err = capsys.readouterr().err
+        assert "Traceback" not in err
+        assert f"{flag} must be finite" in err
+
     def test_unreadable_like_reports_like_the_other_subcommands(self, tmp_path: Path, capsys):
         # Not a usage error, so it must surface as "ERROR: ..." and exit 1
         # rather than a Python traceback.
