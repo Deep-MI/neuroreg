@@ -772,6 +772,75 @@
 
     <span class="c1"># ── operations ──────────────────────────────────────────────────────────</span>
 
+<div class="viewcode-block" id="LTA.with_geometry">
+<a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.LTA.with_geometry">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">with_geometry</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="o">*</span><span class="p">,</span>
+            <span class="n">src_img</span><span class="p">:</span> <span class="n">_AnyHeader</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">dst_img</span><span class="p">:</span> <span class="n">_AnyHeader</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">src_fname</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">dst_fname</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">LTA</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Return a copy with the source and/or destination geometry replaced.</span>
+
+<span class="sd">        This is how a transform that carries no destination geometry, such as</span>
+<span class="sd">        centroid-based atlas registration output whose ``dst`` block is marked</span>
+<span class="sd">        ``valid = 0``, is told where its target lives.</span>
+
+<span class="sd">        A LINEAR_RAS_TO_RAS matrix maps scanner coordinates and does not depend</span>
+<span class="sd">        on either voxel grid, so its geometry blocks are metadata and are simply</span>
+<span class="sd">        replaced. A LINEAR_VOX_TO_VOX matrix is defined relative to the stored</span>
+<span class="sd">        grids, so replacing a block would silently change what the transform</span>
+<span class="sd">        means; the matrix is therefore recomputed against the new grids to</span>
+<span class="sd">        preserve the mapping, which requires the stored blocks to be valid.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        src_img, dst_img : path, nibabel header/image, dict, or None</span>
+<span class="sd">            Replacement geometry. ``None`` keeps the existing block.</span>
+<span class="sd">        src_fname, dst_fname : str or None, optional</span>
+<span class="sd">            Filenames recorded with the replaced blocks. Default to the names</span>
+<span class="sd">            already stored.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        LTA</span>
+<span class="sd">            New transform. ``self`` is not modified.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            If this is a LINEAR_VOX_TO_VOX transform whose stored geometry is</span>
+<span class="sd">            not valid, so the mapping cannot be re-expressed on the new grids.</span>
+<span class="sd">        """</span>
+        <span class="n">src</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">src_img</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="n">_header_to_vol_info</span><span class="p">(</span><span class="n">_header_info</span><span class="p">(</span><span class="n">src_img</span><span class="p">),</span> <span class="n">src_fname</span> <span class="ow">or</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">src</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"filename"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)))</span>
+        <span class="p">)</span>
+        <span class="n">dst</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dst</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">dst_img</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="n">_header_to_vol_info</span><span class="p">(</span><span class="n">_header_info</span><span class="p">(</span><span class="n">dst_img</span><span class="p">),</span> <span class="n">dst_fname</span> <span class="ow">or</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dst</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"filename"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)))</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">or</span> <span class="p">(</span><span class="n">src_img</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">dst_img</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="n">matrix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">matrix</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Going through RAS keeps the mapping fixed while the grids change.</span>
+            <span class="c1"># r2r() raises here when the stored blocks are invalid, which is the</span>
+            <span class="c1"># correct outcome: a vox2vox matrix cannot be interpreted without</span>
+            <span class="c1"># the grids it was computed against.</span>
+            <span class="n">matrix</span> <span class="o">=</span> <span class="n">convert_transform_type</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">r2r</span><span class="p">(),</span>
+                <span class="n">affine_from_volume_info</span><span class="p">(</span><span class="n">src</span><span class="p">),</span>
+                <span class="n">affine_from_volume_info</span><span class="p">(</span><span class="n">dst</span><span class="p">),</span>
+                <span class="n">from_type</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                <span class="n">to_type</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">LTA</span><span class="p">(</span><span class="n">matrix</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="n">fscale</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fscale</span><span class="p">)</span></div>
+
+
 <div class="viewcode-block" id="LTA.invert">
 <a class="viewcode-back" href="../../../api/transforms.html#neuroreg.transforms.LTA.invert">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">invert</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">LTA</span><span class="p">:</span>

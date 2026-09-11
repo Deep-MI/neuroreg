@@ -260,6 +260,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">..imreg.robreg</span><span class="w"> </span><span class="kn">import</span> <span class="n">robreg</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..transforms</span><span class="w"> </span><span class="kn">import</span> <span class="n">LTA</span><span class="p">,</span> <span class="n">affine_dist</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.geometry</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">check_template_grid_covers_inputs</span><span class="p">,</span>
     <span class="n">create_template_geometry</span><span class="p">,</span>
     <span class="n">mean_mapped_centroid</span><span class="p">,</span>
     <span class="n">project_to_rotation</span><span class="p">,</span>
@@ -326,6 +327,8 @@
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_init_ltas</span><span class="p">(</span>
     <span class="n">init_ltas</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">TransformLike</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">template_geometry</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span>
     <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
     <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
@@ -337,25 +340,34 @@
 <span class="sd">    ----------</span>
 <span class="sd">    init_ltas : sequence of TransformLike</span>
 <span class="sd">        Precomputed timepoint-to-template LTAs or paths to them.</span>
+<span class="sd">    template_geometry : tuple or None, optional</span>
+<span class="sd">        Externally supplied ``(shape, affine)``. When given it is returned as</span>
+<span class="sd">        the template geometry and the destination blocks are never read, so the</span>
+<span class="sd">        transforms neither have to agree on a destination nor carry one at all.</span>
+<span class="sd">        That is what makes a pose fitted by ``segreg`` against a centroid target</span>
+<span class="sd">        usable here, since its destination block is marked ``valid = 0``.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    template_shape : tuple of int</span>
-<span class="sd">        Template image shape extracted from the destination geometry.</span>
+<span class="sd">        Template image shape, from ``template_geometry`` when given and from the</span>
+<span class="sd">        shared destination geometry otherwise.</span>
 <span class="sd">    template_affine : numpy.ndarray</span>
-<span class="sd">        Template voxel-to-RAS affine extracted from the destination geometry.</span>
+<span class="sd">        Template voxel-to-RAS affine, from the same source.</span>
 <span class="sd">    transforms_r2r : list of numpy.ndarray</span>
 <span class="sd">        RAS-to-RAS matrices for each input time point.</span>
 
 <span class="sd">    Raises</span>
 <span class="sd">    ------</span>
 <span class="sd">    ValueError</span>
-<span class="sd">        If ``init_ltas`` is empty or the LTAs do not share identical destination</span>
-<span class="sd">        geometry.</span>
+<span class="sd">        If ``init_ltas`` is empty, or no ``template_geometry`` is given and the</span>
+<span class="sd">        LTAs do not share identical destination geometry.</span>
 <span class="sd">    """</span>
     <span class="n">loaded_ltas</span> <span class="o">=</span> <span class="p">[</span><span class="n">LTA</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">transform</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">transform</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="k">else</span> <span class="n">transform</span> <span class="k">for</span> <span class="n">transform</span> <span class="ow">in</span> <span class="n">init_ltas</span><span class="p">]</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">loaded_ltas</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"init_ltas must not be empty when provided."</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">template_geometry</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="o">*</span><span class="n">template_geometry</span><span class="p">,</span> <span class="p">[</span><span class="n">transform</span><span class="o">.</span><span class="n">r2r</span><span class="p">()</span> <span class="k">for</span> <span class="n">transform</span> <span class="ow">in</span> <span class="n">loaded_ltas</span><span class="p">]</span>
     <span class="n">template_shape</span><span class="p">,</span> <span class="n">template_affine</span> <span class="o">=</span> <span class="n">template_geometry_from_lta</span><span class="p">(</span><span class="n">loaded_ltas</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
     <span class="n">transforms_r2r</span> <span class="o">=</span> <span class="p">[</span><span class="n">loaded_ltas</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">r2r</span><span class="p">()]</span>
     <span class="k">for</span> <span class="n">transform</span> <span class="ow">in</span> <span class="n">loaded_ltas</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
@@ -411,6 +423,7 @@
     <span class="n">use_cras_center</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
     <span class="n">fix_target</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
     <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">template_geometry</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">"""Build the initial common space from pairwise registrations.</span>
 
@@ -440,6 +453,11 @@
 <span class="sd">        unbiased mean-space grid.</span>
 <span class="sd">    verbose : bool</span>
 <span class="sd">        Whether to request verbose logging from the pairwise kernel.</span>
+<span class="sd">    template_geometry : tuple or None, optional</span>
+<span class="sd">        Externally supplied ``(shape, affine)``. When given it is returned as</span>
+<span class="sd">        the template geometry and none is derived, so neither the mapped</span>
+<span class="sd">        centroid nor the averaged input orientation is computed. The transforms</span>
+<span class="sd">        are unaffected: they map into the same common RAS space either way.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -501,17 +519,23 @@
     <span class="n">mean_space_from_target_r2r</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
     <span class="n">mean_space_from_target_r2r</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">mean_rotation</span>
     <span class="n">mean_space_from_target_r2r</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">mean_translation</span>
-    <span class="n">center_ras</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">ras_center</span><span class="p">(</span><span class="n">image</span><span class="p">)</span> <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">images</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">use_cras_center</span>
-        <span class="k">else</span> <span class="n">mean_mapped_centroid</span><span class="p">(</span>
-            <span class="n">images</span><span class="p">,</span>
-            <span class="n">pairwise_r2r</span><span class="p">,</span>
-            <span class="n">target_index</span><span class="o">=</span><span class="n">target_index</span><span class="p">,</span>
-            <span class="n">mean_space_from_target_r2r</span><span class="o">=</span><span class="n">mean_space_from_target_r2r</span><span class="p">,</span>
+    <span class="k">if</span> <span class="n">template_geometry</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Deriving a grid here would read every input volume to find the mapped</span>
+        <span class="c1"># centroid and would average the input orientations, both of which can</span>
+        <span class="c1"># fail on inputs that an explicit grid is meant to accommodate.</span>
+        <span class="n">template_shape</span><span class="p">,</span> <span class="n">template_affine</span> <span class="o">=</span> <span class="n">template_geometry</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">center_ras</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">ras_center</span><span class="p">(</span><span class="n">image</span><span class="p">)</span> <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">images</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">use_cras_center</span>
+            <span class="k">else</span> <span class="n">mean_mapped_centroid</span><span class="p">(</span>
+                <span class="n">images</span><span class="p">,</span>
+                <span class="n">pairwise_r2r</span><span class="p">,</span>
+                <span class="n">target_index</span><span class="o">=</span><span class="n">target_index</span><span class="p">,</span>
+                <span class="n">mean_space_from_target_r2r</span><span class="o">=</span><span class="n">mean_space_from_target_r2r</span><span class="p">,</span>
+            <span class="p">)</span>
         <span class="p">)</span>
-    <span class="p">)</span>
-    <span class="n">template_shape</span><span class="p">,</span> <span class="n">template_affine</span> <span class="o">=</span> <span class="n">create_template_geometry</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">center_ras</span><span class="p">)</span>
+        <span class="n">template_shape</span><span class="p">,</span> <span class="n">template_affine</span> <span class="o">=</span> <span class="n">create_template_geometry</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">center_ras</span><span class="p">)</span>
     <span class="n">final_r2r</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">matrix</span> <span class="ow">in</span> <span class="n">pairwise_r2r</span><span class="p">:</span>
         <span class="n">combined</span> <span class="o">=</span> <span class="n">mean_space_from_target_r2r</span> <span class="o">@</span> <span class="n">matrix</span>
@@ -617,6 +641,7 @@
     <span class="o">*</span><span class="p">,</span>
     <span class="n">masks</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">ImageLike</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">init_ltas</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">TransformLike</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">template_geometry</span><span class="p">:</span> <span class="n">ImageLike</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">average</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">int</span> <span class="o">=</span> <span class="s2">"median"</span><span class="p">,</span>
     <span class="n">init_target_index</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -642,8 +667,20 @@
 <span class="sd">    masks : sequence of ImageLike or None, optional</span>
 <span class="sd">        Optional per-timepoint masks aligned with ``movables``.</span>
 <span class="sd">    init_ltas : sequence of TransformLike or None, optional</span>
-<span class="sd">        Optional precomputed LTAs defining the initial timepoint-to-template</span>
-<span class="sd">        mappings and template geometry.</span>
+<span class="sd">        Optional precomputed LTAs supplying the initial timepoint-to-template</span>
+<span class="sd">        transforms and, from their shared destination geometry, the template</span>
+<span class="sd">        space. The transforms are starting points: each is refined by the</span>
+<span class="sd">        template iterations unless ``template_iterations`` is 0. Mutually</span>
+<span class="sd">        exclusive with ``fix_target`` and ``use_cras_center``, which choose or</span>
+<span class="sd">        place a template space these transforms already fix. When</span>
+<span class="sd">        ``template_geometry`` is given the destination geometry is ignored and</span>
+<span class="sd">        need not be present.</span>
+<span class="sd">    template_geometry : ImageLike or None, optional</span>
+<span class="sd">        Optional image (or path to one) supplying the output template geometry,</span>
+<span class="sd">        replacing the geometry that would otherwise be taken from ``init_ltas``</span>
+<span class="sd">        or derived from the inputs. Only the shape and affine are used, not the</span>
+<span class="sd">        voxel data. Mutually exclusive with ``fix_target`` and</span>
+<span class="sd">        ``use_cras_center``, both of which select a geometry themselves.</span>
 <span class="sd">    average : {"mean", "median", 0, 1}, default="median"</span>
 <span class="sd">        Template aggregation mode. Integer aliases match the FreeSurfer CLI.</span>
 <span class="sd">    init_target_index : int or None, optional</span>
@@ -654,7 +691,9 @@
 <span class="sd">        the seed from image content.</span>
 <span class="sd">    fix_target : bool, default=False</span>
 <span class="sd">        If ``True``, keep the initial target geometry instead of constructing an</span>
-<span class="sd">        unbiased mean-space template grid.</span>
+<span class="sd">        unbiased mean-space template grid. Mutually exclusive with ``init_ltas``</span>
+<span class="sd">        and ``template_geometry``, which choose the template space themselves,</span>
+<span class="sd">        and with ``use_cras_center``, since no geometry is then derived.</span>
 <span class="sd">    init_type : InitType or None, optional</span>
 <span class="sd">        Pairwise registration initialization mode.</span>
 <span class="sd">    nmax : int, default=5</span>
@@ -667,7 +706,9 @@
 <span class="sd">        Torch device string forwarded to the pairwise kernel.</span>
 <span class="sd">    use_cras_center : bool, default=False</span>
 <span class="sd">        If ``True``, center the template geometry on the average CRAS instead of</span>
-<span class="sd">        the average mapped intensity centroid.</span>
+<span class="sd">        the average mapped intensity centroid. Only selects how a derived</span>
+<span class="sd">        geometry is centered, so it is mutually exclusive with ``init_ltas``,</span>
+<span class="sd">        ``template_geometry`` and ``fix_target``, none of which derives one.</span>
 <span class="sd">    template_iterations : int or None, optional</span>
 <span class="sd">        Maximum number of global template-refinement passes. ``None`` uses the</span>
 <span class="sd">        built-in defaults for two versus three-or-more time points.</span>
@@ -692,8 +733,10 @@
 <span class="sd">    Raises</span>
 <span class="sd">    ------</span>
 <span class="sd">    ValueError</span>
-<span class="sd">        If the inputs are invalid, incompatible in geometry, or the requested</span>
-<span class="sd">        iteration settings are inconsistent.</span>
+<span class="sd">        If the inputs are invalid, incompatible in geometry, the requested</span>
+<span class="sd">        iteration settings are inconsistent, mutually exclusive template-space</span>
+<span class="sd">        options are combined, or a time point maps entirely outside the template</span>
+<span class="sd">        grid.</span>
 <span class="sd">    """</span>
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">movables</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"multireg requires at least two input images."</span><span class="p">)</span>
@@ -715,8 +758,52 @@
 
     <span class="k">if</span> <span class="n">init_ltas</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">init_ltas</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">images</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Number of init_ltas must match the number of input images."</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">init_ltas</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">fix_target</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">"init_ltas and fix_target both determine the template space; pass only one. "</span>
+            <span class="s2">"init_ltas take it from their shared destination geometry, fix_target from the "</span>
+            <span class="s2">"initial target time point."</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">template_geometry</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">fix_target</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">"template_geometry and fix_target both determine the template space; pass only one. "</span>
+            <span class="s2">"template_geometry takes it from the given image, fix_target from the initial target "</span>
+            <span class="s2">"time point."</span>
+        <span class="p">)</span>
+    <span class="c1"># The template geometry is derived from the inputs only when nothing else</span>
+    <span class="c1"># supplies one. Both the centering choice and the orientation-averaging</span>
+    <span class="c1"># warning depend on that single fact, so it is settled once here.</span>
+    <span class="n">derives_geometry</span> <span class="o">=</span> <span class="n">init_ltas</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">template_geometry</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">fix_target</span>
+    <span class="k">if</span> <span class="n">use_cras_center</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">derives_geometry</span><span class="p">:</span>
+        <span class="c1"># use_cras_center picks between two ways of centering a grid that is</span>
+        <span class="c1"># being derived. Each alternative supplies a complete grid, placement</span>
+        <span class="c1"># included, so there is nothing left to center.</span>
+        <span class="n">source</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">"init_ltas"</span>
+            <span class="k">if</span> <span class="n">init_ltas</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="s2">"template_geometry"</span>
+            <span class="k">if</span> <span class="n">template_geometry</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="s2">"fix_target"</span>
+        <span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"use_cras_center only selects how a derived template geometry is centered, and </span><span class="si">{</span><span class="n">source</span><span class="si">}</span><span class="s2"> "</span>
+            <span class="s2">"supplies the geometry instead of deriving one; pass only one."</span>
+        <span class="p">)</span>
 
-    <span class="n">validate_input_geometries</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>
+    <span class="n">external_geometry</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">template_geometry</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">geom_image</span> <span class="o">=</span> <span class="n">load_image</span><span class="p">(</span><span class="n">template_geometry</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">template_geometry</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="k">else</span> <span class="n">template_geometry</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">geom_image</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">"template_geometry must describe a 3-D grid, but the given image has shape "</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">tuple</span><span class="p">(</span><span class="n">geom_image</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="si">}</span><span class="s2">."</span>
+            <span class="p">)</span>
+        <span class="n">external_geometry</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">tuple</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">geom_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">3</span><span class="p">]),</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">geom_image</span><span class="o">.</span><span class="n">affine</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+        <span class="p">)</span>
+
+    <span class="n">validate_input_geometries</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">derives_geometry</span><span class="o">=</span><span class="n">derives_geometry</span><span class="p">)</span>
     <span class="n">resolved_init_type</span> <span class="o">=</span> <span class="n">resolve_init_type</span><span class="p">(</span><span class="n">init_type</span><span class="p">,</span> <span class="n">default_init_type</span><span class="o">=</span><span class="s2">"centroid"</span><span class="p">)</span>
     <span class="n">resolved_template_iterations</span> <span class="o">=</span> <span class="n">_resolve_iterations</span><span class="p">(</span><span class="n">template_iterations</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">images</span><span class="p">))</span>
 
@@ -741,11 +828,20 @@
             <span class="n">use_cras_center</span><span class="o">=</span><span class="n">use_cras_center</span><span class="p">,</span>
             <span class="n">fix_target</span><span class="o">=</span><span class="n">fix_target</span><span class="p">,</span>
             <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
+            <span class="n">template_geometry</span><span class="o">=</span><span class="n">external_geometry</span><span class="p">,</span>
         <span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">fix_target</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Ignoring fix_target because init_ltas already define the template geometry."</span><span class="p">)</span>
-        <span class="n">template_shape</span><span class="p">,</span> <span class="n">template_affine</span><span class="p">,</span> <span class="n">current_transforms</span> <span class="o">=</span> <span class="n">_resolve_init_ltas</span><span class="p">(</span><span class="n">init_ltas</span><span class="p">)</span>
+        <span class="n">template_shape</span><span class="p">,</span> <span class="n">template_affine</span><span class="p">,</span> <span class="n">current_transforms</span> <span class="o">=</span> <span class="n">_resolve_init_ltas</span><span class="p">(</span>
+            <span class="n">init_ltas</span><span class="p">,</span>
+            <span class="n">template_geometry</span><span class="o">=</span><span class="n">external_geometry</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="n">check_template_grid_covers_inputs</span><span class="p">(</span>
+        <span class="n">images</span><span class="p">,</span>
+        <span class="n">current_transforms</span><span class="p">,</span>
+        <span class="n">template_shape</span><span class="o">=</span><span class="n">template_shape</span><span class="p">,</span>
+        <span class="n">template_affine</span><span class="o">=</span><span class="n">template_affine</span><span class="p">,</span>
+    <span class="p">)</span>
 
     <span class="n">target_image</span> <span class="o">=</span> <span class="n">images</span><span class="p">[</span><span class="n">init_target_index</span><span class="p">]</span>
     <span class="n">current_template</span><span class="p">,</span> <span class="n">mapped_images</span> <span class="o">=</span> <span class="n">build_template</span><span class="p">(</span>

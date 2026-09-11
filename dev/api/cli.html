@@ -380,10 +380,10 @@ constructs an unbiased mean space, and iteratively refines the template.</p>
 </p>
 <div class="highlight-default notranslate" id="id1"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">multireg</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">mov</span> <span class="n">FILE</span> <span class="p">[</span><span class="n">FILE</span> <span class="o">...</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">mov</span><span class="o">-</span><span class="n">mask</span> <span class="p">[</span><span class="n">FILE</span> <span class="o">...</span><span class="p">]]</span>
                 <span class="o">--</span><span class="n">template</span> <span class="n">FILE</span> <span class="p">[</span><span class="o">--</span><span class="n">lta</span> <span class="p">[</span><span class="n">FILE</span> <span class="o">...</span><span class="p">]]</span> <span class="p">[</span><span class="o">--</span><span class="n">mapmov</span> <span class="p">[</span><span class="n">FILE</span> <span class="o">...</span><span class="p">]]</span>
-                <span class="p">[</span><span class="o">--</span><span class="n">ixforms</span> <span class="p">[</span><span class="n">FILE</span> <span class="o">...</span><span class="p">]]</span> <span class="p">[</span><span class="o">--</span><span class="n">average</span> <span class="n">MODE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">inittp</span> <span class="n">N</span><span class="p">]</span>
-                <span class="p">[</span><span class="o">--</span><span class="n">seed</span> <span class="n">INT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">fixtp</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">cras</span><span class="o">-</span><span class="n">center</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">noit</span> <span class="o">|</span> <span class="o">--</span><span class="n">iterate</span> <span class="n">N</span><span class="p">]</span>
-                <span class="p">[</span><span class="o">--</span><span class="n">template</span><span class="o">-</span><span class="n">eps</span> <span class="n">FLOAT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">nmax</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">sat</span> <span class="n">FLOAT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">nosym</span><span class="p">]</span>
-                <span class="p">[</span><span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">header</span> <span class="o">|</span> <span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">centroid</span> <span class="o">|</span> <span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">center</span><span class="p">]</span>
+                <span class="p">[</span><span class="o">--</span><span class="n">ixforms</span> <span class="p">[</span><span class="n">FILE</span> <span class="o">...</span><span class="p">]]</span> <span class="p">[</span><span class="o">--</span><span class="n">template</span><span class="o">-</span><span class="n">geom</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">average</span> <span class="n">MODE</span><span class="p">]</span>
+                <span class="p">[</span><span class="o">--</span><span class="n">inittp</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">seed</span> <span class="n">INT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">fixtp</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">cras</span><span class="o">-</span><span class="n">center</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">noit</span> <span class="o">|</span>
+                <span class="o">--</span><span class="n">iterate</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">template</span><span class="o">-</span><span class="n">eps</span> <span class="n">FLOAT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">nmax</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">sat</span> <span class="n">FLOAT</span><span class="p">]</span>
+                <span class="p">[</span><span class="o">--</span><span class="n">nosym</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">header</span> <span class="o">|</span> <span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">centroid</span> <span class="o">|</span> <span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">center</span><span class="p">]</span>
                 <span class="p">[</span><span class="o">--</span><span class="n">device</span> <span class="n">DEVICE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">keep</span><span class="o">-</span><span class="n">dtype</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
 </pre></div>
 </div>
@@ -406,7 +406,10 @@ constructs an unbiased mean space, and iteratively refines the template.</p>
 <dd><p>Optional output paths for mapped per-time-point images in template space, one per –mov image.</p>
 </dd>
 <dt><kbd>--ixforms</kbd></dt>
-<dd><p>Optional input LTAs, one per –mov image. When given, reuse these transforms as the template-space mapping.</p>
+<dd><p>Optional input LTAs, one per –mov image. They initialize each registration and supply the template geometry from their (shared) destination geometry, so a coarse pre-alignment is enough. Template iterations refine them, meaning the output LTAs usually differ; add –noit to use them exactly as given.</p>
+</dd>
+<dt><kbd>--template-geom</kbd></dt>
+<dd><p>Image supplying the output template geometry, replacing the geometry multireg would otherwise derive. With –ixforms the destination geometry of the input transforms is then ignored and need not be present.</p>
 </dd>
 <dt><kbd>--average</kbd></dt>
 <dd><p>Template aggregation mode: mean, median, 0 (=mean), or 1 (=median).</p>
@@ -420,11 +423,11 @@ constructs an unbiased mean space, and iteratively refines the template.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">0</span></code></p>
 </dd>
 <dt><kbd>--fixtp</kbd></dt>
-<dd><p>Keep the chosen initial target as the output space instead of constructing an unbiased mean space.</p>
+<dd><p>Keep the chosen initial target as the output space instead of constructing an unbiased mean space. Cannot be combined with –ixforms or –template-geom, which supply the template space themselves.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
 </dd>
 <dt><kbd>--cras-center</kbd></dt>
-<dd><p>Center the template geometry at the average CRAS instead of the average mapped centroid.</p>
+<dd><p>Center the template geometry at the average CRAS instead of the average mapped centroid. Cannot be combined with –ixforms, –template-geom or –fixtp, none of which derives a geometry to center.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
 </dd>
 <dt><kbd>--noit</kbd></dt>
@@ -499,7 +502,8 @@ constructs an unbiased mean space, and iteratively refines the template.</p>
 </dd>
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
-<dt>SystemExit</dt><dd><p>If argument parsing fails or an input image cannot be loaded.</p>
+<dt>SystemExit</dt><dd><p>If argument parsing fails, an input image cannot be loaded, or the
+registration or any output write fails.</p>
 </dd>
 </dl>
 </dd>

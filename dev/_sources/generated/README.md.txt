@@ -93,12 +93,14 @@ robreg --mov T1_repeat.nii.gz --ref T1_baseline.mgz --out T1_repeat_to_T1_baseli
 Builds a within-subject template from multiple same-contrast time points using
 the robust pairwise `robreg` path as its registration kernel.
 
-This command supports two key workflows:
+This command supports these key workflows:
 
 - full multi-timepoint registration and template construction
 - template rebuilding from precomputed LTAs via `--ixforms`, which is useful for
   the later FastSurfer-style "reuse transforms and just rebuild the template"
   pass
+- template building on a caller-defined voxel grid via `--template-geom`, for
+  example one written by `mri geom`
 
 ```
 multireg --mov <tp1.nii.gz> <tp2.nii.gz> ... --template <template.nii.gz> [options]
@@ -111,6 +113,7 @@ multireg --mov <tp1.nii.gz> <tp2.nii.gz> ... --template <template.nii.gz> [optio
 | `--template FILE`    | required | Output template image.                                                          |
 | `--lta FILE ...`     | —        | Optional output LTAs, one per input time point.                                 |
 | `--ixforms FILE ...` | —        | Reuse precomputed LTAs as input transforms into template space.                 |
+| `--template-geom FILE` | —      | Image supplying the output template geometry instead of deriving one. With `--ixforms`, their destination geometry is then ignored and need not be present. |
 | `--average MODE`     | `median` | Template aggregation mode: `mean`, `median`, `0` (=mean), or `1` (=median).     |
 | `--noit`             | off      | Stop after the initial template build instead of running iterative refinement.  |
 | `--iterate N`        | auto     | Maximum number of refinement iterations (`0` for 2 TPs, `6` for 3+ by default). |
@@ -130,6 +133,15 @@ multireg --mov tp1.mgz tp2.mgz tp3.mgz --template subject_template.mgz \
 multireg --mov tp1_orig.mgz tp2_orig.mgz tp3_orig.mgz \
          --template subject_template_orig.mgz \
          --ixforms tp1.lta tp2.lta tp3.lta --noit --average median
+
+# Build on a caller-defined grid, here one created with mri geom. The input
+# poses only initialize the registrations, so they need no destination geometry
+# (segreg fits them against centroids and marks their destination invalid).
+mri geom --o std.mgz --like tp1_conform.mgz --orientation LIA --cras -0.1,-16.4,6.2
+multireg --mov tp1_norm.mgz tp2_norm.mgz tp3_norm.mgz \
+         --ixforms tp1_pose.lta tp2_pose.lta tp3_pose.lta \
+         --template-geom std.mgz --template base_brainmask.mgz \
+         --lta tp1.lta tp2.lta tp3.lta --average 1 --keep-dtype
 ```
 
 ---
@@ -556,6 +568,7 @@ mri geom --o target.mgz --like sub.mgz --vox-size 0.5
 
 # Feed it to any tool that takes a reference image
 vol2vol --in cross.nii.gz --transform pose.lta --ref target.mgz --out orig.mgz
+multireg --mov tp1.mgz tp2.mgz --template base.mgz --template-geom target.mgz
 ```
 
 Run `mri -h` or `mri <subcommand> -h` for a full argument summary with defaults.

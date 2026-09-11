@@ -392,6 +392,56 @@ the matrix is converted before writing; <code class="docutils literal notranslat
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="neuroreg.transforms.LTA.with_geometry">
+<span class="sig-name descname"><span class="pre">with_geometry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src_img</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dst_img</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src_fname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dst_fname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/lta.html#LTA.with_geometry"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.LTA.with_geometry" title="Link to this definition">¶</a></dt>
+<dd><p>Return a copy with the source and/or destination geometry replaced.</p>
+<p>This is how a transform that carries no destination geometry, such as
+centroid-based atlas registration output whose <code class="docutils literal notranslate"><span class="pre">dst</span></code> block is marked
+<code class="docutils literal notranslate"><span class="pre">valid</span> <span class="pre">=</span> <span class="pre">0</span></code>, is told where its target lives.</p>
+<p>A LINEAR_RAS_TO_RAS matrix maps scanner coordinates and does not depend
+on either voxel grid, so its geometry blocks are metadata and are simply
+replaced. A LINEAR_VOX_TO_VOX matrix is defined relative to the stored
+grids, so replacing a block would silently change what the transform
+means; the matrix is therefore recomputed against the new grids to
+preserve the mapping, which requires the stored blocks to be valid.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>src_img, dst_img</strong><span class="classifier">path, nibabel header/image, dict, or None</span></dt><dd><p>Replacement geometry. <code class="docutils literal notranslate"><span class="pre">None</span></code> keeps the existing block.</p>
+</dd>
+<dt><strong>src_fname, dst_fname</strong><span class="classifier">str or None, optional</span></dt><dd><p>Filenames recorded with the replaced blocks. Default to the names
+already stored.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>LTA</dt><dd><p>New transform. <code class="docutils literal notranslate"><span class="pre">self</span></code> is not modified.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>ValueError</dt><dd><p>If this is a LINEAR_VOX_TO_VOX transform whose stored geometry is
+not valid, so the mapping cannot be re-expressed on the new grids.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>src_img</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>Nifti1Header</em><em> | </em><em>MGHHeader</em><em> | </em><em>Nifti1Image</em><em> | </em><em>MGHImage</em><em> | </em><em>dict</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>dst_img</strong> (<em>str</em><em> | </em><em>Path</em><em> | </em><em>Nifti1Header</em><em> | </em><em>MGHHeader</em><em> | </em><em>Nifti1Image</em><em> | </em><em>MGHImage</em><em> | </em><em>dict</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>src_fname</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>dst_fname</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#neuroreg.transforms.LTA" title="neuroreg.transforms.lta.LTA"><em>LTA</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="neuroreg.transforms.LTA.invert">
 <span class="sig-name descname"><span class="pre">invert</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/transforms/lta.html#LTA.invert"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.transforms.LTA.invert" title="Link to this definition">¶</a></dt>
 <dd><p>Return an inverted copy with src/dst swapped, stored as R2R.</p>
@@ -1958,6 +2008,7 @@ is returned.</p>
 <li><a class="reference internal" href="#neuroreg.transforms.LTA.write"><code class="docutils literal notranslate"><span class="pre">LTA.write()</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.transforms.LTA.r2r"><code class="docutils literal notranslate"><span class="pre">LTA.r2r()</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.transforms.LTA.v2v"><code class="docutils literal notranslate"><span class="pre">LTA.v2v()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.transforms.LTA.with_geometry"><code class="docutils literal notranslate"><span class="pre">LTA.with_geometry()</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.transforms.LTA.invert"><code class="docutils literal notranslate"><span class="pre">LTA.invert()</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.transforms.LTA.concat"><code class="docutils literal notranslate"><span class="pre">LTA.concat()</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.transforms.LTA.decompose"><code class="docutils literal notranslate"><span class="pre">LTA.decompose()</span></code></a></li>

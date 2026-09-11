@@ -297,8 +297,19 @@
         <span class="n">nargs</span><span class="o">=</span><span class="s2">"*"</span><span class="p">,</span>
         <span class="n">metavar</span><span class="o">=</span><span class="s2">"FILE"</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="p">(</span>
-            <span class="s2">"Optional input LTAs, one per --mov image. When given, reuse these "</span>
-            <span class="s2">"transforms as the template-space mapping."</span>
+            <span class="s2">"Optional input LTAs, one per --mov image. They initialize each registration and "</span>
+            <span class="s2">"supply the template geometry from their (shared) destination geometry, so a coarse "</span>
+            <span class="s2">"pre-alignment is enough. Template iterations refine them, meaning the output LTAs "</span>
+            <span class="s2">"usually differ; add --noit to use them exactly as given."</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">"--template-geom"</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"FILE"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"Image supplying the output template geometry, replacing the geometry multireg "</span>
+            <span class="s2">"would otherwise derive. With --ixforms the destination geometry of the input "</span>
+            <span class="s2">"transforms is then ignored and need not be present."</span>
         <span class="p">),</span>
     <span class="p">)</span>
     <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
@@ -326,12 +337,20 @@
     <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
         <span class="s2">"--fixtp"</span><span class="p">,</span>
         <span class="n">action</span><span class="o">=</span><span class="s2">"store_true"</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">"Keep the chosen initial target as the output space instead of constructing an unbiased mean space."</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"Keep the chosen initial target as the output space instead of constructing an "</span>
+            <span class="s2">"unbiased mean space. Cannot be combined with --ixforms or --template-geom, which "</span>
+            <span class="s2">"supply the template space themselves."</span>
+        <span class="p">),</span>
     <span class="p">)</span>
     <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
         <span class="s2">"--cras-center"</span><span class="p">,</span>
         <span class="n">action</span><span class="o">=</span><span class="s2">"store_true"</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">"Center the template geometry at the average CRAS instead of the average mapped centroid."</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"Center the template geometry at the average CRAS instead of the average mapped "</span>
+            <span class="s2">"centroid. Cannot be combined with --ixforms, --template-geom or --fixtp, none of "</span>
+            <span class="s2">"which derives a geometry to center."</span>
+        <span class="p">),</span>
     <span class="p">)</span>
     <span class="n">iter_group</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">add_mutually_exclusive_group</span><span class="p">()</span>
     <span class="n">iter_group</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
@@ -436,7 +455,8 @@
 <span class="sd">    Raises</span>
 <span class="sd">    ------</span>
 <span class="sd">    SystemExit</span>
-<span class="sd">        If argument parsing fails or an input image cannot be loaded.</span>
+<span class="sd">        If argument parsing fails, an input image cannot be loaded, or the</span>
+<span class="sd">        registration or any output write fails.</span>
 <span class="sd">    """</span>
     <span class="n">parser</span> <span class="o">=</span> <span class="n">_build_parser</span><span class="p">()</span>
     <span class="n">ns</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
@@ -448,6 +468,28 @@
         <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--lta requires exactly one output path per --mov input."</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">ixforms</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">ixforms</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">mov</span><span class="p">):</span>
         <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--ixforms requires exactly one input LTA per --mov input."</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">ixforms</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">ns</span><span class="o">.</span><span class="n">fixtp</span><span class="p">:</span>
+        <span class="c1"># Both choose the template space: --fixtp keeps the initial target time</span>
+        <span class="c1"># point's grid, --ixforms takes it from the given LTAs' destination</span>
+        <span class="c1"># geometry. Honouring one would silently discard the other. The</span>
+        <span class="c1"># transforms differ only as a consequence of landing in a different</span>
+        <span class="c1"># space; --inittp is what selects the registration target, and it</span>
+        <span class="c1"># composes with either flag.</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--ixforms and --fixtp both determine the template space; pass only one."</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">template_geom</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">ns</span><span class="o">.</span><span class="n">fixtp</span><span class="p">:</span>
+        <span class="c1"># Same reasoning as above: --fixtp keeps the initial target time point's</span>
+        <span class="c1"># grid, --template-geom supplies a grid outright.</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--template-geom and --fixtp both determine the template space; pass only one."</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">cras_center</span> <span class="ow">and</span> <span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">ixforms</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">ns</span><span class="o">.</span><span class="n">template_geom</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">ns</span><span class="o">.</span><span class="n">fixtp</span><span class="p">):</span>
+        <span class="c1"># --cras-center only selects how a derived geometry is centered, and none</span>
+        <span class="c1"># of these derives one: each supplies a grid, placement included.</span>
+        <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">ixforms</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">source</span> <span class="o">=</span> <span class="s2">"--ixforms"</span>
+        <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">template_geom</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">source</span> <span class="o">=</span> <span class="s2">"--template-geom"</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">source</span> <span class="o">=</span> <span class="s2">"--fixtp"</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">"--cras-center has no effect when </span><span class="si">{</span><span class="n">source</span><span class="si">}</span><span class="s2"> supplies the template space; pass only one."</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">mapmov</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">mapmov</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">mov</span><span class="p">):</span>
         <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--mapmov requires exactly one output path per --mov input."</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">inittp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="mi">1</span> <span class="o">&lt;=</span> <span class="n">ns</span><span class="o">.</span><span class="n">inittp</span> <span class="o">&lt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">mov</span><span class="p">):</span>
@@ -460,47 +502,60 @@
         <span class="n">mov_masks</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">mov_mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">mov_masks</span> <span class="o">=</span> <span class="p">[</span><span class="n">cast</span><span class="p">(</span><span class="n">Any</span><span class="p">,</span> <span class="n">load_image</span><span class="p">(</span><span class="n">path</span><span class="p">))</span> <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">ns</span><span class="o">.</span><span class="n">mov_mask</span><span class="p">]</span>
+        <span class="n">template_geom_img</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">template_geom</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">cast</span><span class="p">(</span><span class="n">Any</span><span class="p">,</span> <span class="n">load_image</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">template_geom</span><span class="p">))</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ERROR loading image: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
         <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Starting multireg with </span><span class="si">%d</span><span class="s2"> time points."</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">mov_imgs</span><span class="p">))</span>
     <span class="n">template_iterations</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">noit</span> <span class="k">else</span> <span class="n">ns</span><span class="o">.</span><span class="n">iterate</span>
-    <span class="n">result</span> <span class="o">=</span> <span class="n">multireg</span><span class="p">(</span>
-        <span class="n">mov_imgs</span><span class="p">,</span>
-        <span class="n">masks</span><span class="o">=</span><span class="n">mov_masks</span><span class="p">,</span>
-        <span class="n">init_ltas</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">ixforms</span><span class="p">,</span>
-        <span class="n">average</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">average</span><span class="p">,</span>
-        <span class="n">init_target_index</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">inittp</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">ns</span><span class="o">.</span><span class="n">inittp</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span>
-        <span class="n">seed</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">seed</span><span class="p">,</span>
-        <span class="n">fix_target</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">fixtp</span><span class="p">,</span>
-        <span class="n">init_type</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">init_type</span><span class="p">,</span>
-        <span class="n">nmax</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">nmax</span><span class="p">,</span>
-        <span class="n">sat</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">sat</span><span class="p">,</span>
-        <span class="n">symmetric</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">symmetric</span><span class="p">,</span>
-        <span class="n">device</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
-        <span class="n">use_cras_center</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">cras_center</span><span class="p">,</span>
-        <span class="n">template_iterations</span><span class="o">=</span><span class="n">template_iterations</span><span class="p">,</span>
-        <span class="n">template_eps</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">template_eps</span><span class="p">,</span>
-        <span class="n">return_mapped</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">mapmov</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">mapped_keep_dtype</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">keep_dtype</span><span class="p">,</span>
-        <span class="n">verbose</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">verbose</span> <span class="ow">or</span> <span class="n">ns</span><span class="o">.</span><span class="n">debug</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="n">save_image</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">template_image</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">template</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"InitialTP:   </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">initial_target_index</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Seed:        </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">seed</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Iterations:  </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">template_iterations_run</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">iteration_distances</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"LastChange:  </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">iteration_distances</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Template:    </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">template</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">lta</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">for</span> <span class="n">lta_path</span><span class="p">,</span> <span class="n">mov_path</span><span class="p">,</span> <span class="n">mov_img</span><span class="p">,</span> <span class="n">matrix</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">lta</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">mov</span><span class="p">,</span> <span class="n">mov_imgs</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">transforms_r2r</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-            <span class="n">LTA</span><span class="o">.</span><span class="n">from_matrix</span><span class="p">(</span><span class="n">matrix</span><span class="p">,</span> <span class="n">mov_path</span><span class="p">,</span> <span class="n">mov_img</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">template</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">template_image</span><span class="p">,</span> <span class="n">lta_type</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">lta_path</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"LTAs:        </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">lta</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">mapmov</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">mapped_images</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">mapped_images</span> <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">mapped_images</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">mapmov_path</span><span class="p">,</span> <span class="n">mapped_image</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">mapmov</span><span class="p">,</span> <span class="n">mapped_images</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-            <span class="n">save_image</span><span class="p">(</span><span class="n">mapped_image</span><span class="p">,</span> <span class="n">mapmov_path</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"MapMov:      </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">mapmov</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span></div>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">multireg</span><span class="p">(</span>
+            <span class="n">mov_imgs</span><span class="p">,</span>
+            <span class="n">masks</span><span class="o">=</span><span class="n">mov_masks</span><span class="p">,</span>
+            <span class="n">init_ltas</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">ixforms</span><span class="p">,</span>
+            <span class="n">template_geometry</span><span class="o">=</span><span class="n">template_geom_img</span><span class="p">,</span>
+            <span class="n">average</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">average</span><span class="p">,</span>
+            <span class="n">init_target_index</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">inittp</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">ns</span><span class="o">.</span><span class="n">inittp</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="n">seed</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">seed</span><span class="p">,</span>
+            <span class="n">fix_target</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">fixtp</span><span class="p">,</span>
+            <span class="n">init_type</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">init_type</span><span class="p">,</span>
+            <span class="n">nmax</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">nmax</span><span class="p">,</span>
+            <span class="n">sat</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">sat</span><span class="p">,</span>
+            <span class="n">symmetric</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">symmetric</span><span class="p">,</span>
+            <span class="n">device</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+            <span class="n">use_cras_center</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">cras_center</span><span class="p">,</span>
+            <span class="n">template_iterations</span><span class="o">=</span><span class="n">template_iterations</span><span class="p">,</span>
+            <span class="n">template_eps</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">template_eps</span><span class="p">,</span>
+            <span class="n">return_mapped</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">mapmov</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">mapped_keep_dtype</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">keep_dtype</span><span class="p">,</span>
+            <span class="n">verbose</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">verbose</span> <span class="ow">or</span> <span class="n">ns</span><span class="o">.</span><span class="n">debug</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">save_image</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">template_image</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">template</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"InitialTP:   </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">initial_target_index</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Seed:        </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">seed</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Iterations:  </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">template_iterations_run</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">iteration_distances</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"LastChange:  </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">iteration_distances</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Template:    </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">template</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">lta</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">lta_path</span><span class="p">,</span> <span class="n">mov_path</span><span class="p">,</span> <span class="n">mov_img</span><span class="p">,</span> <span class="n">matrix</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+                <span class="n">ns</span><span class="o">.</span><span class="n">lta</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">mov</span><span class="p">,</span> <span class="n">mov_imgs</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">transforms_r2r</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">False</span>
+            <span class="p">):</span>
+                <span class="n">LTA</span><span class="o">.</span><span class="n">from_matrix</span><span class="p">(</span>
+                    <span class="n">matrix</span><span class="p">,</span> <span class="n">mov_path</span><span class="p">,</span> <span class="n">mov_img</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">template</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">template_image</span><span class="p">,</span> <span class="n">lta_type</span><span class="o">=</span><span class="mi">1</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">lta_path</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"LTAs:        </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">lta</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">mapmov</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">mapped_images</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">mapped_images</span> <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">mapped_images</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">mapmov_path</span><span class="p">,</span> <span class="n">mapped_image</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">mapmov</span><span class="p">,</span> <span class="n">mapped_images</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+                <span class="n">save_image</span><span class="p">(</span><span class="n">mapped_image</span><span class="p">,</span> <span class="n">mapmov_path</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"MapMov:      </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">mapmov</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="c1"># Registration and output writing report like the other commands rather</span>
+        <span class="c1"># than as a traceback; --debug still shows the full stack.</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"multireg failed"</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ERROR: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span></div>
 
 
 

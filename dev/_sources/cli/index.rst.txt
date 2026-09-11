@@ -19,7 +19,7 @@ multireg
 --------
 
 Longitudinal multi-timepoint template construction with reusable LTAs for later
-template rebuilds.
+template rebuilds, optionally on a caller-defined voxel grid.
 
 Examples::
 
@@ -28,6 +28,9 @@ Examples::
    multireg --mov tp1_orig.mgz tp2_orig.mgz tp3_orig.mgz \
             --template subject_template_orig.mgz \
             --ixforms tp1.lta tp2.lta tp3.lta --noit --average median
+   multireg --mov tp1_norm.mgz tp2_norm.mgz tp3_norm.mgz \
+            --ixforms tp1_pose.lta tp2_pose.lta tp3_pose.lta \
+            --template-geom std.mgz --template base_brainmask.mgz
 
 coreg
 -----
