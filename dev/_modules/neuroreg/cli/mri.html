@@ -255,18 +255,23 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">nibabel</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nib</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..image</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">binarize_image</span><span class="p">,</span>
+    <span class="n">build_grid_affine</span><span class="p">,</span>
     <span class="n">compare_images</span><span class="p">,</span>
     <span class="n">describe_image</span><span class="p">,</span>
+    <span class="n">direction_cosines_from_orientation</span><span class="p">,</span>
     <span class="n">image_value_stats</span><span class="p">,</span>
     <span class="n">load_image</span><span class="p">,</span>
     <span class="n">mask_geometry_differs</span><span class="p">,</span>
     <span class="n">reslice_and_apply_mask</span><span class="p">,</span>
     <span class="n">save_image</span><span class="p">,</span>
+    <span class="n">shape_from_fov</span><span class="p">,</span>
 <span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._args</span><span class="w"> </span><span class="kn">import</span> <span class="n">NumberListParser</span><span class="p">,</span> <span class="n">number_list</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._outputs</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_image_outputs</span>
 
 <span class="c1"># ── parser ──────────────────────────────────────────────────────────────────</span>
@@ -280,9 +285,12 @@
 <span class="sd">    argparse.ArgumentParser</span>
 <span class="sd">        Configured CLI parser with one sub-parser per utility.</span>
 <span class="sd">    """</span>
-    <span class="n">p</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span>
+    <span class="c1"># NumberListParser so that a negative geometry component such as</span>
+    <span class="c1"># "--cras -4,0,0" is read as a value rather than an unknown option; the</span>
+    <span class="c1"># sub-parsers inherit the class via argparse's parser_class default.</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">NumberListParser</span><span class="p">(</span>
         <span class="n">prog</span><span class="o">=</span><span class="s2">"mri"</span><span class="p">,</span>
-        <span class="n">description</span><span class="o">=</span><span class="s2">"Image volume utilities (mask, info, diff, binarize)."</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">"Image volume utilities (mask, info, diff, binarize, geom)."</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">sub</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">add_subparsers</span><span class="p">(</span><span class="n">dest</span><span class="o">=</span><span class="s2">"command"</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"COMMAND"</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
@@ -460,6 +468,76 @@
     <span class="n">bin_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--abs"</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">"store_true"</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">"use_abs"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Take abs value before thresholding."</span><span class="p">)</span>
     <span class="n">bin_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--frame"</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"N"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"For 4D input, binarize this frame only."</span><span class="p">)</span>
     <span class="n">bin_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--uchar"</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">"store_true"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Write uint8 output instead of int32."</span><span class="p">)</span>
+
+    <span class="c1"># ── geom ──────────────────────────────────────────────────────────────────</span>
+    <span class="n">geom_p</span> <span class="o">=</span> <span class="n">sub</span><span class="o">.</span><span class="n">add_parser</span><span class="p">(</span>
+        <span class="s2">"geom"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Write an empty volume that carries only a target geometry."</span><span class="p">,</span>
+        <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">RawDescriptionHelpFormatter</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"Write a zero-filled volume whose header describes a requested target</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"geometry, for use as a reference image by tools that accept only a</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"reference file. This makes grids expressible that no stock file</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"provides, for example the mni305.cor.mgz frame (256mm FOV, LIA,</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"cras 0 0 0) at a native voxel size other than 1mm.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"A geometry has four components: image dimensions, voxel sizes,</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"direction cosines, and placement (cras). Each is taken from its own</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"flag if given, else from --like, else it is an error. The exception</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"is cras, which defaults to 0,0,0. --shape and --fov are two ways to</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"give the dimensions; --fov derives them from the voxel size, so a</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"fixed 256mm field of view needs no division in the caller.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"--like supplies a field of view rather than image dimensions, so</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"'--like sub.mgz --vox-size 0.5' keeps the extent sub.mgz covers and</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"grows the dimensions to match, instead of cropping to sub.mgz's</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"dimensions at a finer resolution. Pass --shape to fix them instead.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"--orientation sets a strict axis-aligned orientation and so discards</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"any oblique rotation from --like. The output contains no image data."</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">geom_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--o"</span><span class="p">,</span> <span class="s2">"--out"</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">"out"</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"FILE"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Output image."</span><span class="p">)</span>
+    <span class="n">geom_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">"--like"</span><span class="p">,</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s2">"like"</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"FILE"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Image supplying any geometry component not given explicitly (extent, not dimensions)."</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">size_group</span> <span class="o">=</span> <span class="n">geom_p</span><span class="o">.</span><span class="n">add_mutually_exclusive_group</span><span class="p">()</span>
+    <span class="n">size_group</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">"--shape"</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="n">number_list</span><span class="p">(</span><span class="s2">"--shape"</span><span class="p">,</span> <span class="n">allow_scalar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">cast</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">positive</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"I[,J,K]"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Image dimensions in voxels, as one value (cube) or three."</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">size_group</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">"--fov"</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="n">number_list</span><span class="p">(</span><span class="s2">"--fov"</span><span class="p">,</span> <span class="n">allow_scalar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">positive</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"MM[,MM,MM]"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Field of view in mm; the image dimensions are derived from the voxel size."</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">geom_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">"--vox-size"</span><span class="p">,</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s2">"vox_size"</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="n">number_list</span><span class="p">(</span><span class="s2">"--vox-size"</span><span class="p">,</span> <span class="n">allow_scalar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">positive</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"MM[,MM,MM]"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Voxel size in mm, as one value (isotropic) or three. With --like the dimensions rescale."</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">geom_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">"--orientation"</span><span class="p">,</span>
+        <span class="s2">"--ori"</span><span class="p">,</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s2">"orientation"</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"CODE"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Strict axis-aligned orientation, e.g. LIA or RAS."</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">geom_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">"--cras"</span><span class="p">,</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s2">"cras"</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="n">number_list</span><span class="p">(</span><span class="s2">"--cras"</span><span class="p">),</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"X,Y,Z"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"World coordinate of the grid centre (default: 0,0,0)."</span><span class="p">,</span>
+    <span class="p">)</span>
 
     <span class="k">return</span> <span class="n">p</span>
 
@@ -649,6 +727,114 @@
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Output: </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_resolve_geom_components</span><span class="p">(</span>
+        <span class="n">ns</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">,</span>
+        <span class="n">parser</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Resolve the four geometry components for ``mri geom``.</span>
+
+<span class="sd">    Each component comes from its own flag if given, else from ``--like``, else</span>
+<span class="sd">    it is a usage error. Two components qualify that rule:</span>
+
+<span class="sd">    * ``--cras`` defaults to the world origin rather than erroring, since a grid</span>
+<span class="sd">      built from scratch has no other sensible placement.</span>
+<span class="sd">    * ``--like`` supplies a *field of view* rather than image dimensions, so</span>
+<span class="sd">      overriding the voxel size rescales the dimensions to keep the same</span>
+<span class="sd">      extent. Pass ``--shape`` to fix the dimensions instead.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ns : argparse.Namespace</span>
+<span class="sd">        Parsed ``geom`` arguments.</span>
+<span class="sd">    parser : argparse.ArgumentParser</span>
+<span class="sd">        Parser used to report user-facing validation errors.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple</span>
+<span class="sd">        Direction cosines, image dimensions, voxel sizes, and grid centre.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    SystemExit</span>
+<span class="sd">        Via :meth:`argparse.ArgumentParser.error` when a component cannot be</span>
+<span class="sd">        resolved or an orientation code is invalid.</span>
+<span class="sd">    """</span>
+    <span class="n">like</span> <span class="o">=</span> <span class="n">load_image</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">like</span><span class="p">)</span> <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">like</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="n">like_zooms</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">like</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">like</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">get_zooms</span><span class="p">()[:</span><span class="mi">3</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">like_zooms</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">like_zooms</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">):</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">"--like has a non-positive voxel size: </span><span class="si">{</span><span class="n">like_zooms</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+    <span class="n">vox_size</span> <span class="o">=</span> <span class="n">ns</span><span class="o">.</span><span class="n">vox_size</span>
+    <span class="k">if</span> <span class="n">vox_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">like_zooms</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--vox-size is required unless --like is given."</span><span class="p">)</span>
+        <span class="n">vox_size</span> <span class="o">=</span> <span class="n">like_zooms</span>
+
+    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">shape</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ns</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">fov</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="n">shape_from_fov</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">fov</span><span class="p">,</span> <span class="n">vox_size</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">like</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># --like preserves the extent, not the dimensions: with the voxel size</span>
+        <span class="c1"># overridden the dimensions follow from the source field of view, so the</span>
+        <span class="c1"># new grid still covers the same anatomy. Keeping the dimensions would</span>
+        <span class="c1"># silently crop it. Because shape_from_fov snaps counts that are integer</span>
+        <span class="c1"># within a relative tolerance, feeding back the source's own voxel size</span>
+        <span class="c1"># returns the source dimensions unchanged.</span>
+        <span class="n">source_fov</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">like</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">3</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span> <span class="o">*</span> <span class="n">like_zooms</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="n">shape_from_fov</span><span class="p">(</span><span class="n">source_fov</span><span class="p">,</span> <span class="n">vox_size</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--shape or --fov is required unless --like is given."</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">orientation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">cosines</span> <span class="o">=</span> <span class="n">direction_cosines_from_orientation</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">orientation</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="n">like</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Normalise the columns so the oblique rotation survives while the</span>
+        <span class="c1"># voxel size is taken from whichever source resolved it above.</span>
+        <span class="n">cosines</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">like</span><span class="o">.</span><span class="n">affine</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">/</span> <span class="n">like_zooms</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--orientation is required unless --like is given."</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">cras</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">cras</span> <span class="o">=</span> <span class="n">ns</span><span class="o">.</span><span class="n">cras</span>
+    <span class="k">elif</span> <span class="n">like</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">cras</span> <span class="o">=</span> <span class="n">describe_image</span><span class="p">(</span><span class="n">like</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">like</span><span class="p">)[</span><span class="s2">"cras"</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">cras</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">cosines</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">vox_size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">cras</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_main_geom</span><span class="p">(</span><span class="n">ns</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">,</span> <span class="n">parser</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Inside the boundary so an unreadable --like reports like the other</span>
+        <span class="c1"># subcommands. parser.error raises SystemExit, not Exception, so usage</span>
+        <span class="c1"># errors still surface as argparse messages rather than "ERROR: ...".</span>
+        <span class="n">cosines</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">vox_size</span><span class="p">,</span> <span class="n">cras</span> <span class="o">=</span> <span class="n">_resolve_geom_components</span><span class="p">(</span><span class="n">ns</span><span class="p">,</span> <span class="n">parser</span><span class="p">)</span>
+        <span class="n">affine</span> <span class="o">=</span> <span class="n">build_grid_affine</span><span class="p">(</span><span class="n">cosines</span><span class="o">=</span><span class="n">cosines</span><span class="p">,</span> <span class="n">vox_size</span><span class="o">=</span><span class="n">vox_size</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="n">shape</span><span class="p">,</span> <span class="n">cras</span><span class="o">=</span><span class="n">cras</span><span class="p">)</span>
+        <span class="c1"># uint8 zeros: the payload is irrelevant, only the header is, and this</span>
+        <span class="c1"># keeps a 320^3 reference file a few KB once compressed.</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">nib</span><span class="o">.</span><span class="n">Nifti1Image</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">),</span> <span class="n">affine</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+        <span class="n">save_image</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ERROR: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># Report the geometry as stored, so what is printed is what a consumer reads</span>
+    <span class="c1"># back rather than what was requested.</span>
+    <span class="n">written</span> <span class="o">=</span> <span class="n">describe_image</span><span class="p">(</span><span class="n">load_image</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">),</span> <span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">)</span>
+    <span class="n">out_shape</span><span class="p">,</span> <span class="n">out_vox</span><span class="p">,</span> <span class="n">out_cras</span> <span class="o">=</span> <span class="n">written</span><span class="p">[</span><span class="s2">"shape"</span><span class="p">],</span> <span class="n">written</span><span class="p">[</span><span class="s2">"voxel_sizes"</span><span class="p">],</span> <span class="n">written</span><span class="p">[</span><span class="s2">"cras"</span><span class="p">]</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Output: </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"    dimensions: </span><span class="si">{</span><span class="n">out_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> x </span><span class="si">{</span><span class="n">out_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2"> x </span><span class="si">{</span><span class="n">out_shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"   voxel sizes: </span><span class="si">{</span><span class="n">out_vox</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">out_vox</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">out_vox</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"          cras: </span><span class="si">{</span><span class="n">out_cras</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">out_cras</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">out_cras</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"   Orientation: </span><span class="si">{</span><span class="n">written</span><span class="p">[</span><span class="s1">'orientation'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+
 <span class="c1"># ── entry point ───────────────────────────────────────────────────────────────</span>
 
 
@@ -679,7 +865,9 @@
     <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">command</span> <span class="o">==</span> <span class="s2">"diff"</span><span class="p">:</span>
         <span class="n">_main_diff</span><span class="p">(</span><span class="n">ns</span><span class="p">)</span>
     <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">command</span> <span class="o">==</span> <span class="s2">"binarize"</span><span class="p">:</span>
-        <span class="n">_main_binarize</span><span class="p">(</span><span class="n">ns</span><span class="p">)</span></div>
+        <span class="n">_main_binarize</span><span class="p">(</span><span class="n">ns</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">command</span> <span class="o">==</span> <span class="s2">"geom"</span><span class="p">:</span>
+        <span class="n">_main_geom</span><span class="p">(</span><span class="n">ns</span><span class="p">,</span> <span class="n">parser</span><span class="p">)</span></div>
 
 
 

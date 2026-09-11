@@ -905,12 +905,16 @@ file extension, so this converts between any formats nibabel supports
 (e.g. .mgz, .nii, .nii.gz, .img/.hdr). The dtype/scaling flags also
 apply on the native grid without reslicing. To mask a volume, use
 ‘mri mask’.</p>
+<p>The target geometry is taken from –ref, else the transform’s dst
+geometry, else the input. Override flags such as –ref-cras apply on
+top of that base geometry.</p>
 </p>
 <div class="highlight-default notranslate" id="id7"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">vol2vol</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="ow">in</span> <span class="n">FILE</span> <span class="p">[</span><span class="o">--</span><span class="n">transform</span> <span class="n">FILE</span><span class="p">]</span>
                <span class="p">[</span><span class="o">--</span><span class="n">transform</span><span class="o">-</span><span class="nb">format</span> <span class="p">{</span><span class="n">lta</span><span class="p">,</span><span class="n">xfm</span><span class="p">,</span><span class="n">fsl</span><span class="p">,</span><span class="n">regdat</span><span class="p">,</span><span class="n">itk</span><span class="p">,</span><span class="n">antsmat</span><span class="p">,</span><span class="n">afni</span><span class="p">,</span><span class="n">niftyreg</span><span class="p">}]</span>
-               <span class="p">[</span><span class="o">--</span><span class="n">ref</span> <span class="n">FILE</span><span class="p">]</span> <span class="o">--</span><span class="n">out</span> <span class="n">FILE</span> <span class="p">[</span><span class="o">--</span><span class="n">interp</span> <span class="p">{</span><span class="n">linear</span><span class="p">,</span><span class="n">cubic</span><span class="p">,</span><span class="n">nearest</span><span class="p">}</span> <span class="o">|</span>
-               <span class="o">--</span><span class="n">trilin</span> <span class="o">|</span> <span class="o">--</span><span class="n">nearest</span> <span class="o">|</span> <span class="o">--</span><span class="n">cubic</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">pad</span> <span class="n">MODE</span><span class="o">|</span><span class="n">VALUE</span><span class="p">]</span>
-               <span class="p">[</span><span class="o">--</span><span class="n">header</span><span class="o">-</span><span class="n">only</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">inverse</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">out</span><span class="o">-</span><span class="n">dtype</span> <span class="n">DTYPE</span> <span class="o">|</span> <span class="o">--</span><span class="n">keep</span><span class="o">-</span><span class="n">dtype</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">ref</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">ref</span><span class="o">-</span><span class="n">cras</span> <span class="n">X</span><span class="p">,</span><span class="n">Y</span><span class="p">,</span><span class="n">Z</span><span class="p">]</span> <span class="o">--</span><span class="n">out</span> <span class="n">FILE</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">interp</span> <span class="p">{</span><span class="n">linear</span><span class="p">,</span><span class="n">cubic</span><span class="p">,</span><span class="n">nearest</span><span class="p">}</span> <span class="o">|</span> <span class="o">--</span><span class="n">trilin</span> <span class="o">|</span> <span class="o">--</span><span class="n">nearest</span> <span class="o">|</span>
+               <span class="o">--</span><span class="n">cubic</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">pad</span> <span class="n">MODE</span><span class="o">|</span><span class="n">VALUE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">header</span><span class="o">-</span><span class="n">only</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">inverse</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">out</span><span class="o">-</span><span class="n">dtype</span> <span class="n">DTYPE</span> <span class="o">|</span> <span class="o">--</span><span class="n">keep</span><span class="o">-</span><span class="n">dtype</span><span class="p">]</span>
                <span class="p">[</span><span class="o">--</span><span class="n">scale</span><span class="o">-</span><span class="n">mode</span> <span class="p">{</span><span class="n">clamp</span><span class="p">,</span><span class="n">rescale</span><span class="p">,</span><span class="n">robust</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">target</span><span class="o">-</span><span class="nb">max</span> <span class="n">TARGET_MAX</span><span class="p">]</span>
                <span class="p">[</span><span class="o">--</span><span class="n">robust</span><span class="o">-</span><span class="n">low</span> <span class="n">FRAC</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">robust</span><span class="o">-</span><span class="n">high</span> <span class="n">FRAC</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
 </pre></div>
@@ -930,6 +934,9 @@ apply on the native grid without reslicing. To mask a volume, use
 </dd>
 <dt><kbd>--ref, --targ</kbd></dt>
 <dd><p>Optional target/reference image geometry. Overrides geometry stored in the transform.</p>
+</dd>
+<dt><kbd>--ref-cras</kbd></dt>
+<dd><p>Override the c_ras (world coordinate of the grid centre) of the target geometry. Orientation, voxel sizes and image dimensions are unchanged; only where that grid sits in world space moves. Useful to reslice into a standard-space pose at the input’s resolution.</p>
 </dd>
 <dt><kbd>--out, --o</kbd></dt>
 <dd><p>Output image filename. The extension selects the output format and is required.</p>
@@ -995,6 +1002,20 @@ apply on the native grid without reslicing. To mask a volume, use
 <section id="id8">
 <h3>Python module<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h3>
 <p id="module-neuroreg.cli.vol2vol">Command-line image mapping and reslicing utility.</p>
+<p>The target geometry for resampled output is assembled per component rather than
+copied from one source wholesale. The components are the image dimensions, the
+voxel sizes, the direction cosines, and the placement in world space
+(<code class="docutils literal notranslate"><span class="pre">c_ras</span></code>).</p>
+<p>Each component is resolved from the first available source in this order:</p>
+<ol class="arabic simple">
+<li><p>an explicit override flag (currently <code class="docutils literal notranslate"><span class="pre">--ref-cras</span></code>, for placement only),</p></li>
+<li><p>the <code class="docutils literal notranslate"><span class="pre">--ref</span></code> image,</p></li>
+<li><p>the <code class="docutils literal notranslate"><span class="pre">dst</span></code> geometry stored in <code class="docutils literal notranslate"><span class="pre">--transform</span></code>,</p></li>
+<li><p>the input image.</p></li>
+</ol>
+<p>Overrides apply on top of whichever base geometry was selected, so
+<code class="docutils literal notranslate"><span class="pre">--ref</span> <span class="pre">sub.mgz</span> <span class="pre">--ref-cras</span> <span class="pre">0,0,0</span></code> means “the reference grid, recentred on the
+world origin” and needs no reference file at that voxel size to exist.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.cli.vol2vol.main">
 <span class="sig-prename descclassname"><span class="pre">neuroreg.cli.vol2vol.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/cli/vol2vol.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.cli.vol2vol.main" title="Link to this definition">¶</a></dt>
@@ -1109,7 +1130,7 @@ flipped self target.</p>
 </section>
 <section id="mri">
 <h2><code class="docutils literal notranslate"><span class="pre">mri</span></code><a class="headerlink" href="#mri" title="Link to this heading">¶</a></h2>
-<p><p>Image volume utilities (mask, info, diff, binarize).</p>
+<p><p>Image volume utilities (mask, info, diff, binarize, geom).</p>
 </p>
 <div class="highlight-default notranslate" id="id11"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">mri</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="n">COMMAND</span> <span class="o">...</span>
 </pre></div>
@@ -1118,7 +1139,7 @@ flipped self target.</p>
 <span id="neuroreg.cli.mri-_build_parser-positional-arguments"></span><h3>Positional Arguments<a class="headerlink" href="#mri-positional-arguments" title="Link to this heading">¶</a></h3>
 <dl class="option-list">
 <dt><kbd>COMMAND</kbd></dt>
-<dd><p>Possible choices: mask, info, diff, binarize</p>
+<dd><p>Possible choices: mask, info, diff, binarize, geom</p>
 </dd>
 </dl>
 </section>
@@ -1369,6 +1390,56 @@ required. Output is int32 by default (–uchar selects uint8).</p>
 <dt><kbd>--uchar</kbd></dt>
 <dd><p>Write uint8 output instead of int32.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+</dl>
+</section>
+</section>
+<section id="mri-geom">
+<span id="geom"></span><h4>geom<a class="headerlink" href="#mri-geom" title="Link to this heading">¶</a></h4>
+<p>Write a zero-filled volume whose header describes a requested target
+geometry, for use as a reference image by tools that accept only a
+reference file. This makes grids expressible that no stock file
+provides, for example the mni305.cor.mgz frame (256mm FOV, LIA,
+cras 0 0 0) at a native voxel size other than 1mm.</p>
+<p>A geometry has four components: image dimensions, voxel sizes,
+direction cosines, and placement (cras). Each is taken from its own
+flag if given, else from –like, else it is an error. The exception
+is cras, which defaults to 0,0,0. –shape and –fov are two ways to
+give the dimensions; –fov derives them from the voxel size, so a
+fixed 256mm field of view needs no division in the caller.</p>
+<p>–like supplies a field of view rather than image dimensions, so
+‘–like sub.mgz –vox-size 0.5’ keeps the extent sub.mgz covers and
+grows the dimensions to match, instead of cropping to sub.mgz’s
+dimensions at a finer resolution. Pass –shape to fix them instead.</p>
+<p>–orientation sets a strict axis-aligned orientation and so discards
+any oblique rotation from –like. The output contains no image data.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mri</span> <span class="n">geom</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">o</span> <span class="n">FILE</span> <span class="p">[</span><span class="o">--</span><span class="n">like</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">shape</span> <span class="n">I</span><span class="p">[,</span><span class="n">J</span><span class="p">,</span><span class="n">K</span><span class="p">]</span> <span class="o">|</span> <span class="o">--</span><span class="n">fov</span> <span class="n">MM</span><span class="p">[,</span><span class="n">MM</span><span class="p">,</span><span class="n">MM</span><span class="p">]]</span>
+         <span class="p">[</span><span class="o">--</span><span class="n">vox</span><span class="o">-</span><span class="n">size</span> <span class="n">MM</span><span class="p">[,</span><span class="n">MM</span><span class="p">,</span><span class="n">MM</span><span class="p">]]</span> <span class="p">[</span><span class="o">--</span><span class="n">orientation</span> <span class="n">CODE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">cras</span> <span class="n">X</span><span class="p">,</span><span class="n">Y</span><span class="p">,</span><span class="n">Z</span><span class="p">]</span>
+</pre></div>
+</div>
+<section id="mri-geom-named-arguments">
+<span id="-named-arguments_repeat4"></span><h5>Named Arguments<a class="headerlink" href="#mri-geom-named-arguments" title="Link to this heading">¶</a></h5>
+<dl class="option-list">
+<dt><kbd>--o, --out</kbd></dt>
+<dd><p>Output image.</p>
+</dd>
+<dt><kbd>--like</kbd></dt>
+<dd><p>Image supplying any geometry component not given explicitly (extent, not dimensions).</p>
+</dd>
+<dt><kbd>--shape</kbd></dt>
+<dd><p>Image dimensions in voxels, as one value (cube) or three.</p>
+</dd>
+<dt><kbd>--fov</kbd></dt>
+<dd><p>Field of view in mm; the image dimensions are derived from the voxel size.</p>
+</dd>
+<dt><kbd>--vox-size</kbd></dt>
+<dd><p>Voxel size in mm, as one value (isotropic) or three. With –like the dimensions rescale.</p>
+</dd>
+<dt><kbd>--orientation, --ori</kbd></dt>
+<dd><p>Strict axis-aligned orientation, e.g. LIA or RAS.</p>
+</dd>
+<dt><kbd>--cras</kbd></dt>
+<dd><p>World coordinate of the grid centre (default: 0,0,0).</p>
 </dd>
 </dl>
 </section>
@@ -1630,7 +1701,59 @@ required. Output is int32 by default (–uchar selects uint8).</p>
 </section>
 </section>
 <section id="id16">
-<h3>Python module<a class="headerlink" href="#id16" title="Link to this heading">¶</a></h3>
+<h3><code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">geom</span></code><a class="headerlink" href="#id16" title="Link to this heading">¶</a></h3>
+<p><p>Write a zero-filled volume whose header describes a requested target
+geometry, for use as a reference image by tools that accept only a
+reference file. This makes grids expressible that no stock file
+provides, for example the mni305.cor.mgz frame (256mm FOV, LIA,
+cras 0 0 0) at a native voxel size other than 1mm.</p>
+<p>A geometry has four components: image dimensions, voxel sizes,
+direction cosines, and placement (cras). Each is taken from its own
+flag if given, else from –like, else it is an error. The exception
+is cras, which defaults to 0,0,0. –shape and –fov are two ways to
+give the dimensions; –fov derives them from the voxel size, so a
+fixed 256mm field of view needs no division in the caller.</p>
+<p>–like supplies a field of view rather than image dimensions, so
+‘–like sub.mgz –vox-size 0.5’ keeps the extent sub.mgz covers and
+grows the dimensions to match, instead of cropping to sub.mgz’s
+dimensions at a finer resolution. Pass –shape to fix them instead.</p>
+<p>–orientation sets a strict axis-aligned orientation and so discards
+any oblique rotation from –like. The output contains no image data.</p>
+</p>
+<div class="highlight-default notranslate" id="mri-geom-geom"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">mri</span> <span class="n">geom</span> <span class="n">geom</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">o</span> <span class="n">FILE</span> <span class="p">[</span><span class="o">--</span><span class="n">like</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">shape</span> <span class="n">I</span><span class="p">[,</span><span class="n">J</span><span class="p">,</span><span class="n">K</span><span class="p">]</span> <span class="o">|</span>
+                     <span class="o">--</span><span class="n">fov</span> <span class="n">MM</span><span class="p">[,</span><span class="n">MM</span><span class="p">,</span><span class="n">MM</span><span class="p">]]</span> <span class="p">[</span><span class="o">--</span><span class="n">vox</span><span class="o">-</span><span class="n">size</span> <span class="n">MM</span><span class="p">[,</span><span class="n">MM</span><span class="p">,</span><span class="n">MM</span><span class="p">]]</span>
+                     <span class="p">[</span><span class="o">--</span><span class="n">orientation</span> <span class="n">CODE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">cras</span> <span class="n">X</span><span class="p">,</span><span class="n">Y</span><span class="p">,</span><span class="n">Z</span><span class="p">]</span>
+</pre></div>
+</div>
+<section id="mri-geom-geom-named-arguments">
+<span id="neuroreg.cli.mri-_build_parser-named-arguments"></span><h4>Named Arguments<a class="headerlink" href="#mri-geom-geom-named-arguments" title="Link to this heading">¶</a></h4>
+<dl class="option-list">
+<dt><kbd>--o, --out</kbd></dt>
+<dd><p>Output image.</p>
+</dd>
+<dt><kbd>--like</kbd></dt>
+<dd><p>Image supplying any geometry component not given explicitly (extent, not dimensions).</p>
+</dd>
+<dt><kbd>--shape</kbd></dt>
+<dd><p>Image dimensions in voxels, as one value (cube) or three.</p>
+</dd>
+<dt><kbd>--fov</kbd></dt>
+<dd><p>Field of view in mm; the image dimensions are derived from the voxel size.</p>
+</dd>
+<dt><kbd>--vox-size</kbd></dt>
+<dd><p>Voxel size in mm, as one value (isotropic) or three. With –like the dimensions rescale.</p>
+</dd>
+<dt><kbd>--orientation, --ori</kbd></dt>
+<dd><p>Strict axis-aligned orientation, e.g. LIA or RAS.</p>
+</dd>
+<dt><kbd>--cras</kbd></dt>
+<dd><p>World coordinate of the grid centre (default: 0,0,0).</p>
+</dd>
+</dl>
+</section>
+</section>
+<section id="id17">
+<h3>Python module<a class="headerlink" href="#id17" title="Link to this heading">¶</a></h3>
 <p id="module-neuroreg.cli.mri">Unified image-utility CLI.</p>
 <p>Small <code class="docutils literal notranslate"><span class="pre">mri_*</span></code>-style volume utilities grouped under a single command, in the
 same spirit as the <code class="docutils literal notranslate"><span class="pre">lta</span></code> transform CLI. Available subcommands are <code class="docutils literal notranslate"><span class="pre">mask</span></code>
@@ -1667,7 +1790,7 @@ same spirit as the <code class="docutils literal notranslate"><span class="pre">
 <h2><code class="docutils literal notranslate"><span class="pre">lta</span></code><a class="headerlink" href="#lta" title="Link to this heading">¶</a></h2>
 <p><p>LTA transform manipulation utilities.</p>
 </p>
-<div class="highlight-default notranslate" id="id17"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">lta</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="n">COMMAND</span> <span class="o">...</span>
+<div class="highlight-default notranslate" id="id18"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">lta</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="n">COMMAND</span> <span class="o">...</span>
 </pre></div>
 </div>
 <section id="lta-positional-arguments">
@@ -1880,8 +2003,8 @@ NiftyReg affine text matrices store the inverse target-to-source RAS matrix.</p>
 </section>
 </section>
 </section>
-<section id="id18">
-<h3><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">diff</span></code><a class="headerlink" href="#id18" title="Link to this heading">¶</a></h3>
+<section id="id19">
+<h3><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">diff</span></code><a class="headerlink" href="#id19" title="Link to this heading">¶</a></h3>
 <p><p>Compute distance metrics between two LTA transforms, or between
 one transform and identity.</p>
 <p>All metrics operate on the RAS-to-RAS representation of the stored
@@ -1955,8 +2078,8 @@ displacement(p) = ‖Md·p − p‖  over ~1600 sphere samples</p>
 </dl>
 </section>
 </section>
-<section id="id19">
-<h3><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">invert</span></code><a class="headerlink" href="#id19" title="Link to this heading">¶</a></h3>
+<section id="id20">
+<h3><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">invert</span></code><a class="headerlink" href="#id20" title="Link to this heading">¶</a></h3>
 <p><p>Invert a FreeSurfer LTA transform.</p>
 <p>The output is always stored as LINEAR_RAS_TO_RAS (type 1)
 with src and dst geometry blocks swapped.</p>
@@ -1976,8 +2099,8 @@ with src and dst geometry blocks swapped.</p>
 </dl>
 </section>
 </section>
-<section id="id20">
-<h3><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">concat</span></code><a class="headerlink" href="#id20" title="Link to this heading">¶</a></h3>
+<section id="id21">
+<h3><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">concat</span></code><a class="headerlink" href="#id21" title="Link to this heading">¶</a></h3>
 <p><p>Concatenate two LTA transforms.</p>
 <p>LTA1 maps A → B and LTA2 maps B → C.
 The output maps A → C with matrix  M_LTA2 &#64; M_LTA1.
@@ -2002,8 +2125,8 @@ src geometry is taken from LTA1; dst geometry from LTA2.</p>
 </dl>
 </section>
 </section>
-<section id="id21">
-<h3><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">convert</span></code><a class="headerlink" href="#id21" title="Link to this heading">¶</a></h3>
+<section id="id22">
+<h3><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">convert</span></code><a class="headerlink" href="#id22" title="Link to this heading">¶</a></h3>
 <p><p>Convert between FreeSurfer-adjacent linear transform formats.</p>
 <dl class="simple">
 <dt>Supported formats are usually inferred from file suffixes:</dt><dd><p>.lta  FreeSurfer Linear Transform Array
@@ -2085,8 +2208,8 @@ NiftyReg affine text matrices store the inverse target-to-source RAS matrix.</p>
 </dl>
 </section>
 </section>
-<section id="id22">
-<h3>Python module<a class="headerlink" href="#id22" title="Link to this heading">¶</a></h3>
+<section id="id23">
+<h3>Python module<a class="headerlink" href="#id23" title="Link to this heading">¶</a></h3>
 <p id="module-neuroreg.cli.lta">Unified LTA transform manipulation CLI.</p>
 <p>Available subcommands are <code class="docutils literal notranslate"><span class="pre">diff</span></code> to compare transforms, <code class="docutils literal notranslate"><span class="pre">invert</span></code> to invert
 an LTA, <code class="docutils literal notranslate"><span class="pre">concat</span></code> to chain two LTAs, and <code class="docutils literal notranslate"><span class="pre">convert</span></code> to translate between
@@ -2123,8 +2246,8 @@ tkregister <code class="docutils literal notranslate"><span class="pre">register
 </dd>
 </dl>
 </section>
-<section id="id23">
-<h3>Python module<a class="headerlink" href="#id23" title="Link to this heading">¶</a></h3>
+<section id="id24">
+<h3>Python module<a class="headerlink" href="#id24" title="Link to this heading">¶</a></h3>
 <span class="target" id="module-neuroreg.cli.sys_info"></span><dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.cli.sys_info.main">
 <span class="sig-prename descclassname"><span class="pre">neuroreg.cli.sys_info.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/cli/sys_info.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.cli.sys_info.main" title="Link to this definition">¶</a></dt>
@@ -2280,6 +2403,10 @@ tkregister <code class="docutils literal notranslate"><span class="pre">register
 <li><a class="reference internal" href="#mri-binarize-named-arguments">Named Arguments</a></li>
 </ul>
 </li>
+<li><a class="reference internal" href="#mri-geom">geom</a><ul>
+<li><a class="reference internal" href="#mri-geom-named-arguments">Named Arguments</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a class="reference internal" href="#id12"><code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">mask</span></code></a><ul>
@@ -2301,7 +2428,11 @@ tkregister <code class="docutils literal notranslate"><span class="pre">register
 <li><a class="reference internal" href="#mri-binarize-binarize-named-arguments">Named Arguments</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#id16">Python module</a><ul>
+<li><a class="reference internal" href="#id16"><code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">geom</span></code></a><ul>
+<li><a class="reference internal" href="#mri-geom-geom-named-arguments">Named Arguments</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#id17">Python module</a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.mri.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 </ul>
 </li>
@@ -2330,25 +2461,25 @@ tkregister <code class="docutils literal notranslate"><span class="pre">register
 </li>
 </ul>
 </li>
-<li><a class="reference internal" href="#id18"><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">diff</span></code></a><ul>
+<li><a class="reference internal" href="#id19"><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">diff</span></code></a><ul>
 <li><a class="reference internal" href="#lta-diff-diff-positional-arguments">Positional Arguments</a></li>
 <li><a class="reference internal" href="#lta-diff-diff-named-arguments">Named Arguments</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#id19"><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">invert</span></code></a><ul>
+<li><a class="reference internal" href="#id20"><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">invert</span></code></a><ul>
 <li><a class="reference internal" href="#lta-invert-invert-positional-arguments">Positional Arguments</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#id20"><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">concat</span></code></a><ul>
+<li><a class="reference internal" href="#id21"><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">concat</span></code></a><ul>
 <li><a class="reference internal" href="#lta-concat-concat-positional-arguments">Positional Arguments</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#id21"><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">convert</span></code></a><ul>
+<li><a class="reference internal" href="#id22"><code class="docutils literal notranslate"><span class="pre">lta</span> <span class="pre">convert</span></code></a><ul>
 <li><a class="reference internal" href="#lta-convert-convert-positional-arguments">Positional Arguments</a></li>
 <li><a class="reference internal" href="#lta-convert-convert-named-arguments">Named Arguments</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#id22">Python module</a><ul>
+<li><a class="reference internal" href="#id23">Python module</a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.lta.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 </ul>
 </li>
@@ -2356,7 +2487,7 @@ tkregister <code class="docutils literal notranslate"><span class="pre">register
 </li>
 <li><a class="reference internal" href="#neuroreg-sys-info"><code class="docutils literal notranslate"><span class="pre">neuroreg-sys_info</span></code></a><ul>
 <li><a class="reference internal" href="#neuroreg-sys_info-named-arguments">Named Arguments</a></li>
-<li><a class="reference internal" href="#id23">Python module</a><ul>
+<li><a class="reference internal" href="#id24">Python module</a><ul>
 <li><a class="reference internal" href="#neuroreg.cli.sys_info.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.cli.sys_info.run"><code class="docutils literal notranslate"><span class="pre">run()</span></code></a></li>
 </ul>

@@ -241,7 +241,24 @@
         <article role="main" id="furo-main-content">
           <h1>Source code for neuroreg.cli.vol2vol</h1><div class="highlight"><pre>
 <span></span><span class="ch">#!/usr/bin/env python3</span>
-<span class="sd">"""Command-line image mapping and reslicing utility."""</span>
+<span class="sd">"""Command-line image mapping and reslicing utility.</span>
+
+<span class="sd">The target geometry for resampled output is assembled per component rather than</span>
+<span class="sd">copied from one source wholesale. The components are the image dimensions, the</span>
+<span class="sd">voxel sizes, the direction cosines, and the placement in world space</span>
+<span class="sd">(``c_ras``).</span>
+
+<span class="sd">Each component is resolved from the first available source in this order:</span>
+
+<span class="sd">1. an explicit override flag (currently ``--ref-cras``, for placement only),</span>
+<span class="sd">2. the ``--ref`` image,</span>
+<span class="sd">3. the ``dst`` geometry stored in ``--transform``,</span>
+<span class="sd">4. the input image.</span>
+
+<span class="sd">Overrides apply on top of whichever base geometry was selected, so</span>
+<span class="sd">``--ref sub.mgz --ref-cras 0,0,0`` means "the reference grid, recentred on the</span>
+<span class="sd">world origin" and needs no reference file at that voxel size to exist.</span>
+<span class="sd">"""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
@@ -258,10 +275,12 @@
     <span class="n">create_image_like</span><span class="p">,</span>
     <span class="n">header_map_image</span><span class="p">,</span>
     <span class="n">load_image</span><span class="p">,</span>
+    <span class="n">place_grid_at_cras</span><span class="p">,</span>
     <span class="n">reslice_r2r_image</span><span class="p">,</span>
     <span class="n">save_image</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..transforms</span><span class="w"> </span><span class="kn">import</span> <span class="n">TRANSFORM_FORMATS</span><span class="p">,</span> <span class="n">affine_from_volume_info</span><span class="p">,</span> <span class="n">read_transform_as_lta</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._args</span><span class="w"> </span><span class="kn">import</span> <span class="n">NumberListParser</span><span class="p">,</span> <span class="n">number_list</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._outputs</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_image_outputs</span>
 
 
@@ -337,7 +356,7 @@
 <span class="sd">    argparse.ArgumentParser</span>
 <span class="sd">        Configured CLI parser.</span>
 <span class="sd">    """</span>
-    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">NumberListParser</span><span class="p">(</span>
         <span class="n">prog</span><span class="o">=</span><span class="s2">"vol2vol"</span><span class="p">,</span>
         <span class="n">description</span><span class="o">=</span><span class="p">(</span>
             <span class="s2">"Apply a linear transform to an image, reslice into a target geometry,</span><span class="se">\n</span><span class="s2">"</span>
@@ -349,7 +368,11 @@
             <span class="s2">"file extension, so this converts between any formats nibabel supports</span><span class="se">\n</span><span class="s2">"</span>
             <span class="s2">"(e.g. .mgz, .nii, .nii.gz, .img/.hdr). The dtype/scaling flags also</span><span class="se">\n</span><span class="s2">"</span>
             <span class="s2">"apply on the native grid without reslicing. To mask a volume, use</span><span class="se">\n</span><span class="s2">"</span>
-            <span class="s2">"'mri mask'."</span>
+            <span class="s2">"'mri mask'.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"The target geometry is taken from --ref, else the transform's dst</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"geometry, else the input. Override flags such as --ref-cras apply on</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"top of that base geometry."</span>
         <span class="p">),</span>
         <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentDefaultsHelpFormatter</span><span class="p">,</span>
     <span class="p">)</span>
@@ -374,6 +397,18 @@
         <span class="n">metavar</span><span class="o">=</span><span class="s2">"FILE"</span><span class="p">,</span>
         <span class="n">dest</span><span class="o">=</span><span class="s2">"ref"</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="s2">"Optional target/reference image geometry. Overrides geometry stored in the transform."</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">"--ref-cras"</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="n">number_list</span><span class="p">(</span><span class="s2">"--ref-cras"</span><span class="p">),</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s2">"ref_cras"</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"X,Y,Z"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"Override the c_ras (world coordinate of the grid centre) of the target "</span>
+            <span class="s2">"geometry. Orientation, voxel sizes and image dimensions are unchanged; only "</span>
+            <span class="s2">"where that grid sits in world space moves. Useful to reslice into a "</span>
+            <span class="s2">"standard-space pose at the input's resolution."</span>
+        <span class="p">),</span>
     <span class="p">)</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
         <span class="s2">"--out"</span><span class="p">,</span>
@@ -508,6 +543,10 @@
             <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--header-only cannot be combined with scaling flags."</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">robust_low</span> <span class="o">!=</span> <span class="mf">0.0</span> <span class="ow">or</span> <span class="n">ns</span><span class="o">.</span><span class="n">robust_high</span> <span class="o">!=</span> <span class="mf">0.999</span><span class="p">:</span>
             <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--header-only cannot be combined with robust scaling flags."</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">ref_cras</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># --header-only rewrites the input's own header and never resamples,</span>
+            <span class="c1"># so there is no target grid for a placement override to act on.</span>
+            <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--header-only cannot be combined with --ref-cras."</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">scale_mode</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">target_max</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--target-max requires --scale-mode rescale or --scale-mode robust."</span><span class="p">)</span>
@@ -542,12 +581,70 @@
     <span class="k">return</span> <span class="n">source_dtype</span> <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">out_dtype</span> <span class="o">==</span> <span class="s2">"input"</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">out_dtype</span><span class="p">)</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_geometry_from_transform</span><span class="p">(</span><span class="n">effective_lta</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return a transform's destination geometry, or ``None`` if it carries none.</span>
+
+<span class="sd">    Some formats store no destination geometry at all: an ITK or AFNI affine</span>
+<span class="sd">    read without ``--ref`` leaves the LTA destination marked ``valid = 0`` with</span>
+<span class="sd">    a zero volume, even though its RAS-to-RAS matrix is perfectly usable.</span>
+<span class="sd">    Reporting that as "no geometry" lets the caller fall back to the input grid</span>
+<span class="sd">    instead of refusing a transform it can apply.</span>
+
+<span class="sd">    Metadata that is present but unusable counts the same way: a volume that is</span>
+<span class="sd">    not three finite positive whole numbers, or a voxel size, ``cras`` or</span>
+<span class="sd">    direction cosine that is not finite. The latter does not raise. It simply</span>
+<span class="sd">    produces a NaN or infinite affine, so it has to be checked explicitly</span>
+<span class="sd">    rather than caught.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    effective_lta : Any</span>
+<span class="sd">        Transform as an LTA, after any requested inversion.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple[numpy.ndarray, tuple[int, int, int]] or None</span>
+<span class="sd">        Destination affine and shape, or ``None`` when the transform has no</span>
+<span class="sd">        usable destination geometry.</span>
+<span class="sd">    """</span>
+    <span class="n">info</span> <span class="o">=</span> <span class="n">effective_lta</span><span class="o">.</span><span class="n">dst</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">raw_shape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s2">"volume"</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">affine</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">affine_from_volume_info</span><span class="p">(</span><span class="n">info</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">IndexError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">,</span> <span class="ne">OverflowError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+        <span class="c1"># Covers every way the metadata can be unusable: marked invalid,</span>
+        <span class="c1"># missing a required field, or holding a short/wrong-typed vector.</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">raw_shape</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="p">(</span><span class="mi">3</span><span class="p">,)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">raw_shape</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">raw_shape</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">raw_shape</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">rint</span><span class="p">(</span><span class="n">raw_shape</span><span class="p">)):</span>
+        <span class="c1"># A zero volume would ask for an empty output grid, and a fractional one</span>
+        <span class="c1"># is not a voxel count, so rounding it would invent a geometry.</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">affine</span><span class="p">)):</span>
+        <span class="c1"># A non-finite voxel size, cras or direction cosine poisons the affine</span>
+        <span class="c1"># without raising, and would otherwise reach resampling as a silently</span>
+        <span class="c1"># bad grid.</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">affine</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">raw_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">raw_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">raw_shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]))</span>
+
+
 <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_target_geometry</span><span class="p">(</span>
-    <span class="n">mov_img</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
-    <span class="n">ref_img</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">effective_lta</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">mov_img</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">ref_img</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">effective_lta</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">ref_cras</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
-<span class="w">    </span><span class="sd">"""Resolve the target affine and shape for resampled output.</span>
+<span class="w">    </span><span class="sd">"""Assemble the target affine and shape for resampled output.</span>
+
+<span class="sd">    A complete target geometry has four independent components: image</span>
+<span class="sd">    dimensions, voxel sizes, direction cosines, and placement in world space.</span>
+<span class="sd">    Each is resolved from the first available source in this order: an explicit</span>
+<span class="sd">    override keyword, the ``--ref`` image, the transform's ``dst`` geometry,</span>
+<span class="sd">    then the input image. A base geometry is selected first and the overrides</span>
+<span class="sd">    are then applied on top of it, so callers can ask for "the reference grid,</span>
+<span class="sd">    but placed elsewhere" without needing such a file to exist.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -557,11 +654,16 @@
 <span class="sd">        Loaded reference image, if supplied.</span>
 <span class="sd">    effective_lta : Any or None</span>
 <span class="sd">        Effective transform as an LTA after applying any inversion requested by</span>
-<span class="sd">        the user.</span>
+<span class="sd">        the user. Overrides therefore act on the post-inversion target. A</span>
+<span class="sd">        transform whose destination geometry is absent or invalid counts as not</span>
+<span class="sd">        supplying one, so resolution falls through to the input image.</span>
+<span class="sd">    ref_cras : numpy.ndarray or None, optional</span>
+<span class="sd">        Placement override: world coordinate of the target grid centre. When</span>
+<span class="sd">        ``None`` the placement of the base geometry is kept.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    tuple[np.ndarray, tuple[int, int, int]]</span>
+<span class="sd">    tuple[numpy.ndarray, tuple[int, int, int]]</span>
 <span class="sd">        Output affine and spatial shape.</span>
 
 <span class="sd">    Raises</span>
@@ -570,12 +672,23 @@
 <span class="sd">        If no valid target geometry can be resolved.</span>
 <span class="sd">    """</span>
     <span class="k">if</span> <span class="n">ref_img</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">ref_img</span><span class="o">.</span><span class="n">affine</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ref_img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">3</span><span class="p">])</span>
-    <span class="k">if</span> <span class="n">effective_lta</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mov_img</span><span class="o">.</span><span class="n">affine</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">mov_img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">3</span><span class="p">])</span>
-    <span class="n">info</span> <span class="o">=</span> <span class="n">effective_lta</span><span class="o">.</span><span class="n">dst</span>
-    <span class="n">affine</span> <span class="o">=</span> <span class="n">affine_from_volume_info</span><span class="p">(</span><span class="n">info</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">affine</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">info</span><span class="p">[</span><span class="s2">"volume"</span><span class="p">])</span>
+        <span class="n">affine</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">ref_img</span><span class="o">.</span><span class="n">affine</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ref_img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">3</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Inspect the transform's destination only once --ref is known to be</span>
+        <span class="c1"># absent. An explicit reference supplies the whole target geometry and</span>
+        <span class="c1"># the RAS-to-RAS matrix needs none of it, so malformed destination</span>
+        <span class="c1"># metadata must not fail a run that does not depend on it.</span>
+        <span class="n">from_transform</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">effective_lta</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">_geometry_from_transform</span><span class="p">(</span><span class="n">effective_lta</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">from_transform</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">affine</span><span class="p">,</span> <span class="n">shape</span> <span class="o">=</span> <span class="n">from_transform</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">affine</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mov_img</span><span class="o">.</span><span class="n">affine</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+            <span class="n">shape</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">mov_img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">3</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="n">ref_cras</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">affine</span> <span class="o">=</span> <span class="n">place_grid_at_cras</span><span class="p">(</span><span class="n">affine</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">ref_cras</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">affine</span><span class="p">,</span> <span class="n">shape</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_padding</span><span class="p">(</span><span class="n">pad</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="n">mov_img</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
@@ -685,13 +798,13 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_convert_output_image</span><span class="p">(</span>
-    <span class="n">mapped_img</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
-    <span class="n">source_img</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
-    <span class="n">target_dtype</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">scale_mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">target_max</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">robust_low</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-    <span class="n">robust_high</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">mapped_img</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">source_img</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">target_dtype</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">scale_mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">target_max</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">robust_low</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">robust_high</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Apply final dtype conversion and optional intensity scaling.</span>
 
@@ -727,9 +840,9 @@
 <span class="sd">    """</span>
     <span class="n">effective_mode</span> <span class="o">=</span> <span class="n">scale_mode</span>
     <span class="k">if</span> <span class="p">(</span>
-        <span class="n">effective_mode</span> <span class="ow">is</span> <span class="kc">None</span>
-        <span class="ow">and</span> <span class="n">target_dtype</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-        <span class="ow">and</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">target_dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">bool_</span><span class="p">)</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">target_dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">))</span>
+            <span class="n">effective_mode</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="ow">and</span> <span class="n">target_dtype</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="ow">and</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">target_dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">bool_</span><span class="p">)</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">target_dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">))</span>
     <span class="p">):</span>
         <span class="n">effective_mode</span> <span class="o">=</span> <span class="s2">"clamp"</span>
     <span class="k">if</span> <span class="n">effective_mode</span> <span class="o">==</span> <span class="s2">"clamp"</span> <span class="ow">and</span> <span class="n">target_dtype</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -813,12 +926,14 @@
             <span class="n">check_dtype_storable</span><span class="p">(</span><span class="n">target_dtype</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">header_only</span><span class="p">:</span>
             <span class="n">mapped_img</span> <span class="o">=</span> <span class="n">header_map_image</span><span class="p">(</span><span class="n">mov_img</span><span class="p">,</span> <span class="n">r2r</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">transform</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">ns</span><span class="o">.</span><span class="n">ref</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">transform</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">ns</span><span class="o">.</span><span class="n">ref</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">ns</span><span class="o">.</span><span class="n">ref_cras</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># No geometry change requested: read and write on the native grid</span>
             <span class="c1"># without resampling. This covers pure format conversion (chosen by</span>
             <span class="c1"># the --out extension), as well as dtype/scale-only operations.</span>
             <span class="c1"># Interpolation would only average voxels, so it is skipped here to</span>
-            <span class="c1"># keep voxel values and dtype intact.</span>
+            <span class="c1"># keep voxel values and dtype intact. --ref-cras is excluded because</span>
+            <span class="c1"># it does request a different target grid, so it must resample: the</span>
+            <span class="c1"># anatomy keeps its world position while the grid moves under it.</span>
             <span class="n">mapped_img</span> <span class="o">=</span> <span class="n">mov_img</span>
             <span class="n">mapped_img</span> <span class="o">=</span> <span class="n">_convert_output_image</span><span class="p">(</span>
                 <span class="n">mapped_img</span><span class="p">,</span>
@@ -830,7 +945,9 @@
                 <span class="n">robust_high</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">robust_high</span><span class="p">,</span>
             <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">target_affine</span><span class="p">,</span> <span class="n">target_shape</span> <span class="o">=</span> <span class="n">_resolve_target_geometry</span><span class="p">(</span><span class="n">mov_img</span><span class="p">,</span> <span class="n">ref_img</span><span class="p">,</span> <span class="n">effective_lta</span><span class="p">)</span>
+            <span class="n">target_affine</span><span class="p">,</span> <span class="n">target_shape</span> <span class="o">=</span> <span class="n">_resolve_target_geometry</span><span class="p">(</span>
+                <span class="n">mov_img</span><span class="p">,</span> <span class="n">ref_img</span><span class="p">,</span> <span class="n">effective_lta</span><span class="p">,</span> <span class="n">ref_cras</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">ref_cras</span>
+            <span class="p">)</span>
             <span class="n">padding_mode</span><span class="p">,</span> <span class="n">padding_value</span> <span class="o">=</span> <span class="n">_resolve_padding</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">pad</span><span class="p">,</span> <span class="n">mov_img</span><span class="p">)</span>
             <span class="n">mapped_img</span> <span class="o">=</span> <span class="n">reslice_r2r_image</span><span class="p">(</span>
                 <span class="n">mov_img</span><span class="p">,</span>
