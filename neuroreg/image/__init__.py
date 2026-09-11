@@ -4,7 +4,16 @@ from .binarize import binarize_image
 from .bspline import downsample2_bspline
 from .centroid import compute_centroid
 from .compare import ImageDiff, compare_images
-from .geometry import get_ras2tkras, get_tkras2ras, get_vox2tkras, vox2tkras_from_volume_info
+from .geometry import (
+    build_grid_affine,
+    direction_cosines_from_orientation,
+    get_ras2tkras,
+    get_tkras2ras,
+    get_vox2tkras,
+    place_grid_at_cras,
+    shape_from_fov,
+    vox2tkras_from_volume_info,
+)
 from .info import describe_image, image_value_stats
 from .io import (
     IMAGE_SUFFIXES,
@@ -38,6 +47,10 @@ __all__ = [
     "get_ras2tkras",
     "get_tkras2ras",
     "get_vox2tkras",
+    "build_grid_affine",
+    "direction_cosines_from_orientation",
+    "place_grid_at_cras",
+    "shape_from_fov",
     "vox2tkras_from_volume_info",
     "describe_image",
     "image_value_stats",

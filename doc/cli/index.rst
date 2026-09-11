@@ -66,7 +66,8 @@ mri
 ---
 
 Image-volume utilities grouped under a single command, analogous to FreeSurfer's
-``mri_mask``, ``mri_info``, ``mri_diff``, and ``mri_binarize``.
+``mri_mask``, ``mri_info``, ``mri_diff``, and ``mri_binarize``, plus ``geom``,
+which has no FreeSurfer equivalent.
 
 **mask** — apply a binary mask to a volume::
 
@@ -89,6 +90,13 @@ Image-volume utilities grouped under a single command, analogous to FreeSurfer's
    mri binarize --i aseg.mgz --o wm_mask.mgz --match 2 41
    mri binarize --i T1.mgz --o brain_bin.mgz --min 10 --uchar
    mri binarize --i T1.mgz --o bg.mgz --min 10 --inv
+
+**geom** — write a volume carrying only a target geometry, for the many tools
+that accept a reference image but no geometry flags::
+
+   mri geom --o target.mgz --fov 256 --vox-size 0.8 --orientation LIA --cras 0,0,0
+   mri geom --o target.mgz --like sub.mgz --cras 0,0,0
+   mri geom --o target.mgz --like sub.mgz --vox-size 0.5
 
 lta
 ---

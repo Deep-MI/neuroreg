@@ -1,5 +1,22 @@
 #!/usr/bin/env python3
-"""Command-line image mapping and reslicing utility."""
+"""Command-line image mapping and reslicing utility.
+
+The target geometry for resampled output is assembled per component rather than
+copied from one source wholesale. The components are the image dimensions, the
+voxel sizes, the direction cosines, and the placement in world space
+(``c_ras``).
+
+Each component is resolved from the first available source in this order:
+
+1. an explicit override flag (currently ``--ref-cras``, for placement only),
+2. the ``--ref`` image,
+3. the ``dst`` geometry stored in ``--transform``,
+4. the input image.
+
+Overrides apply on top of whichever base geometry was selected, so
+``--ref sub.mgz --ref-cras 0,0,0`` means "the reference grid, recentred on the
+world origin" and needs no reference file at that voxel size to exist.
+"""
 
 from __future__ import annotations
 
@@ -16,10 +33,12 @@ from ..image import (
     create_image_like,
     header_map_image,
     load_image,
+    place_grid_at_cras,
     reslice_r2r_image,
     save_image,
 )
 from ..transforms import TRANSFORM_FORMATS, affine_from_volume_info, read_transform_as_lta
+from ._args import NumberListParser, number_list
 from ._outputs import validate_image_outputs
 
 
@@ -95,7 +114,7 @@ def _build_parser() -> argparse.ArgumentParser:
     argparse.ArgumentParser
         Configured CLI parser.
     """
-    parser = argparse.ArgumentParser(
+    parser = NumberListParser(
         prog="vol2vol",
         description=(
             "Apply a linear transform to an image, reslice into a target geometry,\n"
@@ -107,7 +126,11 @@ def _build_parser() -> argparse.ArgumentParser:
             "file extension, so this converts between any formats nibabel supports\n"
             "(e.g. .mgz, .nii, .nii.gz, .img/.hdr). The dtype/scaling flags also\n"
             "apply on the native grid without reslicing. To mask a volume, use\n"
-            "'mri mask'."
+            "'mri mask'.\n"
+            "\n"
+            "The target geometry is taken from --ref, else the transform's dst\n"
+            "geometry, else the input. Override flags such as --ref-cras apply on\n"
+            "top of that base geometry."
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -132,6 +155,18 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="FILE",
         dest="ref",
         help="Optional target/reference image geometry. Overrides geometry stored in the transform.",
+    )
+    parser.add_argument(
+        "--ref-cras",
+        type=number_list("--ref-cras"),
+        dest="ref_cras",
+        metavar="X,Y,Z",
+        help=(
+            "Override the c_ras (world coordinate of the grid centre) of the target "
+            "geometry. Orientation, voxel sizes and image dimensions are unchanged; only "
+            "where that grid sits in world space moves. Useful to reslice into a "
+            "standard-space pose at the input's resolution."
+        ),
     )
     parser.add_argument(
         "--out",
@@ -266,6 +301,10 @@ def _validate_args(ns: argparse.Namespace, parser: argparse.ArgumentParser) -> N
             parser.error("--header-only cannot be combined with scaling flags.")
         if ns.robust_low != 0.0 or ns.robust_high != 0.999:
             parser.error("--header-only cannot be combined with robust scaling flags.")
+        if ns.ref_cras is not None:
+            # --header-only rewrites the input's own header and never resamples,
+            # so there is no target grid for a placement override to act on.
+            parser.error("--header-only cannot be combined with --ref-cras.")
     if ns.scale_mode is None:
         if ns.target_max is not None:
             parser.error("--target-max requires --scale-mode rescale or --scale-mode robust.")
@@ -300,12 +339,70 @@ def _resolve_target_dtype(ns: argparse.Namespace, source_dtype: np.dtype) -> np.
     return source_dtype if ns.out_dtype == "input" else np.dtype(ns.out_dtype)
 
 
+def _geometry_from_transform(effective_lta: Any) -> tuple[np.ndarray, tuple[int, int, int]] | None:
+    """Return a transform's destination geometry, or ``None`` if it carries none.
+
+    Some formats store no destination geometry at all: an ITK or AFNI affine
+    read without ``--ref`` leaves the LTA destination marked ``valid = 0`` with
+    a zero volume, even though its RAS-to-RAS matrix is perfectly usable.
+    Reporting that as "no geometry" lets the caller fall back to the input grid
+    instead of refusing a transform it can apply.
+
+    Metadata that is present but unusable counts the same way: a volume that is
+    not three finite positive whole numbers, or a voxel size, ``cras`` or
+    direction cosine that is not finite. The latter does not raise. It simply
+    produces a NaN or infinite affine, so it has to be checked explicitly
+    rather than caught.
+
+    Parameters
+    ----------
+    effective_lta : Any
+        Transform as an LTA, after any requested inversion.
+
+    Returns
+    -------
+    tuple[numpy.ndarray, tuple[int, int, int]] or None
+        Destination affine and shape, or ``None`` when the transform has no
+        usable destination geometry.
+    """
+    info = effective_lta.dst
+    try:
+        raw_shape = np.asarray(info["volume"], dtype=np.float64)
+        affine = np.asarray(affine_from_volume_info(info), dtype=np.float64)
+    except (IndexError, KeyError, OverflowError, TypeError, ValueError):
+        # Covers every way the metadata can be unusable: marked invalid,
+        # missing a required field, or holding a short/wrong-typed vector.
+        return None
+    if raw_shape.shape != (3,) or not np.all(np.isfinite(raw_shape)):
+        return None
+    if np.any(raw_shape <= 0) or np.any(raw_shape != np.rint(raw_shape)):
+        # A zero volume would ask for an empty output grid, and a fractional one
+        # is not a voxel count, so rounding it would invent a geometry.
+        return None
+    if not np.all(np.isfinite(affine)):
+        # A non-finite voxel size, cras or direction cosine poisons the affine
+        # without raising, and would otherwise reach resampling as a silently
+        # bad grid.
+        return None
+    return affine, (int(raw_shape[0]), int(raw_shape[1]), int(raw_shape[2]))
+
+
 def _resolve_target_geometry(
-    mov_img: Any,
-    ref_img: Any | None,
-    effective_lta: Any | None,
+        mov_img: Any,
+        ref_img: Any | None,
+        effective_lta: Any | None,
+        *,
+        ref_cras: np.ndarray | None = None,
 ) -> tuple[np.ndarray, tuple[int, int, int]]:
-    """Resolve the target affine and shape for resampled output.
+    """Assemble the target affine and shape for resampled output.
+
+    A complete target geometry has four independent components: image
+    dimensions, voxel sizes, direction cosines, and placement in world space.
+    Each is resolved from the first available source in this order: an explicit
+    override keyword, the ``--ref`` image, the transform's ``dst`` geometry,
+    then the input image. A base geometry is selected first and the overrides
+    are then applied on top of it, so callers can ask for "the reference grid,
+    but placed elsewhere" without needing such a file to exist.
 
     Parameters
     ----------
@@ -315,11 +412,16 @@ def _resolve_target_geometry(
         Loaded reference image, if supplied.
     effective_lta : Any or None
         Effective transform as an LTA after applying any inversion requested by
-        the user.
+        the user. Overrides therefore act on the post-inversion target. A
+        transform whose destination geometry is absent or invalid counts as not
+        supplying one, so resolution falls through to the input image.
+    ref_cras : numpy.ndarray or None, optional
+        Placement override: world coordinate of the target grid centre. When
+        ``None`` the placement of the base geometry is kept.
 
     Returns
     -------
-    tuple[np.ndarray, tuple[int, int, int]]
+    tuple[numpy.ndarray, tuple[int, int, int]]
         Output affine and spatial shape.
 
     Raises
@@ -328,12 +430,23 @@ def _resolve_target_geometry(
         If no valid target geometry can be resolved.
     """
     if ref_img is not None:
-        return np.asarray(ref_img.affine, dtype=np.float64), tuple(int(v) for v in ref_img.shape[:3])
-    if effective_lta is None:
-        return np.asarray(mov_img.affine, dtype=np.float64), tuple(int(v) for v in mov_img.shape[:3])
-    info = effective_lta.dst
-    affine = affine_from_volume_info(info)
-    return affine, tuple(int(v) for v in info["volume"])
+        affine = np.asarray(ref_img.affine, dtype=np.float64)
+        shape = tuple(int(v) for v in ref_img.shape[:3])
+    else:
+        # Inspect the transform's destination only once --ref is known to be
+        # absent. An explicit reference supplies the whole target geometry and
+        # the RAS-to-RAS matrix needs none of it, so malformed destination
+        # metadata must not fail a run that does not depend on it.
+        from_transform = None if effective_lta is None else _geometry_from_transform(effective_lta)
+        if from_transform is not None:
+            affine, shape = from_transform
+        else:
+            affine = np.asarray(mov_img.affine, dtype=np.float64)
+            shape = tuple(int(v) for v in mov_img.shape[:3])
+
+    if ref_cras is not None:
+        affine = place_grid_at_cras(affine, shape, ref_cras)
+    return affine, shape
 
 
 def _resolve_padding(pad: str | float, mov_img: Any) -> tuple[str, float | None]:
@@ -443,13 +556,13 @@ def _robust_upper_bound(data: np.ndarray, low: float, high: float) -> float:
 
 
 def _convert_output_image(
-    mapped_img: Any,
-    source_img: Any,
-    target_dtype: np.dtype | None,
-    scale_mode: str | None,
-    target_max: float | None,
-    robust_low: float,
-    robust_high: float,
+        mapped_img: Any,
+        source_img: Any,
+        target_dtype: np.dtype | None,
+        scale_mode: str | None,
+        target_max: float | None,
+        robust_low: float,
+        robust_high: float,
 ) -> Any:
     """Apply final dtype conversion and optional intensity scaling.
 
@@ -485,9 +598,9 @@ def _convert_output_image(
     """
     effective_mode = scale_mode
     if (
-        effective_mode is None
-        and target_dtype is not None
-        and (np.issubdtype(target_dtype, np.bool_) or np.issubdtype(target_dtype, np.integer))
+            effective_mode is None
+            and target_dtype is not None
+            and (np.issubdtype(target_dtype, np.bool_) or np.issubdtype(target_dtype, np.integer))
     ):
         effective_mode = "clamp"
     if effective_mode == "clamp" and target_dtype is None:
@@ -569,12 +682,14 @@ def main(args=None) -> None:
             check_dtype_storable(target_dtype, ns.out)
         if ns.header_only:
             mapped_img = header_map_image(mov_img, r2r)
-        elif ns.transform is None and ns.ref is None:
+        elif ns.transform is None and ns.ref is None and ns.ref_cras is None:
             # No geometry change requested: read and write on the native grid
             # without resampling. This covers pure format conversion (chosen by
             # the --out extension), as well as dtype/scale-only operations.
             # Interpolation would only average voxels, so it is skipped here to
-            # keep voxel values and dtype intact.
+            # keep voxel values and dtype intact. --ref-cras is excluded because
+            # it does request a different target grid, so it must resample: the
+            # anatomy keeps its world position while the grid moves under it.
             mapped_img = mov_img
             mapped_img = _convert_output_image(
                 mapped_img,
@@ -586,7 +701,9 @@ def main(args=None) -> None:
                 robust_high=ns.robust_high,
             )
         else:
-            target_affine, target_shape = _resolve_target_geometry(mov_img, ref_img, effective_lta)
+            target_affine, target_shape = _resolve_target_geometry(
+                mov_img, ref_img, effective_lta, ref_cras=ns.ref_cras
+            )
             padding_mode, padding_value = _resolve_padding(ns.pad, mov_img)
             mapped_img = reslice_r2r_image(
                 mov_img,

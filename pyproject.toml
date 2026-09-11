@@ -4,7 +4,7 @@ build-backend = 'setuptools.build_meta'
 
 [project]
 name = 'neuroreg'
-version = '0.11.0'
+version = '0.12.0-dev0'
 description = 'A package for 3D image registration with PyTorch.'
 readme = 'README.md'
 license = {file = 'LICENSE'}
@@ -148,7 +148,7 @@ select = [
 ignore-words-list = 'fro,TE'
 check-filenames = true
 check-hidden = true
-skip = './.git,./build,./.mypy_cache,./.pytest_cache,./.venv,./doc-build,*/data/*,./neuroreg-data,./scratch,./.agent-work,./.agentbridge'
+skip = './.git,./build,./.mypy_cache,./.pytest_cache,./.ruff_cache,./.venv,./doc-build,./doc/_build,*/data/*,./neuroreg-data,./scratch,./.agent-work,./.agentbridge,./.idea,./junit-results.xml'
 
 [tool.pytest.ini_options]
 minversion = '6.0'

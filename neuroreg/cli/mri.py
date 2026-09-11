@@ -13,18 +13,23 @@ from __future__ import annotations
 import argparse
 import sys
 
+import nibabel as nib
 import numpy as np
 
 from ..image import (
     binarize_image,
+    build_grid_affine,
     compare_images,
     describe_image,
+    direction_cosines_from_orientation,
     image_value_stats,
     load_image,
     mask_geometry_differs,
     reslice_and_apply_mask,
     save_image,
+    shape_from_fov,
 )
+from ._args import NumberListParser, number_list
 from ._outputs import validate_image_outputs
 
 # ── parser ──────────────────────────────────────────────────────────────────
@@ -38,9 +43,12 @@ def _build_parser() -> argparse.ArgumentParser:
     argparse.ArgumentParser
         Configured CLI parser with one sub-parser per utility.
     """
-    p = argparse.ArgumentParser(
+    # NumberListParser so that a negative geometry component such as
+    # "--cras -4,0,0" is read as a value rather than an unknown option; the
+    # sub-parsers inherit the class via argparse's parser_class default.
+    p = NumberListParser(
         prog="mri",
-        description="Image volume utilities (mask, info, diff, binarize).",
+        description="Image volume utilities (mask, info, diff, binarize, geom).",
     )
     sub = p.add_subparsers(dest="command", metavar="COMMAND", required=True)
 
@@ -218,6 +226,76 @@ def _build_parser() -> argparse.ArgumentParser:
     bin_p.add_argument("--abs", action="store_true", dest="use_abs", help="Take abs value before thresholding.")
     bin_p.add_argument("--frame", type=int, default=None, metavar="N", help="For 4D input, binarize this frame only.")
     bin_p.add_argument("--uchar", action="store_true", help="Write uint8 output instead of int32.")
+
+    # ── geom ──────────────────────────────────────────────────────────────────
+    geom_p = sub.add_parser(
+        "geom",
+        help="Write an empty volume that carries only a target geometry.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=(
+            "Write a zero-filled volume whose header describes a requested target\n"
+            "geometry, for use as a reference image by tools that accept only a\n"
+            "reference file. This makes grids expressible that no stock file\n"
+            "provides, for example the mni305.cor.mgz frame (256mm FOV, LIA,\n"
+            "cras 0 0 0) at a native voxel size other than 1mm.\n"
+            "\n"
+            "A geometry has four components: image dimensions, voxel sizes,\n"
+            "direction cosines, and placement (cras). Each is taken from its own\n"
+            "flag if given, else from --like, else it is an error. The exception\n"
+            "is cras, which defaults to 0,0,0. --shape and --fov are two ways to\n"
+            "give the dimensions; --fov derives them from the voxel size, so a\n"
+            "fixed 256mm field of view needs no division in the caller.\n"
+            "\n"
+            "--like supplies a field of view rather than image dimensions, so\n"
+            "'--like sub.mgz --vox-size 0.5' keeps the extent sub.mgz covers and\n"
+            "grows the dimensions to match, instead of cropping to sub.mgz's\n"
+            "dimensions at a finer resolution. Pass --shape to fix them instead.\n"
+            "\n"
+            "--orientation sets a strict axis-aligned orientation and so discards\n"
+            "any oblique rotation from --like. The output contains no image data."
+        ),
+    )
+    geom_p.add_argument("--o", "--out", dest="out", required=True, metavar="FILE", help="Output image.")
+    geom_p.add_argument(
+        "--like",
+        dest="like",
+        metavar="FILE",
+        help="Image supplying any geometry component not given explicitly (extent, not dimensions).",
+    )
+    size_group = geom_p.add_mutually_exclusive_group()
+    size_group.add_argument(
+        "--shape",
+        type=number_list("--shape", allow_scalar=True, cast=int, positive=True),
+        metavar="I[,J,K]",
+        help="Image dimensions in voxels, as one value (cube) or three.",
+    )
+    size_group.add_argument(
+        "--fov",
+        type=number_list("--fov", allow_scalar=True, positive=True),
+        metavar="MM[,MM,MM]",
+        help="Field of view in mm; the image dimensions are derived from the voxel size.",
+    )
+    geom_p.add_argument(
+        "--vox-size",
+        dest="vox_size",
+        type=number_list("--vox-size", allow_scalar=True, positive=True),
+        metavar="MM[,MM,MM]",
+        help="Voxel size in mm, as one value (isotropic) or three. With --like the dimensions rescale.",
+    )
+    geom_p.add_argument(
+        "--orientation",
+        "--ori",
+        dest="orientation",
+        metavar="CODE",
+        help="Strict axis-aligned orientation, e.g. LIA or RAS.",
+    )
+    geom_p.add_argument(
+        "--cras",
+        dest="cras",
+        type=number_list("--cras"),
+        metavar="X,Y,Z",
+        help="World coordinate of the grid centre (default: 0,0,0).",
+    )
 
     return p
 
@@ -407,6 +485,114 @@ def _main_binarize(ns: argparse.Namespace) -> None:
     print(f"Output: {ns.out}")
 
 
+def _resolve_geom_components(
+        ns: argparse.Namespace,
+        parser: argparse.ArgumentParser,
+) -> tuple[np.ndarray, tuple[int, int, int], np.ndarray, np.ndarray]:
+    """Resolve the four geometry components for ``mri geom``.
+
+    Each component comes from its own flag if given, else from ``--like``, else
+    it is a usage error. Two components qualify that rule:
+
+    * ``--cras`` defaults to the world origin rather than erroring, since a grid
+      built from scratch has no other sensible placement.
+    * ``--like`` supplies a *field of view* rather than image dimensions, so
+      overriding the voxel size rescales the dimensions to keep the same
+      extent. Pass ``--shape`` to fix the dimensions instead.
+
+    Parameters
+    ----------
+    ns : argparse.Namespace
+        Parsed ``geom`` arguments.
+    parser : argparse.ArgumentParser
+        Parser used to report user-facing validation errors.
+
+    Returns
+    -------
+    tuple
+        Direction cosines, image dimensions, voxel sizes, and grid centre.
+
+    Raises
+    ------
+    SystemExit
+        Via :meth:`argparse.ArgumentParser.error` when a component cannot be
+        resolved or an orientation code is invalid.
+    """
+    like = load_image(ns.like) if ns.like is not None else None
+    like_zooms = None if like is None else np.asarray(like.header.get_zooms()[:3], dtype=np.float64)
+    if like_zooms is not None and np.any(like_zooms <= 0):
+        parser.error(f"--like has a non-positive voxel size: {like_zooms.tolist()}")
+
+    vox_size = ns.vox_size
+    if vox_size is None:
+        if like_zooms is None:
+            parser.error("--vox-size is required unless --like is given.")
+        vox_size = like_zooms
+
+    if ns.shape is not None:
+        shape = tuple(int(v) for v in ns.shape)
+    elif ns.fov is not None:
+        shape = shape_from_fov(ns.fov, vox_size)
+    elif like is not None:
+        # --like preserves the extent, not the dimensions: with the voxel size
+        # overridden the dimensions follow from the source field of view, so the
+        # new grid still covers the same anatomy. Keeping the dimensions would
+        # silently crop it. Because shape_from_fov snaps counts that are integer
+        # within a relative tolerance, feeding back the source's own voxel size
+        # returns the source dimensions unchanged.
+        source_fov = np.asarray(like.shape[:3], dtype=np.float64) * like_zooms
+        shape = shape_from_fov(source_fov, vox_size)
+    else:
+        parser.error("--shape or --fov is required unless --like is given.")
+
+    if ns.orientation is not None:
+        try:
+            cosines = direction_cosines_from_orientation(ns.orientation)
+        except ValueError as exc:
+            parser.error(str(exc))
+    elif like is not None:
+        # Normalise the columns so the oblique rotation survives while the
+        # voxel size is taken from whichever source resolved it above.
+        cosines = np.asarray(like.affine, dtype=np.float64)[:3, :3] / like_zooms
+    else:
+        parser.error("--orientation is required unless --like is given.")
+
+    if ns.cras is not None:
+        cras = ns.cras
+    elif like is not None:
+        cras = describe_image(like, ns.like)["cras"]
+    else:
+        cras = np.zeros(3, dtype=np.float64)
+
+    return cosines, shape, np.asarray(vox_size, dtype=np.float64), np.asarray(cras, dtype=np.float64)
+
+
+def _main_geom(ns: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
+    try:
+        # Inside the boundary so an unreadable --like reports like the other
+        # subcommands. parser.error raises SystemExit, not Exception, so usage
+        # errors still surface as argparse messages rather than "ERROR: ...".
+        cosines, shape, vox_size, cras = _resolve_geom_components(ns, parser)
+        affine = build_grid_affine(cosines=cosines, vox_size=vox_size, shape=shape, cras=cras)
+        # uint8 zeros: the payload is irrelevant, only the header is, and this
+        # keeps a 320^3 reference file a few KB once compressed.
+        img = nib.Nifti1Image(np.zeros(shape, dtype=np.uint8), affine, dtype=np.uint8)
+        save_image(img, ns.out)
+    except Exception as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    # Report the geometry as stored, so what is printed is what a consumer reads
+    # back rather than what was requested.
+    written = describe_image(load_image(ns.out), ns.out)
+    out_shape, out_vox, out_cras = written["shape"], written["voxel_sizes"], written["cras"]
+    print(f"Output: {ns.out}")
+    print(f"    dimensions: {out_shape[0]} x {out_shape[1]} x {out_shape[2]}")
+    print(f"   voxel sizes: {out_vox[0]:.6f}, {out_vox[1]:.6f}, {out_vox[2]:.6f}")
+    print(f"          cras: {out_cras[0]:.6f} {out_cras[1]:.6f} {out_cras[2]:.6f}")
+    print(f"   Orientation: {written['orientation']}")
+
+
 # ── entry point ───────────────────────────────────────────────────────────────
 
 
@@ -436,6 +622,8 @@ def main(args=None) -> None:
         _main_diff(ns)
     elif ns.command == "binarize":
         _main_binarize(ns)
+    elif ns.command == "geom":
+        _main_geom(ns, parser)
 
 
 if __name__ == "__main__":
