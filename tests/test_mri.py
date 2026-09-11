@@ -698,12 +698,19 @@ class TestGeom:
         [("--vox-size", "0"), ("--vox-size", "-1"), ("--fov", "0"), ("--shape", "0"), ("--shape", "-8")],
     )
     def test_non_positive_sizes_are_rejected(self, tmp_path: Path, capsys, flag: str, value: str):
-        with pytest.raises(SystemExit):
-            mri_main(
-                ["geom", "--out", str(tmp_path / "o.nii.gz"), "--orientation", "LIA", flag, value, "--vox-size", "1"]
-            )
+        # Keep the invalid value the only occurrence of its flag. argparse does
+        # reject at the first occurrence, so a trailing valid duplicate would
+        # still fail the run, but it reads as though it might mask the value.
+        args = ["geom", "--out", str(tmp_path / "o.nii.gz"), "--orientation", "LIA", flag, value]
+        if flag != "--vox-size":
+            args += ["--vox-size", "1"]
+        if flag not in ("--shape", "--fov"):
+            args += ["--shape", "8"]
 
-        assert "must be positive" in capsys.readouterr().err
+        with pytest.raises(SystemExit):
+            mri_main(args)
+
+        assert f"{flag} must be positive" in capsys.readouterr().err
 
     def test_integer_beyond_int64_is_a_usage_error(self, tmp_path: Path, capsys):
         # Python integers are unbounded, so int() accepts 2**63 and the overflow

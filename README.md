@@ -525,16 +525,16 @@ mri binarize --in T1.mgz --out outside.mgz --min 50 --max 150 --inv
 
 Writes a zero-filled volume whose header describes a requested target geometry,
 for use as a reference image by the many tools that accept only a reference
-*file*. This makes grids expressible that no stock file provides — for example
+*file*. This makes grids expressible that no stock file provides, for example
 the `mni305.cor.mgz` frame (256 mm FOV, LIA, `cras 0 0 0`) at a native voxel size
 other than 1 mm. The output carries no image data.
 
 A geometry has four components: image dimensions, voxel sizes, direction cosines,
 and placement (`cras`). Each is taken from its own flag if given, else from
-`--like`, else it is an error — except `cras`, which defaults to `0,0,0`.
-`--shape` and `--fov` are two ways to give the dimensions; `--fov` derives them
-from the voxel size, so a fixed 256 mm field of view needs no division in the
-caller.
+`--like`, else it is an error. The exception is `cras`, which defaults to
+`0,0,0`. `--shape` and `--fov` are two ways to give the dimensions; `--fov`
+derives them from the voxel size, so a fixed 256 mm field of view needs no
+division in the caller.
 
 `--like` supplies a *field of view* rather than image dimensions, so
 `--like sub.mgz --vox-size 0.5` keeps the extent `sub.mgz` covers and grows the

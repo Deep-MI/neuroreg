@@ -148,7 +148,7 @@ select = [
 ignore-words-list = 'fro,TE'
 check-filenames = true
 check-hidden = true
-skip = './.git,./build,./.mypy_cache,./.pytest_cache,./.ruff_cache,./.venv,./doc-build,./doc/_build,*/data/*,./neuroreg-data,./scratch,./.agent-work,./.agentbridge,./.idea'
+skip = './.git,./build,./.mypy_cache,./.pytest_cache,./.ruff_cache,./.venv,./doc-build,./doc/_build,*/data/*,./neuroreg-data,./scratch,./.agent-work,./.agentbridge,./.idea,./junit-results.xml'
 
 [tool.pytest.ini_options]
 minversion = '6.0'

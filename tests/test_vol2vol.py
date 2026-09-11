@@ -359,27 +359,67 @@ class TestVol2VolCli:
         assert shape == (7, 8, 9)
         assert affine == pytest.approx(ref_affine)
 
-    def test_malformed_transform_geometry_falls_back_to_the_input_grid(self, tmp_path: Path):
+    @pytest.mark.parametrize(
+        ("field", "bad"),
+        [
+            ("voxelsize", [1.0]),  # too short: affine_from_volume_info raises IndexError
+            ("volume", [4, 4]),  # too short to be a 3-D shape
+            ("volume", [0, 4, 4]),  # zero extent would ask for an empty grid
+            ("volume", [4.7, 4, 4]),  # fractional voxel counts, previously truncated
+            ("volume", [float("inf"), 4, 4]),  # previously raised OverflowError from int()
+            # These three do not raise; they quietly poison the affine.
+            ("voxelsize", [float("nan"), 1.0, 1.0]),
+            ("cras", [float("inf"), 0.0, 0.0]),
+            ("xras", [float("nan"), 0.0, 0.0]),
+        ],
+    )
+    def test_unusable_transform_geometry_falls_back_to_the_input_grid(
+        self, tmp_path: Path, field: str, bad: list
+    ):
         from neuroreg.cli.vol2vol import _resolve_target_geometry
 
-        class _ShortVoxelSizeLTA:
+        class _BadLTA:
             dst = {
                 "valid": 1,
                 "volume": [4, 4, 4],
-                "voxelsize": [1.0],
+                "voxelsize": [1.0, 1.0, 1.0],
+                "xras": [1.0, 0.0, 0.0],
+                "yras": [0.0, 1.0, 0.0],
+                "zras": [0.0, 0.0, 1.0],
+                "cras": [0.0, 0.0, 0.0],
+                field: bad,
+            }
+
+        mov_affine = np.diag([1.5, 1.5, 1.5, 1.0])
+        mov_img = nib.Nifti1Image(np.ones((5, 5, 5), dtype=np.uint8), mov_affine, dtype=np.uint8)
+
+        affine, shape = _resolve_target_geometry(mov_img, None, _BadLTA())
+
+        assert shape == (5, 5, 5)
+        assert affine == pytest.approx(mov_affine)
+        assert np.all(np.isfinite(affine))
+
+    def test_usable_transform_geometry_is_still_used(self, tmp_path: Path):
+        # The guards must not reject a healthy destination block.
+        from neuroreg.cli.vol2vol import _resolve_target_geometry
+
+        class _GoodLTA:
+            dst = {
+                "valid": 1,
+                "volume": [7, 8, 9],
+                "voxelsize": [2.0, 2.0, 2.0],
                 "xras": [1.0, 0.0, 0.0],
                 "yras": [0.0, 1.0, 0.0],
                 "zras": [0.0, 0.0, 1.0],
                 "cras": [0.0, 0.0, 0.0],
             }
 
-        mov_affine = np.diag([1.5, 1.5, 1.5, 1.0])
-        mov_img = nib.Nifti1Image(np.ones((5, 5, 5), dtype=np.uint8), mov_affine, dtype=np.uint8)
+        mov_img = nib.Nifti1Image(np.ones((5, 5, 5), dtype=np.uint8), np.eye(4), dtype=np.uint8)
 
-        affine, shape = _resolve_target_geometry(mov_img, None, _ShortVoxelSizeLTA())
+        affine, shape = _resolve_target_geometry(mov_img, None, _GoodLTA())
 
-        assert shape == (5, 5, 5)
-        assert affine == pytest.approx(mov_affine)
+        assert shape == (7, 8, 9)
+        assert np.linalg.norm(affine[:3, :3], axis=0) == pytest.approx([2.0, 2.0, 2.0])
 
     def test_header_only_updates_affine_and_preserves_payload(self, tmp_path: Path):
         data = np.arange(8, dtype=np.uint8).reshape(2, 2, 2)

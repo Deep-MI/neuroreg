@@ -348,6 +348,12 @@ def _geometry_from_transform(effective_lta: Any) -> tuple[np.ndarray, tuple[int,
     Reporting that as "no geometry" lets the caller fall back to the input grid
     instead of refusing a transform it can apply.
 
+    Metadata that is present but unusable counts the same way: a volume that is
+    not three finite positive whole numbers, or a voxel size, ``cras`` or
+    direction cosine that is not finite. The latter does not raise. It simply
+    produces a NaN or infinite affine, so it has to be checked explicitly
+    rather than caught.
+
     Parameters
     ----------
     effective_lta : Any
@@ -361,17 +367,24 @@ def _geometry_from_transform(effective_lta: Any) -> tuple[np.ndarray, tuple[int,
     """
     info = effective_lta.dst
     try:
-        affine = affine_from_volume_info(info)
-        shape = tuple(int(v) for v in info["volume"])
-    except (IndexError, KeyError, TypeError, ValueError):
+        raw_shape = np.asarray(info["volume"], dtype=np.float64)
+        affine = np.asarray(affine_from_volume_info(info), dtype=np.float64)
+    except (IndexError, KeyError, OverflowError, TypeError, ValueError):
         # Covers every way the metadata can be unusable: marked invalid,
         # missing a required field, or holding a short/wrong-typed vector.
         return None
-    if any(v <= 0 for v in shape):
-        # A "valid" block can still carry a zero volume, which would ask for an
-        # empty output grid.
+    if raw_shape.shape != (3,) or not np.all(np.isfinite(raw_shape)):
         return None
-    return affine, shape
+    if np.any(raw_shape <= 0) or np.any(raw_shape != np.rint(raw_shape)):
+        # A zero volume would ask for an empty output grid, and a fractional one
+        # is not a voxel count, so rounding it would invent a geometry.
+        return None
+    if not np.all(np.isfinite(affine)):
+        # A non-finite voxel size, cras or direction cosine poisons the affine
+        # without raising, and would otherwise reach resampling as a silently
+        # bad grid.
+        return None
+    return affine, (int(raw_shape[0]), int(raw_shape[1]), int(raw_shape[2]))
 
 
 def _resolve_target_geometry(
