@@ -2,8 +2,9 @@
 """Command-line image mapping and reslicing utility.
 
 The target geometry for resampled output is assembled per component rather than
-copied from one source wholesale. The components are the matrix size, the voxel
-sizes, the direction cosines, and the placement in world space (``c_ras``).
+copied from one source wholesale. The components are the image dimensions, the
+voxel sizes, the direction cosines, and the placement in world space
+(``c_ras``).
 
 Each component is resolved from the first available source in this order:
 
@@ -162,7 +163,7 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="X,Y,Z",
         help=(
             "Override the c_ras (world coordinate of the grid centre) of the target "
-            "geometry. Orientation, voxel sizes and matrix size are unchanged; only "
+            "geometry. Orientation, voxel sizes and image dimensions are unchanged; only "
             "where that grid sits in world space moves. Useful to reslice into a "
             "standard-space pose at the input's resolution."
         ),
@@ -382,9 +383,9 @@ def _resolve_target_geometry(
 ) -> tuple[np.ndarray, tuple[int, int, int]]:
     """Assemble the target affine and shape for resampled output.
 
-    A complete target geometry has four independent components: matrix size,
-    voxel sizes, direction cosines, and placement in world space. Each is
-    resolved from the first available source in this order: an explicit
+    A complete target geometry has four independent components: image
+    dimensions, voxel sizes, direction cosines, and placement in world space.
+    Each is resolved from the first available source in this order: an explicit
     override keyword, the ``--ref`` image, the transform's ``dst`` geometry,
     then the input image. A base geometry is selected first and the overrides
     are then applied on top of it, so callers can ask for "the reference grid,

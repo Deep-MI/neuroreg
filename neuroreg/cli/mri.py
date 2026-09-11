@@ -239,17 +239,17 @@ def _build_parser() -> argparse.ArgumentParser:
             "provides, for example the mni305.cor.mgz frame (256mm FOV, LIA,\n"
             "cras 0 0 0) at a native voxel size other than 1mm.\n"
             "\n"
-            "A geometry has four components: matrix size, voxel sizes, direction\n"
-            "cosines, and placement (cras). Each is taken from its own flag if\n"
-            "given, else from --like, else it is an error -- except cras, which\n"
-            "defaults to 0,0,0. --shape and --fov are two ways to give the matrix\n"
-            "size; --fov derives it from the voxel size, so a fixed 256mm field of\n"
-            "view needs no division in the caller.\n"
+            "A geometry has four components: image dimensions, voxel sizes,\n"
+            "direction cosines, and placement (cras). Each is taken from its own\n"
+            "flag if given, else from --like, else it is an error -- except cras,\n"
+            "which defaults to 0,0,0. --shape and --fov are two ways to give the\n"
+            "dimensions; --fov derives them from the voxel size, so a fixed 256mm\n"
+            "field of view needs no division in the caller.\n"
             "\n"
-            "--like supplies a field of view rather than a matrix size, so\n"
+            "--like supplies a field of view rather than image dimensions, so\n"
             "'--like sub.mgz --vox-size 0.5' keeps the extent sub.mgz covers and\n"
-            "grows the matrix size to match, instead of cropping to sub.mgz's\n"
-            "matrix at a finer resolution. Pass --shape to fix the matrix size.\n"
+            "grows the dimensions to match, instead of cropping to sub.mgz's\n"
+            "dimensions at a finer resolution. Pass --shape to fix them instead.\n"
             "\n"
             "--orientation sets a strict axis-aligned orientation and so discards\n"
             "any oblique rotation from --like. The output contains no image data."
@@ -260,27 +260,27 @@ def _build_parser() -> argparse.ArgumentParser:
         "--like",
         dest="like",
         metavar="FILE",
-        help="Image supplying any geometry component not given explicitly (extent, not matrix size).",
+        help="Image supplying any geometry component not given explicitly (extent, not dimensions).",
     )
     size_group = geom_p.add_mutually_exclusive_group()
     size_group.add_argument(
         "--shape",
         type=number_list("--shape", allow_scalar=True, cast=int, positive=True),
         metavar="I[,J,K]",
-        help="Matrix size, as one value (cube) or three.",
+        help="Image dimensions in voxels, as one value (cube) or three.",
     )
     size_group.add_argument(
         "--fov",
         type=number_list("--fov", allow_scalar=True, positive=True),
         metavar="MM[,MM,MM]",
-        help="Field of view in mm; the matrix size is derived from the voxel size.",
+        help="Field of view in mm; the image dimensions are derived from the voxel size.",
     )
     geom_p.add_argument(
         "--vox-size",
         dest="vox_size",
         type=number_list("--vox-size", allow_scalar=True, positive=True),
         metavar="MM[,MM,MM]",
-        help="Voxel size in mm, as one value (isotropic) or three. With --like the matrix size rescales.",
+        help="Voxel size in mm, as one value (isotropic) or three. With --like the dimensions rescale.",
     )
     geom_p.add_argument(
         "--orientation",
@@ -496,9 +496,9 @@ def _resolve_geom_components(
 
     * ``--cras`` defaults to the world origin rather than erroring, since a grid
       built from scratch has no other sensible placement.
-    * ``--like`` supplies a *field of view* rather than a matrix size, so
-      overriding the voxel size rescales the matrix size to keep the same
-      extent. Pass ``--shape`` to fix the matrix size instead.
+    * ``--like`` supplies a *field of view* rather than image dimensions, so
+      overriding the voxel size rescales the dimensions to keep the same
+      extent. Pass ``--shape`` to fix the dimensions instead.
 
     Parameters
     ----------
@@ -510,7 +510,7 @@ def _resolve_geom_components(
     Returns
     -------
     tuple
-        Direction cosines, matrix size, voxel sizes, and grid centre.
+        Direction cosines, image dimensions, voxel sizes, and grid centre.
 
     Raises
     ------
@@ -534,12 +534,12 @@ def _resolve_geom_components(
     elif ns.fov is not None:
         shape = shape_from_fov(ns.fov, vox_size)
     elif like is not None:
-        # --like preserves the extent, not the matrix size: with the voxel size
-        # overridden the matrix size follows from the source field of view, so
-        # the new grid still covers the same anatomy. Keeping the matrix size
-        # would silently crop it. Because shape_from_fov snaps counts that are
-        # integer within a relative tolerance, feeding back the source's own
-        # voxel size returns the source matrix size unchanged.
+        # --like preserves the extent, not the dimensions: with the voxel size
+        # overridden the dimensions follow from the source field of view, so the
+        # new grid still covers the same anatomy. Keeping the dimensions would
+        # silently crop it. Because shape_from_fov snaps counts that are integer
+        # within a relative tolerance, feeding back the source's own voxel size
+        # returns the source dimensions unchanged.
         source_fov = np.asarray(like.shape[:3], dtype=np.float64) * like_zooms
         shape = shape_from_fov(source_fov, vox_size)
     else:

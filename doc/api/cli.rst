@@ -132,6 +132,15 @@ Python module
    :prog: mri binarize
    :path: binarize
 
+``mri geom``
+~~~~~~~~~~~~
+
+.. argparse::
+   :module: neuroreg.cli.mri
+   :func: _build_parser
+   :prog: mri geom
+   :path: geom
+
 Python module
 ~~~~~~~~~~~~~
 

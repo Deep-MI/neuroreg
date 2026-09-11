@@ -22,8 +22,8 @@ The main user-facing tools are:
 - **`segreg`** – segmentation-based registration via label centroids
   (rigid/affine, including atlas-centroid and upright/self-flip modes)
 - **`lta`** – transform comparison, inversion, concatenation, and conversion utilities
-- **`mri`** – small image-volume utilities like `mask`, `info`, `diff`, `binarize`
-  (analogous to FreeSurfer's `mri_*` tools)
+- **`mri`** – small image-volume utilities like `mask`, `info`, `diff`, and `binarize`
+  (analogous to FreeSurfer's `mri_*` tools), plus `geom` to write a target geometry
 
 This project is a work-in-progress in an early development stage. It is developed by
 the creator of FreeSurfer's `mri_robust_register` as an efficient pure Python
@@ -305,6 +305,7 @@ vol2vol --mov <input.nii.gz> --targ <ref.mgz> --lta <reg.lta> --o <output.nii.gz
 | `--transform FILE`, `--lta FILE`                            | identity | Linear transform to apply (.lta, .xfm, FSL .mat, …).                          |
 | `--transform-format {lta,xfm,fsl,...}`                      | infer    | Override format inference for ambiguous suffixes.                              |
 | `--ref FILE`, `--targ FILE`                                 | —        | Target/reference geometry. Overrides geometry stored in the transform.         |
+| `--ref-cras X,Y,Z`                                          | —        | Override where the target grid sits in world space, keeping its size/rotation. |
 | `--interp {linear,cubic,nearest}`                           | `linear` | Interpolation mode for resampled output.                                       |
 | `--trilin`                                                  | —        | Alias for `--interp linear`.                                                   |
 | `--nearest`                                                 | —        | Alias for `--interp nearest`.                                                  |
@@ -351,14 +352,15 @@ Run `vol2vol -h` for a full argument summary with defaults.
 
 Small `mri_*`-style volume utilities grouped under a single command, in the same
 spirit as the `lta` transform CLI. Available subcommands are `mask`, `info`,
-`diff`, and `binarize`. The argument conventions follow FreeSurfer's `mri_*`
-tools where possible.
+`diff`, `binarize`, and `geom`. The argument conventions follow FreeSurfer's
+`mri_*` tools where possible; `geom` has no FreeSurfer equivalent.
 
 ```
 mri mask <input> <mask> <output> [options]
 mri info <input> [selectors]
 mri diff <vol1> <vol2> [options]
 mri binarize --i <input> --o <output> (--min|--max|--match ...) [options]
+mri geom --o <output> (--like <image> | --fov <mm> --vox-size <mm> --orientation <code>) [options]
 ```
 
 #### `mri mask` — apply a binary mask
@@ -517,6 +519,43 @@ mri binarize --i aseg.mgz --o hippo.mgz --match 17 53
 
 # Everything outside a range, using the --in/--out aliases
 mri binarize --in T1.mgz --out outside.mgz --min 50 --max 150 --inv
+```
+
+#### `mri geom` — write a target geometry as a reference image
+
+Writes a zero-filled volume whose header describes a requested target geometry,
+for use as a reference image by the many tools that accept only a reference
+*file*. This makes grids expressible that no stock file provides — for example
+the `mni305.cor.mgz` frame (256 mm FOV, LIA, `cras 0 0 0`) at a native voxel size
+other than 1 mm. The output carries no image data.
+
+A geometry has four components: image dimensions, voxel sizes, direction cosines,
+and placement (`cras`). Each is taken from its own flag if given, else from
+`--like`, else it is an error — except `cras`, which defaults to `0,0,0`.
+`--shape` and `--fov` are two ways to give the dimensions; `--fov` derives them
+from the voxel size, so a fixed 256 mm field of view needs no division in the
+caller.
+
+`--like` supplies a *field of view* rather than image dimensions, so
+`--like sub.mgz --vox-size 0.5` keeps the extent `sub.mgz` covers and grows the
+dimensions to match, instead of cropping to half the FOV. Pass `--shape` to fix
+the dimensions instead. `--orientation` is strict axis-aligned and so discards
+any oblique rotation from `--like`.
+
+**Examples**
+
+```bash
+# The mni305.cor.mgz frame at a native 0.8 mm voxel size
+mri geom --o target.mgz --fov 256 --vox-size 0.8 --orientation LIA --cras 0,0,0
+
+# Copy a subject's geometry, recentred on the world origin
+mri geom --o target.mgz --like sub.mgz --cras 0,0,0
+
+# Same extent at a finer voxel size (dimensions grow to match)
+mri geom --o target.mgz --like sub.mgz --vox-size 0.5
+
+# Feed it to any tool that takes a reference image
+vol2vol --in cross.nii.gz --transform pose.lta --ref target.mgz --out orig.mgz
 ```
 
 Run `mri -h` or `mri <subcommand> -h` for a full argument summary with defaults.

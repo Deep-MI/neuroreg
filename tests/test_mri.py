@@ -536,8 +536,8 @@ class TestGeom:
         # Voxel sizes still come from --like.
         assert written.header.get_zooms()[:3] == pytest.approx((0.9, 1.3, 2.1), abs=1e-5)
 
-    def test_like_plus_voxel_size_keeps_the_extent_and_rescales_the_matrix(self, tmp_path: Path):
-        # --like preserves what the source covers. Keeping its matrix size at a
+    def test_like_plus_voxel_size_keeps_the_extent_and_rescales_the_dimensions(self, tmp_path: Path):
+        # --like preserves what the source covers. Keeping its dimensions at a
         # finer voxel size would silently crop the anatomy to half the FOV.
         source = _write_image(tmp_path / "src.nii.gz", np.zeros((16, 16, 16), dtype=np.uint8))
         out_path = tmp_path / "finer.nii.gz"
@@ -571,8 +571,8 @@ class TestGeom:
     def test_like_plus_the_sources_own_voxel_size_is_a_no_op(
             self, tmp_path: Path, shape: tuple[int, int, int], zooms: tuple[float, float, float]
     ):
-        # Deriving the matrix size from the extent must round-trip: passing the
-        # voxel size the source already has cannot change its matrix size.
+        # Deriving the dimensions from the extent must round-trip: passing the
+        # voxel size the source already has cannot change its dimensions.
         source = _write_image(
             tmp_path / "src.nii.gz", np.zeros(shape, dtype=np.uint8), affine=np.diag([*zooms, 1.0])
         )
@@ -582,8 +582,8 @@ class TestGeom:
 
         assert nib.load(str(out_path)).shape == shape
 
-    def test_like_plus_shape_fixes_the_matrix_size_instead(self, tmp_path: Path):
-        # The escape hatch for wanting the source matrix at a new voxel size.
+    def test_like_plus_shape_fixes_the_dimensions_instead(self, tmp_path: Path):
+        # The escape hatch for wanting the source dimensions at a new voxel size.
         source = _write_image(tmp_path / "src.nii.gz", np.zeros((16, 16, 16), dtype=np.uint8))
         out_path = tmp_path / "cropped.nii.gz"
 

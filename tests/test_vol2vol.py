@@ -484,7 +484,7 @@ class TestVol2VolRefCras:
 
     def test_recentres_grid_on_requested_world_point(self, tmp_path: Path):
         # The motivating case: reslice into a standard-space pose while keeping
-        # the reference matrix size and voxel size, which no stock file provides.
+        # the reference dimensions and voxel size, which no stock file provides.
         ref_affine = np.diag([0.8, 0.8, 0.8, 1.0])
         ref_affine[:3, 3] = [-40.0, 17.0, -9.0]
         mov_path = _write_image(tmp_path / "mov.nii.gz", np.ones((8, 8, 8), dtype=np.float32))
@@ -532,7 +532,7 @@ class TestVol2VolRefCras:
         assert mapped.shape == (7, 9, 11)
 
     def test_handles_odd_anisotropic_oblique_grids(self, tmp_path: Path):
-        # An odd matrix size is what distinguishes shape/2 from (shape-1)/2, and
+        # Odd dimensions are what distinguish shape/2 from (shape-1)/2, and
         # the oblique 3x3 block is what distinguishes the full-matrix formula
         # from a per-axis shortcut.
         ref_affine = _oblique_affine()

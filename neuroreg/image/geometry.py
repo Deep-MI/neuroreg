@@ -82,10 +82,10 @@ def direction_cosines_from_orientation(code: str) -> np.ndarray:
 
 
 def shape_from_fov(fov: np.ndarray, vox_size: np.ndarray) -> tuple[int, int, int]:
-    """Derive a matrix size from a field of view and a voxel size.
+    """Derive image dimensions from a field of view and a voxel size.
 
     A field of view is usually the known quantity (FreeSurfer conforms to
-    256 mm) while the matrix size follows from the chosen voxel size, so this
+    256 mm) while the dimensions follow from the chosen voxel size, so this
     avoids callers computing ``fov / vox`` themselves.
 
     ``fov / vox_size`` is an exact integer whenever the field of view is a
@@ -108,7 +108,7 @@ def shape_from_fov(fov: np.ndarray, vox_size: np.ndarray) -> tuple[int, int, int
     Returns
     -------
     tuple of int
-        Matrix size per axis.
+        Image dimensions in voxels, per axis.
 
     Raises
     ------
@@ -178,7 +178,7 @@ def build_grid_affine(
     vox_size : numpy.ndarray, shape (3,)
         Voxel size per axis, in mm.
     shape : tuple of int
-        Matrix size per axis.
+        Image dimensions in voxels, per axis.
     cras : numpy.ndarray, shape (3,)
         World coordinate of the grid centre.
 
