@@ -372,13 +372,17 @@ def template_geometry_from_lta(transform: LTA) -> tuple[tuple[int, int, int], np
     return shape, affine
 
 
-def validate_input_geometries(images: Sequence[Any]) -> None:
+def validate_input_geometries(images: Sequence[Any], *, derives_geometry: bool = True) -> None:
     """Validate the cross-timepoint geometry assumptions used by the current MVP.
 
     Parameters
     ----------
     images : sequence of Any
         Input images to validate.
+    derives_geometry : bool, default=True
+        Whether the caller will derive the template geometry from these images.
+        When ``False`` the geometry comes from elsewhere, so differing input
+        orientations are not averaged and are not worth reporting.
 
     Returns
     -------
@@ -404,7 +408,9 @@ def validate_input_geometries(images: Sequence[Any]) -> None:
                 stacklevel=2,
             )
             break
-    if any(not np.allclose(direction_cosines(image), direction_cosines(images[0]), atol=1e-9) for image in images[1:]):
+    if derives_geometry and any(
+        not np.allclose(direction_cosines(image), direction_cosines(images[0]), atol=1e-9) for image in images[1:]
+    ):
         warnings.warn(
             "Input direction cosines differ; multireg will average them when constructing the template geometry.",
             RuntimeWarning,

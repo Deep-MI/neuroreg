@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import warnings
 from pathlib import Path
 
 import nibabel as nib
@@ -288,6 +289,51 @@ def test_multireg_template_geom_overrides_derived_geometry(monkeypatch: pytest.M
     assert np.asarray(result.template_image.affine) == pytest.approx(geom_image.affine)
     # The point of the flag: this is not the geometry multireg would have derived.
     assert derived.template_image.shape[:3] != (12, 13, 14)
+
+
+def test_multireg_template_geom_accepts_a_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0))]
+    register_module = importlib.import_module("neuroreg.multireg.register")
+    monkeypatch.setattr(
+        register_module,
+        "robreg",
+        lambda *args, **kwargs: _fake_tensor(np.eye(4, dtype=np.float64)),
+    )
+    geom_path = tmp_path / "std.nii.gz"
+    geom_affine = _geom_affine(1.0, (-3.0, -4.0, -5.0))
+    nib.save(_make_img(shape=(12, 13, 14), affine=geom_affine), geom_path)
+
+    result = multireg(images, init_target_index=0, nmax=1, template_iterations=0, template_geom=str(geom_path))
+
+    assert result.template_image.shape[:3] == (12, 13, 14)
+    assert np.asarray(result.template_image.affine) == pytest.approx(geom_affine)
+
+
+def test_multireg_template_geom_skips_deriving_a_geometry_it_would_discard(monkeypatch: pytest.MonkeyPatch):
+    # Orientations that no axis permutation relates make the derived geometry
+    # path raise. Supplying the grid is exactly how a caller opts out of that
+    # derivation, so it must not run at all.
+    register_module = importlib.import_module("neuroreg.multireg.register")
+    monkeypatch.setattr(
+        register_module,
+        "robreg",
+        lambda *args, **kwargs: _fake_tensor(np.eye(4, dtype=np.float64)),
+    )
+    cos, sin = np.cos(np.pi / 4), np.sin(np.pi / 4)
+    rotated = np.eye(4, dtype=np.float32)
+    rotated[:3, :3] = np.array([[cos, -sin, 0.0], [sin, cos, 0.0], [0.0, 0.0, 1.0]], dtype=np.float32)
+    images = [_make_img(), _make_img(shift=(2, 0, 0), affine=rotated)]
+    geom_image = _make_img(shape=(12, 13, 14), affine=_geom_affine(1.0, (-3.0, -4.0, -5.0)))
+
+    with pytest.raises(ValueError, match="not compatible with FreeSurfer-style axis reordering"):
+        multireg(images, init_target_index=0, nmax=1, template_iterations=0)
+
+    with warnings.catch_warnings():
+        # Nor may it claim the orientations will be averaged for the template.
+        warnings.simplefilter("error", RuntimeWarning)
+        result = multireg(images, init_target_index=0, nmax=1, template_iterations=0, template_geom=geom_image)
+
+    assert result.template_image.shape[:3] == (12, 13, 14)
 
 
 def test_multireg_template_geom_rejects_cras_center(monkeypatch: pytest.MonkeyPatch):

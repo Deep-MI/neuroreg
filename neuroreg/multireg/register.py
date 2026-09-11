@@ -85,10 +85,10 @@ def _c_rand_choice(start: int, end: int, seed: int) -> int:
 def _resolve_init_ltas(
     init_ltas: Sequence[TransformLike],
     *,
-    require_geometry: bool = True,
+    template_geometry: tuple[tuple[int, int, int], np.ndarray] | None = None,
 ) -> tuple[
-    tuple[int, int, int] | None,
-    np.ndarray | None,
+    tuple[int, int, int],
+    np.ndarray,
     list[np.ndarray],
 ]:
     """Resolve precomputed LTAs into template geometry and RAS transforms.
@@ -97,35 +97,34 @@ def _resolve_init_ltas(
     ----------
     init_ltas : sequence of TransformLike
         Precomputed timepoint-to-template LTAs or paths to them.
-    require_geometry : bool, default=True
-        If ``True``, read the template geometry from the destination blocks and
-        require every transform to agree on it. If ``False``, take only the
-        matrices and return ``None`` for the geometry: the caller has its own.
-        Skipping is what makes transforms that carry no destination usable,
-        such as a pose fitted by ``segreg`` against a centroid target, whose
-        destination block is marked ``valid = 0``.
+    template_geometry : tuple or None, optional
+        Externally supplied ``(shape, affine)``. When given it is returned as
+        the template geometry and the destination blocks are never read, so the
+        transforms neither have to agree on a destination nor carry one at all.
+        That is what makes a pose fitted by ``segreg`` against a centroid target
+        usable here, since its destination block is marked ``valid = 0``.
 
     Returns
     -------
-    template_shape : tuple of int or None
-        Template image shape from the destination geometry, or ``None`` when
-        ``require_geometry`` is ``False``.
-    template_affine : numpy.ndarray or None
-        Template voxel-to-RAS affine, or ``None`` as above.
+    template_shape : tuple of int
+        Template image shape, from ``template_geometry`` when given and from the
+        shared destination geometry otherwise.
+    template_affine : numpy.ndarray
+        Template voxel-to-RAS affine, from the same source.
     transforms_r2r : list of numpy.ndarray
         RAS-to-RAS matrices for each input time point.
 
     Raises
     ------
     ValueError
-        If ``init_ltas`` is empty, or ``require_geometry`` is ``True`` and the
+        If ``init_ltas`` is empty, or no ``template_geometry`` is given and the
         LTAs do not share identical destination geometry.
     """
     loaded_ltas = [LTA.read(transform) if isinstance(transform, str | Path) else transform for transform in init_ltas]
     if not loaded_ltas:
         raise ValueError("init_ltas must not be empty when provided.")
-    if not require_geometry:
-        return None, None, [transform.r2r() for transform in loaded_ltas]
+    if template_geometry is not None:
+        return *template_geometry, [transform.r2r() for transform in loaded_ltas]
     template_shape, template_affine = template_geometry_from_lta(loaded_ltas[0])
     transforms_r2r = [loaded_ltas[0].r2r()]
     for transform in loaded_ltas[1:]:
@@ -181,6 +180,7 @@ def _build_initial_space(
     use_cras_center: bool,
     fix_target: bool,
     verbose: bool,
+    template_geometry: tuple[tuple[int, int, int], np.ndarray] | None = None,
 ) -> tuple[tuple[int, int, int], np.ndarray, list[np.ndarray]]:
     """Build the initial common space from pairwise registrations.
 
@@ -210,6 +210,11 @@ def _build_initial_space(
         unbiased mean-space grid.
     verbose : bool
         Whether to request verbose logging from the pairwise kernel.
+    template_geometry : tuple or None, optional
+        Externally supplied ``(shape, affine)``. When given it is returned as
+        the template geometry and none is derived, so neither the mapped
+        centroid nor the averaged input orientation is computed. The transforms
+        are unaffected: they map into the same common RAS space either way.
 
     Returns
     -------
@@ -271,17 +276,23 @@ def _build_initial_space(
     mean_space_from_target_r2r = np.eye(4, dtype=np.float64)
     mean_space_from_target_r2r[:3, :3] = mean_rotation
     mean_space_from_target_r2r[:3, 3] = mean_translation
-    center_ras = (
-        np.mean(np.stack([ras_center(image) for image in images], axis=0), axis=0)
-        if use_cras_center
-        else mean_mapped_centroid(
-            images,
-            pairwise_r2r,
-            target_index=target_index,
-            mean_space_from_target_r2r=mean_space_from_target_r2r,
+    if template_geometry is not None:
+        # Deriving a grid here would read every input volume to find the mapped
+        # centroid and would average the input orientations, both of which can
+        # fail on inputs that an explicit grid is meant to accommodate.
+        template_shape, template_affine = template_geometry
+    else:
+        center_ras = (
+            np.mean(np.stack([ras_center(image) for image in images], axis=0), axis=0)
+            if use_cras_center
+            else mean_mapped_centroid(
+                images,
+                pairwise_r2r,
+                target_index=target_index,
+                mean_space_from_target_r2r=mean_space_from_target_r2r,
+            )
         )
-    )
-    template_shape, template_affine = create_template_geometry(images, center_ras)
+        template_shape, template_affine = create_template_geometry(images, center_ras)
     final_r2r = []
     for matrix in pairwise_r2r:
         combined = mean_space_from_target_r2r @ matrix
@@ -518,12 +529,16 @@ def multireg(
     external_geometry: tuple[tuple[int, int, int], np.ndarray] | None = None
     if template_geom is not None:
         geom_image = load_image(template_geom) if isinstance(template_geom, str | Path) else template_geom
+        if len(geom_image.shape) < 3:
+            raise ValueError(
+                f"template_geom must describe a 3-D grid, but the given image has shape {tuple(geom_image.shape)}."
+            )
         external_geometry = (
             tuple(int(v) for v in geom_image.shape[:3]),
             np.asarray(geom_image.affine, dtype=np.float64),
         )
 
-    validate_input_geometries(images)
+    validate_input_geometries(images, derives_geometry=external_geometry is None)
     resolved_init_type = resolve_init_type(init_type, default_init_type="centroid")
     resolved_template_iterations = _resolve_iterations(template_iterations, len(images))
 
@@ -548,17 +563,13 @@ def multireg(
             use_cras_center=use_cras_center,
             fix_target=fix_target,
             verbose=verbose,
+            template_geometry=external_geometry,
         )
     else:
         template_shape, template_affine, current_transforms = _resolve_init_ltas(
             init_ltas,
-            require_geometry=external_geometry is None,
+            template_geometry=external_geometry,
         )
-
-    if external_geometry is not None:
-        # The transforms above map each time point into the common RAS space; only
-        # the grid sampling that space is replaced here.
-        template_shape, template_affine = external_geometry
 
     target_image = images[init_target_index]
     current_template, mapped_images = build_template(

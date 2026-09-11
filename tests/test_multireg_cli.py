@@ -16,6 +16,27 @@ def _write_zero_image(path: Path) -> None:
     nib.save(nib.Nifti1Image(data, affine=np.eye(4, dtype=np.float32)), path)
 
 
+def _write_point_image(path: Path, *, peak_voxel: tuple[int, int, int] = (2, 3, 4)) -> np.ndarray:
+    """Write an image with a single bright voxel and return its RAS coordinate.
+
+    Content that can be located lets a test tell a correctly placed output grid
+    from one the anatomy misses entirely, which an all-zero volume cannot.
+    """
+    data = np.zeros((8, 8, 8), dtype=np.float32)
+    data[peak_voxel] = 100.0
+    affine = np.eye(4, dtype=np.float32)
+    nib.save(nib.Nifti1Image(data, affine=affine), path)
+    return affine[:3, :3] @ np.asarray(peak_voxel, dtype=np.float64) + affine[:3, 3]
+
+
+def _peak_ras(image: Any) -> np.ndarray:
+    """Return the RAS coordinate of the brightest voxel of an image."""
+    data = np.asarray(image.dataobj)
+    peak = np.unravel_index(int(np.argmax(data)), data.shape[:3])
+    affine = np.asarray(image.affine, dtype=np.float64)
+    return affine[:3, :3] @ np.asarray(peak, dtype=np.float64) + affine[:3, 3]
+
+
 def _write_centroid_poses(tmp_path: Path, count: int) -> list[str]:
     """Fit one pose per time point with segreg against bare centroids.
 
@@ -413,8 +434,8 @@ class TestMultiregCli:
         template = tmp_path / "base_brainmask.mgz"
         mapmov1 = tmp_path / "tp1_mapped.mgz"
         mapmov2 = tmp_path / "tp2_mapped.mgz"
-        _write_zero_image(mov1)
-        _write_zero_image(mov2)
+        source_peak_ras = _write_point_image(mov1)
+        _write_point_image(mov2)
         geom_affine = np.diag([1.0, 1.0, 1.0, 1.0]).astype(np.float32)
         geom_affine[:3, 3] = (-5.0, -6.0, -7.0)
         nib.save(nib.Nifti1Image(np.zeros((10, 11, 12), dtype=np.float32), geom_affine), geom)
@@ -441,10 +462,14 @@ class TestMultiregCli:
         written = nib.load(str(template))
         assert written.shape[:3] == (10, 11, 12)
         assert np.asarray(written.affine) == pytest.approx(geom_affine)
+        # The grid changed but the world coordinate of the content did not, so
+        # this fails if the content is placed wrongly or misses the grid entirely.
+        assert _peak_ras(written) == pytest.approx(source_peak_ras, abs=1e-4)
         for mapmov_path in (mapmov1, mapmov2):
             mapped = nib.load(str(mapmov_path))
             assert mapped.shape[:3] == (10, 11, 12)
             assert np.asarray(mapped.affine) == pytest.approx(geom_affine)
+            assert _peak_ras(mapped) == pytest.approx(source_peak_ras, abs=1e-4)
 
     def test_main_rejects_template_geom_with_fixtp(self, tmp_path: Path, capsys):
         mov1 = tmp_path / "tp1.nii.gz"
