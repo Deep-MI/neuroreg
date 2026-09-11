@@ -318,6 +318,13 @@ def create_template_geometry(images: Sequence[Any], center_ras: np.ndarray) -> t
     return template_shape, affine
 
 
+#: How to supply a destination geometry when the given transforms carry none.
+_MISSING_DST_REMEDY = (
+    "Attach one with 'lta convert --dst-img', building the grid first with 'mri geom' if no "
+    "suitable reference image exists."
+)
+
+
 def template_geometry_from_lta(transform: LTA) -> tuple[tuple[int, int, int], np.ndarray]:
     """Extract template geometry from the destination volume info of an LTA.
 
@@ -341,11 +348,20 @@ def template_geometry_from_lta(transform: LTA) -> tuple[tuple[int, int, int], np
     """
     info = transform.dst
     if info.get("valid", 1) == 0:
-        raise ValueError("init_ltas must include valid destination geometry for template reconstruction.")
+        # Transforms from atlas registration that carries no target image (for
+        # example centroid-based segreg) are written with valid = 0.
+        raise ValueError(
+            "init_ltas must include valid destination geometry for template reconstruction, but "
+            "this transform has valid = 0 and so does not say where the template lives. "
+            f"{_MISSING_DST_REMEDY}"
+        )
     required = ("volume", "voxelsize", "xras", "yras", "zras", "cras")
     missing = [key for key in required if key not in info]
     if missing:
-        raise ValueError(f"init_ltas destination geometry is missing required fields: {missing}")
+        raise ValueError(
+            f"init_ltas destination geometry is missing required fields: {missing}. "
+            f"{_MISSING_DST_REMEDY}"
+        )
     shape = tuple(int(v) for v in info["volume"])
     image_voxel_sizes = np.asarray(info["voxelsize"], dtype=np.float64)
     affine = np.eye(4, dtype=np.float64)

@@ -88,7 +88,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--fixtp",
         action="store_true",
-        help="Keep the chosen initial target as the output space instead of constructing an unbiased mean space.",
+        help=(
+            "Keep the chosen initial target as the output space instead of constructing an "
+            "unbiased mean space. Cannot be combined with --ixforms, which takes the template "
+            "space from the given LTAs."
+        ),
     )
     p.add_argument(
         "--cras-center",
@@ -208,6 +212,14 @@ def main(args=None) -> None:
         parser.error("--lta requires exactly one output path per --mov input.")
     if ns.ixforms is not None and len(ns.ixforms) != len(ns.mov):
         parser.error("--ixforms requires exactly one input LTA per --mov input.")
+    if ns.ixforms is not None and ns.fixtp:
+        # Both choose the template space: --fixtp keeps the initial target time
+        # point's grid, --ixforms takes it from the given LTAs' destination
+        # geometry. Honouring one would silently discard the other. The
+        # transforms differ only as a consequence of landing in a different
+        # space; --inittp is what selects the registration target, and it
+        # composes with either flag.
+        parser.error("--ixforms and --fixtp both determine the template space; pass only one.")
     if ns.mapmov is not None and len(ns.mapmov) != len(ns.mov):
         parser.error("--mapmov requires exactly one output path per --mov input.")
     if ns.inittp is not None and not 1 <= ns.inittp <= len(ns.mov):
@@ -225,42 +237,53 @@ def main(args=None) -> None:
         sys.exit(1)
     logger.info("Starting multireg with %d time points.", len(mov_imgs))
     template_iterations = 0 if ns.noit else ns.iterate
-    result = multireg(
-        mov_imgs,
-        masks=mov_masks,
-        init_ltas=ns.ixforms,
-        average=ns.average,
-        init_target_index=None if ns.inittp is None else ns.inittp - 1,
-        seed=ns.seed,
-        fix_target=ns.fixtp,
-        init_type=ns.init_type,
-        nmax=ns.nmax,
-        sat=ns.sat,
-        symmetric=ns.symmetric,
-        device=ns.device,
-        use_cras_center=ns.cras_center,
-        template_iterations=template_iterations,
-        template_eps=ns.template_eps,
-        return_mapped=ns.mapmov is not None,
-        mapped_keep_dtype=ns.keep_dtype,
-        verbose=ns.verbose or ns.debug,
-    )
-    save_image(result.template_image, ns.template)
-    print(f"InitialTP:   {result.initial_target_index + 1}")
-    print(f"Seed:        {result.seed}")
-    print(f"Iterations:  {result.template_iterations_run}")
-    if result.iteration_distances:
-        print(f"LastChange:  {result.iteration_distances[-1]:.6f}")
-    print(f"Template:    {ns.template}")
-    if ns.lta is not None:
-        for lta_path, mov_path, mov_img, matrix in zip(ns.lta, ns.mov, mov_imgs, result.transforms_r2r, strict=False):
-            LTA.from_matrix(matrix, mov_path, mov_img, ns.template, result.template_image, lta_type=1).write(lta_path)
-        print(f"LTAs:        {len(ns.lta)}")
-    if ns.mapmov is not None:
-        mapped_images = result.mapped_images if result.mapped_images is not None else []
-        for mapmov_path, mapped_image in zip(ns.mapmov, mapped_images, strict=False):
-            save_image(mapped_image, mapmov_path)
-        print(f"MapMov:      {len(ns.mapmov)}")
+    try:
+        result = multireg(
+            mov_imgs,
+            masks=mov_masks,
+            init_ltas=ns.ixforms,
+            average=ns.average,
+            init_target_index=None if ns.inittp is None else ns.inittp - 1,
+            seed=ns.seed,
+            fix_target=ns.fixtp,
+            init_type=ns.init_type,
+            nmax=ns.nmax,
+            sat=ns.sat,
+            symmetric=ns.symmetric,
+            device=ns.device,
+            use_cras_center=ns.cras_center,
+            template_iterations=template_iterations,
+            template_eps=ns.template_eps,
+            return_mapped=ns.mapmov is not None,
+            mapped_keep_dtype=ns.keep_dtype,
+            verbose=ns.verbose or ns.debug,
+        )
+        save_image(result.template_image, ns.template)
+        print(f"InitialTP:   {result.initial_target_index + 1}")
+        print(f"Seed:        {result.seed}")
+        print(f"Iterations:  {result.template_iterations_run}")
+        if result.iteration_distances:
+            print(f"LastChange:  {result.iteration_distances[-1]:.6f}")
+        print(f"Template:    {ns.template}")
+        if ns.lta is not None:
+            for lta_path, mov_path, mov_img, matrix in zip(
+                ns.lta, ns.mov, mov_imgs, result.transforms_r2r, strict=False
+            ):
+                LTA.from_matrix(
+                    matrix, mov_path, mov_img, ns.template, result.template_image, lta_type=1
+                ).write(lta_path)
+            print(f"LTAs:        {len(ns.lta)}")
+        if ns.mapmov is not None:
+            mapped_images = result.mapped_images if result.mapped_images is not None else []
+            for mapmov_path, mapped_image in zip(ns.mapmov, mapped_images, strict=False):
+                save_image(mapped_image, mapmov_path)
+            print(f"MapMov:      {len(ns.mapmov)}")
+    except Exception as exc:
+        # Registration and output writing report like the other commands rather
+        # than as a traceback; --debug still shows the full stack.
+        logger.debug("multireg failed", exc_info=True)
+        print(f"ERROR: {exc}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

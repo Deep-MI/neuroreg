@@ -500,7 +500,11 @@ def multireg(
         )
     else:
         if fix_target:
-            logger.info("Ignoring fix_target because init_ltas already define the template geometry.")
+            # Visible by default: the caller asked for two different output
+            # spaces and only the init_ltas one can be honoured. The CLI
+            # rejects this combination outright; keep it non-fatal here so
+            # existing library callers are not broken.
+            logger.warning("Ignoring fix_target because init_ltas already define the template geometry.")
         template_shape, template_affine, current_transforms = _resolve_init_ltas(init_ltas)
 
     target_image = images[init_target_index]
