@@ -84,9 +84,11 @@ def _c_rand_choice(start: int, end: int, seed: int) -> int:
 
 def _resolve_init_ltas(
     init_ltas: Sequence[TransformLike],
+    *,
+    require_geometry: bool = True,
 ) -> tuple[
-    tuple[int, int, int],
-    np.ndarray,
+    tuple[int, int, int] | None,
+    np.ndarray | None,
     list[np.ndarray],
 ]:
     """Resolve precomputed LTAs into template geometry and RAS transforms.
@@ -95,25 +97,35 @@ def _resolve_init_ltas(
     ----------
     init_ltas : sequence of TransformLike
         Precomputed timepoint-to-template LTAs or paths to them.
+    require_geometry : bool, default=True
+        If ``True``, read the template geometry from the destination blocks and
+        require every transform to agree on it. If ``False``, take only the
+        matrices and return ``None`` for the geometry: the caller has its own.
+        Skipping is what makes transforms that carry no destination usable,
+        such as a pose fitted by ``segreg`` against a centroid target, whose
+        destination block is marked ``valid = 0``.
 
     Returns
     -------
-    template_shape : tuple of int
-        Template image shape extracted from the destination geometry.
-    template_affine : numpy.ndarray
-        Template voxel-to-RAS affine extracted from the destination geometry.
+    template_shape : tuple of int or None
+        Template image shape from the destination geometry, or ``None`` when
+        ``require_geometry`` is ``False``.
+    template_affine : numpy.ndarray or None
+        Template voxel-to-RAS affine, or ``None`` as above.
     transforms_r2r : list of numpy.ndarray
         RAS-to-RAS matrices for each input time point.
 
     Raises
     ------
     ValueError
-        If ``init_ltas`` is empty or the LTAs do not share identical destination
-        geometry.
+        If ``init_ltas`` is empty, or ``require_geometry`` is ``True`` and the
+        LTAs do not share identical destination geometry.
     """
     loaded_ltas = [LTA.read(transform) if isinstance(transform, str | Path) else transform for transform in init_ltas]
     if not loaded_ltas:
         raise ValueError("init_ltas must not be empty when provided.")
+    if not require_geometry:
+        return None, None, [transform.r2r() for transform in loaded_ltas]
     template_shape, template_affine = template_geometry_from_lta(loaded_ltas[0])
     transforms_r2r = [loaded_ltas[0].r2r()]
     for transform in loaded_ltas[1:]:
@@ -373,6 +385,7 @@ def multireg(
     *,
     masks: Sequence[ImageLike | None] | None = None,
     init_ltas: Sequence[TransformLike] | None = None,
+    template_geom: ImageLike | None = None,
     average: str | int = "median",
     init_target_index: int | None = None,
     seed: int | None = None,
@@ -402,7 +415,14 @@ def multireg(
         transforms and, from their shared destination geometry, the template
         space. The transforms are starting points: each is refined by the
         template iterations unless ``template_iterations`` is 0. Mutually
-        exclusive with ``fix_target``.
+        exclusive with ``fix_target``. When ``template_geom`` is given the
+        destination geometry is ignored and need not be present.
+    template_geom : ImageLike or None, optional
+        Optional image (or path to one) supplying the output template geometry,
+        replacing the geometry that would otherwise be taken from ``init_ltas``
+        or derived from the inputs. Only the shape and affine are used, not the
+        voxel data. Mutually exclusive with ``fix_target`` and
+        ``use_cras_center``, both of which select a geometry themselves.
     average : {"mean", "median", 0, 1}, default="median"
         Template aggregation mode. Integer aliases match the FreeSurfer CLI.
     init_target_index : int or None, optional
@@ -413,8 +433,8 @@ def multireg(
         the seed from image content.
     fix_target : bool, default=False
         If ``True``, keep the initial target geometry instead of constructing an
-        unbiased mean-space template grid. Mutually exclusive with
-        ``init_ltas``, which chooses the template space itself.
+        unbiased mean-space template grid. Mutually exclusive with ``init_ltas``
+        and ``template_geom``, which choose the template space themselves.
     init_type : InitType or None, optional
         Pairwise registration initialization mode.
     nmax : int, default=5
@@ -427,7 +447,8 @@ def multireg(
         Torch device string forwarded to the pairwise kernel.
     use_cras_center : bool, default=False
         If ``True``, center the template geometry on the average CRAS instead of
-        the average mapped intensity centroid.
+        the average mapped intensity centroid. Only selects how a derived
+        geometry is centered, so it is mutually exclusive with ``template_geom``.
     template_iterations : int or None, optional
         Maximum number of global template-refinement passes. ``None`` uses the
         built-in defaults for two versus three-or-more time points.
@@ -453,8 +474,8 @@ def multireg(
     ------
     ValueError
         If the inputs are invalid, incompatible in geometry, the requested
-        iteration settings are inconsistent, or both ``init_ltas`` and
-        ``fix_target`` are given.
+        iteration settings are inconsistent, or mutually exclusive template-space
+        options are combined.
     """
     if len(movables) < 2:
         raise ValueError("multireg requires at least two input images.")
@@ -481,6 +502,25 @@ def multireg(
             "init_ltas and fix_target both determine the template space; pass only one. "
             "init_ltas take it from their shared destination geometry, fix_target from the "
             "initial target time point."
+        )
+    if template_geom is not None and fix_target:
+        raise ValueError(
+            "template_geom and fix_target both determine the template space; pass only one. "
+            "template_geom takes it from the given image, fix_target from the initial target "
+            "time point."
+        )
+    if template_geom is not None and use_cras_center:
+        raise ValueError(
+            "use_cras_center only selects how a derived template geometry is centered, and "
+            "template_geom supplies the geometry instead of deriving one; pass only one."
+        )
+
+    external_geometry: tuple[tuple[int, int, int], np.ndarray] | None = None
+    if template_geom is not None:
+        geom_image = load_image(template_geom) if isinstance(template_geom, str | Path) else template_geom
+        external_geometry = (
+            tuple(int(v) for v in geom_image.shape[:3]),
+            np.asarray(geom_image.affine, dtype=np.float64),
         )
 
     validate_input_geometries(images)
@@ -510,7 +550,15 @@ def multireg(
             verbose=verbose,
         )
     else:
-        template_shape, template_affine, current_transforms = _resolve_init_ltas(init_ltas)
+        template_shape, template_affine, current_transforms = _resolve_init_ltas(
+            init_ltas,
+            require_geometry=external_geometry is None,
+        )
+
+    if external_geometry is not None:
+        # The transforms above map each time point into the common RAS space; only
+        # the grid sampling that space is replaced here.
+        template_shape, template_affine = external_geometry
 
     target_image = images[init_target_index]
     current_template, mapped_images = build_template(

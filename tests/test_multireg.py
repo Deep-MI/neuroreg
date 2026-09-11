@@ -265,6 +265,165 @@ def test_multireg_accepts_fix_target_without_init_ltas(monkeypatch: pytest.Monke
     assert result.template_image.shape == images[0].shape
 
 
+def _geom_affine(voxel_size: float, corner: tuple[float, float, float]) -> np.ndarray:
+    affine = np.diag([voxel_size, voxel_size, voxel_size, 1.0]).astype(np.float32)
+    affine[:3, 3] = corner
+    return affine
+
+
+def test_multireg_template_geom_overrides_derived_geometry(monkeypatch: pytest.MonkeyPatch):
+    images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0)), _make_img(shift=(-2, 0, 0))]
+    register_module = importlib.import_module("neuroreg.multireg.register")
+    monkeypatch.setattr(
+        register_module,
+        "robreg",
+        lambda *args, **kwargs: _fake_tensor(np.eye(4, dtype=np.float64)),
+    )
+    geom_image = _make_img(shape=(12, 13, 14), affine=_geom_affine(1.0, (-3.0, -4.0, -5.0)))
+
+    derived = multireg(images, init_target_index=0, nmax=1, template_iterations=0)
+    result = multireg(images, init_target_index=0, nmax=1, template_iterations=0, template_geom=geom_image)
+
+    assert result.template_image.shape[:3] == (12, 13, 14)
+    assert np.asarray(result.template_image.affine) == pytest.approx(geom_image.affine)
+    # The point of the flag: this is not the geometry multireg would have derived.
+    assert derived.template_image.shape[:3] != (12, 13, 14)
+
+
+def test_multireg_template_geom_rejects_cras_center(monkeypatch: pytest.MonkeyPatch):
+    # use_cras_center only selects how a derived geometry is centered, and with
+    # template_geom nothing is derived.
+    images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0))]
+    register_module = importlib.import_module("neuroreg.multireg.register")
+    monkeypatch.setattr(
+        register_module,
+        "robreg",
+        lambda *args, **kwargs: pytest.fail("multireg must reject the pair before registering"),
+    )
+
+    with pytest.raises(ValueError, match="pass only one"):
+        multireg(images, init_target_index=0, template_iterations=0, template_geom=_make_img(), use_cras_center=True)
+
+
+def test_multireg_template_geom_rejects_fix_target(monkeypatch: pytest.MonkeyPatch):
+    images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0))]
+    register_module = importlib.import_module("neuroreg.multireg.register")
+    monkeypatch.setattr(
+        register_module,
+        "robreg",
+        lambda *args, **kwargs: pytest.fail("multireg must reject the pair before registering"),
+    )
+
+    with pytest.raises(ValueError, match="pass only one"):
+        multireg(images, init_target_index=0, template_iterations=0, template_geom=_make_img(), fix_target=True)
+
+
+def test_multireg_template_geom_ignores_disagreeing_init_lta_geometry(monkeypatch: pytest.MonkeyPatch):
+    # Deliberate: with the geometry supplied externally, the destination blocks of
+    # the input transforms are never read, so they neither have to agree with each
+    # other nor be present at all.
+    images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0))]
+    register_module = importlib.import_module("neuroreg.multireg.register")
+    monkeypatch.setattr(
+        register_module,
+        "robreg",
+        lambda *args, **kwargs: pytest.fail("robreg should not be called when reusing init_ltas with no iterations"),
+    )
+    identity = np.eye(4, dtype=np.float64)
+    init_ltas = [
+        LTA.from_matrix(identity, "tp1.nii.gz", images[0], "a.nii.gz", _make_img(shape=(21, 21, 21)), lta_type=1),
+        LTA.from_matrix(
+            identity,
+            "tp2.nii.gz",
+            images[1],
+            "b.nii.gz",
+            _make_img(shape=(15, 15, 15), affine=_geom_affine(2.0, (0.0, 0.0, 0.0))),
+            lta_type=1,
+        ),
+    ]
+    geom_image = _make_img(shape=(10, 10, 10), affine=_geom_affine(1.0, (-2.0, -2.0, -2.0)))
+
+    with pytest.raises(ValueError, match="identical destination geometry"):
+        multireg(images, init_target_index=0, init_ltas=init_ltas, template_iterations=0)
+
+    result = multireg(
+        images,
+        init_target_index=0,
+        init_ltas=init_ltas,
+        template_iterations=0,
+        template_geom=geom_image,
+    )
+
+    assert result.template_image.shape[:3] == (10, 10, 10)
+    assert np.asarray(result.template_image.affine) == pytest.approx(geom_image.affine)
+
+
+def test_multireg_template_geom_survives_template_iterations(monkeypatch: pytest.MonkeyPatch):
+    images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0)), _make_img(shift=(-2, 0, 0))]
+    register_module = importlib.import_module("neuroreg.multireg.register")
+    monkeypatch.setattr(
+        register_module,
+        "robreg",
+        lambda *args, **kwargs: _fake_tensor(np.eye(4, dtype=np.float64)),
+    )
+    geom_image = _make_img(shape=(12, 13, 14), affine=_geom_affine(1.0, (-3.0, -4.0, -5.0)))
+
+    result = multireg(images, init_target_index=0, nmax=1, template_iterations=3, template_geom=geom_image)
+
+    assert result.template_iterations_run > 0
+    assert result.template_image.shape[:3] == (12, 13, 14)
+    assert np.asarray(result.template_image.affine) == pytest.approx(geom_image.affine)
+
+
+def test_multireg_template_geom_preserves_native_voxel_size(monkeypatch: pytest.MonkeyPatch):
+    # Sub-millimeter inputs with a sub-millimeter template geometry must keep both
+    # the voxel size and the image dimensions of that geometry, with no fallback
+    # to a 1 mm grid. Scaled down from the 0.8 mm / 320 cubed production case.
+    native_affine = _geom_affine(0.8, (-8.0, -8.0, -8.0))
+    images = [
+        _make_img(shape=(20, 20, 20), affine=native_affine),
+        _make_img(shape=(20, 20, 20), shift=(2, 0, 0), affine=native_affine),
+    ]
+    register_module = importlib.import_module("neuroreg.multireg.register")
+    monkeypatch.setattr(
+        register_module,
+        "robreg",
+        lambda *args, **kwargs: _fake_tensor(np.eye(4, dtype=np.float64)),
+    )
+    geom_image = _make_img(shape=(24, 24, 24), affine=_geom_affine(0.8, (-9.6, -9.6, -9.6)))
+
+    result = multireg(images, init_target_index=0, nmax=1, template_iterations=0, template_geom=geom_image)
+
+    assert result.template_image.shape[:3] == (24, 24, 24)
+    voxel_sizes = np.linalg.norm(np.asarray(result.template_image.affine)[:3, :3], axis=0)
+    assert voxel_sizes == pytest.approx([0.8, 0.8, 0.8])
+
+
+def test_multireg_template_geom_maps_movables_onto_the_template_grid(monkeypatch: pytest.MonkeyPatch):
+    images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0)), _make_img(shift=(-2, 0, 0))]
+    register_module = importlib.import_module("neuroreg.multireg.register")
+    monkeypatch.setattr(
+        register_module,
+        "robreg",
+        lambda *args, **kwargs: _fake_tensor(np.eye(4, dtype=np.float64)),
+    )
+    geom_image = _make_img(shape=(12, 13, 14), affine=_geom_affine(1.0, (-3.0, -4.0, -5.0)))
+
+    result = multireg(
+        images,
+        init_target_index=0,
+        nmax=1,
+        template_iterations=0,
+        return_mapped=True,
+        template_geom=geom_image,
+    )
+
+    assert result.mapped_images is not None
+    for mapped in result.mapped_images:
+        assert mapped.shape[:3] == (12, 13, 14)
+        assert np.asarray(mapped.affine) == pytest.approx(geom_image.affine)
+
+
 def test_cast_image_dtype_clips_cubic_overshoot_without_rescaling():
     data = np.array([-5.0, -0.4, 0.4, 128.0, 254.6, 300.0], dtype=np.float32).reshape(1, 1, 6)
     template_image = nib.Nifti1Image(data, np.eye(4, dtype=np.float32))

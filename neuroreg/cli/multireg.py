@@ -62,6 +62,15 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
+        "--template-geom",
+        metavar="FILE",
+        help=(
+            "Image supplying the output template geometry, replacing the geometry multireg "
+            "would otherwise derive. With --ixforms the destination geometry of the input "
+            "transforms is then ignored and need not be present."
+        ),
+    )
+    p.add_argument(
         "--average",
         default="median",
         metavar="MODE",
@@ -88,14 +97,17 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help=(
             "Keep the chosen initial target as the output space instead of constructing an "
-            "unbiased mean space. Cannot be combined with --ixforms, which takes the template "
-            "space from the given LTAs."
+            "unbiased mean space. Cannot be combined with --ixforms or --template-geom, which "
+            "supply the template space themselves."
         ),
     )
     p.add_argument(
         "--cras-center",
         action="store_true",
-        help="Center the template geometry at the average CRAS instead of the average mapped centroid.",
+        help=(
+            "Center the template geometry at the average CRAS instead of the average mapped "
+            "centroid. Cannot be combined with --template-geom, which is not derived."
+        ),
     )
     iter_group = p.add_mutually_exclusive_group()
     iter_group.add_argument(
@@ -219,6 +231,14 @@ def main(args=None) -> None:
         # space; --inittp is what selects the registration target, and it
         # composes with either flag.
         parser.error("--ixforms and --fixtp both determine the template space; pass only one.")
+    if ns.template_geom is not None and ns.fixtp:
+        # Same reasoning as above: --fixtp keeps the initial target time point's
+        # grid, --template-geom supplies a grid outright.
+        parser.error("--template-geom and --fixtp both determine the template space; pass only one.")
+    if ns.template_geom is not None and ns.cras_center:
+        # --cras-center only selects how a derived geometry is centered, and with
+        # --template-geom nothing is derived.
+        parser.error("--cras-center has no effect when --template-geom supplies the template space; pass only one.")
     if ns.mapmov is not None and len(ns.mapmov) != len(ns.mov):
         parser.error("--mapmov requires exactly one output path per --mov input.")
     if ns.inittp is not None and not 1 <= ns.inittp <= len(ns.mov):
@@ -231,6 +251,7 @@ def main(args=None) -> None:
         mov_masks = None
         if ns.mov_mask is not None:
             mov_masks = [cast(Any, load_image(path)) for path in ns.mov_mask]
+        template_geom_img = None if ns.template_geom is None else cast(Any, load_image(ns.template_geom))
     except Exception as exc:
         print(f"ERROR loading image: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -241,6 +262,7 @@ def main(args=None) -> None:
             mov_imgs,
             masks=mov_masks,
             init_ltas=ns.ixforms,
+            template_geom=template_geom_img,
             average=ns.average,
             init_target_index=None if ns.inittp is None else ns.inittp - 1,
             seed=ns.seed,

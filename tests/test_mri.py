@@ -482,7 +482,7 @@ class TestGeom:
         # MGH stores Pxyz_c as float32, so the round-trip is exact to ~1e-5mm.
         assert _cras(written.affine, written.shape) == pytest.approx([0.0, 0.0, 0.0], abs=1e-4)
 
-    def test_fov_and_voxel_size_give_the_expected_matrix_size(self, tmp_path: Path):
+    def test_fov_and_voxel_size_give_the_expected_image_dimensions(self, tmp_path: Path):
         # 256 / 0.8 happens to be exactly 320.0 in float64; the epsilon that
         # guards counts landing just above an integer is covered in
         # tests/test_geometry.py, which can construct that case directly.
