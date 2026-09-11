@@ -200,7 +200,8 @@ def main(args=None) -> None:
     Raises
     ------
     SystemExit
-        If argument parsing fails or an input image cannot be loaded.
+        If argument parsing fails, an input image cannot be loaded, or the
+        registration or any output write fails.
     """
     parser = _build_parser()
     ns = parser.parse_args(args)

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import importlib
-import logging
 from pathlib import Path
 
 import nibabel as nib
@@ -229,12 +228,10 @@ def test_multireg_rebuilds_template_from_precomputed_ltas(monkeypatch: pytest.Mo
     assert len(result.mapped_images) == 2
 
 
-def test_multireg_warns_when_fix_target_is_overridden_by_init_ltas(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-):
-    # init_ltas take the template space from their destination geometry, so
-    # fix_target cannot also be honoured. The CLI rejects the pair outright;
-    # library callers keep working but must be told at default verbosity.
+def test_multireg_rejects_fix_target_with_init_ltas(monkeypatch: pytest.MonkeyPatch):
+    # Both determine the template space, so accepting the pair would silently
+    # discard one. A caller who passes both should be told, not have to find it
+    # in a log.
     images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0))]
     register_module = importlib.import_module("neuroreg.multireg.register")
     template_image = _make_img()
@@ -246,13 +243,26 @@ def test_multireg_warns_when_fix_target_is_overridden_by_init_ltas(
     monkeypatch.setattr(
         register_module,
         "robreg",
-        lambda *args, **kwargs: pytest.fail("robreg should not be called with no iterations"),
+        lambda *args, **kwargs: pytest.fail("multireg must reject the pair before registering"),
     )
 
-    with caplog.at_level(logging.WARNING, logger="neuroreg.multireg.register"):
+    with pytest.raises(ValueError, match="pass only one"):
         multireg(images, init_target_index=0, init_ltas=init_ltas, template_iterations=0, fix_target=True)
 
-    assert "Ignoring fix_target" in caplog.text
+
+def test_multireg_accepts_fix_target_without_init_ltas(monkeypatch: pytest.MonkeyPatch):
+    # The rejection must be specific to the combination, not to fix_target.
+    images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0))]
+    register_module = importlib.import_module("neuroreg.multireg.register")
+    monkeypatch.setattr(
+        register_module,
+        "robreg",
+        lambda *args, **kwargs: _fake_tensor(np.eye(4, dtype=np.float64)),
+    )
+
+    result = multireg(images, init_target_index=0, nmax=1, template_iterations=0, fix_target=True)
+
+    assert result.template_image.shape == images[0].shape
 
 
 def test_cast_image_dtype_clips_cubic_overshoot_without_rescaling():

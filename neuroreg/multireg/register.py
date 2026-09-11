@@ -398,8 +398,11 @@ def multireg(
     masks : sequence of ImageLike or None, optional
         Optional per-timepoint masks aligned with ``movables``.
     init_ltas : sequence of TransformLike or None, optional
-        Optional precomputed LTAs defining the initial timepoint-to-template
-        mappings and template geometry.
+        Optional precomputed LTAs supplying the initial timepoint-to-template
+        transforms and, from their shared destination geometry, the template
+        space. The transforms are starting points: each is refined by the
+        template iterations unless ``template_iterations`` is 0. Mutually
+        exclusive with ``fix_target``.
     average : {"mean", "median", 0, 1}, default="median"
         Template aggregation mode. Integer aliases match the FreeSurfer CLI.
     init_target_index : int or None, optional
@@ -410,7 +413,8 @@ def multireg(
         the seed from image content.
     fix_target : bool, default=False
         If ``True``, keep the initial target geometry instead of constructing an
-        unbiased mean-space template grid.
+        unbiased mean-space template grid. Mutually exclusive with
+        ``init_ltas``, which chooses the template space itself.
     init_type : InitType or None, optional
         Pairwise registration initialization mode.
     nmax : int, default=5
@@ -448,8 +452,9 @@ def multireg(
     Raises
     ------
     ValueError
-        If the inputs are invalid, incompatible in geometry, or the requested
-        iteration settings are inconsistent.
+        If the inputs are invalid, incompatible in geometry, the requested
+        iteration settings are inconsistent, or both ``init_ltas`` and
+        ``fix_target`` are given.
     """
     if len(movables) < 2:
         raise ValueError("multireg requires at least two input images.")
@@ -471,6 +476,12 @@ def multireg(
 
     if init_ltas is not None and len(init_ltas) != len(images):
         raise ValueError("Number of init_ltas must match the number of input images.")
+    if init_ltas is not None and fix_target:
+        raise ValueError(
+            "init_ltas and fix_target both determine the template space; pass only one. "
+            "init_ltas take it from their shared destination geometry, fix_target from the "
+            "initial target time point."
+        )
 
     validate_input_geometries(images)
     resolved_init_type = resolve_init_type(init_type, default_init_type="centroid")
@@ -499,12 +510,6 @@ def multireg(
             verbose=verbose,
         )
     else:
-        if fix_target:
-            # Visible by default: the caller asked for two different output
-            # spaces and only the init_ltas one can be honoured. The CLI
-            # rejects this combination outright; keep it non-fatal here so
-            # existing library callers are not broken.
-            logger.warning("Ignoring fix_target because init_ltas already define the template geometry.")
         template_shape, template_affine, current_transforms = _resolve_init_ltas(init_ltas)
 
     target_image = images[init_target_index]
