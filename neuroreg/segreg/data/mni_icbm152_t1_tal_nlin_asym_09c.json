@@ -500,5 +500,40 @@
       3.5105337078651644,
       -0.9651217228464475
     ]
+  },
+  "geometry": {
+    "comment": "Deliberately the conformed 256 grid, not the template's native 193x229x193 plain-RAS grid that the centroids were measured from. The centroids are RAS mm and segreg fits centroid to centroid in RAS, so this block does not affect the fitted transform; it only supplies the LTA destination, which is the grid vol2vol resamples onto when no --ref is given. Same geometry as FreeSurfer's own talairach target mni305.cor.mgz. All 100 centroids fall inside it with at least 39 mm of margin.",
+    "dims": [
+      256,
+      256,
+      256
+    ],
+    "delta": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "Mdc": [
+      [
+        -1.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      [
+        0.0,
+        1.0,
+        0.0
+      ]
+    ],
+    "Pxyz_c": [
+      0.0,
+      0.0,
+      0.0
+    ]
   }
 }
