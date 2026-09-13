@@ -103,7 +103,9 @@ def _resolve_init_ltas(
         the template geometry and the destination blocks are never read, so the
         transforms neither have to agree on a destination nor carry one at all.
         That is what makes a pose fitted by ``segreg`` against a centroid target
-        usable here, since its destination block is marked ``valid = 0``.
+        that carries no geometry of its own usable here, since such a transform
+        has its destination block marked ``valid = 0``. The bundled targets do
+        carry one, so those poses already name a destination.
 
     Returns
     -------

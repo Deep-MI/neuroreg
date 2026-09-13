@@ -348,8 +348,9 @@ def template_geometry_from_lta(transform: LTA) -> tuple[tuple[int, int, int], np
     """
     info = transform.dst
     if info.get("valid", 1) == 0:
-        # Transforms from atlas registration that carries no target image (for
-        # example centroid-based segreg) are written with valid = 0.
+        # Transforms from atlas registration that carries no target image are
+        # written with valid = 0, for example centroid-based segreg against a
+        # target file with no geometry block of its own.
         raise ValueError(
             "init_ltas must include valid destination geometry for template reconstruction, but "
             "this transform has valid = 0 and so does not say where the template lives. "
