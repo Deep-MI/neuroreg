@@ -38,7 +38,7 @@ from ..image import (
     save_image,
 )
 from ..transforms import TRANSFORM_FORMATS, affine_from_volume_info, read_transform_as_lta
-from ._args import NumberListParser, number_list
+from ._args import NumberListParser, is_geometry_json, load_geometry_source, number_list
 from ._outputs import validate_image_outputs
 
 
@@ -154,7 +154,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "--targ",
         metavar="FILE",
         dest="ref",
-        help="Optional target/reference image geometry. Overrides geometry stored in the transform.",
+        help=(
+            "Optional target/reference geometry, as an image or a centroid target JSON carrying "
+            "a geometry block, since only the header is read. Overrides geometry stored in the "
+            "transform."
+        ),
     )
     parser.add_argument(
         "--ref-cras",
@@ -291,20 +295,34 @@ def _validate_args(ns: argparse.Namespace, parser: argparse.ArgumentParser) -> N
     if ns.transform_format is not None and ns.transform is None:
         parser.error("--transform-format requires --transform.")
     if ns.header_only:
+        # --header-only rewrites the input's header and copies its voxels through
+        # untouched. Each flag below resamples, rescales or retypes those voxels,
+        # so every one of these is a redundancy rather than a conflict, and the
+        # messages say so: refusing without that is a round trip for the reader.
         if ns.interp != "linear":
-            parser.error("--header-only cannot be combined with --interp.")
+            parser.error("--header-only never resamples, so there is nothing for --interp to interpolate.")
         if ns.pad != "zero":
-            parser.error("--header-only cannot be combined with --pad.")
+            parser.error("--header-only never resamples, so no sample falls outside the input for --pad to fill.")
         if ns.out_dtype is not None or ns.keep_dtype:
-            parser.error("--header-only cannot be combined with output-dtype flags.")
+            parser.error(
+                "--header-only already writes the input voxels and dtype unchanged, so it needs "
+                "neither --out-dtype nor --keep-dtype."
+            )
         if ns.scale_mode is not None or ns.target_max is not None:
-            parser.error("--header-only cannot be combined with scaling flags.")
+            parser.error(
+                "--header-only writes the input intensities unchanged, so there is nothing for "
+                "--scale-mode or --target-max to rescale."
+            )
         if ns.robust_low != 0.0 or ns.robust_high != 0.999:
-            parser.error("--header-only cannot be combined with robust scaling flags.")
+            parser.error(
+                "--header-only writes the input intensities unchanged, so there is nothing for "
+                "--robust-low or --robust-high to rescale."
+            )
         if ns.ref_cras is not None:
-            # --header-only rewrites the input's own header and never resamples,
-            # so there is no target grid for a placement override to act on.
-            parser.error("--header-only cannot be combined with --ref-cras.")
+            parser.error(
+                "--header-only rewrites the input's own header and never resamples, so there is no "
+                "target grid for --ref-cras to place."
+            )
     if ns.scale_mode is None:
         if ns.target_max is not None:
             parser.error("--target-max requires --scale-mode rescale or --scale-mode robust.")
@@ -662,14 +680,16 @@ def main(args=None) -> None:
 
     try:
         mov_img = load_image(ns.input_file)
-        ref_img = load_image(ns.ref) if ns.ref is not None else None
+        ref_img = load_geometry_source(ns.ref, flag="--ref") if ns.ref is not None else None
         lta = (
             None
             if ns.transform is None
             else read_transform_as_lta(
                 ns.transform,
                 src_img=ns.input_file,
-                dst_img=ns.ref,
+                # An image goes in as its path, which the reader opens itself;
+                # only a geometry JSON has to be handed over already loaded.
+                dst_img=ref_img if ns.ref is not None and is_geometry_json(ns.ref) else ns.ref,
                 fmt=ns.transform_format,
             )
         )

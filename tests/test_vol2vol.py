@@ -710,7 +710,37 @@ class TestVol2VolRefCras:
                 ]
             )
 
-        assert "--header-only cannot be combined with --ref-cras" in capsys.readouterr().err
+        assert "--ref-cras" in capsys.readouterr().err
+
+    @pytest.mark.parametrize(
+        ("flag", "expected"),
+        [
+            (["--interp", "cubic"], "never resamples"),
+            (["--pad", "border"], "never resamples"),
+            (["--keep-dtype"], "already writes the input voxels and dtype unchanged"),
+            (["--out-dtype", "uint8"], "already writes the input voxels and dtype unchanged"),
+            (["--scale-mode", "rescale"], "writes the input intensities unchanged"),
+            (["--target-max", "255"], "writes the input intensities unchanged"),
+            (["--robust-low", "0.1"], "writes the input intensities unchanged"),
+            (["--ref-cras", "0,0,0"], "no target grid"),
+        ],
+    )
+    def test_header_only_rejections_explain_the_redundancy(
+        self, tmp_path: Path, capsys, flag: list[str], expected: str
+    ):
+        # Each of these is a redundancy rather than a conflict, so every message
+        # has to say what --header-only already does, not merely refuse.
+        mov_path = _write_image(tmp_path / "mov.nii.gz", np.ones((2, 2, 2), dtype=np.float32))
+
+        with pytest.raises(SystemExit):
+            vol2vol_main(
+                ["--in", str(mov_path), "--header-only", *flag, "--out", str(tmp_path / "out.nii.gz")]
+            )
+
+        err = capsys.readouterr().err
+        assert expected in err
+        assert flag[0] in err
+        assert "cannot be combined" not in err
 
     @pytest.mark.parametrize("value", ["1,2", "1,2,3,4", "a,b,c", "0,0,x", "", "1 2 3", "nan,0,0"])
     def test_rejects_malformed_values(self, tmp_path: Path, capsys, value: str):
