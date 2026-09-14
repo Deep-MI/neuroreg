@@ -38,7 +38,7 @@ from ..image import (
     save_image,
 )
 from ..transforms import TRANSFORM_FORMATS, affine_from_volume_info, read_transform_as_lta
-from ._args import NumberListParser, number_list
+from ._args import NumberListParser, is_geometry_json, load_geometry_source, number_list
 from ._outputs import validate_image_outputs
 
 
@@ -154,7 +154,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "--targ",
         metavar="FILE",
         dest="ref",
-        help="Optional target/reference image geometry. Overrides geometry stored in the transform.",
+        help=(
+            "Optional target/reference geometry, as an image or a centroid target JSON carrying "
+            "a geometry block, since only the header is read. Overrides geometry stored in the "
+            "transform."
+        ),
     )
     parser.add_argument(
         "--ref-cras",
@@ -676,14 +680,16 @@ def main(args=None) -> None:
 
     try:
         mov_img = load_image(ns.input_file)
-        ref_img = load_image(ns.ref) if ns.ref is not None else None
+        ref_img = load_geometry_source(ns.ref, flag="--ref") if ns.ref is not None else None
         lta = (
             None
             if ns.transform is None
             else read_transform_as_lta(
                 ns.transform,
                 src_img=ns.input_file,
-                dst_img=ns.ref,
+                # An image goes in as its path, which the reader opens itself;
+                # only a geometry JSON has to be handed over already loaded.
+                dst_img=ref_img if ns.ref is not None and is_geometry_json(ns.ref) else ns.ref,
                 fmt=ns.transform_format,
             )
         )
