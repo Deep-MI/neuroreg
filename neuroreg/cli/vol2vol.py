@@ -291,20 +291,34 @@ def _validate_args(ns: argparse.Namespace, parser: argparse.ArgumentParser) -> N
     if ns.transform_format is not None and ns.transform is None:
         parser.error("--transform-format requires --transform.")
     if ns.header_only:
+        # --header-only rewrites the input's header and copies its voxels through
+        # untouched. Each flag below resamples, rescales or retypes those voxels,
+        # so every one of these is a redundancy rather than a conflict, and the
+        # messages say so: refusing without that is a round trip for the reader.
         if ns.interp != "linear":
-            parser.error("--header-only cannot be combined with --interp.")
+            parser.error("--header-only never resamples, so there is nothing for --interp to interpolate.")
         if ns.pad != "zero":
-            parser.error("--header-only cannot be combined with --pad.")
+            parser.error("--header-only never resamples, so no sample falls outside the input for --pad to fill.")
         if ns.out_dtype is not None or ns.keep_dtype:
-            parser.error("--header-only cannot be combined with output-dtype flags.")
+            parser.error(
+                "--header-only already writes the input voxels and dtype unchanged, so it needs "
+                "neither --out-dtype nor --keep-dtype."
+            )
         if ns.scale_mode is not None or ns.target_max is not None:
-            parser.error("--header-only cannot be combined with scaling flags.")
+            parser.error(
+                "--header-only writes the input intensities unchanged, so there is nothing for "
+                "--scale-mode or --target-max to rescale."
+            )
         if ns.robust_low != 0.0 or ns.robust_high != 0.999:
-            parser.error("--header-only cannot be combined with robust scaling flags.")
+            parser.error(
+                "--header-only writes the input intensities unchanged, so there is nothing for "
+                "--robust-low or --robust-high to rescale."
+            )
         if ns.ref_cras is not None:
-            # --header-only rewrites the input's own header and never resamples,
-            # so there is no target grid for a placement override to act on.
-            parser.error("--header-only cannot be combined with --ref-cras.")
+            parser.error(
+                "--header-only rewrites the input's own header and never resamples, so there is no "
+                "target grid for --ref-cras to place."
+            )
     if ns.scale_mode is None:
         if ns.target_max is not None:
             parser.error("--target-max requires --scale-mode rescale or --scale-mode robust.")
