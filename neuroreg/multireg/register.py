@@ -154,11 +154,12 @@ def _resolve_iterations(
     n_images : int
         Number of input time points.
     builds_initial_space : bool, default=True
-        Whether the opening robust pairwise pass runs. With two time points that
-        pass lands the mean space exactly by symmetry, so refining afterwards
-        cannot improve it and an explicit request is ignored. ``init_ltas``
-        replaces that pass, and then nothing robust has run: the supplied
-        transforms would come straight back out, so a request is honoured.
+        Whether the opening robust pairwise pass runs. Both the two-timepoint
+        default of zero and the refusal to honour an explicit count rest on that
+        pass having landed the mean space exactly by symmetry, so neither is
+        justified when it does not run. ``init_ltas`` replaces it, and then
+        nothing robust has happened: without refinement the supplied transforms
+        would come straight back out unchanged.
 
     Returns
     -------
@@ -170,12 +171,13 @@ def _resolve_iterations(
     ValueError
         If ``template_iterations`` is negative.
     """
+    skip_for_two = n_images <= 2 and builds_initial_space
     if template_iterations is None:
-        return 0 if n_images <= 2 else 6
+        return 0 if skip_for_two else 6
     resolved = int(template_iterations)
     if resolved < 0:
         raise ValueError("template_iterations must be >= 0.")
-    if n_images <= 2 and resolved > 0 and builds_initial_space:
+    if skip_for_two and resolved > 0:
         logger.info("Skipping iterative template refinement because only two time points were provided.")
         return 0
     return resolved
@@ -481,9 +483,10 @@ def multireg(
     template_iterations : int or None, optional
         Maximum number of global template-refinement passes. ``None`` uses the
         built-in defaults for two versus three-or-more time points. With exactly
-        two time points an explicit count is ignored, because the opening
-        pairwise pass already lands the mean space exactly by symmetry, unless
-        ``init_ltas`` replaced that pass and left nothing robust to have run.
+        two time points both the default of zero and the refusal to honour an
+        explicit count rest on the opening pairwise pass having landed the mean
+        space exactly by symmetry, so neither applies when ``init_ltas``
+        replaced that pass: refinement then runs, and ``0`` asks for none.
     template_eps : float, default=0.03
         Convergence threshold in millimeters for the maximum per-iteration
         transform change.

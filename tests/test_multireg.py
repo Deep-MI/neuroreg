@@ -140,6 +140,37 @@ def test_multireg_honours_iterate_for_two_inputs_when_init_ltas_replace_the_pair
     assert not np.array_equal(np.asarray(result.transforms_r2r[1]), init_ltas[1].r2r())
 
 
+def test_multireg_refines_two_inputs_with_init_ltas_without_being_asked(monkeypatch: pytest.MonkeyPatch):
+    # The default of zero for two inputs rests on the same symmetry argument as
+    # the skip, so it cannot hold when init_ltas replaced the pairwise pass:
+    # asking for nothing would otherwise mean no registration ran at all.
+    images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0))]
+    register_module = importlib.import_module("neuroreg.multireg.register")
+    monkeypatch.setattr(
+        register_module,
+        "robreg",
+        lambda *args, **kwargs: _fake_tensor(np.eye(4, dtype=np.float64)),
+    )
+    template_image = _make_img()
+    init_ltas = []
+    for index, image in enumerate(images):
+        matrix = np.eye(4, dtype=np.float64)
+        matrix[0, 3] = -1.5 * index
+        init_ltas.append(
+            LTA.from_matrix(matrix, f"tp{index + 1}.nii.gz", image, "template.nii.gz", template_image, lta_type=1)
+        )
+
+    result = multireg(images, init_target_index=0, init_ltas=init_ltas, nmax=1)
+
+    assert result.template_iterations_run > 0
+    assert not np.array_equal(np.asarray(result.transforms_r2r[1]), init_ltas[1].r2r())
+
+    # --noit is how the caller asks for the transforms exactly as given.
+    mapped_only = multireg(images, init_target_index=0, init_ltas=init_ltas, nmax=1, template_iterations=0)
+    assert mapped_only.template_iterations_run == 0
+    assert np.array_equal(np.asarray(mapped_only.transforms_r2r[1]), init_ltas[1].r2r())
+
+
 def test_multireg_still_skips_iterations_for_two_inputs_that_were_registered(monkeypatch: pytest.MonkeyPatch):
     # The original reasoning still holds when the pairwise pass does run.
     images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0))]
