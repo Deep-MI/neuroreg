@@ -138,7 +138,12 @@ def _resolve_init_ltas(
     return template_shape, template_affine, transforms_r2r
 
 
-def _resolve_iterations(template_iterations: int | None, n_images: int) -> int:
+def _resolve_iterations(
+    template_iterations: int | None,
+    n_images: int,
+    *,
+    builds_initial_space: bool = True,
+) -> int:
     """Resolve the requested number of global template-refinement iterations.
 
     Parameters
@@ -148,6 +153,12 @@ def _resolve_iterations(template_iterations: int | None, n_images: int) -> int:
         style defaults for two versus three-or-more time points.
     n_images : int
         Number of input time points.
+    builds_initial_space : bool, default=True
+        Whether the opening robust pairwise pass runs. With two time points that
+        pass lands the mean space exactly by symmetry, so refining afterwards
+        cannot improve it and an explicit request is ignored. ``init_ltas``
+        replaces that pass, and then nothing robust has run: the supplied
+        transforms would come straight back out, so a request is honoured.
 
     Returns
     -------
@@ -164,7 +175,7 @@ def _resolve_iterations(template_iterations: int | None, n_images: int) -> int:
     resolved = int(template_iterations)
     if resolved < 0:
         raise ValueError("template_iterations must be >= 0.")
-    if n_images <= 2 and resolved > 0:
+    if n_images <= 2 and resolved > 0 and builds_initial_space:
         logger.info("Skipping iterative template refinement because only two time points were provided.")
         return 0
     return resolved
@@ -469,7 +480,10 @@ def multireg(
         ``template_geometry`` and ``fix_target``, none of which derives one.
     template_iterations : int or None, optional
         Maximum number of global template-refinement passes. ``None`` uses the
-        built-in defaults for two versus three-or-more time points.
+        built-in defaults for two versus three-or-more time points. With exactly
+        two time points an explicit count is ignored, because the opening
+        pairwise pass already lands the mean space exactly by symmetry, unless
+        ``init_ltas`` replaced that pass and left nothing robust to have run.
     template_eps : float, default=0.03
         Convergence threshold in millimeters for the maximum per-iteration
         transform change.
@@ -563,7 +577,11 @@ def multireg(
 
     validate_input_geometries(images, derives_geometry=derives_geometry)
     resolved_init_type = resolve_init_type(init_type, default_init_type="centroid")
-    resolved_template_iterations = _resolve_iterations(template_iterations, len(images))
+    resolved_template_iterations = _resolve_iterations(
+        template_iterations,
+        len(images),
+        builds_initial_space=init_ltas is None,
+    )
 
     if init_target_index is None:
         init_target_index, resolved_seed = choose_initial_target(images, seed=seed)
