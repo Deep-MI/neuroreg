@@ -21,8 +21,21 @@ from ..transforms import (
     read_transform_as_lta,
     write_lta_as_transform,
 )
+from ._args import is_geometry_json, load_geometry_source
 
 # ── helpers ───────────────────────────────────────────────────────────────────
+
+
+def _geometry_argument(source: str | None, *, flag: str):
+    """Resolve a geometry option for :func:`read_transform_as_lta`.
+
+    An image is passed through as its path so the reader opens it and records
+    it by name. A geometry JSON is loaded here, since the reader opens images
+    only.
+    """
+    if source is None:
+        return None
+    return load_geometry_source(source, flag=flag) if is_geometry_json(source) else source
 
 
 def _positive_float(value: str) -> float:
@@ -253,8 +266,20 @@ def _build_parser() -> argparse.ArgumentParser:
         choices=TRANSFORM_FORMATS,
         help="Override output format inference for ambiguous files.",
     )
-    conv_p.add_argument("--src-img", help="Moving/source image geometry for conversion when needed.")
-    conv_p.add_argument("--dst-img", help="Reference/target image geometry for conversion when needed.")
+    conv_p.add_argument(
+        "--src-img",
+        help=(
+            "Moving/source image geometry for conversion when needed. Accepts an image or a "
+            "centroid target JSON carrying a geometry block, since only the header is read."
+        ),
+    )
+    conv_p.add_argument(
+        "--dst-img",
+        help=(
+            "Reference/target image geometry for conversion when needed. Accepts an image or a "
+            "centroid target JSON carrying a geometry block, since only the header is read."
+        ),
+    )
     conv_p.add_argument(
         "--out-type",
         choices=["ras2ras", "vox2vox"],
@@ -350,7 +375,13 @@ def _main_concat(ns: argparse.Namespace) -> None:
 
 def _main_convert(ns: argparse.Namespace) -> None:
     try:
-        lta = read_transform_as_lta(ns.input, src_img=ns.src_img, dst_img=ns.dst_img, fmt=ns.in_format)
+        # Both are read only for their header, so both also accept a geometry
+        # JSON. An image path is handed over as a path, because the reader opens
+        # it itself and records it as the geometry's filename; only a JSON has to
+        # be resolved here, and it then has no filename to record.
+        src_img = _geometry_argument(ns.src_img, flag="--src-img")
+        dst_img = _geometry_argument(ns.dst_img, flag="--dst-img")
+        lta = read_transform_as_lta(ns.input, src_img=src_img, dst_img=dst_img, fmt=ns.in_format)
     except Exception as e:
         print(f"ERROR: cannot read {ns.input}: {e}", file=sys.stderr)
         sys.exit(1)
