@@ -124,9 +124,9 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="N",
         help=(
             "Maximum number of template-refinement iterations. Defaults to 6 for 3+ "
-            "time points and 0 for 2 time points. With 2 time points an explicit count "
-            "is ignored, since the initial pass is already exact by symmetry, unless "
-            "--ixforms replaced that pass."
+            "time points and 0 for 2, where the initial pass is already exact by "
+            "symmetry and an explicit count is ignored. Neither applies when --ixforms "
+            "replaced that pass: refinement then runs, and --noit asks for none."
         ),
     )
     p.add_argument(
