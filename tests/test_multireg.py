@@ -111,6 +111,50 @@ def test_multireg_builds_template_and_expected_transforms(monkeypatch: pytest.Mo
     assert result.iteration_distances == []
 
 
+def test_multireg_honours_iterate_for_two_inputs_when_init_ltas_replace_the_pairwise_pass(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    # The two-timepoint skip assumes the opening robust pass ran and landed the
+    # mean space exactly by symmetry. init_ltas replaces that pass, so without
+    # refinement the supplied transforms come straight back out unchanged.
+    images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0))]
+    register_module = importlib.import_module("neuroreg.multireg.register")
+    monkeypatch.setattr(
+        register_module,
+        "robreg",
+        lambda *args, **kwargs: _fake_tensor(np.eye(4, dtype=np.float64)),
+    )
+    template_image = _make_img()
+    init_ltas = []
+    for index, image in enumerate(images):
+        matrix = np.eye(4, dtype=np.float64)
+        matrix[0, 3] = -1.5 * index
+        init_ltas.append(
+            LTA.from_matrix(matrix, f"tp{index + 1}.nii.gz", image, "template.nii.gz", template_image, lta_type=1)
+        )
+
+    result = multireg(images, init_target_index=0, init_ltas=init_ltas, nmax=1, template_iterations=2)
+
+    assert result.template_iterations_run > 0
+    # Without the pairwise pass, an ignored request returns the inputs verbatim.
+    assert not np.array_equal(np.asarray(result.transforms_r2r[1]), init_ltas[1].r2r())
+
+
+def test_multireg_still_skips_iterations_for_two_inputs_that_were_registered(monkeypatch: pytest.MonkeyPatch):
+    # The original reasoning still holds when the pairwise pass does run.
+    images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0))]
+    register_module = importlib.import_module("neuroreg.multireg.register")
+    monkeypatch.setattr(
+        register_module,
+        "robreg",
+        lambda *args, **kwargs: _fake_tensor(np.eye(4, dtype=np.float64)),
+    )
+
+    result = multireg(images, init_target_index=0, nmax=1, template_iterations=2)
+
+    assert result.template_iterations_run == 0
+
+
 def test_multireg_iterative_refinement_reuses_previous_transforms(monkeypatch: pytest.MonkeyPatch):
     images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0)), _make_img(shift=(-2, 0, 0))]
     register_module = importlib.import_module("neuroreg.multireg.register")
