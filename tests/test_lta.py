@@ -977,6 +977,42 @@ class TestAttachGeometry:
         assert written.dst["valid"] != 0
         assert list(written.dst["volume"]) == [10, 10, 10]
 
+    def test_geometry_given_as_a_loaded_image_does_not_corrupt_the_volume_info(self, tmp_path: Path):
+        # The geometry arguments accept anything _header_info reads, including
+        # loaded images. Recording that value as the filename writes a
+        # multi-line repr where the geometry lines belong, leaving a block with
+        # no volume, voxelsize or cras at all.
+        from neuroreg.transforms import read_transform_as_lta
+
+        src = self._img((8, 8, 8), 1.0, tmp_path / "tp1.mgz")
+        self._img((10, 10, 10), 2.0, tmp_path / "target.mgz")
+        in_lta = tmp_path / "in.lta"
+        LTA.from_matrix(np.eye(4), str(tmp_path / "tp1.mgz"), src, "atlas", None, lta_type=1).write(in_lta)
+
+        attached = read_transform_as_lta(str(in_lta), dst_img=nib.load(str(tmp_path / "target.mgz")))
+
+        assert list(attached.dst["volume"]) == [10, 10, 10]
+        assert list(attached.dst["voxelsize"]) == pytest.approx([2.0, 2.0, 2.0])
+        assert "cras" in attached.dst
+        assert "\n" not in attached.dst["filename"]
+
+        # A written block has to survive the round trip the same way.
+        out_lta = tmp_path / "out.lta"
+        attached.write(out_lta)
+        assert list(LTA.read(out_lta).dst["volume"]) == [10, 10, 10]
+
+    def test_geometry_given_as_a_path_still_records_that_path(self, tmp_path: Path):
+        from neuroreg.transforms import read_transform_as_lta
+
+        src = self._img((8, 8, 8), 1.0, tmp_path / "tp1.mgz")
+        self._img((10, 10, 10), 2.0, tmp_path / "target.mgz")
+        in_lta = tmp_path / "in.lta"
+        LTA.from_matrix(np.eye(4), str(tmp_path / "tp1.mgz"), src, "atlas", None, lta_type=1).write(in_lta)
+
+        attached = read_transform_as_lta(str(in_lta), dst_img=str(tmp_path / "target.mgz"))
+
+        assert attached.dst["filename"] == str(tmp_path / "target.mgz")
+
     def test_multireg_accepts_the_repaired_transforms(self, tmp_path: Path):
         # The remedy named in multireg's error message has to actually work.
         from neuroreg.multireg import multireg

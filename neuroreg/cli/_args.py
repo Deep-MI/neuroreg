@@ -3,7 +3,8 @@
 Several commands accept geometry components as comma-separated number lists
 (``--ref-cras 0,0,0``, ``--vox-size 0.8``, ``--shape 320,320,320``). Both the
 parsing and the argparse workaround needed to accept negative values live here
-so the commands cannot drift apart.
+so the commands cannot drift apart. The same applies to the options that take a
+whole grid from a file, which accept either an image or a geometry JSON.
 """
 
 from __future__ import annotations
@@ -11,6 +12,7 @@ from __future__ import annotations
 import argparse
 import re
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -106,3 +108,68 @@ def number_list(
 
     parse.__name__ = f"number_list{flag}"
     return parse
+
+
+#: Suffix that selects the geometry JSON reader instead of the image reader.
+GEOMETRY_JSON_SUFFIX = ".json"
+
+
+def is_geometry_json(source: str | Path) -> bool:
+    """Return whether a geometry option points at a geometry JSON rather than an image."""
+    return Path(source).suffix.lower() == GEOMETRY_JSON_SUFFIX
+
+
+def load_geometry_source(source: str | Path, *, flag: str) -> Any:
+    """Load a target grid from either an image or a centroid target JSON.
+
+    ``--ref``, ``--template-geom``, ``--src-img``, ``--dst-img`` and ``--like``
+    read only the shape and affine of what they are given, so requiring an image
+    forces callers to keep a file around purely for its header. The bundled
+    centroid targets already serialize exactly those fields under ``geometry``,
+    so the same grid can be named without one.
+
+    The JSON case is returned as an image whose voxels are a zero-strided view
+    rather than an allocation, because no caller reads them: this keeps every
+    consumer on the one code path it already has.
+
+    Parameters
+    ----------
+    source : str or Path
+        Path to an image, or to a target JSON carrying a ``geometry`` block.
+        A bundled atlas name is not accepted here; pass a path.
+    flag : str
+        Option name to quote in error messages, e.g. ``"--ref"``.
+
+    Returns
+    -------
+    Any
+        Loaded nibabel image, or a geometry-only image built from the JSON.
+
+    Raises
+    ------
+    ValueError
+        If the JSON carries no ``geometry`` block, and so names no grid.
+    """
+    # Imported lazily so the lighter CLIs do not pull in segreg at import time.
+    import nibabel as nib
+
+    from ..image import load_image
+    from ..segreg.atlas import affine_from_header
+    from ..segreg.io import read_target_json
+
+    if not is_geometry_json(source):
+        return load_image(source)
+
+    geometry = read_target_json(source).geometry
+    if geometry is None:
+        raise ValueError(
+            f"{flag} was given the target file '{source}', which carries centroids but no 'geometry' "
+            "block, so it does not describe an output grid. Pass an image, or a target file with a "
+            "geometry block such as the bundled atlas targets."
+        )
+    dims = tuple(int(v) for v in geometry["dims"])
+    voxels = np.broadcast_to(np.uint8(0), dims)
+    # No filename is set: nibabel validates it against the image type and would
+    # reject a .json path. Consumers that record one fall back to empty, which
+    # is what an LTA already carries for a geometry with no image behind it.
+    return nib.MGHImage(voxels, affine_from_header(geometry))
