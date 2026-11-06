@@ -86,8 +86,8 @@ full = [
 ]
 
 [project.urls]
-homepage = 'https://Deep-MI.github.io/neuroreg/dev/index.html'
-documentation = 'https://Deep-MI.github.io/neuroreg/dev/index.html'
+homepage = 'https://deep-mi.org/neuroreg'
+documentation = 'https://deep-mi.org/neuroreg'
 source = 'https://github.com/Deep-MI/neuroreg'
 tracker = 'https://github.com/Deep-MI/neuroreg/issues'
 
