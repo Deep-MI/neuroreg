@@ -31,4 +31,4 @@ jobs:
       - name: Run pydocstyle
         run: pydocstyle .
       - name: Run bibclean
-        run: bibclean-check doc/references.bib
+        run: bibclean check doc/references.bib
