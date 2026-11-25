@@ -134,6 +134,22 @@ def test_lta_convert_dst_img_accepts_a_geometry_json(tmp_path: Path):
     assert from_image_lta.dst["filename"].endswith("geom.mgz")
 
 
+def test_lta_convert_dst_img_json_does_not_keep_a_stale_filename(tmp_path: Path):
+    # The input names its destination "atlas". Once the JSON replaces that
+    # geometry, keeping the old name would attribute the new grid to a file it
+    # did not come from, and a JSON has no image file of its own to record.
+    mov = _write_mov(tmp_path / "mov.mgz")
+    source = tmp_path / "in.lta"
+    LTA.from_matrix(np.eye(4), str(mov), nib.load(str(mov)), "atlas", None, lta_type=1).write(source)
+    out = tmp_path / "out.lta"
+
+    lta_main(["convert", str(source), str(out), "--dst-img", _atlas_json()])
+
+    written = LTA.read(out)
+    assert list(written.dst["volume"]) == [256, 256, 256]
+    assert written.dst["filename"] != "atlas"
+
+
 def test_lta_convert_src_img_accepts_a_geometry_json(tmp_path: Path):
     # --src-img is the same kind of header-only option as --dst-img, so it has
     # to accept the same inputs; one of two would be its own trap.

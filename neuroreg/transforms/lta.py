@@ -539,8 +539,10 @@ class LTA:
         src_img, dst_img : path, nibabel header/image, dict, or None
             Replacement geometry. ``None`` keeps the existing block.
         src_fname, dst_fname : str or None, optional
-            Filenames recorded with the replaced blocks. Default to the names
-            already stored.
+            Filenames recorded with the replaced blocks. ``None`` keeps the name
+            already stored. An empty string records no name, which is correct
+            for geometry with no file behind it: keeping the old name would
+            attribute the new grid to a file it did not come from.
 
         Returns
         -------
@@ -553,16 +555,12 @@ class LTA:
             If this is a LINEAR_VOX_TO_VOX transform whose stored geometry is
             not valid, so the mapping cannot be re-expressed on the new grids.
         """
-        src = (
-            dict(self.src)
-            if src_img is None
-            else _header_to_vol_info(_header_info(src_img), src_fname or str(self.src.get("filename", "")))
-        )
-        dst = (
-            dict(self.dst)
-            if dst_img is None
-            else _header_to_vol_info(_header_info(dst_img), dst_fname or str(self.dst.get("filename", "")))
-        )
+        if src_fname is None:
+            src_fname = str(self.src.get("filename", ""))
+        if dst_fname is None:
+            dst_fname = str(self.dst.get("filename", ""))
+        src = dict(self.src) if src_img is None else _header_to_vol_info(_header_info(src_img), src_fname)
+        dst = dict(self.dst) if dst_img is None else _header_to_vol_info(_header_info(dst_img), dst_fname)
         if self.type == 1 or (src_img is None and dst_img is None):
             matrix = self.matrix.copy()
         else:
