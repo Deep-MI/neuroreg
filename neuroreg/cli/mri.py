@@ -747,7 +747,9 @@ def _xform_tag_value(xform: str, out: str, absolute: bool) -> str:
     when the absolute path is recorded instead.
     """
     if absolute:
-        return os.path.abspath(xform)
+        # Forward slashes, like the relative form, so the tag reads the same
+        # wherever FreeSurfer runs.
+        return Path(os.path.abspath(xform)).as_posix()
     return relative_xform_path(xform, os.path.dirname(os.path.abspath(out)))
 
 

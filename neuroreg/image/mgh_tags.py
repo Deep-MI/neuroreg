@@ -78,8 +78,12 @@ NIFTI_ECODE_FREESURFER = 14
 # with this tag so that trailing zero bytes are never mistaken for padding.
 _TAG_END_NIIHDREXTENSION = -1
 # Big-endian marker, intent 0 (an ordinary volume) as a big-endian uint16, and
-# MGH format version 1: the four bytes FreeSurfer writes before the tags.
+# MGH format version 1: the four bytes FreeSurfer writes before the tags. The
+# intent is non-zero for warps and surface data, so only the marker and the
+# version identify the extension.
 _NIFTI_EXTENSION_HEADER = b">\x00\x00\x01"
+_NIFTI_EXTENSION_MARKER = b">"
+_MGH_VERSION = 1
 # Tags whose matrix is text in MGH but 16 big-endian float32 in the extension.
 _MATRIX_TAGS = frozenset({TAG_AUTO_ALIGN, TAG_ORIG_RAS2VOX})
 #: NIfTI-only tag holding TE, TI, flip angle, field strength and phase-encode
@@ -201,16 +205,23 @@ class MGHTags:
 
     @property
     def xform(self) -> str | None:
-        """Return the recorded transform path, or ``None`` if there is none."""
-        for tag, payload in self.tags:
+        """Return the recorded transform path, or ``None`` if there is none.
+
+        FreeSurfer applies tags in order, so of several the last one is in
+        effect.
+        """
+        for tag, payload in reversed(self.tags):
             if tag in (TAG_MGH_XFORM, TAG_OLD_MGH_XFORM):
                 return _decode_c_string(payload)
         return None
 
     @property
     def color_table(self) -> ColorTable | None:
-        """Return the embedded colour table, or ``None`` if there is none."""
-        for tag, payload in self.tags:
+        """Return the embedded colour table, or ``None`` if there is none.
+
+        Of several, the last one is in effect, as for :attr:`xform`.
+        """
+        for tag, payload in reversed(self.tags):
             if tag == TAG_OLD_COLORTABLE:
                 return decode_color_table(payload)[0]
         return None
@@ -298,7 +309,7 @@ class MGHTags:
         for tag, payload in self.tags:
             if tag in (TAG_MGH_XFORM, TAG_OLD_MGH_XFORM):
                 path = _decode_c_string(payload)
-                if path and not os.path.isabs(path):
+                if path and not _is_absolute_xform(path):
                     path = relative_xform_path(os.path.join(source_dir, path), out_dir)
                     payload = path.encode() + b"\0"
             rebased.append((tag, payload))
@@ -667,11 +678,11 @@ def encode_nifti_extension(tags: MGHTags) -> bytes | None:
     bytes or None
         The extension content, or ``None`` when there is nothing to store.
     """
-    encoded: list[bytes] = []
+    encoded: list[tuple[int, bytes]] = []
     skipped: list[str] = []
     scan_tag = _encode_scan_parameters(tags)
     if scan_tag is not None:
-        encoded.append(struct.pack(">iq", TAG_SCAN_PARAMETERS, len(scan_tag)) + scan_tag)
+        encoded.append((TAG_SCAN_PARAMETERS, scan_tag))
     for tag, payload in tags.tags:
         if tag in (TAG_PEDIR, TAG_FIELDSTRENGTH):
             continue
@@ -688,13 +699,51 @@ def encode_nifti_extension(tags: MGHTags) -> bytes | None:
             # The extension gives every tag a length, so the legacy framing
             # has no meaning there; FreeSurfer writes the path as tag 31.
             tag = TAG_MGH_XFORM
-        encoded.append(struct.pack(">iq", tag, len(payload)) + payload)
+        encoded.append((tag, payload))
     if skipped:
         logger.info("Not storing in the NIfTI extension: %s.", ", ".join(skipped))
     if not encoded:
         return None
-    end = struct.pack(">iq", _TAG_END_NIIHDREXTENSION, 1) + b"*"
-    return _NIFTI_EXTENSION_HEADER + b"".join(encoded) + end
+    return _join_nifti_extension(_NIFTI_EXTENSION_HEADER, encoded)
+
+
+def _join_nifti_extension(header: bytes, tags: list[tuple[int, bytes]]) -> bytes:
+    """Frame raw extension tags after ``header`` and close them with the end tag."""
+    body = b"".join(struct.pack(">iq", tag, len(payload)) + payload for tag, payload in tags)
+    return header + body + struct.pack(">iq", _TAG_END_NIIHDREXTENSION, 1) + b"*"
+
+
+def _split_nifti_extension(content: bytes) -> tuple[bytes, list[tuple[int, bytes]]]:
+    """Return the four-byte header and the tags of FreeSurfer's NIfTI extension, as stored.
+
+    The header is a big-endian marker, the volume's intent and the MGH format
+    version. The intent is kept but not checked, since it is non-zero for
+    warps and surface data. Tags are returned in file order and layout, up to
+    the end tag. nibabel strips trailing zero bytes from extension content,
+    which can shorten the last tag of an extension written without an end tag;
+    such a tag is padded back to its declared length.
+    """
+    if len(content) < 4 or content[:1] != _NIFTI_EXTENSION_MARKER or content[3] != _MGH_VERSION:
+        raise ValueError(
+            "NIfTI extension 14 does not start with FreeSurfer's header (big-endian marker, intent, MGH version 1)"
+        )
+    reader = _Reader(content, 4)
+    tags: list[tuple[int, bytes]] = []
+    while len(content) - reader.pos >= 12:
+        tag = reader.int32()
+        length = reader.int64()
+        if tag in (0, _TAG_END_NIIHDREXTENSION):
+            break
+        if length < 0:
+            raise ValueError(f"tag {tag} has negative length {length}")
+        remaining = len(content) - reader.pos
+        if length > remaining:
+            payload = content[reader.pos :] + bytes(length - remaining)
+            reader.pos = len(content)
+        else:
+            payload = reader.take(length)
+        tags.append((tag, payload))
+    return content[:4], tags
 
 
 def decode_nifti_extension(content: bytes) -> MGHTags:
@@ -704,9 +753,8 @@ def decode_nifti_extension(content: bytes) -> MGHTags:
     strength tags, when they say anything, and the TE, TI and flip angle of
     ``scan``. NIfTI-only tags (DOF, the geometry copy) are skipped, since the
     image header carries what they describe, and so is the frame metadata,
-    whose layout differs. nibabel strips trailing zero bytes from
-    extension content, which can shorten the last tag of an extension written
-    without an end tag; such a tag is padded back to its declared length.
+    whose layout differs. A last tag shortened by nibabel is restored, see
+    :func:`_split_nifti_extension`.
 
     Parameters
     ----------
@@ -723,24 +771,9 @@ def decode_nifti_extension(content: bytes) -> MGHTags:
     ValueError
         If ``content`` is not a FreeSurfer extension or is malformed.
     """
-    if content[:1] != _NIFTI_EXTENSION_HEADER[:1]:
-        raise ValueError("NIfTI extension 14 does not start with FreeSurfer's big-endian marker")
-    reader = _Reader(content, len(_NIFTI_EXTENSION_HEADER))
     tags: list[tuple[int, bytes]] = []
     scan = None
-    while len(content) - reader.pos >= 12:
-        tag = reader.int32()
-        length = reader.int64()
-        if tag in (0, _TAG_END_NIIHDREXTENSION):
-            break
-        if length < 0:
-            raise ValueError(f"tag {tag} has negative length {length}")
-        remaining = len(content) - reader.pos
-        if length > remaining:
-            payload = content[reader.pos :] + bytes(length - remaining)
-            reader.pos = len(content)
-        else:
-            payload = reader.take(length)
+    for tag, payload in _split_nifti_extension(content)[1]:
         if tag in _NIFTI_ONLY_TAGS or tag == TAG_MRI_FRAME:
             continue
         if tag == TAG_SCAN_PARAMETERS:
@@ -840,10 +873,20 @@ def save_nifti_with_tags(image: Any, out: str | Path, tags: MGHTags | None) -> N
     None
         The volume is written for its side effect.
     """
+    content = None if tags is None else encode_nifti_extension(tags)
+    tr = tags.scan.tr if tags is not None and tags.scan is not None else 0.0
+    _save_nifti_with_extension(image, out, content, tr)
+
+
+def _save_nifti_with_extension(image: Any, out: str | Path, content: bytes | None, tr: float) -> None:
+    """Save ``image`` with ``content`` as its FreeSurfer extension and, if positive, ``tr`` in ms.
+
+    See :func:`save_nifti_with_tags`; this takes the extension content as
+    bytes, so a caller can keep records the tag view does not hold.
+    """
     import nibabel as nib
     from nibabel.nifti1 import Nifti1Extension, Nifti1Extensions
 
-    content = None if tags is None else encode_nifti_extension(tags)
     header = image.header
     original = header.extensions
     original_pixdim = header["pixdim"].copy()
@@ -852,7 +895,6 @@ def save_nifti_with_tags(image: Any, out: str | Path, tags: MGHTags | None) -> N
     if content is not None:
         kept.append(Nifti1Extension(NIFTI_ECODE_FREESURFER, content))
     header.extensions = Nifti1Extensions(kept)
-    tr = tags.scan.tr if tags is not None and tags.scan is not None else 0.0
     try:
         if tr > 0:
             pixdim = original_pixdim.copy()
@@ -933,25 +975,29 @@ def write_image_tags(
         raise ValueError("the transform path to record must not be empty")
     import nibabel as nib
 
-    image = nib.load(str(source))
-    tags = read_nifti_tags(source).rebase_xform(Path(source).parent, out.parent)
-    if tags.scan is not None:
-        # TR already sits in the header being copied; restating it would only
-        # risk rewriting its units.
-        tags.scan = replace(tags.scan, tr=0.0)
+    # Not memory-mapped: Windows cannot replace a file that is still mapped,
+    # and OUT may be SOURCE.
+    image = nib.load(str(source), mmap=False)
+    # The stored records are edited rather than rebuilt from the MGH view, which
+    # leaves out the NIfTI-only tags and the frame metadata: only the requested
+    # tags change. TR already sits in the header being copied and is not touched.
+    header, raw = _NIFTI_EXTENSION_HEADER, []
+    for extension in getattr(image.header, "extensions", []):
+        if extension.get_code() == NIFTI_ECODE_FREESURFER:
+            header, raw = _split_nifti_extension(_extension_bytes(extension))
+            break
+    raw = MGHTags(raw).rebase_xform(Path(source).parent, out.parent).tags
     if xform is not None:
-        _replace_tag(tags.tags, (TAG_MGH_XFORM, xform.encode() + b"\0"), replaces=(TAG_MGH_XFORM,), prepend=True)
+        new_xform = (TAG_MGH_XFORM, xform.encode() + b"\0")
+        _replace_tag(raw, new_xform, replaces=(TAG_MGH_XFORM, TAG_OLD_MGH_XFORM), prepend=True)
     if color_table is not None:
-        _replace_tag(
-            tags.tags,
-            (TAG_OLD_COLORTABLE, encode_color_table(color_table)),
-            replaces=(TAG_OLD_COLORTABLE,),
-            prepend=False,
-        )
+        new_table = (TAG_OLD_COLORTABLE, encode_color_table(color_table))
+        _replace_tag(raw, new_table, replaces=(TAG_OLD_COLORTABLE,), prepend=False)
+    content = _join_nifti_extension(header, raw) if raw else None
     # Written next to the output and moved into place, so OUT may be SOURCE:
     # the image still reads its voxels from SOURCE while the new file is built.
     suffix = ".nii.gz" if out.name.lower().endswith(".nii.gz") else ".nii"
-    _atomic_save(out, suffix, lambda tmp: save_nifti_with_tags(image, tmp, tags))
+    _atomic_save(out, suffix, lambda tmp: _save_nifti_with_extension(image, tmp, content, 0.0))
 
 
 def relative_xform_path(target: str | Path, out_dir: str | Path) -> str:
@@ -963,6 +1009,10 @@ def relative_xform_path(target: str | Path, out_dir: str | Path) -> str:
     climb to the root and back down, breaking as soon as either side moves,
     so the absolute path is returned instead. The same holds for paths on
     different drives, which have no relative form at all.
+
+    The path uses forward slashes on every platform. FreeSurfer reads it on
+    Linux and macOS, where a backslash is part of a file name, and Windows
+    accepts forward slashes too, so a subject tagged on Windows stays usable.
 
     Parameters
     ----------
@@ -982,11 +1032,20 @@ def relative_xform_path(target: str | Path, out_dir: str | Path) -> str:
     try:
         common = os.path.commonpath([target, out_dir])
     except ValueError:
-        return target
+        return Path(target).as_posix()
     if os.path.dirname(common) == common:
         # The only shared directory is the root itself.
-        return target
-    return os.path.relpath(target, out_dir)
+        return Path(target).as_posix()
+    return Path(os.path.relpath(target, out_dir)).as_posix()
+
+
+def _is_absolute_xform(path: str) -> bool:
+    """Return whether a recorded transform path is absolute.
+
+    A path recorded on Linux or macOS starts with a slash, which Windows does
+    not count as absolute without a drive, so that is checked as well.
+    """
+    return path.startswith(("/", "\\")) or os.path.isabs(path)
 
 
 def history_entry(program: str, arguments: Sequence[str]) -> str:

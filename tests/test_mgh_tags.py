@@ -12,6 +12,7 @@ from __future__ import annotations
 import gzip
 import os
 import struct
+import sys
 from pathlib import Path
 
 import nibabel as nib
@@ -93,6 +94,19 @@ def test_reads_every_tag_of_a_freesurfer_style_file(tmp_path: Path):
     assert tags.color_table.entries[127] == ColorTableEntry("Right-Mass", (0, 180, 0), 0)
 
 
+def test_the_last_of_duplicate_tags_is_in_effect(tmp_path: Path):
+    # FreeSurfer applies tags in file order, so a later duplicate overrides
+    # an earlier one; reading the first would compare and copy a stale value.
+    newer_ctab = _ctab_v2(b"newer.txt", [(0, b"Unknown", 0, 0, 0, 0)], 1)
+    raw = _body() + _sized(31, b"old.xfm\0") + CTAB_TAG + _sized(31, b"new.xfm\0") + struct.pack(">i", 1) + newer_ctab
+    path = _write(tmp_path / "nu.mgz", raw)
+
+    tags = read_mgh_tags(path)
+
+    assert tags.xform == "new.xfm"
+    assert tags.color_table.fname == "newer.txt"
+
+
 def test_decodes_a_version_1_colour_table():
     # Version 1 starts with the entry count and leaves label values implicit;
     # its length has to be right, or every tag after it is misread.
@@ -156,6 +170,7 @@ def test_output_compression_follows_the_extension(tmp_path: Path):
     assert _raw(tmp_path / "out.mgh") == _raw(tmp_path / "out.mgz")
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows has no POSIX permission bits to keep")
 def test_tags_in_place_and_keeps_the_file_mode(tmp_path: Path):
     # The new file is created private; the replaced file's mode has to carry
     # over, or tagging a volume in a shared subject directory hides it.
@@ -178,7 +193,7 @@ def test_a_kept_relative_xform_is_rebased_into_another_directory(tmp_path: Path)
 
     write_mgh_tags(source, out, color_table=ColorTable({0: ColorTableEntry("Unknown", (0, 0, 0))}))
 
-    assert read_mgh_tags(out).xform == os.path.join("..", "subject", "mri", "transforms", "talairach.xfm")
+    assert read_mgh_tags(out).xform == "../subject/mri/transforms/talairach.xfm"
 
 
 def test_in_place_leaves_an_unusual_relative_path_alone(tmp_path: Path):
@@ -197,7 +212,7 @@ def test_a_transform_sharing_only_the_root_is_recorded_absolute():
     target = os.path.abspath(os.path.join(os.sep, "fs_subjects", "bert", "mri", "transforms", "talairach.xfm"))
     out_dir = os.path.abspath(os.path.join(os.sep, "scratch", "run1", "mri"))
 
-    assert relative_xform_path(target, out_dir) == target
+    assert relative_xform_path(target, out_dir) == Path(target).as_posix()
 
 
 # ── colour lookup tables ──────────────────────────────────────────────────────
@@ -271,7 +286,7 @@ def test_records_the_transform_relative_to_the_output_wherever_it_runs(subject: 
 
     mri_main(["tag", nu, nu, "--xform", os.path.relpath(subject / "transforms" / "talairach.xfm")])
 
-    assert read_mgh_tags(subject / "nu.mgz").xform == os.path.join("transforms", "talairach.xfm")
+    assert read_mgh_tags(subject / "nu.mgz").xform == "transforms/talairach.xfm"
     assert "WARNING" not in capsys.readouterr().err
 
 
@@ -280,7 +295,7 @@ def test_abs_xform_tag_records_the_absolute_path(subject: Path):
 
     mri_main(["tag", str(subject / "nu.mgz"), str(subject / "nu.mgz"), "--xform", str(xform), "--abs-xform-tag"])
 
-    assert read_mgh_tags(subject / "nu.mgz").xform == str(xform.resolve())
+    assert read_mgh_tags(subject / "nu.mgz").xform == xform.resolve().as_posix()
 
 
 def test_warns_when_freesurfer_would_not_find_a_relative_path(subject: Path, capsys):
@@ -289,7 +304,7 @@ def test_warns_when_freesurfer_would_not_find_a_relative_path(subject: Path, cap
 
     mri_main(["tag", str(subject / "nu.mgz"), str(subject / "nu.mgz"), "--xform", str(other)])
 
-    assert read_mgh_tags(subject / "nu.mgz").xform == os.path.join("transforms", "other.xfm")
+    assert read_mgh_tags(subject / "nu.mgz").xform == "transforms/other.xfm"
     assert "--abs-xform-tag" in capsys.readouterr().err
 
 
@@ -300,7 +315,7 @@ def test_records_a_missing_transform_with_a_warning(subject: Path, capsys):
 
     mri_main(["tag", str(subject / "nu.mgz"), str(subject / "nu.mgz"), "--xform", str(missing)])
 
-    assert read_mgh_tags(subject / "nu.mgz").xform == os.path.join("transforms", "talairach.xfm")
+    assert read_mgh_tags(subject / "nu.mgz").xform == "transforms/talairach.xfm"
     assert "does not exist" in capsys.readouterr().err
 
 
@@ -343,7 +358,7 @@ def test_xform_from_resolves_the_path_where_it_was_recorded(subject: Path, tmp_p
 
     mri_main(["tag", str(other), str(other), "--xform-from", str(subject / "nu.mgz")])
 
-    assert read_mgh_tags(other).xform == os.path.join("..", "subject", "mri", "transforms", "talairach.xfm")
+    assert read_mgh_tags(other).xform == "../subject/mri/transforms/talairach.xfm"
 
 
 def test_xform_from_an_absolute_freesurfer_path_is_recorded_relative(subject: Path):
@@ -353,7 +368,7 @@ def test_xform_from_an_absolute_freesurfer_path_is_recorded_relative(subject: Pa
 
     mri_main(["tag", str(subject / "seg.mgz"), str(subject / "seg.mgz"), "--xform-from", str(subject / "nu.mgz")])
 
-    assert read_mgh_tags(subject / "seg.mgz").xform == os.path.join("transforms", "talairach.xfm")
+    assert read_mgh_tags(subject / "seg.mgz").xform == "transforms/talairach.xfm"
 
 
 def test_copying_a_tag_the_source_lacks_is_an_error(subject: Path, capsys):
@@ -377,7 +392,7 @@ def test_refuses_to_replace_a_different_xform_without_force(subject: Path, capsy
 
     mri_main(["tag", str(path), str(path), "--xform", xform, "--force"])
 
-    assert read_mgh_tags(path).xform == os.path.join("transforms", "talairach.xfm")
+    assert read_mgh_tags(path).xform == "transforms/talairach.xfm"
 
 
 def test_colour_tables_conflict_by_entries_not_by_lut_file(subject: Path, capsys):

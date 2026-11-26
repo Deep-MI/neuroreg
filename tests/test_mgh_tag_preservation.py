@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import gzip
 import logging
-import os
 import struct
 from pathlib import Path
 
@@ -134,7 +133,7 @@ def test_vol2vol_conversion_keeps_the_tags_and_rebases_the_xform(tmp_path: Path)
 
     tags = read_mgh_tags(out)
     assert [tag for tag, _ in tags.tags] == [31, 41, 1, 3, 3]
-    assert tags.xform == os.path.join("..", "subject", "mri", "transforms", "talairach.xfm")
+    assert tags.xform == "../subject/mri/transforms/talairach.xfm"
     assert tags.color_table == read_mgh_tags(source).color_table
     assert tags.command_lines[1].startswith("ProgramName: vol2vol")
 

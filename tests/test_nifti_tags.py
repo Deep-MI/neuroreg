@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import gzip
 import logging
-import os
 import struct
 from pathlib import Path
 
@@ -25,6 +24,8 @@ from neuroreg.image import MGHTags, ScanParameters, read_image_tags, read_mgh_ta
 from neuroreg.image.mgh_tags import (
     _decode_matrix,
     _encode_matrix,
+    _extension_bytes,
+    _split_nifti_extension,
     decode_nifti_extension,
     encode_nifti_extension,
     read_nifti_tags,
@@ -111,6 +112,25 @@ def test_frames_are_not_written_and_unknown_acquisition_values_add_nothing(caplo
     assert content == b">\x00\x00\x01" + _tag(3, b"x\0") + END
     assert "Not storing in the NIfTI extension: frames." in caplog.text
     assert encode_nifti_extension(MGHTags(defaults)) is None
+
+
+@pytest.mark.parametrize(
+    ("header", "accepted"),
+    [
+        (b">\x00\x00\x01", True),
+        (b">\x00\x06\x01", True),  # a non-zero intent, as FreeSurfer writes for warps
+        (b"<\x00\x00\x01", False),
+        (b">\x00\x00\x02", False),
+    ],
+)
+def test_the_extension_header_is_checked_for_byte_order_and_version_not_intent(header: bytes, accepted: bool):
+    content = header + XFORM + END
+
+    if accepted:
+        assert decode_nifti_extension(content).xform == "transforms/talairach.xfm"
+    else:
+        with pytest.raises(ValueError, match="FreeSurfer's header"):
+            decode_nifti_extension(content)
 
 
 def test_a_last_tag_shortened_by_nibabel_is_restored():
@@ -229,7 +249,7 @@ def test_mri_tag_tags_a_nifti_in_place_and_leaves_tr_alone(tmp_path: Path, capsy
     mri_main(["tag", str(path), str(path), "--ctab", str(lut), "--xform", str(xform)])
 
     tags = read_image_tags(path)
-    assert tags.xform == os.path.join("transforms", "talairach.xfm")
+    assert tags.xform == "transforms/talairach.xfm"
     assert list(tags.color_table.entries) == [0, 17]
     header = nib.load(str(path)).header
     assert header.get_xyzt_units() == ("mm", "msec")
@@ -238,6 +258,25 @@ def test_mri_tag_tags_a_nifti_in_place_and_leaves_tr_alone(tmp_path: Path, capsy
     capsys.readouterr()
     mri_main(["tag", str(path), str(path), "--ctab", str(lut)])
     assert "unchanged" in capsys.readouterr().out
+
+
+def test_mri_tag_on_nifti_changes_only_the_requested_tag(tmp_path: Path):
+    # The MGH view leaves out the NIfTI-only DOF tag and the frame metadata,
+    # so rebuilding the extension from it would silently drop them, and with
+    # them the intent FreeSurfer stores in the extension header.
+    dof, frames = _tag(7, b"\0\0\0\x05"), _tag(42, b"frame records")
+    content = b">\x00\x06\x01" + dof + XFORM + frames + HISTORY + END
+    path = _tagged_nifti(tmp_path / "warp.nii.gz", content + bytes(-(len(content) + 8) % 16))
+    lut = tmp_path / "lut.txt"
+    lut.write_text("0 Unknown 0 0 0 0\n17 Left-Hippocampus 220 216 20 0\n")
+
+    mri_main(["tag", str(path), str(path), "--ctab", str(lut)])
+
+    stored = [e for e in nib.load(str(path)).header.extensions if e.get_code() == 14]
+    header, tags = _split_nifti_extension(_extension_bytes(stored[0]))
+    assert header == b">\x00\x06\x01"
+    assert [tag for tag, _ in tags] == [7, 31, 42, 3, 1]
+    assert [_tag(tag, payload) for tag, payload in tags[:4]] == [dof, XFORM, frames, HISTORY]
 
 
 def test_mri_tag_copies_a_colour_table_from_nifti_into_mgh(tmp_path: Path):
