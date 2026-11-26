@@ -141,6 +141,15 @@ def test_a_last_tag_shortened_by_nibabel_is_restored():
     assert decode_nifti_extension(content).tags == [(3, HISTORY[12:])]
 
 
+def test_a_corrupt_tag_length_is_rejected_rather_than_padded():
+    # Padding up to a length read from the file would let one bad int64 ask
+    # for exabytes; anything beyond stripped zeros is an error.
+    content = b">\x00\x00\x01" + struct.pack(">iq", 3, 2**62) + b"x\0"
+
+    with pytest.raises(ValueError, match="declares"):
+        decode_nifti_extension(content)
+
+
 # ── acquisition parameters ────────────────────────────────────────────────────
 
 

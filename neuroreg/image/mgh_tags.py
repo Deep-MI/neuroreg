@@ -84,6 +84,11 @@ _TAG_END_NIIHDREXTENSION = -1
 _NIFTI_EXTENSION_HEADER = b">\x00\x00\x01"
 _NIFTI_EXTENSION_MARKER = b">"
 _MGH_VERSION = 1
+# The most trailing zeros restored to a last tag that nibabel shortened. What
+# it strips is the end of a real value: a string's NUL, the zero bytes of a
+# number. That is a few bytes; the limit leaves ample room while keeping a
+# corrupt length, read from the file as int64, from requesting gigabytes.
+_MAX_STRIPPED_ZEROS = 64 * 1024
 # Tags whose matrix is text in MGH but 16 big-endian float32 in the extension.
 _MATRIX_TAGS = frozenset({TAG_AUTO_ALIGN, TAG_ORIG_RAS2VOX})
 #: NIfTI-only tag holding TE, TI, flip angle, field strength and phase-encode
@@ -721,7 +726,8 @@ def _split_nifti_extension(content: bytes) -> tuple[bytes, list[tuple[int, bytes
     warps and surface data. Tags are returned in file order and layout, up to
     the end tag. nibabel strips trailing zero bytes from extension content,
     which can shorten the last tag of an extension written without an end tag;
-    such a tag is padded back to its declared length.
+    such a tag is padded back to its declared length, as long as the gap is
+    small enough to be stripped zeros rather than a corrupt length.
     """
     if len(content) < 4 or content[:1] != _NIFTI_EXTENSION_MARKER or content[3] != _MGH_VERSION:
         raise ValueError(
@@ -738,6 +744,11 @@ def _split_nifti_extension(content: bytes) -> tuple[bytes, list[tuple[int, bytes
             raise ValueError(f"tag {tag} has negative length {length}")
         remaining = len(content) - reader.pos
         if length > remaining:
+            if length - remaining > _MAX_STRIPPED_ZEROS:
+                raise ValueError(
+                    f"tag {tag} declares {length} bytes but only {remaining} are present; "
+                    "more than nibabel's stripping of trailing zeros can explain"
+                )
             payload = content[reader.pos :] + bytes(length - remaining)
             reader.pos = len(content)
         else:
