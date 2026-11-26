@@ -24,9 +24,11 @@ from neuroreg.cli.mri import main as mri_main
 from neuroreg.image import (
     ColorTable,
     ColorTableEntry,
+    MGHTags,
     read_color_lut,
     read_mgh_tags,
     relative_xform_path,
+    save_image,
     write_mgh_tags,
 )
 from neuroreg.image.mgh_tags import decode_color_table, encode_color_table
@@ -93,6 +95,27 @@ def test_reads_every_tag_of_a_freesurfer_style_file(tmp_path: Path):
     assert tags.command_lines == ["mri_normalize -mprage in.mgz out.mgz", "mri_fill -a log in.mgz out.mgz"]
     assert tags.color_table.fname == "SubCorticalMassLUT.txt"
     assert tags.color_table.entries[127] == ColorTableEntry("Right-Mass", (0, 180, 0), 0)
+
+
+@pytest.mark.parametrize("given", [[(31, b"new.xfm\0")], []])
+def test_only_the_given_tags_are_written_even_if_nibabel_keeps_the_sources(tmp_path: Path, monkeypatch, given):
+    # nibabel#1540 writes back the tags a header was read with while it is
+    # unchanged. Those must not precede the given tags, nor survive when the
+    # caller gives none.
+    stale = _sized(31, b"old.xfm\0") + CMD_TAGS
+    plain_writeftr_to = nib.freesurfer.mghformat.MGHHeader.writeftr_to
+
+    def writeftr_to_keeping_tags(self, fileobj):
+        # What nibabel#1540 does: the footer, then the retained tag bytes.
+        plain_writeftr_to(self, fileobj)
+        fileobj.write(stale)
+
+    monkeypatch.setattr(nib.freesurfer.mghformat.MGHHeader, "writeftr_to", writeftr_to_keeping_tags)
+    out = tmp_path / "out.mgz"
+
+    save_image(nib.MGHImage(DATA, np.eye(4)), out, tags=MGHTags(list(given)))
+
+    assert read_mgh_tags(out).tags == given
 
 
 def test_the_last_of_duplicate_tags_is_in_effect(tmp_path: Path):
