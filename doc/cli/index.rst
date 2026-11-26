@@ -103,10 +103,13 @@ that accept a reference image but no geometry flags::
 
 **tag**: record the talairach transform path and/or embed a colour lookup table
 in an MGH volume, copying everything else byte for byte. The path is recorded
-relative to the output by default; ``--abs-xform-tag`` records it absolute::
+relative to the output by default; ``--abs-xform-tag`` records it absolute.
+``--xform-from`` and ``--ctab-from`` copy either tag from another volume. A
+different value the input already holds is only replaced with ``--force``::
 
    mri tag mri/nu.mgz mri/nu.mgz --xform mri/transforms/talairach.xfm
    mri tag aseg.mgz aseg.mgz --ctab FreeSurferColorLUT.txt
+   mri tag mri/aseg.mgz mri/aseg.mgz --xform-from mri/nu.mgz --ctab-from mri/aparc+aseg.orig.mgz
 
 lta
 ---

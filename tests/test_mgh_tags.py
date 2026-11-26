@@ -19,7 +19,14 @@ import numpy as np
 import pytest
 
 from neuroreg.cli.mri import main as mri_main
-from neuroreg.image import ColorTable, ColorTableEntry, read_color_lut, read_mgh_tags, write_mgh_tags
+from neuroreg.image import (
+    ColorTable,
+    ColorTableEntry,
+    read_color_lut,
+    read_mgh_tags,
+    relative_xform_path,
+    write_mgh_tags,
+)
 from neuroreg.image.mgh_tags import decode_color_table, encode_color_table
 
 DATA = np.arange(2 * 3 * 4, dtype=np.uint8).reshape(2, 3, 4)
@@ -393,8 +400,12 @@ def test_cli_embeds_a_colour_table_and_info_reports_both_tags(subject: Path, cap
 @pytest.mark.parametrize(
     ("argv", "message"),
     [
-        (["tag", "in.mgz", "out.mgz"], "needs --xform and/or --ctab"),
-        (["tag", "in.mgz", "out.mgz", "--ctab", "lut.txt", "--abs-xform-tag"], "only says how to record --xform"),
+        (["tag", "in.mgz", "out.mgz"], "needs --xform/--xform-from and/or --ctab/--ctab-from"),
+        (["tag", "in.mgz", "out.mgz", "--ctab", "lut.txt", "--abs-xform-tag"], "only says how to record a transform"),
+        (["tag", "in.mgz", "out.mgz", "--xform", "t.xfm", "--xform-from", "nu.mgz"], "not allowed with"),
+        (["tag", "in.mgz", "out.mgz", "--ctab", "lut.txt", "--ctab-from", "aseg.mgz"], "not allowed with"),
+        (["tag", "in.mgz", "out.mgz", "--xform-from", "nu.nii.gz"], "--xform-from copies a tag from an MGH"),
+        (["tag", "in.mgz", "out.mgz", "--ctab-from", "aseg.nii.gz"], "--ctab-from copies a tag from an MGH"),
         (["tag", "in.nii.gz", "out.mgz", "--xform", "t.xfm"], "reads MGH/MGZ input only"),
         (["tag", "in.mgz", "out.nii.gz", "--xform", "t.xfm"], "needs a .mgz or .mgh extension"),
     ],
@@ -404,3 +415,172 @@ def test_cli_rejects_requests_it_cannot_honour(argv: list[str], message: str, ca
         mri_main(argv)
 
     assert message in capsys.readouterr().err
+
+
+# ── copying tags, conflicts, reruns ───────────────────────────────────────────
+
+
+def _tagged(path: Path, *, xform: bytes | None = None, ctab: bytes | None = None) -> Path:
+    """Write a volume holding the given xform path and/or binary colour table."""
+    tags = b""
+    if xform is not None:
+        tags += _sized(31, xform + b"\0")
+    tags += PEDIR_TAG
+    if ctab is not None:
+        tags += struct.pack(">i", 1) + ctab
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return _write(path, _body() + tags)
+
+
+def test_write_mgh_tags_rebases_a_kept_relative_xform_into_another_directory(tmp_path: Path):
+    # A relative path is resolved from the volume's own directory, so copying
+    # the volume elsewhere byte for byte would make it name another file.
+    source = _tagged(tmp_path / "subject" / "mri" / "nu.mgz", xform=b"transforms/talairach.xfm")
+    out = tmp_path / "elsewhere" / "nu.mgz"
+    out.parent.mkdir()
+
+    write_mgh_tags(source, out, color_table=ColorTable({0: ColorTableEntry("Unknown", (0, 0, 0))}))
+
+    assert read_mgh_tags(out).xform == os.path.join("..", "subject", "mri", "transforms", "talairach.xfm")
+
+
+def test_a_transform_sharing_a_tree_with_the_volume_is_recorded_relative(tmp_path: Path):
+    target = tmp_path / "subject" / "mri" / "transforms" / "talairach.xfm"
+
+    assert relative_xform_path(target, tmp_path / "subject" / "mri") == os.path.join("transforms", "talairach.xfm")
+
+
+def test_a_transform_sharing_only_the_root_is_recorded_absolute():
+    # Climbing to the root and back down breaks as soon as either side moves.
+    target = os.path.abspath(os.path.join(os.sep, "fs_subjects", "bert", "mri", "transforms", "talairach.xfm"))
+    out_dir = os.path.abspath(os.path.join(os.sep, "scratch", "run1", "mri"))
+
+    assert relative_xform_path(target, out_dir) == target
+
+
+def test_write_mgh_tags_in_place_leaves_an_unusual_relative_path_alone(tmp_path: Path):
+    # Rebasing within one directory would only normalise the spelling, which
+    # an in-place rewrite must not do.
+    raw = _body() + _sized(31, b"./transforms/../transforms/talairach.xfm\0")
+    path = _write(tmp_path / "nu.mgz", raw)
+
+    write_mgh_tags(path, path)
+
+    assert _raw(path) == raw
+
+
+def test_cli_xform_from_copies_the_transform_another_volume_records(subject: Path):
+    _tagged(subject / "nu.mgz", xform=b"transforms/talairach.xfm")
+    _tagged(subject / "T1.mgz")
+
+    mri_main(["tag", str(subject / "T1.mgz"), str(subject / "T1.mgz"), "--xform-from", str(subject / "nu.mgz")])
+
+    assert read_mgh_tags(subject / "T1.mgz").xform == os.path.join("transforms", "talairach.xfm")
+
+
+def test_cli_xform_from_resolves_the_path_where_it_was_recorded(subject: Path, tmp_path: Path):
+    # The copied path is relative to nu.mgz's directory, so a volume elsewhere
+    # needs it re-expressed relative to its own.
+    _tagged(subject / "nu.mgz", xform=b"transforms/talairach.xfm")
+    other = _tagged(tmp_path / "other" / "seg.mgz")
+
+    mri_main(["tag", str(other), str(other), "--xform-from", str(subject / "nu.mgz")])
+
+    assert read_mgh_tags(other).xform == os.path.join("..", "subject", "mri", "transforms", "talairach.xfm")
+
+
+def test_cli_xform_from_an_absolute_freesurfer_path_follows_abs_xform_tag(subject: Path):
+    # recon-all records absolute paths; copied, they are recorded like --xform.
+    absolute = str(subject / "transforms" / "talairach.xfm").encode()
+    _tagged(subject / "nu.mgz", xform=absolute)
+    _tagged(subject / "a.mgz")
+    _tagged(subject / "b.mgz")
+
+    mri_main(["tag", str(subject / "a.mgz"), str(subject / "a.mgz"), "--xform-from", str(subject / "nu.mgz")])
+    mri_main(
+        ["tag", str(subject / "b.mgz"), str(subject / "b.mgz"), "--xform-from", str(subject / "nu.mgz"),
+         "--abs-xform-tag"]
+    )
+
+    assert read_mgh_tags(subject / "a.mgz").xform == os.path.join("transforms", "talairach.xfm")
+    assert read_mgh_tags(subject / "b.mgz").xform == absolute.decode()
+
+
+def test_cli_ctab_from_copies_the_embedded_colour_table(subject: Path):
+    _tagged(subject / "aparc+aseg.orig.mgz", ctab=CTAB)
+
+    mri_main(["tag", str(subject / "nu.mgz"), str(subject / "aseg.mgz"), "--ctab-from",
+              str(subject / "aparc+aseg.orig.mgz")])
+
+    assert read_mgh_tags(subject / "aseg.mgz").color_table == read_mgh_tags(subject / "aparc+aseg.orig.mgz").color_table
+
+
+@pytest.mark.parametrize(
+    ("flag", "message"),
+    [("--xform-from", "records no talairach xform to copy"), ("--ctab-from", "embeds no colour table to copy")],
+)
+def test_cli_copying_a_tag_the_source_lacks_is_an_error(subject: Path, capsys, flag: str, message: str):
+    with pytest.raises(SystemExit):
+        mri_main(["tag", str(subject / "nu.mgz"), str(subject / "out.mgz"), flag, str(subject / "nu.mgz")])
+
+    assert message in capsys.readouterr().err
+    assert not (subject / "out.mgz").exists()
+
+
+def test_cli_refuses_to_replace_a_different_xform_without_force(subject: Path, capsys):
+    path = _tagged(subject / "nu.mgz", xform=b"transforms/other.xfm")
+    before = path.read_bytes()
+
+    with pytest.raises(SystemExit):
+        mri_main(["tag", str(path), str(path), "--xform", str(subject / "transforms" / "talairach.xfm")])
+
+    err = capsys.readouterr().err
+    assert "records the talairach xform 'transforms/other.xfm'" in err
+    assert "--force" in err
+    assert path.read_bytes() == before
+
+    mri_main(["tag", str(path), str(path), "--xform", str(subject / "transforms" / "talairach.xfm"), "--force"])
+
+    assert read_mgh_tags(path).xform == os.path.join("transforms", "talairach.xfm")
+
+
+def test_cli_refuses_to_replace_a_different_colour_table_without_force(subject: Path, capsys):
+    path = _tagged(subject / "aseg.mgz", ctab=CTAB)
+    lut = subject.parent / "lut.txt"
+    lut.write_text("0 Unknown 0 0 0 0\n2 Left-Cerebral-White-Matter 245 245 245 0\n")
+
+    with pytest.raises(SystemExit):
+        mri_main(["tag", str(path), str(path), "--ctab", str(lut)])
+
+    assert "embeds a different colour table (3 entries" in capsys.readouterr().err
+
+    mri_main(["tag", str(path), str(path), "--ctab", str(lut), "--force"])
+
+    assert list(read_mgh_tags(path).color_table.entries) == [0, 2]
+
+
+def test_cli_repeating_a_step_leaves_the_file_untouched(subject: Path, capsys):
+    # FastSurfer reruns steps; asking for what a volume already holds must
+    # neither fail nor rewrite it.
+    path = _tagged(subject / "nu.mgz", xform=b"transforms/talairach.xfm")
+    stamp = path.stat().st_mtime_ns
+    before = path.read_bytes()
+
+    mri_main(["tag", str(path), str(path), "--xform", str(subject / "transforms" / "talairach.xfm")])
+
+    assert "unchanged" in capsys.readouterr().out
+    assert path.read_bytes() == before
+    assert path.stat().st_mtime_ns == stamp
+
+
+def test_cli_the_same_colour_table_from_another_lut_file_is_not_a_conflict(subject: Path):
+    # A table is identified by its entries; where it was loaded from is not.
+    path = _tagged(subject / "aseg.mgz", ctab=CTAB)
+    before = path.read_bytes()
+    lut = subject.parent / "copy_of_lut.txt"
+    lut.write_text("0 Unknown 0 0 0 0\n127 Right-Mass 0 180 0 0\n255 Left-Mass 0 0 180 0\n")
+
+    mri_main(["tag", str(path), str(path), "--ctab", str(lut)])
+
+    assert path.read_bytes() == before
+    assert read_mgh_tags(path).color_table.fname == "SubCorticalMassLUT.txt"

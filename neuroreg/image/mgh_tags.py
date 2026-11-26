@@ -229,16 +229,16 @@ class MGHTags:
         MGHTags
             Tags with any relative transform path rebased.
         """
+        if os.path.abspath(source_dir) == os.path.abspath(out_dir):
+            # Same directory: the path already resolves correctly, and leaving
+            # it untouched keeps an in-place rewrite byte for byte.
+            return MGHTags(list(self.tags), self.trailer)
         rebased: list[tuple[int, bytes]] = []
         for tag, payload in self.tags:
             if tag in (TAG_MGH_XFORM, TAG_OLD_MGH_XFORM):
                 path = _decode_c_string(payload)
                 if path and not os.path.isabs(path):
-                    target = os.path.abspath(os.path.join(source_dir, path))
-                    try:
-                        path = os.path.relpath(target, os.path.abspath(out_dir))
-                    except ValueError:
-                        path = target
+                    path = relative_xform_path(os.path.join(source_dir, path), out_dir)
                     payload = path.encode() + b"\0"
             rebased.append((tag, payload))
         return MGHTags(rebased, self.trailer)
@@ -246,6 +246,38 @@ class MGHTags:
     def with_history(self, entry: str) -> MGHTags:
         """Return the tags with ``entry`` appended as the newest command line."""
         return MGHTags([*self.tags, (TAG_CMDLINE, entry.encode() + b"\0")], self.trailer)
+
+    def conflicts(self, *, xform: str | None = None, color_table: ColorTable | None = None) -> list[str]:
+        """Describe each requested tag that would overwrite a different value.
+
+        Setting a tag the volume does not have yet, or one it already holds
+        with the same value, is not a conflict. Colour tables are compared by
+        their entries, since the recorded file name is only where a table came
+        from: the same labels and colours loaded from another copy of a LUT are
+        the same table.
+
+        Parameters
+        ----------
+        xform : str or None, optional
+            Transform path that would be recorded.
+        color_table : ColorTable or None, optional
+            Colour table that would be embedded.
+
+        Returns
+        -------
+        list of str
+            One description per conflict, empty when nothing would be lost.
+        """
+        found = []
+        if xform is not None and self.xform is not None and self.xform != xform:
+            found.append(f"it records the talairach xform {self.xform!r}, not {xform!r}")
+        existing = self.color_table if color_table is not None else None
+        if existing is not None and existing.entries != color_table.entries:
+            found.append(
+                f"it embeds a different colour table ({len(existing.entries)} entries, from "
+                f"{existing.fname or 'an unnamed LUT'!r})"
+            )
+        return found
 
 
 # ── colour tables ─────────────────────────────────────────────────────────────
@@ -423,6 +455,10 @@ def write_mgh_tags(
     where FreeSurfer writes it, and a new colour table goes last. ``out`` may
     be ``source``: the file is replaced only once the new one is complete.
 
+    The one other change is to a kept relative transform path when ``out`` is
+    in another directory: it is rebased so it still names the same file, since
+    a relative path is resolved from the directory of the volume holding it.
+
     Parameters
     ----------
     source : str or Path
@@ -453,6 +489,7 @@ def write_mgh_tags(
     if xform is not None and not xform:
         raise ValueError("the transform path to record must not be empty")
     body, tags = _split_mgh(_read_mgh_bytes(source), str(source))
+    tags = tags.rebase_xform(Path(source).parent, out.parent)
     if xform is not None:
         _replace_tag(
             tags.tags,
@@ -542,6 +579,41 @@ def inherit_tags(
         return MGHTags()
     derived = tags.derive(r2r=r2r, keep_color_table=keep_color_table)
     return derived.rebase_xform(Path(source).parent, Path(out).parent)
+
+
+def relative_xform_path(target: str | Path, out_dir: str | Path) -> str:
+    """Express a transform path relative to the directory of the volume naming it.
+
+    A relative path keeps a subject directory valid when it is moved as a whole,
+    but only when the volume and the transform live in it together. When they
+    share no directory below the filesystem root, the relative form would only
+    climb to the root and back down, breaking as soon as either side moves,
+    so the absolute path is returned instead. The same holds for paths on
+    different drives, which have no relative form at all.
+
+    Parameters
+    ----------
+    target : str or Path
+        The transform, as an absolute path or one relative to the current
+        directory.
+    out_dir : str or Path
+        Directory of the volume that will record it.
+
+    Returns
+    -------
+    str
+        The path to record.
+    """
+    target = os.path.abspath(target)
+    out_dir = os.path.abspath(out_dir)
+    try:
+        common = os.path.commonpath([target, out_dir])
+    except ValueError:
+        return target
+    if os.path.dirname(common) == common:
+        # The only shared directory is the root itself.
+        return target
+    return os.path.relpath(target, out_dir)
 
 
 def history_entry(program: str, arguments: Sequence[str]) -> str:

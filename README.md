@@ -373,7 +373,7 @@ mri info <input> [selectors]
 mri diff <vol1> <vol2> [options]
 mri binarize --i <input> --o <output> (--min|--max|--match ...) [options]
 mri geom --o <output> (--like <image> | --fov <mm> --vox-size <mm> --orientation <code>) [options]
-mri tag <input> <output> [--xform <xfm> [--abs-xform-tag]] [--ctab <lut>]
+mri tag <input> <output> [--xform <xfm> | --xform-from <vol>] [--abs-xform-tag] [--ctab <lut> | --ctab-from <vol>] [--force]
 ```
 
 #### `mri mask` — apply a binary mask
@@ -612,16 +612,33 @@ The transform path is recorded relative to the output's directory by default,
 so a subject directory stays valid when it is moved. FreeSurfer first looks for
 `transforms/talairach.xfm` next to the volume and uses it whenever it exists,
 which covers the standard layout; any other relative path it resolves against
-the current directory, and `mri tag` warns in that case. `--abs-xform-tag`
-records the absolute path instead, which is how `recon-all` records it.
+the current directory, and `mri tag` warns in that case. A transform that shares
+no directory with the volume below the filesystem root is recorded absolute,
+since a relative path would only climb to the root and down again.
+`--abs-xform-tag` always records the absolute path, which is how `recon-all`
+records it.
+
+`--xform-from` and `--ctab-from` copy the tag from another volume, for outputs
+of tools that write none. A copied transform path is resolved from the
+directory of the volume it was recorded in, then recorded like `--xform`.
+
+A transform path or colour table the input already holds is only replaced with
+`--force`, so a tag set on purpose is not overwritten by accident. Asking for a
+value it already holds is not an error and leaves the file untouched, so a
+pipeline can repeat the step. Colour tables count as the same when their entries
+are, wherever they were loaded from. A FreeSurfer-written volume records an
+absolute path, so replacing it with the relative form also needs `--force`.
 
 | Argument              | Description                                                         |
 |-----------------------|---------------------------------------------------------------------|
 | `in` (positional)     | Input MGH/MGZ volume.                                               |
 | `out` (positional)    | Output MGH/MGZ volume; may be the input.                            |
 | `--xform FILE`        | Transform whose path to record, typically `transforms/talairach.xfm`. |
+| `--xform-from VOL`    | MGH/MGZ volume whose recorded transform path to copy.              |
 | `--abs-xform-tag`     | Record the absolute path rather than one relative to `out`.        |
 | `--ctab LUT`          | ASCII colour lookup table to embed, such as `FreeSurferColorLUT.txt`. |
+| `--ctab-from VOL`     | MGH/MGZ volume whose embedded colour table to copy.                |
+| `--force`             | Replace a transform path or colour table the input already holds.  |
 
 **Examples**
 
@@ -631,6 +648,9 @@ mri tag mri/nu.mgz mri/nu.mgz --xform mri/transforms/talairach.xfm
 
 # Embed a lookup table so freeview shows label names without an external LUT
 mri tag aseg.mgz aseg.mgz --ctab FreeSurferColorLUT.txt
+
+# Give a volume written by a tag-less tool the tags of another
+mri tag mri/aseg.mgz mri/aseg.mgz --xform-from mri/nu.mgz --ctab-from mri/aparc+aseg.orig.mgz
 
 # Check what a volume carries
 mri info mri/nu.mgz

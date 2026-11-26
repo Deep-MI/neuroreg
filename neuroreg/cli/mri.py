@@ -34,6 +34,7 @@ from ..image import (
     read_color_lut,
     read_mgh_tags,
     recognized_image_suffix,
+    relative_xform_path,
     reslice_and_apply_mask,
     save_image,
     shape_from_fov,
@@ -333,25 +334,51 @@ def _build_parser() -> argparse.ArgumentParser:
             "uses that whenever it exists, which covers the standard layout;\n"
             "any other relative path it resolves against the current directory.\n"
             "--abs-xform-tag records the absolute path instead, which is how\n"
-            "recon-all records it."
+            "recon-all records it.\n"
+            "\n"
+            "--xform-from and --ctab-from copy the tag from another volume, for\n"
+            "outputs of tools that write none. A copied transform path is\n"
+            "resolved where it was recorded and then recorded like --xform.\n"
+            "\n"
+            "A tag IN already holds is only replaced with --force, so a tag set\n"
+            "on purpose is not overwritten by accident. Asking for a value it\n"
+            "already holds is not an error, so a pipeline can repeat the step;\n"
+            "colour tables count as the same when their entries are."
         ),
     )
     tag_p.add_argument("in_file", metavar="in", help="Input MGH/MGZ volume.")
     tag_p.add_argument("out", metavar="out", help="Output MGH/MGZ volume; may be the input.")
-    tag_p.add_argument(
+    xform_group = tag_p.add_mutually_exclusive_group()
+    xform_group.add_argument(
         "--xform",
         metavar="FILE",
         help="Transform whose path to record, typically transforms/talairach.xfm.",
     )
+    xform_group.add_argument(
+        "--xform-from",
+        metavar="VOL",
+        help="MGH/MGZ volume whose recorded transform path to copy.",
+    )
     tag_p.add_argument(
         "--abs-xform-tag",
         action="store_true",
-        help="Record the absolute path of --xform rather than one relative to the directory of OUT.",
+        help="Record the transform's absolute path rather than one relative to the directory of OUT.",
     )
-    tag_p.add_argument(
+    ctab_group = tag_p.add_mutually_exclusive_group()
+    ctab_group.add_argument(
         "--ctab",
         metavar="LUT",
         help="ASCII colour lookup table to embed, such as FreeSurferColorLUT.txt.",
+    )
+    ctab_group.add_argument(
+        "--ctab-from",
+        metavar="VOL",
+        help="MGH/MGZ volume whose embedded colour table to copy.",
+    )
+    tag_p.add_argument(
+        "--force",
+        action="store_true",
+        help="Replace a transform path or colour table IN already holds with a different one.",
     )
 
     return p
@@ -681,10 +708,15 @@ _STANDARD_XFORM = Path("transforms", "talairach.xfm")
 
 def _validate_tag_args(ns: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
     """Reject ``mri tag`` invocations that cannot do anything useful."""
-    if ns.xform is None and ns.ctab is None:
-        parser.error("mri tag needs --xform and/or --ctab: there is nothing to record otherwise.")
-    if ns.abs_xform_tag and ns.xform is None:
-        parser.error("--abs-xform-tag only says how to record --xform, which was not given.")
+    if ns.xform is None and ns.xform_from is None and ns.ctab is None and ns.ctab_from is None:
+        parser.error(
+            "mri tag needs --xform/--xform-from and/or --ctab/--ctab-from: there is nothing to record otherwise."
+        )
+    if ns.abs_xform_tag and ns.xform is None and ns.xform_from is None:
+        parser.error("--abs-xform-tag only says how to record a transform path, and none was given.")
+    for flag, source in (("--xform-from", ns.xform_from), ("--ctab-from", ns.ctab_from)):
+        if source is not None and recognized_image_suffix(source) not in (".mgz", ".mgh"):
+            parser.error(f"{flag} copies a tag from an MGH/MGZ volume, the only format that holds one.")
     if recognized_image_suffix(ns.in_file) not in (".mgz", ".mgh"):
         parser.error(
             "mri tag reads MGH/MGZ input only, since the tags it keeps exist only there; "
@@ -699,27 +731,52 @@ def _xform_tag_value(xform: str, out: str, absolute: bool) -> str:
 
     The relative form is relative to the directory ``out`` is written to, not
     the current one, since that is the only location the path can be resolved
-    from later. Paths on different drives have no relative form, so they are
-    recorded absolute.
+    from later. See :func:`~neuroreg.image.mgh_tags.relative_xform_path` for
+    when the absolute path is recorded instead.
     """
-    target = os.path.abspath(xform)
     if absolute:
-        return target
-    try:
-        return os.path.relpath(target, os.path.dirname(os.path.abspath(out)))
-    except ValueError:
-        return target
+        return os.path.abspath(xform)
+    return relative_xform_path(xform, os.path.dirname(os.path.abspath(out)))
+
+
+def _requested_xform_target(ns: argparse.Namespace) -> str | None:
+    """Return the absolute path of the transform to record, if one was requested.
+
+    A path copied with --xform-from is resolved from the directory of the
+    volume it was recorded in, the only place a relative one means anything.
+    """
+    if ns.xform is not None:
+        return os.path.abspath(ns.xform)
+    if ns.xform_from is None:
+        return None
+    recorded = read_mgh_tags(ns.xform_from).xform
+    if recorded is None:
+        raise ValueError(f"{ns.xform_from} records no talairach xform to copy")
+    return os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(ns.xform_from)), recorded))
+
+
+def _requested_color_table(ns: argparse.Namespace):
+    """Return the colour table to embed, if one was requested."""
+    if ns.ctab is not None:
+        return read_color_lut(ns.ctab)
+    if ns.ctab_from is None:
+        return None
+    table = read_mgh_tags(ns.ctab_from).color_table
+    if table is None:
+        raise ValueError(f"{ns.ctab_from} embeds no colour table to copy")
+    return table
 
 
 def _main_tag(ns: argparse.Namespace) -> None:
     try:
         xform = None
-        if ns.xform is not None:
-            if not Path(ns.xform).is_file():
+        target = _requested_xform_target(ns)
+        if target is not None:
+            if not Path(target).is_file():
                 # mri_add_xform_to_header -c records the name without checking
                 # it either: the transform may legitimately be written later.
-                print(f"WARNING: {ns.xform} does not exist; recording its path anyway.", file=sys.stderr)
-            xform = _xform_tag_value(ns.xform, ns.out, ns.abs_xform_tag)
+                print(f"WARNING: {target} does not exist; recording its path anyway.", file=sys.stderr)
+            xform = _xform_tag_value(target, ns.out, ns.abs_xform_tag)
             if not os.path.isabs(xform) and Path(xform) != _STANDARD_XFORM:
                 print(
                     f"WARNING: FreeSurfer resolves the relative path {xform} against its current "
@@ -727,15 +784,36 @@ def _main_tag(ns: argparse.Namespace) -> None:
                     "Pass --abs-xform-tag if FreeSurfer has to find this transform from elsewhere.",
                     file=sys.stderr,
                 )
-        table = None if ns.ctab is None else read_color_lut(ns.ctab)
-        write_mgh_tags(ns.in_file, ns.out, xform=xform, color_table=table)
+        table = _requested_color_table(ns)
+
+        # Compare against what OUT would inherit, which for another directory
+        # is the rebased path, not the string stored in IN.
+        existing = read_mgh_tags(ns.in_file).rebase_xform(
+            os.path.dirname(os.path.abspath(ns.in_file)), os.path.dirname(os.path.abspath(ns.out))
+        )
+        conflicts = existing.conflicts(xform=xform, color_table=table)
+        if conflicts and not ns.force:
+            reasons = "; and ".join(conflicts)
+            raise ValueError(f"not replacing tags of {ns.in_file}: {reasons}. Pass --force to replace.")
+        # A value IN already holds is left as it is, so a repeated step changes
+        # nothing, including the name a matching colour table was recorded with.
+        if xform is not None and existing.xform == xform:
+            xform = None
+        existing_table = existing.color_table if table is not None else None
+        if existing_table is not None and existing_table.entries == table.entries:
+            table = None
+
+        in_place = os.path.exists(ns.out) and os.path.samefile(ns.in_file, ns.out)
+        unchanged = in_place and xform is None and table is None
+        if not unchanged:
+            write_mgh_tags(ns.in_file, ns.out, xform=xform, color_table=table)
         # Report the tags as stored, so what is printed is what a reader gets.
         written = read_mgh_tags(ns.out)
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    print(f"Output: {ns.out}")
+    print(f"Output: {ns.out}" + (" (unchanged: it already holds these tags)" if unchanged else ""))
     if written.xform is not None:
         print(f"     xform tag: {written.xform}")
     if written.color_table is not None:
