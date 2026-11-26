@@ -489,9 +489,12 @@ def save_image(image: Any, path: str | Path, tags: MGHTags | None = None) -> Non
             # An MGH source's header already holds these; a NIfTI source's
             # reach the MGH scan parameters only this way.
             apply_scan_parameters_to_mgh(image.header, tags.scan)
-        if tags is not None:
+        if has_tags or (tags is not None and header is not None):
             # The caller decided the tags, so they are written even when there
-            # are none: nib.save would write back those of the source header.
+            # are none if the header came from an MGH source: nib.save would
+            # write back the tags that header was read with. A fresh header
+            # carries none, so nib.save, which streams rather than building
+            # the file in memory, stays the path for it.
             write_mgh_image(image, destination, tags)
             return
     elif suffix in _NIFTI_SUFFIXES and tags is not None:
