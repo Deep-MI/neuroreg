@@ -659,7 +659,7 @@ subcommands: `diff`, `invert`, `concat`, and `convert`.
 lta diff    LTA1 [LTA2] [options]                   # Compare transforms
 lta invert  INPUT OUTPUT                            # Invert a transform
 lta concat  LTA1 LTA2 OUTPUT                        # Concatenate two transforms
-lta convert INPUT OUTPUT [--src-img SRC --dst-img DST]  # Convert formats
+lta convert INPUT OUTPUT [--src SRC --dst DST]      # Convert formats
 ```
 
 ---
@@ -770,7 +770,7 @@ affine text matrices by normalizing through an internal RAS-to-RAS `LTA`.
 ```
 lta convert INPUT OUTPUT [--in-format {lta,xfm,fsl,regdat,itk,antsmat,afni,niftyreg}]
                          [--out-format {lta,xfm,fsl,regdat,itk,antsmat,afni,niftyreg}]
-                         [--src-img SRC] [--dst-img DST]
+                         [--src SRC] [--dst DST]
                          [--out-type {ras2ras,vox2vox}]
                          [--subject SUBJECT] [--fscale FSCALE]
                          [--float2int {tkregister,round,floor}]
@@ -789,15 +789,19 @@ lta convert INPUT OUTPUT [--in-format {lta,xfm,fsl,regdat,itk,antsmat,afni,nifty
 
 **Notes**
 
-- Reading `register.dat` requires both `--src-img` and `--dst-img`, because the
+- `--src` and `--dst` fill the LTA's `src` and `dst` volume info blocks. They take
+  an image or a JSON with a `geometry` block, since only the header is read.
+  `--trg`, the name FreeSurfer's `lta_convert` uses, is accepted for `--dst`. The
+  former names `--src-img` and `--dst-img` still work but are deprecated.
+- Reading `register.dat` requires both `--src` and `--dst`, because the
   stored matrix is defined in tkregister coordinates rather than scanner RAS.
-- Reading FSL `.mat` / `.fslmat` also requires both `--src-img` and `--dst-img`,
+- Reading FSL `.mat` / `.fslmat` also requires both `--src` and `--dst`,
   because the stored matrix is defined in FSL voxel conventions rather than
   scanner RAS.
 - Reading `.xfm`, ITK/ANTs text affines, experimental ANTs `.mat`, experimental
   AFNI affine text, or NiftyReg text matrices without images still preserves the
   transform matrix, but the resulting LTA geometry blocks stay marked as `valid=0`
-  unless you provide `--src-img` and `--dst-img`.
+  unless you provide `--src` and `--dst`.
 - Use `--in-format` / `--out-format` for ambiguous filenames such as `.txt`, `.1D`, or `.mat`.
 - ITK/ANTs text support currently targets 3D affine transforms only, not binary or
   composite transform files.
@@ -816,10 +820,10 @@ lta convert INPUT OUTPUT [--in-format {lta,xfm,fsl,regdat,itk,antsmat,afni,nifty
 
 ```bash
 # XFM -> LTA with explicit image geometry
-lta convert talairach.xfm talairach.lta --src-img mov.mgz --dst-img ref.mgz
+lta convert talairach.xfm talairach.lta --src mov.mgz --dst ref.mgz
 
 # XFM -> LTA with explicit subject metadata
-lta convert talairach.xfm talairach.lta --src-img mov.mgz --dst-img ref.mgz --subject fsaverage
+lta convert talairach.xfm talairach.lta --src mov.mgz --dst ref.mgz --subject fsaverage
 
 # LTA -> XFM
 lta convert sub01_to_mni.lta sub01_to_mni.xfm
@@ -828,19 +832,19 @@ lta convert sub01_to_mni.lta sub01_to_mni.xfm
 lta convert bold_to_orig.lta bold_to_orig.dat --subject sub-01 --fscale 0.1
 
 # tkregister register.dat -> LTA
-lta convert bold_to_orig.dat bold_to_orig.lta --src-img bold.nii.gz --dst-img orig.mgz
+lta convert bold_to_orig.dat bold_to_orig.lta --src bold.nii.gz --dst orig.mgz
 
 # LTA -> FSL FLIRT matrix
 lta convert bold_to_orig.lta bold_to_orig.mat
 
 # FSL FLIRT matrix -> LTA
-lta convert bold_to_orig.mat bold_to_orig_from_fsl.lta --src-img bold.nii.gz --dst-img orig.mgz
+lta convert bold_to_orig.mat bold_to_orig_from_fsl.lta --src bold.nii.gz --dst orig.mgz
 
 # LTA -> ITK/ANTs text affine
 lta convert bold_to_orig.lta bold_to_orig.tfm
 
 # ITK/ANTs text affine (.txt requires explicit format override)
-lta convert bold_to_orig.txt bold_to_orig_from_itk.lta --in-format itk --src-img bold.nii.gz --dst-img orig.mgz
+lta convert bold_to_orig.txt bold_to_orig_from_itk.lta --in-format itk --src bold.nii.gz --dst orig.mgz
 
 # LTA -> experimental ANTs GenericAffine .mat
 lta convert bold_to_orig.lta bold_to_orig0GenericAffine.mat

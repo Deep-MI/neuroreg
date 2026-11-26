@@ -351,7 +351,7 @@ class TestMultiregCli:
         assert "Traceback" not in err
         assert "ERROR:" in err
         assert "must include valid destination geometry" in err
-        assert "lta convert --dst-img" in err
+        assert "lta convert --dst" in err
 
     def test_main_accepts_fixtp_without_ixforms(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         # The rejection must be specific to the combination, not to --fixtp.

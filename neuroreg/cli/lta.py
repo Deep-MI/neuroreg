@@ -38,6 +38,18 @@ def _geometry_argument(source: str | None, *, flag: str):
     return load_geometry_source(source, label=flag) if is_geometry_json(source) else source
 
 
+class _DeprecatedAlias(argparse.Action):
+    """Store an option's value like its replacement, warning that the old name is going away."""
+
+    def __init__(self, *args, replacement: str, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.replacement = replacement
+
+    def __call__(self, parser, namespace, values, option_string=None) -> None:
+        print(f"WARNING: {option_string} is deprecated; use {self.replacement}.", file=sys.stderr)
+        setattr(namespace, self.dest, values)
+
+
 def _positive_float(value: str) -> float:
     """Argparse type that accepts only strictly positive floats."""
     try:
@@ -241,12 +253,12 @@ def _build_parser() -> argparse.ArgumentParser:
             "  .niftyreg.txt  NiftyReg 3D affine text matrix\n"
             "\n"
             "Use --in-format/--out-format for ambiguous text outputs such as .txt, .1D, or .mat.\n"
-            "FSL and register.dat conversion require both --src-img and --dst-img\n"
+            "FSL and register.dat conversion require both --src and --dst\n"
             "because the stored matrices depend on image geometry rather than being\n"
             "plain scanner-RAS affines. ITK/ANTs text affines, experimental ANTs .mat,\n"
             "experimental AFNI affine text, and NiftyReg affine text matrices are\n"
             "scanner-space transforms and can be read without images, though\n"
-            "--src-img/--dst-img still enrich the resulting LTA geometry blocks.\n"
+            "--src/--dst still enrich the resulting LTA geometry blocks.\n"
             "ANTs .mat support is currently based on SciPy + ITK Matlab IO semantics\n"
             "and should be considered experimental until validated on real files.\n"
             "AFNI support currently targets affine text matrices in DICOM/LPS\n"
@@ -266,19 +278,34 @@ def _build_parser() -> argparse.ArgumentParser:
         choices=TRANSFORM_FORMATS,
         help="Override output format inference for ambiguous files.",
     )
+    # Named after the LTA blocks they fill ("src volume info", "dst volume
+    # info"); --trg is lta_convert's name for the destination.
     conv_p.add_argument(
-        "--src-img",
+        "--src",
+        dest="src_geom",
+        metavar="FILE",
         help=(
-            "Moving/source image geometry for conversion when needed. Accepts an image or a "
-            "JSON with a geometry block, since only the header is read."
+            "Source (moving) geometry, written to the LTA's src block. An image or a JSON with a "
+            "geometry block; only the header is read."
         ),
     )
     conv_p.add_argument(
-        "--dst-img",
+        "--dst",
+        "--trg",
+        dest="dst_geom",
+        metavar="FILE",
         help=(
-            "Reference/target image geometry for conversion when needed. Accepts an image or a "
-            "JSON with a geometry block, since only the header is read."
+            "Destination (reference) geometry, written to the LTA's dst block. An image or a JSON "
+            "with a geometry block; only the header is read. --trg is accepted as in lta_convert."
         ),
+    )
+    # The former names, which suggested an image is required. Kept working but
+    # out of --help.
+    conv_p.add_argument(
+        "--src-img", dest="src_geom", action=_DeprecatedAlias, replacement="--src", help=argparse.SUPPRESS
+    )
+    conv_p.add_argument(
+        "--dst-img", dest="dst_geom", action=_DeprecatedAlias, replacement="--dst", help=argparse.SUPPRESS
     )
     conv_p.add_argument(
         "--out-type",
@@ -381,8 +408,8 @@ def _main_convert(ns: argparse.Namespace) -> None:
         # be resolved here, and it then has no filename to record. This runs
         # outside the transform read below, so a bad JSON is not reported as an
         # unreadable input transform.
-        src_img = _geometry_argument(ns.src_img, flag="--src-img")
-        dst_img = _geometry_argument(ns.dst_img, flag="--dst-img")
+        src_img = _geometry_argument(ns.src_geom, flag="--src")
+        dst_img = _geometry_argument(ns.dst_geom, flag="--dst")
     except Exception as e:
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
