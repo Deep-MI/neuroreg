@@ -32,13 +32,15 @@ from ..image import (
     clip_and_cast_dtype,
     create_image_like,
     header_map_image,
+    is_geometry_json,
+    load_geometry_source,
     load_image,
     place_grid_at_cras,
     reslice_r2r_image,
     save_image,
 )
 from ..transforms import TRANSFORM_FORMATS, affine_from_volume_info, read_transform_as_lta
-from ._args import NumberListParser, is_geometry_json, load_geometry_source, number_list
+from ._args import NumberListParser, number_list
 from ._outputs import validate_image_outputs
 
 
@@ -155,8 +157,8 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="FILE",
         dest="ref",
         help=(
-            "Optional target/reference geometry, as an image or a centroid target JSON carrying "
-            "a geometry block, since only the header is read. Overrides geometry stored in the "
+            "Optional target/reference geometry, as an image or a JSON with a geometry block, "
+            "since only the header is read. Overrides geometry stored in the "
             "transform."
         ),
     )
@@ -680,7 +682,7 @@ def main(args=None) -> None:
 
     try:
         mov_img = load_image(ns.input_file)
-        ref_img = load_geometry_source(ns.ref, flag="--ref") if ns.ref is not None else None
+        ref_img = load_geometry_source(ns.ref, label="--ref") if ns.ref is not None else None
         lta = (
             None
             if ns.transform is None

@@ -134,6 +134,42 @@ def geometry_from_image(image: Any) -> GeometryDict:
     return _coerce_geometry(_header_info(image))
 
 
+def read_geometry_json(path: str | Path) -> GeometryDict | None:
+    """Read only the ``geometry`` block of a target JSON file.
+
+    Unlike :func:`read_target_json`, centroids are neither required nor
+    validated, so a file that holds nothing but a ``geometry`` block is
+    accepted. That is what a grid description needs; a centroid target that
+    also carries geometry reads the same way.
+
+    Parameters
+    ----------
+    path : str or Path
+        Path to a JSON file.
+
+    Returns
+    -------
+    GeometryDict or None
+        The validated geometry, or ``None`` if the file has no ``geometry`` key.
+
+    Raises
+    ------
+    ValueError
+        If the file does not decode to an object, or its geometry is malformed.
+    """
+    target_path = Path(path)
+    with target_path.open() as f:
+        data = json.load(f)
+    if not isinstance(data, dict):
+        raise ValueError(f"Geometry JSON at '{target_path}' must decode to an object.")
+    raw_geometry = data.get("geometry")
+    if raw_geometry is None:
+        return None
+    if not isinstance(raw_geometry, dict):
+        raise ValueError(f"Geometry JSON at '{target_path}' has a non-object 'geometry' section.")
+    return _coerce_geometry(raw_geometry)
+
+
 def read_target_json(path: str | Path) -> TargetFile:
     """Read a centroid target JSON file.
 

@@ -12,7 +12,7 @@ from typing import Any
 
 import numpy as np
 
-from ..image import cast_image_dtype, load_image
+from ..image import cast_image_dtype, load_geometry_source, load_image
 from ..image.map import coerce_image_data_3d
 from ..imreg.init import InitType, resolve_init_type
 from ..imreg.robreg import robreg
@@ -447,11 +447,13 @@ def multireg(
         ``template_geometry`` is given the destination geometry is ignored and
         need not be present.
     template_geometry : ImageLike or None, optional
-        Optional image (or path to one) supplying the output template geometry,
-        replacing the geometry that would otherwise be taken from ``init_ltas``
-        or derived from the inputs. Only the shape and affine are used, not the
-        voxel data. Mutually exclusive with ``fix_target`` and
-        ``use_cras_center``, both of which select a geometry themselves.
+        Optional image, path to one, or path to a JSON with a ``geometry``
+        block (see :func:`neuroreg.image.load_geometry_source`) supplying the
+        output template geometry, replacing the geometry that would otherwise
+        be taken from ``init_ltas`` or derived from the inputs. Only the shape
+        and affine are used, not the voxel data. Mutually exclusive with
+        ``fix_target`` and ``use_cras_center``, both of which select a geometry
+        themselves.
     average : {"mean", "median", 0, 1}, default="median"
         Template aggregation mode. Integer aliases match the FreeSurfer CLI.
     init_target_index : int or None, optional
@@ -567,7 +569,7 @@ def multireg(
 
     external_geometry: tuple[tuple[int, int, int], np.ndarray] | None = None
     if template_geometry is not None:
-        geom_image = load_image(template_geometry) if isinstance(template_geometry, str | Path) else template_geometry
+        geom_image = load_geometry_source(template_geometry, label="template_geometry")
         if len(geom_image.shape) < 3:
             raise ValueError(
                 "template_geometry must describe a 3-D grid, but the given image has shape "

@@ -180,6 +180,73 @@ def load_image(image: str | Path | Any) -> Any:
     return _with_affine(loaded, _build_4dfp_affine(metadata))
 
 
+#: Suffix that selects the geometry JSON reader instead of the image reader.
+GEOMETRY_JSON_SUFFIX = ".json"
+
+
+def is_geometry_json(source: Any) -> bool:
+    """Return whether a geometry source is a path to a geometry JSON rather than an image."""
+    return isinstance(source, (str, Path)) and Path(source).suffix.lower() == GEOMETRY_JSON_SUFFIX
+
+
+def load_geometry_source(source: str | Path | Any, *, label: str = "geometry source") -> Any:
+    """Load a grid from an image or from a JSON carrying a ``geometry`` block.
+
+    Several options and arguments read only the shape and affine of what they
+    are given, so requiring an image forces callers to keep a file around
+    purely for its header. A JSON with a ``geometry`` block (``dims``,
+    ``delta``, ``Mdc``, ``Pxyz_c``) names the same grid without one. Any other
+    keys are ignored, so both a bare grid file and a bundled centroid target
+    that also carries geometry are accepted.
+
+    The JSON case is returned as an image whose voxels are a zero-strided view
+    rather than an allocation, because no caller reads them: this keeps every
+    consumer on the one code path it already has.
+
+    Parameters
+    ----------
+    source : str or Path or Any
+        Path to an image or geometry JSON, or an already-loaded image, which is
+        returned unchanged. A bundled atlas name is not accepted; pass a path.
+    label : str, default="geometry source"
+        Name to quote in error messages, e.g. ``"--ref"`` or
+        ``"template_geometry"``.
+
+    Returns
+    -------
+    Any
+        Loaded nibabel image, or a geometry-only image built from the JSON.
+
+    Raises
+    ------
+    ValueError
+        If the JSON carries no ``geometry`` block, and so names no grid, or the
+        block is malformed.
+    """
+    if not is_geometry_json(source):
+        return load_image(source)
+
+    # Imported lazily: segreg depends on transforms, which this module must not.
+    from ..segreg.atlas import affine_from_header
+    from ..segreg.io import read_geometry_json
+
+    try:
+        geometry = read_geometry_json(source)
+    except ValueError as exc:
+        raise ValueError(f"{label}: {exc}") from exc
+    if geometry is None:
+        raise ValueError(
+            f"{label} was given '{source}', which has no 'geometry' block, so it does not describe "
+            "a grid. Pass an image, or a JSON with a geometry block such as the bundled atlas targets."
+        )
+    dims = tuple(int(v) for v in geometry["dims"])
+    voxels = np.broadcast_to(np.uint8(0), dims)
+    # No filename is set: nibabel validates it against the image type and would
+    # reject a .json path. Consumers that record one fall back to empty, which
+    # is what an LTA already carries for a geometry with no image behind it.
+    return nib.MGHImage(voxels, affine_from_header(geometry))
+
+
 _NIFTI_SUFFIXES = (".nii.gz", ".nii")
 _MGH_SUFFIXES = (".mgz", ".mgh")
 _ANALYZE_SUFFIXES = (".img", ".hdr")

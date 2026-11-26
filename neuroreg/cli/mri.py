@@ -23,13 +23,14 @@ from ..image import (
     describe_image,
     direction_cosines_from_orientation,
     image_value_stats,
+    load_geometry_source,
     load_image,
     mask_geometry_differs,
     reslice_and_apply_mask,
     save_image,
     shape_from_fov,
 )
-from ._args import NumberListParser, load_geometry_source, number_list
+from ._args import NumberListParser, number_list
 from ._outputs import validate_image_outputs
 
 # ── parser ──────────────────────────────────────────────────────────────────
@@ -521,7 +522,7 @@ def _resolve_geom_components(
         Via :meth:`argparse.ArgumentParser.error` when a component cannot be
         resolved or an orientation code is invalid.
     """
-    like = load_geometry_source(ns.like, flag="--like") if ns.like is not None else None
+    like = load_geometry_source(ns.like, label="--like") if ns.like is not None else None
     like_zooms = None if like is None else np.asarray(like.header.get_zooms()[:3], dtype=np.float64)
     if like_zooms is not None and np.any(like_zooms <= 0):
         parser.error(f"--like has a non-positive voxel size: {like_zooms.tolist()}")

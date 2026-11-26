@@ -14,6 +14,7 @@ import sys
 
 import numpy as np
 
+from ..image import is_geometry_json, load_geometry_source
 from ..transforms import (
     LTA,
     TRANSFORM_FORMATS,
@@ -21,7 +22,6 @@ from ..transforms import (
     read_transform_as_lta,
     write_lta_as_transform,
 )
-from ._args import is_geometry_json, load_geometry_source
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -35,7 +35,7 @@ def _geometry_argument(source: str | None, *, flag: str):
     """
     if source is None:
         return None
-    return load_geometry_source(source, flag=flag) if is_geometry_json(source) else source
+    return load_geometry_source(source, label=flag) if is_geometry_json(source) else source
 
 
 def _positive_float(value: str) -> float:
@@ -270,14 +270,14 @@ def _build_parser() -> argparse.ArgumentParser:
         "--src-img",
         help=(
             "Moving/source image geometry for conversion when needed. Accepts an image or a "
-            "centroid target JSON carrying a geometry block, since only the header is read."
+            "JSON with a geometry block, since only the header is read."
         ),
     )
     conv_p.add_argument(
         "--dst-img",
         help=(
             "Reference/target image geometry for conversion when needed. Accepts an image or a "
-            "centroid target JSON carrying a geometry block, since only the header is read."
+            "JSON with a geometry block, since only the header is read."
         ),
     )
     conv_p.add_argument(
@@ -378,9 +378,16 @@ def _main_convert(ns: argparse.Namespace) -> None:
         # Both are read only for their header, so both also accept a geometry
         # JSON. An image path is handed over as a path, because the reader opens
         # it itself and records it as the geometry's filename; only a JSON has to
-        # be resolved here, and it then has no filename to record.
+        # be resolved here, and it then has no filename to record. This runs
+        # outside the transform read below, so a bad JSON is not reported as an
+        # unreadable input transform.
         src_img = _geometry_argument(ns.src_img, flag="--src-img")
         dst_img = _geometry_argument(ns.dst_img, flag="--dst-img")
+    except Exception as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    try:
         lta = read_transform_as_lta(ns.input, src_img=src_img, dst_img=dst_img, fmt=ns.in_format)
     except Exception as e:
         print(f"ERROR: cannot read {ns.input}: {e}", file=sys.stderr)

@@ -7,10 +7,9 @@ import logging
 import sys
 from typing import Any, cast
 
-from ..image import load_image, save_image
+from ..image import load_geometry_source, load_image, save_image
 from ..multireg import multireg
 from ..transforms import LTA
-from ._args import load_geometry_source
 from ._outputs import validate_image_outputs
 
 
@@ -66,7 +65,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--template-geom",
         metavar="FILE",
         help=(
-            "Image or centroid target JSON supplying the output template geometry, replacing "
+            "Image or JSON with a geometry block supplying the output template geometry, replacing "
             "the geometry multireg would otherwise derive. Only the header is read. With "
             "--ixforms the destination geometry of the input transforms is then ignored and "
             "need not be present."
@@ -265,7 +264,7 @@ def main(args=None) -> None:
         template_geom_img = (
             None
             if ns.template_geom is None
-            else cast(Any, load_geometry_source(ns.template_geom, flag="--template-geom"))
+            else cast(Any, load_geometry_source(ns.template_geom, label="--template-geom"))
         )
     except Exception as exc:
         print(f"ERROR loading image: {exc}", file=sys.stderr)
