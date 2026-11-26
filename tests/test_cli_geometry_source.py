@@ -71,6 +71,29 @@ def test_load_geometry_source_accepts_a_json_with_only_a_geometry_block(tmp_path
     assert np.asarray(image.affine) == pytest.approx(affine_from_header(geometry))
 
 
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("dims", [1.5, 256, 256]),
+        ("dims", [0, 256, 256]),
+        ("delta", [1.0, -1.0, 1.0]),
+        ("delta", [1.0, float("nan"), 1.0]),
+        ("Mdc", [[1, 0, 0], [0, 1, 0], [0, 0, 0]]),
+        ("Pxyz_c", [0.0, float("inf"), 0.0]),
+    ],
+)
+def test_load_geometry_source_rejects_a_malformed_geometry(tmp_path: Path, key: str, value: list):
+    # Coercing these would give a wrong grid (1.5 truncated to 1) or a NaN or
+    # singular affine instead of an error naming the option.
+    geometry = convert_numpy_to_json_serializable(load_atlas_target(MNI_ATLAS_NAME).geometry)
+    geometry[key] = value
+    grid = tmp_path / "grid.json"
+    grid.write_text(json.dumps({"geometry": geometry}))
+
+    with pytest.raises(ValueError, match=rf"--like: geometry\['{key}'\]"):
+        load_geometry_source(grid, label="--like")
+
+
 def test_load_geometry_source_does_not_allocate_the_voxels():
     # The grid is 256 cubed and nothing reads its voxels, so materialising them
     # would be pure waste on every call.
