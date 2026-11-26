@@ -1941,12 +1941,12 @@ src geometry is taken from LTA1; dst geometry from LTA2.</p>
 </dd>
 </dl>
 <p>Use –in-format/–out-format for ambiguous text outputs such as .txt, .1D, or .mat.
-FSL and register.dat conversion require both –src-img and –dst-img
+FSL and register.dat conversion require both –src and –dst
 because the stored matrices depend on image geometry rather than being
 plain scanner-RAS affines. ITK/ANTs text affines, experimental ANTs .mat,
 experimental AFNI affine text, and NiftyReg affine text matrices are
 scanner-space transforms and can be read without images, though
-–src-img/–dst-img still enrich the resulting LTA geometry blocks.
+–src/–dst still enrich the resulting LTA geometry blocks.
 ANTs .mat support is currently based on SciPy + ITK Matlab IO semantics
 and should be considered experimental until validated on real files.
 AFNI support currently targets affine text matrices in DICOM/LPS
@@ -1954,9 +1954,9 @@ coordinates and should likewise be considered experimental.
 NiftyReg affine text matrices store the inverse target-to-source RAS matrix.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">lta</span> <span class="n">convert</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="ow">in</span><span class="o">-</span><span class="nb">format</span> <span class="p">{</span><span class="n">lta</span><span class="p">,</span><span class="n">xfm</span><span class="p">,</span><span class="n">fsl</span><span class="p">,</span><span class="n">regdat</span><span class="p">,</span><span class="n">itk</span><span class="p">,</span><span class="n">antsmat</span><span class="p">,</span><span class="n">afni</span><span class="p">,</span><span class="n">niftyreg</span><span class="p">}]</span>
             <span class="p">[</span><span class="o">--</span><span class="n">out</span><span class="o">-</span><span class="nb">format</span> <span class="p">{</span><span class="n">lta</span><span class="p">,</span><span class="n">xfm</span><span class="p">,</span><span class="n">fsl</span><span class="p">,</span><span class="n">regdat</span><span class="p">,</span><span class="n">itk</span><span class="p">,</span><span class="n">antsmat</span><span class="p">,</span><span class="n">afni</span><span class="p">,</span><span class="n">niftyreg</span><span class="p">}]</span>
-            <span class="p">[</span><span class="o">--</span><span class="n">src</span><span class="o">-</span><span class="n">img</span> <span class="n">SRC_IMG</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">dst</span><span class="o">-</span><span class="n">img</span> <span class="n">DST_IMG</span><span class="p">]</span>
-            <span class="p">[</span><span class="o">--</span><span class="n">out</span><span class="o">-</span><span class="nb">type</span> <span class="p">{</span><span class="n">ras2ras</span><span class="p">,</span><span class="n">vox2vox</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">subject</span> <span class="n">SUBJECT</span><span class="p">]</span>
-            <span class="p">[</span><span class="o">--</span><span class="n">fscale</span> <span class="n">FSCALE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">float2int</span> <span class="p">{</span><span class="n">tkregister</span><span class="p">,</span><span class="nb">round</span><span class="p">,</span><span class="n">floor</span><span class="p">}]</span>
+            <span class="p">[</span><span class="o">--</span><span class="n">src</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">dst</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">out</span><span class="o">-</span><span class="nb">type</span> <span class="p">{</span><span class="n">ras2ras</span><span class="p">,</span><span class="n">vox2vox</span><span class="p">}]</span>
+            <span class="p">[</span><span class="o">--</span><span class="n">subject</span> <span class="n">SUBJECT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">fscale</span> <span class="n">FSCALE</span><span class="p">]</span>
+            <span class="p">[</span><span class="o">--</span><span class="n">float2int</span> <span class="p">{</span><span class="n">tkregister</span><span class="p">,</span><span class="nb">round</span><span class="p">,</span><span class="n">floor</span><span class="p">}]</span>
             <span class="n">INPUT</span> <span class="n">OUTPUT</span>
 </pre></div>
 </div>
@@ -1982,11 +1982,11 @@ NiftyReg affine text matrices store the inverse target-to-source RAS matrix.</p>
 <dd><p>Possible choices: lta, xfm, fsl, regdat, itk, antsmat, afni, niftyreg</p>
 <p>Override output format inference for ambiguous files.</p>
 </dd>
-<dt><kbd>--src-img</kbd></dt>
-<dd><p>Moving/source image geometry for conversion when needed. Accepts an image or a JSON with a geometry block, since only the header is read.</p>
+<dt><kbd>--src</kbd></dt>
+<dd><p>Source (moving) geometry, written to the LTA’s src block. An image or a JSON with a geometry block; only the header is read.</p>
 </dd>
-<dt><kbd>--dst-img</kbd></dt>
-<dd><p>Reference/target image geometry for conversion when needed. Accepts an image or a JSON with a geometry block, since only the header is read.</p>
+<dt><kbd>--dst, --trg</kbd></dt>
+<dd><p>Destination (reference) geometry, written to the LTA’s dst block. An image or a JSON with a geometry block; only the header is read. –trg is accepted as in lta_convert.</p>
 </dd>
 <dt><kbd>--out-type</kbd></dt>
 <dd><p>Possible choices: ras2ras, vox2vox</p>
@@ -2144,12 +2144,12 @@ src geometry is taken from LTA1; dst geometry from LTA2.</p>
 </dd>
 </dl>
 <p>Use –in-format/–out-format for ambiguous text outputs such as .txt, .1D, or .mat.
-FSL and register.dat conversion require both –src-img and –dst-img
+FSL and register.dat conversion require both –src and –dst
 because the stored matrices depend on image geometry rather than being
 plain scanner-RAS affines. ITK/ANTs text affines, experimental ANTs .mat,
 experimental AFNI affine text, and NiftyReg affine text matrices are
 scanner-space transforms and can be read without images, though
-–src-img/–dst-img still enrich the resulting LTA geometry blocks.
+–src/–dst still enrich the resulting LTA geometry blocks.
 ANTs .mat support is currently based on SciPy + ITK Matlab IO semantics
 and should be considered experimental until validated on real files.
 AFNI support currently targets affine text matrices in DICOM/LPS
@@ -2159,7 +2159,7 @@ NiftyReg affine text matrices store the inverse target-to-source RAS matrix.</p>
 <div class="highlight-default notranslate" id="lta-convert-convert"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">lta</span> <span class="n">convert</span> <span class="n">convert</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span>
                            <span class="p">[</span><span class="o">--</span><span class="ow">in</span><span class="o">-</span><span class="nb">format</span> <span class="p">{</span><span class="n">lta</span><span class="p">,</span><span class="n">xfm</span><span class="p">,</span><span class="n">fsl</span><span class="p">,</span><span class="n">regdat</span><span class="p">,</span><span class="n">itk</span><span class="p">,</span><span class="n">antsmat</span><span class="p">,</span><span class="n">afni</span><span class="p">,</span><span class="n">niftyreg</span><span class="p">}]</span>
                            <span class="p">[</span><span class="o">--</span><span class="n">out</span><span class="o">-</span><span class="nb">format</span> <span class="p">{</span><span class="n">lta</span><span class="p">,</span><span class="n">xfm</span><span class="p">,</span><span class="n">fsl</span><span class="p">,</span><span class="n">regdat</span><span class="p">,</span><span class="n">itk</span><span class="p">,</span><span class="n">antsmat</span><span class="p">,</span><span class="n">afni</span><span class="p">,</span><span class="n">niftyreg</span><span class="p">}]</span>
-                           <span class="p">[</span><span class="o">--</span><span class="n">src</span><span class="o">-</span><span class="n">img</span> <span class="n">SRC_IMG</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">dst</span><span class="o">-</span><span class="n">img</span> <span class="n">DST_IMG</span><span class="p">]</span>
+                           <span class="p">[</span><span class="o">--</span><span class="n">src</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">dst</span> <span class="n">FILE</span><span class="p">]</span>
                            <span class="p">[</span><span class="o">--</span><span class="n">out</span><span class="o">-</span><span class="nb">type</span> <span class="p">{</span><span class="n">ras2ras</span><span class="p">,</span><span class="n">vox2vox</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">subject</span> <span class="n">SUBJECT</span><span class="p">]</span>
                            <span class="p">[</span><span class="o">--</span><span class="n">fscale</span> <span class="n">FSCALE</span><span class="p">]</span>
                            <span class="p">[</span><span class="o">--</span><span class="n">float2int</span> <span class="p">{</span><span class="n">tkregister</span><span class="p">,</span><span class="nb">round</span><span class="p">,</span><span class="n">floor</span><span class="p">}]</span>
@@ -2188,11 +2188,11 @@ NiftyReg affine text matrices store the inverse target-to-source RAS matrix.</p>
 <dd><p>Possible choices: lta, xfm, fsl, regdat, itk, antsmat, afni, niftyreg</p>
 <p>Override output format inference for ambiguous files.</p>
 </dd>
-<dt><kbd>--src-img</kbd></dt>
-<dd><p>Moving/source image geometry for conversion when needed. Accepts an image or a JSON with a geometry block, since only the header is read.</p>
+<dt><kbd>--src</kbd></dt>
+<dd><p>Source (moving) geometry, written to the LTA’s src block. An image or a JSON with a geometry block; only the header is read.</p>
 </dd>
-<dt><kbd>--dst-img</kbd></dt>
-<dd><p>Reference/target image geometry for conversion when needed. Accepts an image or a JSON with a geometry block, since only the header is read.</p>
+<dt><kbd>--dst, --trg</kbd></dt>
+<dd><p>Destination (reference) geometry, written to the LTA’s dst block. An image or a JSON with a geometry block; only the header is read. –trg is accepted as in lta_convert.</p>
 </dd>
 <dt><kbd>--out-type</kbd></dt>
 <dd><p>Possible choices: ras2ras, vox2vox</p>

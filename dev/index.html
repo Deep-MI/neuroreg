@@ -1322,7 +1322,7 @@ subcommands: <code class="docutils literal notranslate"><span class="pre">diff</
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">lta</span> <span class="n">diff</span>    <span class="n">LTA1</span> <span class="p">[</span><span class="n">LTA2</span><span class="p">]</span> <span class="p">[</span><span class="n">options</span><span class="p">]</span>                   <span class="c1"># Compare transforms</span>
 <span class="n">lta</span> <span class="n">invert</span>  <span class="n">INPUT</span> <span class="n">OUTPUT</span>                            <span class="c1"># Invert a transform</span>
 <span class="n">lta</span> <span class="n">concat</span>  <span class="n">LTA1</span> <span class="n">LTA2</span> <span class="n">OUTPUT</span>                        <span class="c1"># Concatenate two transforms</span>
-<span class="n">lta</span> <span class="n">convert</span> <span class="n">INPUT</span> <span class="n">OUTPUT</span> <span class="p">[</span><span class="o">--</span><span class="n">src</span><span class="o">-</span><span class="n">img</span> <span class="n">SRC</span> <span class="o">--</span><span class="n">dst</span><span class="o">-</span><span class="n">img</span> <span class="n">DST</span><span class="p">]</span>  <span class="c1"># Convert formats</span>
+<span class="n">lta</span> <span class="n">convert</span> <span class="n">INPUT</span> <span class="n">OUTPUT</span> <span class="p">[</span><span class="o">--</span><span class="n">src</span> <span class="n">SRC</span> <span class="o">--</span><span class="n">dst</span> <span class="n">DST</span><span class="p">]</span>      <span class="c1"># Convert formats</span>
 </pre></div>
 </div>
 <hr class="docutils" />
@@ -1456,7 +1456,7 @@ affine text matrices by normalizing through an internal RAS-to-RAS <code class="
 <p><strong>Usage</strong></p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">lta</span> <span class="n">convert</span> <span class="n">INPUT</span> <span class="n">OUTPUT</span> <span class="p">[</span><span class="o">--</span><span class="ow">in</span><span class="o">-</span><span class="nb">format</span> <span class="p">{</span><span class="n">lta</span><span class="p">,</span><span class="n">xfm</span><span class="p">,</span><span class="n">fsl</span><span class="p">,</span><span class="n">regdat</span><span class="p">,</span><span class="n">itk</span><span class="p">,</span><span class="n">antsmat</span><span class="p">,</span><span class="n">afni</span><span class="p">,</span><span class="n">niftyreg</span><span class="p">}]</span>
                          <span class="p">[</span><span class="o">--</span><span class="n">out</span><span class="o">-</span><span class="nb">format</span> <span class="p">{</span><span class="n">lta</span><span class="p">,</span><span class="n">xfm</span><span class="p">,</span><span class="n">fsl</span><span class="p">,</span><span class="n">regdat</span><span class="p">,</span><span class="n">itk</span><span class="p">,</span><span class="n">antsmat</span><span class="p">,</span><span class="n">afni</span><span class="p">,</span><span class="n">niftyreg</span><span class="p">}]</span>
-                         <span class="p">[</span><span class="o">--</span><span class="n">src</span><span class="o">-</span><span class="n">img</span> <span class="n">SRC</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">dst</span><span class="o">-</span><span class="n">img</span> <span class="n">DST</span><span class="p">]</span>
+                         <span class="p">[</span><span class="o">--</span><span class="n">src</span> <span class="n">SRC</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">dst</span> <span class="n">DST</span><span class="p">]</span>
                          <span class="p">[</span><span class="o">--</span><span class="n">out</span><span class="o">-</span><span class="nb">type</span> <span class="p">{</span><span class="n">ras2ras</span><span class="p">,</span><span class="n">vox2vox</span><span class="p">}]</span>
                          <span class="p">[</span><span class="o">--</span><span class="n">subject</span> <span class="n">SUBJECT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">fscale</span> <span class="n">FSCALE</span><span class="p">]</span>
                          <span class="p">[</span><span class="o">--</span><span class="n">float2int</span> <span class="p">{</span><span class="n">tkregister</span><span class="p">,</span><span class="nb">round</span><span class="p">,</span><span class="n">floor</span><span class="p">}]</span>
@@ -1475,15 +1475,19 @@ affine text matrices by normalizing through an internal RAS-to-RAS <code class="
 </ul>
 <p><strong>Notes</strong></p>
 <ul class="simple">
-<li><p>Reading <code class="docutils literal notranslate"><span class="pre">register.dat</span></code> requires both <code class="docutils literal notranslate"><span class="pre">--src-img</span></code> and <code class="docutils literal notranslate"><span class="pre">--dst-img</span></code>, because the
+<li><p><code class="docutils literal notranslate"><span class="pre">--src</span></code> and <code class="docutils literal notranslate"><span class="pre">--dst</span></code> fill the LTA’s <code class="docutils literal notranslate"><span class="pre">src</span></code> and <code class="docutils literal notranslate"><span class="pre">dst</span></code> volume info blocks. They take
+an image or a JSON with a <code class="docutils literal notranslate"><span class="pre">geometry</span></code> block, since only the header is read.
+<code class="docutils literal notranslate"><span class="pre">--trg</span></code>, the name FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">lta_convert</span></code> uses, is accepted for <code class="docutils literal notranslate"><span class="pre">--dst</span></code>. The
+former names <code class="docutils literal notranslate"><span class="pre">--src-img</span></code> and <code class="docutils literal notranslate"><span class="pre">--dst-img</span></code> still work but are deprecated.</p></li>
+<li><p>Reading <code class="docutils literal notranslate"><span class="pre">register.dat</span></code> requires both <code class="docutils literal notranslate"><span class="pre">--src</span></code> and <code class="docutils literal notranslate"><span class="pre">--dst</span></code>, because the
 stored matrix is defined in tkregister coordinates rather than scanner RAS.</p></li>
-<li><p>Reading FSL <code class="docutils literal notranslate"><span class="pre">.mat</span></code> / <code class="docutils literal notranslate"><span class="pre">.fslmat</span></code> also requires both <code class="docutils literal notranslate"><span class="pre">--src-img</span></code> and <code class="docutils literal notranslate"><span class="pre">--dst-img</span></code>,
+<li><p>Reading FSL <code class="docutils literal notranslate"><span class="pre">.mat</span></code> / <code class="docutils literal notranslate"><span class="pre">.fslmat</span></code> also requires both <code class="docutils literal notranslate"><span class="pre">--src</span></code> and <code class="docutils literal notranslate"><span class="pre">--dst</span></code>,
 because the stored matrix is defined in FSL voxel conventions rather than
 scanner RAS.</p></li>
 <li><p>Reading <code class="docutils literal notranslate"><span class="pre">.xfm</span></code>, ITK/ANTs text affines, experimental ANTs <code class="docutils literal notranslate"><span class="pre">.mat</span></code>, experimental
 AFNI affine text, or NiftyReg text matrices without images still preserves the
 transform matrix, but the resulting LTA geometry blocks stay marked as <code class="docutils literal notranslate"><span class="pre">valid=0</span></code>
-unless you provide <code class="docutils literal notranslate"><span class="pre">--src-img</span></code> and <code class="docutils literal notranslate"><span class="pre">--dst-img</span></code>.</p></li>
+unless you provide <code class="docutils literal notranslate"><span class="pre">--src</span></code> and <code class="docutils literal notranslate"><span class="pre">--dst</span></code>.</p></li>
 <li><p>Use <code class="docutils literal notranslate"><span class="pre">--in-format</span></code> / <code class="docutils literal notranslate"><span class="pre">--out-format</span></code> for ambiguous filenames such as <code class="docutils literal notranslate"><span class="pre">.txt</span></code>, <code class="docutils literal notranslate"><span class="pre">.1D</span></code>, or <code class="docutils literal notranslate"><span class="pre">.mat</span></code>.</p></li>
 <li><p>ITK/ANTs text support currently targets 3D affine transforms only, not binary or
 composite transform files.</p></li>
@@ -1500,10 +1504,10 @@ not pass <code class="docutils literal notranslate"><span class="pre">--fscale</
 </ul>
 <p><strong>Examples</strong></p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># XFM -&gt; LTA with explicit image geometry</span>
-lta<span class="w"> </span>convert<span class="w"> </span>talairach.xfm<span class="w"> </span>talairach.lta<span class="w"> </span>--src-img<span class="w"> </span>mov.mgz<span class="w"> </span>--dst-img<span class="w"> </span>ref.mgz
+lta<span class="w"> </span>convert<span class="w"> </span>talairach.xfm<span class="w"> </span>talairach.lta<span class="w"> </span>--src<span class="w"> </span>mov.mgz<span class="w"> </span>--dst<span class="w"> </span>ref.mgz
 
 <span class="c1"># XFM -&gt; LTA with explicit subject metadata</span>
-lta<span class="w"> </span>convert<span class="w"> </span>talairach.xfm<span class="w"> </span>talairach.lta<span class="w"> </span>--src-img<span class="w"> </span>mov.mgz<span class="w"> </span>--dst-img<span class="w"> </span>ref.mgz<span class="w"> </span>--subject<span class="w"> </span>fsaverage
+lta<span class="w"> </span>convert<span class="w"> </span>talairach.xfm<span class="w"> </span>talairach.lta<span class="w"> </span>--src<span class="w"> </span>mov.mgz<span class="w"> </span>--dst<span class="w"> </span>ref.mgz<span class="w"> </span>--subject<span class="w"> </span>fsaverage
 
 <span class="c1"># LTA -&gt; XFM</span>
 lta<span class="w"> </span>convert<span class="w"> </span>sub01_to_mni.lta<span class="w"> </span>sub01_to_mni.xfm
@@ -1512,19 +1516,19 @@ lta<span class="w"> </span>convert<span class="w"> </span>sub01_to_mni.lta<span 
 lta<span class="w"> </span>convert<span class="w"> </span>bold_to_orig.lta<span class="w"> </span>bold_to_orig.dat<span class="w"> </span>--subject<span class="w"> </span>sub-01<span class="w"> </span>--fscale<span class="w"> </span><span class="m">0</span>.1
 
 <span class="c1"># tkregister register.dat -&gt; LTA</span>
-lta<span class="w"> </span>convert<span class="w"> </span>bold_to_orig.dat<span class="w"> </span>bold_to_orig.lta<span class="w"> </span>--src-img<span class="w"> </span>bold.nii.gz<span class="w"> </span>--dst-img<span class="w"> </span>orig.mgz
+lta<span class="w"> </span>convert<span class="w"> </span>bold_to_orig.dat<span class="w"> </span>bold_to_orig.lta<span class="w"> </span>--src<span class="w"> </span>bold.nii.gz<span class="w"> </span>--dst<span class="w"> </span>orig.mgz
 
 <span class="c1"># LTA -&gt; FSL FLIRT matrix</span>
 lta<span class="w"> </span>convert<span class="w"> </span>bold_to_orig.lta<span class="w"> </span>bold_to_orig.mat
 
 <span class="c1"># FSL FLIRT matrix -&gt; LTA</span>
-lta<span class="w"> </span>convert<span class="w"> </span>bold_to_orig.mat<span class="w"> </span>bold_to_orig_from_fsl.lta<span class="w"> </span>--src-img<span class="w"> </span>bold.nii.gz<span class="w"> </span>--dst-img<span class="w"> </span>orig.mgz
+lta<span class="w"> </span>convert<span class="w"> </span>bold_to_orig.mat<span class="w"> </span>bold_to_orig_from_fsl.lta<span class="w"> </span>--src<span class="w"> </span>bold.nii.gz<span class="w"> </span>--dst<span class="w"> </span>orig.mgz
 
 <span class="c1"># LTA -&gt; ITK/ANTs text affine</span>
 lta<span class="w"> </span>convert<span class="w"> </span>bold_to_orig.lta<span class="w"> </span>bold_to_orig.tfm
 
 <span class="c1"># ITK/ANTs text affine (.txt requires explicit format override)</span>
-lta<span class="w"> </span>convert<span class="w"> </span>bold_to_orig.txt<span class="w"> </span>bold_to_orig_from_itk.lta<span class="w"> </span>--in-format<span class="w"> </span>itk<span class="w"> </span>--src-img<span class="w"> </span>bold.nii.gz<span class="w"> </span>--dst-img<span class="w"> </span>orig.mgz
+lta<span class="w"> </span>convert<span class="w"> </span>bold_to_orig.txt<span class="w"> </span>bold_to_orig_from_itk.lta<span class="w"> </span>--in-format<span class="w"> </span>itk<span class="w"> </span>--src<span class="w"> </span>bold.nii.gz<span class="w"> </span>--dst<span class="w"> </span>orig.mgz
 
 <span class="c1"># LTA -&gt; experimental ANTs GenericAffine .mat</span>
 lta<span class="w"> </span>convert<span class="w"> </span>bold_to_orig.lta<span class="w"> </span>bold_to_orig0GenericAffine.mat

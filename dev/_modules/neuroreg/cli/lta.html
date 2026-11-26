@@ -280,6 +280,18 @@
     <span class="k">return</span> <span class="n">load_geometry_source</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">flag</span><span class="p">)</span> <span class="k">if</span> <span class="n">is_geometry_json</span><span class="p">(</span><span class="n">source</span><span class="p">)</span> <span class="k">else</span> <span class="n">source</span>
 
 
+<span class="k">class</span><span class="w"> </span><span class="nc">_DeprecatedAlias</span><span class="p">(</span><span class="n">argparse</span><span class="o">.</span><span class="n">Action</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Store an option's value like its replacement, warning that the old name is going away."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">replacement</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">replacement</span> <span class="o">=</span> <span class="n">replacement</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parser</span><span class="p">,</span> <span class="n">namespace</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">option_string</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"WARNING: </span><span class="si">{</span><span class="n">option_string</span><span class="si">}</span><span class="s2"> is deprecated; use </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">replacement</span><span class="si">}</span><span class="s2">."</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">namespace</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dest</span><span class="p">,</span> <span class="n">values</span><span class="p">)</span>
+
+
 <span class="k">def</span><span class="w"> </span><span class="nf">_positive_float</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Argparse type that accepts only strictly positive floats."""</span>
     <span class="k">try</span><span class="p">:</span>
@@ -483,12 +495,12 @@
             <span class="s2">"  .niftyreg.txt  NiftyReg 3D affine text matrix</span><span class="se">\n</span><span class="s2">"</span>
             <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span>
             <span class="s2">"Use --in-format/--out-format for ambiguous text outputs such as .txt, .1D, or .mat.</span><span class="se">\n</span><span class="s2">"</span>
-            <span class="s2">"FSL and register.dat conversion require both --src-img and --dst-img</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"FSL and register.dat conversion require both --src and --dst</span><span class="se">\n</span><span class="s2">"</span>
             <span class="s2">"because the stored matrices depend on image geometry rather than being</span><span class="se">\n</span><span class="s2">"</span>
             <span class="s2">"plain scanner-RAS affines. ITK/ANTs text affines, experimental ANTs .mat,</span><span class="se">\n</span><span class="s2">"</span>
             <span class="s2">"experimental AFNI affine text, and NiftyReg affine text matrices are</span><span class="se">\n</span><span class="s2">"</span>
             <span class="s2">"scanner-space transforms and can be read without images, though</span><span class="se">\n</span><span class="s2">"</span>
-            <span class="s2">"--src-img/--dst-img still enrich the resulting LTA geometry blocks.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"--src/--dst still enrich the resulting LTA geometry blocks.</span><span class="se">\n</span><span class="s2">"</span>
             <span class="s2">"ANTs .mat support is currently based on SciPy + ITK Matlab IO semantics</span><span class="se">\n</span><span class="s2">"</span>
             <span class="s2">"and should be considered experimental until validated on real files.</span><span class="se">\n</span><span class="s2">"</span>
             <span class="s2">"AFNI support currently targets affine text matrices in DICOM/LPS</span><span class="se">\n</span><span class="s2">"</span>
@@ -508,19 +520,34 @@
         <span class="n">choices</span><span class="o">=</span><span class="n">TRANSFORM_FORMATS</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="s2">"Override output format inference for ambiguous files."</span><span class="p">,</span>
     <span class="p">)</span>
+    <span class="c1"># Named after the LTA blocks they fill ("src volume info", "dst volume</span>
+    <span class="c1"># info"); --trg is lta_convert's name for the destination.</span>
     <span class="n">conv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">"--src-img"</span><span class="p">,</span>
+        <span class="s2">"--src"</span><span class="p">,</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s2">"src_geom"</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"FILE"</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="p">(</span>
-            <span class="s2">"Moving/source image geometry for conversion when needed. Accepts an image or a "</span>
-            <span class="s2">"JSON with a geometry block, since only the header is read."</span>
+            <span class="s2">"Source (moving) geometry, written to the LTA's src block. An image or a JSON with a "</span>
+            <span class="s2">"geometry block; only the header is read."</span>
         <span class="p">),</span>
     <span class="p">)</span>
     <span class="n">conv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
-        <span class="s2">"--dst-img"</span><span class="p">,</span>
+        <span class="s2">"--dst"</span><span class="p">,</span>
+        <span class="s2">"--trg"</span><span class="p">,</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s2">"dst_geom"</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"FILE"</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="p">(</span>
-            <span class="s2">"Reference/target image geometry for conversion when needed. Accepts an image or a "</span>
-            <span class="s2">"JSON with a geometry block, since only the header is read."</span>
+            <span class="s2">"Destination (reference) geometry, written to the LTA's dst block. An image or a JSON "</span>
+            <span class="s2">"with a geometry block; only the header is read. --trg is accepted as in lta_convert."</span>
         <span class="p">),</span>
+    <span class="p">)</span>
+    <span class="c1"># The former names, which suggested an image is required. Kept working but</span>
+    <span class="c1"># out of --help.</span>
+    <span class="n">conv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">"--src-img"</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">"src_geom"</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="n">_DeprecatedAlias</span><span class="p">,</span> <span class="n">replacement</span><span class="o">=</span><span class="s2">"--src"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">SUPPRESS</span>
+    <span class="p">)</span>
+    <span class="n">conv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">"--dst-img"</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s2">"dst_geom"</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="n">_DeprecatedAlias</span><span class="p">,</span> <span class="n">replacement</span><span class="o">=</span><span class="s2">"--dst"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">SUPPRESS</span>
     <span class="p">)</span>
     <span class="n">conv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
         <span class="s2">"--out-type"</span><span class="p">,</span>
@@ -623,8 +650,8 @@
         <span class="c1"># be resolved here, and it then has no filename to record. This runs</span>
         <span class="c1"># outside the transform read below, so a bad JSON is not reported as an</span>
         <span class="c1"># unreadable input transform.</span>
-        <span class="n">src_img</span> <span class="o">=</span> <span class="n">_geometry_argument</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">src_img</span><span class="p">,</span> <span class="n">flag</span><span class="o">=</span><span class="s2">"--src-img"</span><span class="p">)</span>
-        <span class="n">dst_img</span> <span class="o">=</span> <span class="n">_geometry_argument</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">dst_img</span><span class="p">,</span> <span class="n">flag</span><span class="o">=</span><span class="s2">"--dst-img"</span><span class="p">)</span>
+        <span class="n">src_img</span> <span class="o">=</span> <span class="n">_geometry_argument</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">src_geom</span><span class="p">,</span> <span class="n">flag</span><span class="o">=</span><span class="s2">"--src"</span><span class="p">)</span>
+        <span class="n">dst_img</span> <span class="o">=</span> <span class="n">_geometry_argument</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">dst_geom</span><span class="p">,</span> <span class="n">flag</span><span class="o">=</span><span class="s2">"--dst"</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ERROR: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
         <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>

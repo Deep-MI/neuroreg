@@ -116,9 +116,9 @@ Examples::
    lta diff reg1.lta reg2.lta
    lta invert in.lta out.lta
    lta concat a_to_b.lta b_to_c.lta a_to_c.lta
-   lta convert talairach.xfm talairach.lta --src-img mov.mgz --dst-img ref.mgz
-   lta convert bold_to_orig.mat bold_to_orig.lta --src-img bold.nii.gz --dst-img orig.mgz
-   lta convert bold_to_orig.txt bold_to_orig.lta --in-format itk --src-img bold.nii.gz --dst-img orig.mgz
+   lta convert talairach.xfm talairach.lta --src mov.mgz --dst ref.mgz
+   lta convert bold_to_orig.mat bold_to_orig.lta --src bold.nii.gz --dst orig.mgz
+   lta convert bold_to_orig.txt bold_to_orig.lta --in-format itk --src bold.nii.gz --dst orig.mgz
    lta convert bold_to_orig0GenericAffine.mat bold_to_orig_from_antsmat.lta
    lta convert bold_to_orig.aff12.1D bold_to_orig_from_afni.lta
    lta convert bold_to_orig.txt bold_to_orig_from_niftyreg.lta --in-format niftyreg
