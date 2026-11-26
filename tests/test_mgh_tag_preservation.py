@@ -168,11 +168,12 @@ def test_save_image_stores_tags_in_mgh(tmp_path: Path):
 
 
 def test_save_image_reports_tags_it_cannot_store(tmp_path: Path, caplog):
+    # Analyze pairs have no place for tags.
     with caplog.at_level(logging.INFO, logger="neuroreg.image.io"):
-        save_image(nib.MGHImage(DATA, np.eye(4)), tmp_path / "out.nii.gz", tags=MGHTags([(3, b"x\0")]))
+        save_image(nib.MGHImage(DATA, np.eye(4)), tmp_path / "out.img", tags=MGHTags([(3, b"x\0")]))
 
-    assert (tmp_path / "out.nii.gz").exists()
-    assert "only MGH/MGZ outputs carry them" in caplog.text
+    assert (tmp_path / "out.img").exists()
+    assert "only MGH and NIfTI outputs carry them" in caplog.text
 
 
 # ── commands ──────────────────────────────────────────────────────────────────

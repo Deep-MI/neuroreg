@@ -32,13 +32,13 @@ from ..image import (
     load_image,
     mask_geometry_differs,
     read_color_lut,
-    read_mgh_tags,
+    read_image_tags,
     recognized_image_suffix,
     relative_xform_path,
     reslice_and_apply_mask,
     save_image,
     shape_from_fov,
-    write_mgh_tags,
+    write_image_tags,
 )
 from ._args import NumberListParser, number_list
 from ._outputs import output_history, validate_image_outputs
@@ -317,16 +317,18 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Record a transform path and/or embed a colour table in an MGH volume.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=(
-            "Copy an MGH/MGZ volume, recording the path of its talairach\n"
+            "Copy an MGH or NIfTI volume, recording the path of its talairach\n"
             "transform and/or embedding a colour lookup table, as FreeSurfer's\n"
-            "mri_add_xform_to_header and mri_convert --ctab do. The header,\n"
-            "voxels and every other tag are copied byte for byte, so nothing\n"
-            "else changes. OUT may be IN to tag a volume in place.\n"
+            "mri_add_xform_to_header and mri_convert --ctab do. Nothing else\n"
+            "changes: an MGH volume is copied byte for byte apart from the\n"
+            "requested tags, and a NIfTI volume keeps its header and voxels.\n"
+            "OUT may be IN to tag a volume in place, and must share its format.\n"
             "\n"
-            "Tags live after the voxel data, where nibabel-based tools neither\n"
-            "read nor keep them. The other commands here do carry them forward:\n"
-            "an output keeps the tags of the volume its values came from, except\n"
-            "those tied to a coordinate frame it no longer lives in.\n"
+            "An MGH volume keeps its tags after the voxel data, a NIfTI volume\n"
+            "in FreeSurfer's header extension (code 14), which FreeSurfer 8 and\n"
+            "surfa read. The other commands here carry tags forward: an output\n"
+            "keeps the tags of the volume its values came from, except those\n"
+            "tied to a coordinate frame it no longer lives in.\n"
             "\n"
             "--xform is recorded relative to the directory of OUT by default,\n"
             "so a subject directory stays valid when it is moved. FreeSurfer\n"
@@ -346,8 +348,8 @@ def _build_parser() -> argparse.ArgumentParser:
             "colour tables count as the same when their entries are."
         ),
     )
-    tag_p.add_argument("in_file", metavar="in", help="Input MGH/MGZ volume.")
-    tag_p.add_argument("out", metavar="out", help="Output MGH/MGZ volume; may be the input.")
+    tag_p.add_argument("in_file", metavar="in", help="Input MGH or NIfTI volume.")
+    tag_p.add_argument("out", metavar="out", help="Output volume in the same format; may be the input.")
     xform_group = tag_p.add_mutually_exclusive_group()
     xform_group.add_argument(
         "--xform",
@@ -357,7 +359,7 @@ def _build_parser() -> argparse.ArgumentParser:
     xform_group.add_argument(
         "--xform-from",
         metavar="VOL",
-        help="MGH/MGZ volume whose recorded transform path to copy.",
+        help="MGH or NIfTI volume whose recorded transform path to copy.",
     )
     tag_p.add_argument(
         "--abs-xform-tag",
@@ -373,7 +375,7 @@ def _build_parser() -> argparse.ArgumentParser:
     ctab_group.add_argument(
         "--ctab-from",
         metavar="VOL",
-        help="MGH/MGZ volume whose embedded colour table to copy.",
+        help="MGH or NIfTI volume whose embedded colour table to copy.",
     )
     tag_p.add_argument(
         "--force",
@@ -449,12 +451,12 @@ def _print_info_dump(d: dict) -> None:
     print(_format_matrix(d["ras2vox"]))
 
 
-def _print_mgh_tags(path: str) -> None:
-    """Print the transform path and colour table an MGH volume carries, if any."""
-    if recognized_image_suffix(path) not in (".mgz", ".mgh"):
+def _print_tags(path: str) -> None:
+    """Print the transform path and colour table a volume carries, if any."""
+    if recognized_image_suffix(path) not in _TAGGED_SUFFIXES:
         return
     try:
-        tags = read_mgh_tags(path)
+        tags = read_image_tags(path)
     except ValueError as exc:
         print(f"\n{'tags':>14}: unreadable ({exc})")
         return
@@ -478,7 +480,7 @@ def _main_info(ns: argparse.Namespace) -> None:
 
     if not any(getattr(ns, name) for name in _INFO_SELECTORS):
         _print_info_dump(d)
-        _print_mgh_tags(ns.file)
+        _print_tags(ns.file)
         return
 
     # Scriptable mode: print only the requested value(s), one per line.
@@ -704,6 +706,10 @@ def _main_geom(ns: argparse.Namespace, parser: argparse.ArgumentParser, history:
 
 #: The transform name FreeSurfer finds next to a volume regardless of the tag.
 _STANDARD_XFORM = Path("transforms", "talairach.xfm")
+_MGH_SUFFIXES = (".mgz", ".mgh")
+_NIFTI_SUFFIXES = (".nii.gz", ".nii")
+#: Formats that hold FreeSurfer tags: MGH after the voxels, NIfTI in an extension.
+_TAGGED_SUFFIXES = (*_MGH_SUFFIXES, *_NIFTI_SUFFIXES)
 
 
 def _validate_tag_args(ns: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
@@ -715,15 +721,21 @@ def _validate_tag_args(ns: argparse.Namespace, parser: argparse.ArgumentParser) 
     if ns.abs_xform_tag and ns.xform is None and ns.xform_from is None:
         parser.error("--abs-xform-tag only says how to record a transform path, and none was given.")
     for flag, source in (("--xform-from", ns.xform_from), ("--ctab-from", ns.ctab_from)):
-        if source is not None and recognized_image_suffix(source) not in (".mgz", ".mgh"):
-            parser.error(f"{flag} copies a tag from an MGH/MGZ volume, the only format that holds one.")
-    if recognized_image_suffix(ns.in_file) not in (".mgz", ".mgh"):
+        if source is not None and recognized_image_suffix(source) not in _TAGGED_SUFFIXES:
+            parser.error(f"{flag} copies a tag from an MGH or NIfTI volume, the formats that hold one.")
+    in_suffix, out_suffix = recognized_image_suffix(ns.in_file), recognized_image_suffix(ns.out)
+    if in_suffix not in _TAGGED_SUFFIXES:
         parser.error(
-            "mri tag reads MGH/MGZ input only, since the tags it keeps exist only there; "
+            "mri tag reads MGH or NIfTI input only, the formats that hold tags; "
             "convert the volume first, for example with vol2vol."
         )
-    if recognized_image_suffix(ns.out) not in (".mgz", ".mgh"):
-        parser.error("tags can only be stored in MGH volumes, so OUT needs a .mgz or .mgh extension.")
+    if out_suffix not in _TAGGED_SUFFIXES:
+        parser.error("tags can only be stored in MGH or NIfTI volumes, so OUT needs one of their extensions.")
+    if (in_suffix in _MGH_SUFFIXES) != (out_suffix in _MGH_SUFFIXES):
+        parser.error(
+            "mri tag copies a volume and so keeps its format; vol2vol converts between MGH and NIfTI "
+            "and carries the tags across."
+        )
 
 
 def _xform_tag_value(xform: str, out: str, absolute: bool) -> str:
@@ -749,7 +761,7 @@ def _requested_xform_target(ns: argparse.Namespace) -> str | None:
         return os.path.abspath(ns.xform)
     if ns.xform_from is None:
         return None
-    recorded = read_mgh_tags(ns.xform_from).xform
+    recorded = read_image_tags(ns.xform_from).xform
     if recorded is None:
         raise ValueError(f"{ns.xform_from} records no talairach xform to copy")
     return os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(ns.xform_from)), recorded))
@@ -761,7 +773,7 @@ def _requested_color_table(ns: argparse.Namespace):
         return read_color_lut(ns.ctab)
     if ns.ctab_from is None:
         return None
-    table = read_mgh_tags(ns.ctab_from).color_table
+    table = read_image_tags(ns.ctab_from).color_table
     if table is None:
         raise ValueError(f"{ns.ctab_from} embeds no colour table to copy")
     return table
@@ -788,7 +800,7 @@ def _main_tag(ns: argparse.Namespace) -> None:
 
         # Compare against what OUT would inherit, which for another directory
         # is the rebased path, not the string stored in IN.
-        existing = read_mgh_tags(ns.in_file).rebase_xform(
+        existing = read_image_tags(ns.in_file).rebase_xform(
             os.path.dirname(os.path.abspath(ns.in_file)), os.path.dirname(os.path.abspath(ns.out))
         )
         conflicts = existing.conflicts(xform=xform, color_table=table)
@@ -806,9 +818,9 @@ def _main_tag(ns: argparse.Namespace) -> None:
         in_place = os.path.exists(ns.out) and os.path.samefile(ns.in_file, ns.out)
         unchanged = in_place and xform is None and table is None
         if not unchanged:
-            write_mgh_tags(ns.in_file, ns.out, xform=xform, color_table=table)
+            write_image_tags(ns.in_file, ns.out, xform=xform, color_table=table)
         # Report the tags as stored, so what is printed is what a reader gets.
-        written = read_mgh_tags(ns.out)
+        written = read_image_tags(ns.out)
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         sys.exit(1)

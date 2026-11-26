@@ -30,12 +30,13 @@ import shlex
 import struct
 import tempfile
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 import numpy as np
+from nibabel.filebasedimages import ImageFileError
 from nibabel.freesurfer.mghformat import MGHHeader
 
 logger = logging.getLogger(__name__)
@@ -70,6 +71,24 @@ _FRAME_TAG_NAMES = {
 }
 # FreeSurfer writes a matrix tag as text in a fixed, NUL-padded buffer.
 _MATRIX_STRLEN = 4 * 4 * 100
+
+#: NIfTI header-extension code registered for FreeSurfer's tags.
+NIFTI_ECODE_FREESURFER = 14
+# In the NIfTI extension every tag carries an int64 length, and the data ends
+# with this tag so that trailing zero bytes are never mistaken for padding.
+_TAG_END_NIIHDREXTENSION = -1
+# Big-endian marker, intent 0 (an ordinary volume) as a big-endian uint16, and
+# MGH format version 1: the four bytes FreeSurfer writes before the tags.
+_NIFTI_EXTENSION_HEADER = b">\x00\x00\x01"
+# Tags whose matrix is text in MGH but 16 big-endian float32 in the extension.
+_MATRIX_TAGS = frozenset({TAG_AUTO_ALIGN, TAG_ORIG_RAS2VOX})
+# NIfTI-only tags: DOF, FreeSurfer's copy of the geometry, and the scan
+# parameters. The image header already holds what they describe.
+_NIFTI_ONLY_TAGS = frozenset({7, 8, 9, 45})
+# MGH tags whose NIfTI layout differs and is not written here: FreeSurfer folds
+# the first two into the scan-parameter tag, and stores frames in fewer fields.
+_MGH_ONLY_TAGS = {TAG_PEDIR: "phase-encode direction", TAG_FIELDSTRENGTH: "field strength", TAG_MRI_FRAME: "frames"}
+_NIFTI_SUFFIXES = (".nii", ".nii.gz")
 # A RAS-to-RAS map this close to identity leaves the coordinate frame alone.
 _IDENTITY_ATOL = 1e-6
 
@@ -550,9 +569,10 @@ def inherit_tags(
 
     Reads the tags of ``source``, applies :meth:`MGHTags.derive`, and rebases a
     relative transform path from the directory of ``source`` to that of
-    ``out``. A source that is not an MGH volume has no tags. A source whose tags
-    cannot be read contributes none, with a warning, rather than failing the
-    command that is writing the output.
+    ``out``. MGH volumes and NIfTI volumes with FreeSurfer's extension have
+    tags; other formats have none. A source whose tags cannot be read
+    contributes none, with a warning, rather than failing the command that is
+    writing the output.
 
     Parameters
     ----------
@@ -570,15 +590,261 @@ def inherit_tags(
     MGHTags
         Tags for the output.
     """
-    if not str(source).lower().endswith(_MGH_SUFFIXES):
-        return MGHTags()
     try:
-        tags = read_mgh_tags(source)
-    except (OSError, ValueError) as exc:
+        tags = read_image_tags(source)
+    except (OSError, ValueError, ImageFileError) as exc:
         logger.warning("Not carrying over the tags of %s: %s", source, exc)
         return MGHTags()
     derived = tags.derive(r2r=r2r, keep_color_table=keep_color_table)
     return derived.rebase_xform(Path(source).parent, Path(out).parent)
+
+
+def encode_nifti_extension(tags: MGHTags) -> bytes | None:
+    """Serialize tags as FreeSurfer's NIfTI header extension (code 14).
+
+    The layout follows FreeSurfer 8's ``niiWrite``: a four-byte header, then
+    each tag as an int32 id, an int64 length and the payload, all big-endian,
+    then an end tag. ``TAG_RAS_XFORM``, FreeSurfer's own copy of the geometry,
+    is not written: FreeSurfer reads the geometry from the sform/qform when it
+    is absent, as surfa relies on, and a copy can only go stale. Tags with an
+    MGH-only layout are not stored, which is logged.
+
+    Parameters
+    ----------
+    tags : MGHTags
+        Tags in MGH layout.
+
+    Returns
+    -------
+    bytes or None
+        The extension content, or ``None`` when there is nothing to store.
+    """
+    encoded: list[bytes] = []
+    skipped: list[str] = []
+    for tag, payload in tags.tags:
+        if tag in _MGH_ONLY_TAGS:
+            skipped.append(_MGH_ONLY_TAGS[tag])
+            continue
+        if tag in _MATRIX_TAGS:
+            try:
+                payload = struct.pack(">16f", *_decode_matrix(payload).ravel())
+            except ValueError:
+                skipped.append(f"unreadable tag {tag}")
+                continue
+        elif tag == TAG_OLD_MGH_XFORM:
+            # The extension gives every tag a length, so the legacy framing
+            # has no meaning there; FreeSurfer writes the path as tag 31.
+            tag = TAG_MGH_XFORM
+        encoded.append(struct.pack(">iq", tag, len(payload)) + payload)
+    if skipped:
+        logger.info("Not storing in the NIfTI extension: %s.", ", ".join(skipped))
+    if not encoded:
+        return None
+    end = struct.pack(">iq", _TAG_END_NIIHDREXTENSION, 1) + b"*"
+    return _NIFTI_EXTENSION_HEADER + b"".join(encoded) + end
+
+
+def decode_nifti_extension(content: bytes) -> MGHTags:
+    """Parse FreeSurfer's NIfTI header extension into tags in MGH layout.
+
+    NIfTI-only tags (DOF, the geometry copy, scan parameters) are skipped,
+    since the image header carries what they describe, and so is the frame
+    metadata, whose layout differs. nibabel strips trailing zero bytes from
+    extension content, which can shorten the last tag of an extension written
+    without an end tag; such a tag is padded back to its declared length.
+
+    Parameters
+    ----------
+    content : bytes
+        Extension content, without the NIfTI size and code fields.
+
+    Returns
+    -------
+    MGHTags
+        The tags.
+
+    Raises
+    ------
+    ValueError
+        If ``content`` is not a FreeSurfer extension or is malformed.
+    """
+    if content[:1] != _NIFTI_EXTENSION_HEADER[:1]:
+        raise ValueError("NIfTI extension 14 does not start with FreeSurfer's big-endian marker")
+    reader = _Reader(content, len(_NIFTI_EXTENSION_HEADER))
+    tags: list[tuple[int, bytes]] = []
+    while len(content) - reader.pos >= 12:
+        tag = reader.int32()
+        length = reader.int64()
+        if tag in (0, _TAG_END_NIIHDREXTENSION):
+            break
+        if length < 0:
+            raise ValueError(f"tag {tag} has negative length {length}")
+        remaining = len(content) - reader.pos
+        if length > remaining:
+            payload = content[reader.pos :] + bytes(length - remaining)
+            reader.pos = len(content)
+        else:
+            payload = reader.take(length)
+        if tag in _NIFTI_ONLY_TAGS or tag == TAG_MRI_FRAME:
+            continue
+        if tag in _MATRIX_TAGS:
+            if len(payload) != 64:
+                raise ValueError(f"matrix tag {tag} holds {len(payload)} bytes, not 16 float32 values")
+            payload = _encode_matrix(np.array(struct.unpack(">16f", payload), dtype=np.float64).reshape(4, 4))
+        tags.append((tag, payload))
+    return MGHTags(tags)
+
+
+def read_nifti_tags(path: str | Path) -> MGHTags:
+    """Read the FreeSurfer tags of a NIfTI volume, in MGH layout.
+
+    Parameters
+    ----------
+    path : str or Path
+        NIfTI volume. Only the header is read.
+
+    Returns
+    -------
+    MGHTags
+        Its tags; empty if it has no FreeSurfer extension.
+
+    Raises
+    ------
+    ValueError
+        If the FreeSurfer extension is malformed.
+    """
+    import nibabel as nib
+
+    for extension in getattr(nib.load(str(path)).header, "extensions", []):
+        if extension.get_code() == NIFTI_ECODE_FREESURFER:
+            return decode_nifti_extension(_extension_bytes(extension))
+    return MGHTags()
+
+
+def read_image_tags(path: str | Path) -> MGHTags:
+    """Read the FreeSurfer tags of an MGH or NIfTI volume.
+
+    Parameters
+    ----------
+    path : str or Path
+        Volume to read. Formats that cannot hold tags have none.
+
+    Returns
+    -------
+    MGHTags
+        Its tags, in MGH layout.
+
+    Raises
+    ------
+    ValueError
+        If the volume's tags are malformed.
+    """
+    name = str(path).lower()
+    if name.endswith(_MGH_SUFFIXES):
+        return read_mgh_tags(path)
+    if name.endswith(_NIFTI_SUFFIXES):
+        return read_nifti_tags(path)
+    return MGHTags()
+
+
+def save_nifti_with_tags(image: Any, out: str | Path, tags: MGHTags | None) -> None:
+    """Save a NIfTI image with ``tags`` as its FreeSurfer extension.
+
+    Any FreeSurfer extension the image already carries is replaced, never
+    duplicated; other extensions are kept. The extension is attached only for
+    the save, so the caller's image and every other header field are left as
+    they were.
+
+    Parameters
+    ----------
+    image : nibabel.Nifti1Image
+        Image to save.
+    out : str or Path
+        Output path ending in ``.nii`` or ``.nii.gz``.
+    tags : MGHTags or None
+        Tags to store. ``None`` or no tags removes a FreeSurfer extension.
+
+    Returns
+    -------
+    None
+        The volume is written for its side effect.
+    """
+    import nibabel as nib
+    from nibabel.nifti1 import Nifti1Extension, Nifti1Extensions
+
+    content = None if tags is None else encode_nifti_extension(tags)
+    header = image.header
+    original = header.extensions
+    kept = [extension for extension in original if extension.get_code() != NIFTI_ECODE_FREESURFER]
+    if content is not None:
+        kept.append(Nifti1Extension(NIFTI_ECODE_FREESURFER, content))
+    header.extensions = Nifti1Extensions(kept)
+    try:
+        nib.save(image, str(out))
+    finally:
+        header.extensions = original
+
+
+def write_image_tags(
+        source: str | Path,
+        out: str | Path,
+        *,
+        xform: str | None = None,
+        color_table: ColorTable | None = None,
+) -> None:
+    """Copy an MGH or NIfTI volume, setting its transform path and/or colour table.
+
+    MGH volumes are rewritten at the byte level by :func:`write_mgh_tags`.
+    NIfTI volumes are re-saved through nibabel with only the FreeSurfer
+    extension changed, which keeps their header and voxel values. ``source``
+    and ``out`` must share a format, since this copies rather than converts.
+
+    Parameters
+    ----------
+    source : str or Path
+        Input volume.
+    out : str or Path
+        Output path, in the same format family as ``source``.
+    xform : str or None, optional
+        Transform path to record verbatim. ``None`` keeps the existing one.
+    color_table : ColorTable or None, optional
+        Colour table to embed. ``None`` keeps the existing one.
+
+    Returns
+    -------
+    None
+        The volume is written for its side effect.
+
+    Raises
+    ------
+    ValueError
+        If the formats differ or cannot hold tags, or ``xform`` is empty.
+    """
+    source_name, out = str(source).lower(), Path(out)
+    if source_name.endswith(_MGH_SUFFIXES) and out.name.lower().endswith(_MGH_SUFFIXES):
+        write_mgh_tags(source, out, xform=xform, color_table=color_table)
+        return
+    if not (source_name.endswith(_NIFTI_SUFFIXES) and out.name.lower().endswith(_NIFTI_SUFFIXES)):
+        raise ValueError("tags are copied within MGH or within NIfTI; convert between them with vol2vol")
+    if xform is not None and not xform:
+        raise ValueError("the transform path to record must not be empty")
+    import nibabel as nib
+
+    image = nib.load(str(source))
+    tags = read_nifti_tags(source).rebase_xform(Path(source).parent, out.parent)
+    if xform is not None:
+        _replace_tag(tags.tags, (TAG_MGH_XFORM, xform.encode() + b"\0"), replaces=(TAG_MGH_XFORM,), prepend=True)
+    if color_table is not None:
+        _replace_tag(
+            tags.tags,
+            (TAG_OLD_COLORTABLE, encode_color_table(color_table)),
+            replaces=(TAG_OLD_COLORTABLE,),
+            prepend=False,
+        )
+    # Written next to the output and moved into place, so OUT may be SOURCE:
+    # the image still reads its voxels from SOURCE while the new file is built.
+    suffix = ".nii.gz" if out.name.lower().endswith(".nii.gz") else ".nii"
+    _atomic_save(out, suffix, lambda tmp: save_nifti_with_tags(image, tmp, tags))
 
 
 def relative_xform_path(target: str | Path, out_dir: str | Path) -> str:
@@ -797,12 +1063,23 @@ def _replace_tag(
 
 
 def _atomic_write(path: Path, data: bytes) -> None:
-    """Write ``data`` to ``path`` without leaving a partial file behind.
+    """Write ``data`` to ``path`` without leaving a partial file behind."""
 
-    The temporary file is created private (mode 0600), so it is given the mode
-    the destination would otherwise have: the replaced file's, or the umask
-    default for a new one. Without that, tagging a volume in a shared subject
-    directory would make it unreadable to everyone else.
+    def write(tmp: Path) -> None:
+        tmp.write_bytes(data)
+
+    _atomic_save(path, ".tmp", write)
+
+
+def _atomic_save(path: Path, suffix: str, writer: Callable[[Path], None]) -> None:
+    """Have ``writer`` fill a temporary file next to ``path``, then move it there.
+
+    The temporary file keeps ``suffix`` so that writers choosing a format from
+    the extension, such as nibabel, write the right one. It is created private
+    (mode 0600), so it is given the mode the destination would otherwise have:
+    the replaced file's, or the umask default for a new one. Without that,
+    tagging a volume in a shared subject directory would make it unreadable to
+    everyone else.
     """
     if path.exists():
         mode = path.stat().st_mode & 0o7777
@@ -810,12 +1087,21 @@ def _atomic_write(path: Path, data: bytes) -> None:
         umask = os.umask(0)
         os.umask(umask)
         mode = 0o666 & ~umask
-    handle, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    handle, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=suffix)
+    os.close(handle)
     try:
-        with os.fdopen(handle, "wb") as stream:
-            stream.write(data)
+        writer(Path(tmp))
         os.chmod(tmp, mode)
         os.replace(tmp, path)
     except BaseException:
         Path(tmp).unlink(missing_ok=True)
         raise
+
+
+def _extension_bytes(extension: Any) -> bytes:
+    """Return a NIfTI extension's raw content across nibabel versions."""
+    content = getattr(extension, "content", None)
+    if isinstance(content, bytes):
+        return content
+    raw = extension.get_content()
+    return raw if isinstance(raw, bytes) else bytes(raw)

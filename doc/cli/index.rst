@@ -102,7 +102,8 @@ that accept a reference image but no geometry flags::
    mri geom --o target.mgz --like sub.mgz --vox-size 0.5
 
 **tag**: record the talairach transform path and/or embed a colour lookup table
-in an MGH volume, copying everything else byte for byte. The path is recorded
+in an MGH or NIfTI volume (in NIfTI as FreeSurfer's header extension, code 14),
+changing nothing else. The path is recorded
 relative to the output by default; ``--abs-xform-tag`` records it absolute.
 ``--xform-from`` and ``--ctab-from`` copy either tag from another volume. A
 different value the input already holds is only replaced with ``--force``::

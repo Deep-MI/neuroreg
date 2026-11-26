@@ -47,8 +47,10 @@ from .mgh_tags import (
     history_entry,
     inherit_tags,
     read_color_lut,
+    read_image_tags,
     read_mgh_tags,
     relative_xform_path,
+    write_image_tags,
     write_mgh_tags,
 )
 from .pyramid import build_gaussian_pyramid, get_pyramid_limits
@@ -84,8 +86,10 @@ __all__ = [
     "history_entry",
     "inherit_tags",
     "read_color_lut",
+    "read_image_tags",
     "read_mgh_tags",
     "relative_xform_path",
+    "write_image_tags",
     "write_mgh_tags",
     "map",
     "map_r2r",

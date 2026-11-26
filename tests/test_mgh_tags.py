@@ -404,10 +404,12 @@ def test_cli_embeds_a_colour_table_and_info_reports_both_tags(subject: Path, cap
         (["tag", "in.mgz", "out.mgz", "--ctab", "lut.txt", "--abs-xform-tag"], "only says how to record a transform"),
         (["tag", "in.mgz", "out.mgz", "--xform", "t.xfm", "--xform-from", "nu.mgz"], "not allowed with"),
         (["tag", "in.mgz", "out.mgz", "--ctab", "lut.txt", "--ctab-from", "aseg.mgz"], "not allowed with"),
-        (["tag", "in.mgz", "out.mgz", "--xform-from", "nu.nii.gz"], "--xform-from copies a tag from an MGH"),
-        (["tag", "in.mgz", "out.mgz", "--ctab-from", "aseg.nii.gz"], "--ctab-from copies a tag from an MGH"),
-        (["tag", "in.nii.gz", "out.mgz", "--xform", "t.xfm"], "reads MGH/MGZ input only"),
-        (["tag", "in.mgz", "out.nii.gz", "--xform", "t.xfm"], "needs a .mgz or .mgh extension"),
+        (["tag", "in.mgz", "out.mgz", "--xform-from", "nu.img"], "--xform-from copies a tag from an MGH or NIfTI"),
+        (["tag", "in.mgz", "out.mgz", "--ctab-from", "aseg.img"], "--ctab-from copies a tag from an MGH or NIfTI"),
+        (["tag", "in.img", "out.mgz", "--xform", "t.xfm"], "reads MGH or NIfTI input only"),
+        (["tag", "in.mgz", "out.img", "--xform", "t.xfm"], "OUT needs one of their extensions"),
+        (["tag", "in.nii.gz", "out.mgz", "--xform", "t.xfm"], "keeps its format; vol2vol converts"),
+        (["tag", "in.mgz", "out.nii.gz", "--xform", "t.xfm"], "keeps its format; vol2vol converts"),
     ],
 )
 def test_cli_rejects_requests_it_cannot_honour(argv: list[str], message: str, capsys):

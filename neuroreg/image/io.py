@@ -11,7 +11,7 @@ import nibabel as nib
 import numpy as np
 from nibabel.filebasedimages import ImageFileError
 
-from .mgh_tags import MGHTags, write_mgh_image
+from .mgh_tags import MGHTags, save_nifti_with_tags, write_mgh_image
 
 logger = logging.getLogger(__name__)
 
@@ -458,8 +458,11 @@ def save_image(image: Any, path: str | Path, tags: MGHTags | None = None) -> Non
     path : str or Path
         Output filename. Its extension selects the output format.
     tags : MGHTags or None, optional
-        Tags to store after the voxels. Only MGH/MGZ outputs carry them; for
-        any other format they are not written, which is logged.
+        FreeSurfer tags to store: after the voxels for MGH/MGZ, as FreeSurfer's
+        NIfTI header extension (code 14) for ``.nii``/``.nii.gz``, where an
+        extension carried over from a source header is replaced. Analyze pairs
+        cannot hold them, which is logged. ``None`` leaves NIfTI extensions as
+        nibabel carries them.
 
     Returns
     -------
@@ -475,14 +478,22 @@ def save_image(image: Any, path: str | Path, tags: MGHTags | None = None) -> Non
     """
     destination = Path(path)
     has_tags = tags is not None and bool(tags.tags)
-    if recognized_image_suffix(destination) in _MGH_SUFFIXES:
+    suffix = recognized_image_suffix(destination)
+    if suffix in _MGH_SUFFIXES:
         header = image.header if isinstance(image, nib.MGHImage) else None
         image = as_mgh_image(np.asanyarray(image.dataobj), np.asarray(image.affine, dtype=np.float64), header)
         if has_tags:
             write_mgh_image(image, destination, tags)
             return
+    elif suffix in _NIFTI_SUFFIXES and tags is not None:
+        # The caller decided the tags, so a FreeSurfer extension carried over
+        # from a source header is replaced, or removed when there are none.
+        if not isinstance(image, nib.Nifti1Image):
+            image = nib.Nifti1Image.from_image(image)
+        save_nifti_with_tags(image, destination, tags)
+        return
     elif has_tags:
-        logger.info("Not storing %d MGH tag(s) in %s: only MGH/MGZ outputs carry them.", len(tags.tags), path)
+        logger.info("Not storing %d tag(s) in %s: only MGH and NIfTI outputs carry them.", len(tags.tags), path)
     try:
         nib.save(image, str(destination))
     except (ImageFileError, NotImplementedError) as exc:
