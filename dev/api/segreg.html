@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=6a604523" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
     
     
@@ -915,6 +915,42 @@ or NumPy scalar types.</p>
 </dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="neuroreg.segreg.io.read_geometry_json">
+<span class="sig-prename descclassname"><span class="pre">neuroreg.segreg.io.</span></span><span class="sig-name descname"><span class="pre">read_geometry_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/segreg/io.html#read_geometry_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.segreg.io.read_geometry_json" title="Link to this definition">¶</a></dt>
+<dd><p>Read only the <code class="docutils literal notranslate"><span class="pre">geometry</span></code> block of a target JSON file.</p>
+<p>Unlike <a class="reference internal" href="#neuroreg.segreg.io.read_target_json" title="neuroreg.segreg.io.read_target_json"><code class="xref py py-func docutils literal notranslate"><span class="pre">read_target_json()</span></code></a>, centroids are neither required nor
+validated, so a file that holds nothing but a <code class="docutils literal notranslate"><span class="pre">geometry</span></code> block is
+accepted. That is what a grid description needs; a centroid target that
+also carries geometry reads the same way.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>path</strong><span class="classifier">str or Path</span></dt><dd><p>Path to a JSON file.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>GeometryDict or None</dt><dd><p>The validated geometry, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if the file has no <code class="docutils literal notranslate"><span class="pre">geometry</span></code> key.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>ValueError</dt><dd><p>If the file does not decode to an object, or its geometry is malformed.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>path</strong> (<em>str</em><em> | </em><em>Path</em>)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#neuroreg.segreg.io.GeometryDict" title="neuroreg.segreg.io.GeometryDict"><em>GeometryDict</em></a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="neuroreg.segreg.io.read_target_json">
 <span class="sig-prename descclassname"><span class="pre">neuroreg.segreg.io.</span></span><span class="sig-name descname"><span class="pre">read_target_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/neuroreg/segreg/io.html#read_target_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuroreg.segreg.io.read_target_json" title="Link to this definition">¶</a></dt>
 <dd><p>Read a centroid target JSON file.</p>
@@ -1226,6 +1262,7 @@ registration.</p>
 <li><a class="reference internal" href="#neuroreg.segreg.io.TargetFile"><code class="docutils literal notranslate"><span class="pre">TargetFile</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.segreg.io.convert_numpy_to_json_serializable"><code class="docutils literal notranslate"><span class="pre">convert_numpy_to_json_serializable()</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.segreg.io.geometry_from_image"><code class="docutils literal notranslate"><span class="pre">geometry_from_image()</span></code></a></li>
+<li><a class="reference internal" href="#neuroreg.segreg.io.read_geometry_json"><code class="docutils literal notranslate"><span class="pre">read_geometry_json()</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.segreg.io.read_target_json"><code class="docutils literal notranslate"><span class="pre">read_target_json()</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.segreg.io.write_target_json"><code class="docutils literal notranslate"><span class="pre">write_target_json()</span></code></a></li>
 <li><a class="reference internal" href="#neuroreg.segreg.io.read_centroids_json"><code class="docutils literal notranslate"><span class="pre">read_centroids_json()</span></code></a></li>
@@ -1264,7 +1301,7 @@ registration.</p>
     <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../_static/copybutton.js?v=f281be69"></script>
-    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script data-sd-tabs-storage-prefix="sphinx-design-tab-id-" src="../_static/design-tabs.js?v=fcb327ea"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     </body>
 </html>

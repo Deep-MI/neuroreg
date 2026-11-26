@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=6a604523" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
     
     
@@ -265,6 +265,7 @@
     <span class="n">describe_image</span><span class="p">,</span>
     <span class="n">direction_cosines_from_orientation</span><span class="p">,</span>
     <span class="n">image_value_stats</span><span class="p">,</span>
+    <span class="n">load_geometry_source</span><span class="p">,</span>
     <span class="n">load_image</span><span class="p">,</span>
     <span class="n">mask_geometry_differs</span><span class="p">,</span>
     <span class="n">reslice_and_apply_mask</span><span class="p">,</span>
@@ -502,7 +503,10 @@
         <span class="s2">"--like"</span><span class="p">,</span>
         <span class="n">dest</span><span class="o">=</span><span class="s2">"like"</span><span class="p">,</span>
         <span class="n">metavar</span><span class="o">=</span><span class="s2">"FILE"</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">"Image supplying any geometry component not given explicitly (extent, not dimensions)."</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"Image or geometry JSON supplying any geometry component not given explicitly "</span>
+            <span class="s2">"(extent, not dimensions)."</span>
+        <span class="p">),</span>
     <span class="p">)</span>
     <span class="n">size_group</span> <span class="o">=</span> <span class="n">geom_p</span><span class="o">.</span><span class="n">add_mutually_exclusive_group</span><span class="p">()</span>
     <span class="n">size_group</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
@@ -760,7 +764,7 @@
 <span class="sd">        Via :meth:`argparse.ArgumentParser.error` when a component cannot be</span>
 <span class="sd">        resolved or an orientation code is invalid.</span>
 <span class="sd">    """</span>
-    <span class="n">like</span> <span class="o">=</span> <span class="n">load_image</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">like</span><span class="p">)</span> <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">like</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="n">like</span> <span class="o">=</span> <span class="n">load_geometry_source</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">like</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"--like"</span><span class="p">)</span> <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">like</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
     <span class="n">like_zooms</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">like</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">like</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">get_zooms</span><span class="p">()[:</span><span class="mi">3</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">like_zooms</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">like_zooms</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">):</span>
         <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">"--like has a non-positive voxel size: </span><span class="si">{</span><span class="n">like_zooms</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
@@ -911,7 +915,7 @@
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../../_static/copybutton.js?v=f281be69"></script>
-    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script data-sd-tabs-storage-prefix="sphinx-design-tab-id-" src="../../../_static/design-tabs.js?v=fcb327ea"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     </body>
 </html>

@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=6a604523" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
     
     
@@ -384,11 +384,13 @@ place a template space these transforms already fix. When
 <code class="docutils literal notranslate"><span class="pre">template_geometry</span></code> is given the destination geometry is ignored and
 need not be present.</p>
 </dd>
-<dt><strong>template_geometry</strong><span class="classifier">ImageLike or None, optional</span></dt><dd><p>Optional image (or path to one) supplying the output template geometry,
-replacing the geometry that would otherwise be taken from <code class="docutils literal notranslate"><span class="pre">init_ltas</span></code>
-or derived from the inputs. Only the shape and affine are used, not the
-voxel data. Mutually exclusive with <code class="docutils literal notranslate"><span class="pre">fix_target</span></code> and
-<code class="docutils literal notranslate"><span class="pre">use_cras_center</span></code>, both of which select a geometry themselves.</p>
+<dt><strong>template_geometry</strong><span class="classifier">ImageLike or None, optional</span></dt><dd><p>Optional image, path to one, or path to a JSON with a <code class="docutils literal notranslate"><span class="pre">geometry</span></code>
+block (see <code class="xref py py-func docutils literal notranslate"><span class="pre">neuroreg.image.load_geometry_source()</span></code>) supplying the
+output template geometry, replacing the geometry that would otherwise
+be taken from <code class="docutils literal notranslate"><span class="pre">init_ltas</span></code> or derived from the inputs. Only the shape
+and affine are used, not the voxel data. Mutually exclusive with
+<code class="docutils literal notranslate"><span class="pre">fix_target</span></code> and <code class="docutils literal notranslate"><span class="pre">use_cras_center</span></code>, both of which select a geometry
+themselves.</p>
 </dd>
 <dt><strong>average</strong><span class="classifier">{“mean”, “median”, 0, 1}, default=”median”</span></dt><dd><p>Template aggregation mode. Integer aliases match the FreeSurfer CLI.</p>
 </dd>
@@ -419,7 +421,11 @@ geometry is centered, so it is mutually exclusive with <code class="docutils lit
 <code class="docutils literal notranslate"><span class="pre">template_geometry</span></code> and <code class="docutils literal notranslate"><span class="pre">fix_target</span></code>, none of which derives one.</p>
 </dd>
 <dt><strong>template_iterations</strong><span class="classifier">int or None, optional</span></dt><dd><p>Maximum number of global template-refinement passes. <code class="docutils literal notranslate"><span class="pre">None</span></code> uses the
-built-in defaults for two versus three-or-more time points.</p>
+built-in defaults for two versus three-or-more time points. With exactly
+two time points both the default of zero and the refusal to honour an
+explicit count rest on the opening pairwise pass having landed the mean
+space exactly by symmetry, so neither applies when <code class="docutils literal notranslate"><span class="pre">init_ltas</span></code>
+replaced that pass: refinement then runs, and <code class="docutils literal notranslate"><span class="pre">0</span></code> asks for none.</p>
 </dd>
 <dt><strong>template_eps</strong><span class="classifier">float, default=0.03</span></dt><dd><p>Convergence threshold in millimeters for the maximum per-iteration
 transform change.</p>
@@ -861,7 +867,7 @@ not provide enough matched labels for the requested fit.</p>
     <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../_static/copybutton.js?v=f281be69"></script>
-    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script data-sd-tabs-storage-prefix="sphinx-design-tab-id-" src="../_static/design-tabs.js?v=fcb327ea"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     </body>
 </html>

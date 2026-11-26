@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=6a604523" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
     
     
@@ -409,7 +409,7 @@ constructs an unbiased mean space, and iteratively refines the template.</p>
 <dd><p>Optional input LTAs, one per –mov image. They initialize each registration and supply the template geometry from their (shared) destination geometry, so a coarse pre-alignment is enough. Template iterations refine them, meaning the output LTAs usually differ; add –noit to use them exactly as given.</p>
 </dd>
 <dt><kbd>--template-geom</kbd></dt>
-<dd><p>Image supplying the output template geometry, replacing the geometry multireg would otherwise derive. With –ixforms the destination geometry of the input transforms is then ignored and need not be present.</p>
+<dd><p>Image or JSON with a geometry block supplying the output template geometry, replacing the geometry multireg would otherwise derive. Only the header is read. With –ixforms the destination geometry of the input transforms is then ignored and need not be present.</p>
 </dd>
 <dt><kbd>--average</kbd></dt>
 <dd><p>Template aggregation mode: mean, median, 0 (=mean), or 1 (=median).</p>
@@ -435,7 +435,7 @@ constructs an unbiased mean space, and iteratively refines the template.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
 </dd>
 <dt><kbd>--iterate</kbd></dt>
-<dd><p>Maximum number of template-refinement iterations. Defaults to 6 for 3+ time points and 0 for 2 time points.</p>
+<dd><p>Maximum number of template-refinement iterations. Defaults to 6 for 3+ time points and 0 for 2, where the initial pass is already exact by symmetry and an explicit count is ignored. Neither applies when –ixforms replaced that pass: refinement then runs, and –noit asks for none.</p>
 </dd>
 <dt><kbd>--template-eps</kbd></dt>
 <dd><p>Stop template refinement when the maximum transform change falls below this threshold.</p>
@@ -937,7 +937,7 @@ top of that base geometry.</p>
 <p>Override transform format inference for ambiguous files such as .txt or .mat.</p>
 </dd>
 <dt><kbd>--ref, --targ</kbd></dt>
-<dd><p>Optional target/reference image geometry. Overrides geometry stored in the transform.</p>
+<dd><p>Optional target/reference geometry, as an image or a JSON with a geometry block, since only the header is read. Overrides geometry stored in the transform.</p>
 </dd>
 <dt><kbd>--ref-cras</kbd></dt>
 <dd><p>Override the c_ras (world coordinate of the grid centre) of the target geometry. Orientation, voxel sizes and image dimensions are unchanged; only where that grid sits in world space moves. Useful to reslice into a standard-space pose at the input’s resolution.</p>
@@ -1428,7 +1428,7 @@ any oblique rotation from –like. The output contains no image data.</p>
 <dd><p>Output image.</p>
 </dd>
 <dt><kbd>--like</kbd></dt>
-<dd><p>Image supplying any geometry component not given explicitly (extent, not dimensions).</p>
+<dd><p>Image or geometry JSON supplying any geometry component not given explicitly (extent, not dimensions).</p>
 </dd>
 <dt><kbd>--shape</kbd></dt>
 <dd><p>Image dimensions in voxels, as one value (cube) or three.</p>
@@ -1736,7 +1736,7 @@ any oblique rotation from –like. The output contains no image data.</p>
 <dd><p>Output image.</p>
 </dd>
 <dt><kbd>--like</kbd></dt>
-<dd><p>Image supplying any geometry component not given explicitly (extent, not dimensions).</p>
+<dd><p>Image or geometry JSON supplying any geometry component not given explicitly (extent, not dimensions).</p>
 </dd>
 <dt><kbd>--shape</kbd></dt>
 <dd><p>Image dimensions in voxels, as one value (cube) or three.</p>
@@ -1983,10 +1983,10 @@ NiftyReg affine text matrices store the inverse target-to-source RAS matrix.</p>
 <p>Override output format inference for ambiguous files.</p>
 </dd>
 <dt><kbd>--src-img</kbd></dt>
-<dd><p>Moving/source image geometry for conversion when needed.</p>
+<dd><p>Moving/source image geometry for conversion when needed. Accepts an image or a JSON with a geometry block, since only the header is read.</p>
 </dd>
 <dt><kbd>--dst-img</kbd></dt>
-<dd><p>Reference/target image geometry for conversion when needed.</p>
+<dd><p>Reference/target image geometry for conversion when needed. Accepts an image or a JSON with a geometry block, since only the header is read.</p>
 </dd>
 <dt><kbd>--out-type</kbd></dt>
 <dd><p>Possible choices: ras2ras, vox2vox</p>
@@ -2189,10 +2189,10 @@ NiftyReg affine text matrices store the inverse target-to-source RAS matrix.</p>
 <p>Override output format inference for ambiguous files.</p>
 </dd>
 <dt><kbd>--src-img</kbd></dt>
-<dd><p>Moving/source image geometry for conversion when needed.</p>
+<dd><p>Moving/source image geometry for conversion when needed. Accepts an image or a JSON with a geometry block, since only the header is read.</p>
 </dd>
 <dt><kbd>--dst-img</kbd></dt>
-<dd><p>Reference/target image geometry for conversion when needed.</p>
+<dd><p>Reference/target image geometry for conversion when needed. Accepts an image or a JSON with a geometry block, since only the header is read.</p>
 </dd>
 <dt><kbd>--out-type</kbd></dt>
 <dd><p>Possible choices: ras2ras, vox2vox</p>
@@ -2515,7 +2515,7 @@ tkregister <code class="docutils literal notranslate"><span class="pre">register
     <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../_static/copybutton.js?v=f281be69"></script>
-    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script data-sd-tabs-storage-prefix="sphinx-design-tab-id-" src="../_static/design-tabs.js?v=fcb327ea"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     </body>
 </html>

@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=6a604523" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
     
     
@@ -254,7 +254,7 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">..image</span><span class="w"> </span><span class="kn">import</span> <span class="n">cast_image_dtype</span><span class="p">,</span> <span class="n">load_image</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..image</span><span class="w"> </span><span class="kn">import</span> <span class="n">cast_image_dtype</span><span class="p">,</span> <span class="n">load_geometry_source</span><span class="p">,</span> <span class="n">load_image</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..image.map</span><span class="w"> </span><span class="kn">import</span> <span class="n">coerce_image_data_3d</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..imreg.init</span><span class="w"> </span><span class="kn">import</span> <span class="n">InitType</span><span class="p">,</span> <span class="n">resolve_init_type</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..imreg.robreg</span><span class="w"> </span><span class="kn">import</span> <span class="n">robreg</span>
@@ -345,7 +345,9 @@
 <span class="sd">        the template geometry and the destination blocks are never read, so the</span>
 <span class="sd">        transforms neither have to agree on a destination nor carry one at all.</span>
 <span class="sd">        That is what makes a pose fitted by ``segreg`` against a centroid target</span>
-<span class="sd">        usable here, since its destination block is marked ``valid = 0``.</span>
+<span class="sd">        that carries no geometry of its own usable here, since such a transform</span>
+<span class="sd">        has its destination block marked ``valid = 0``. The bundled targets do</span>
+<span class="sd">        carry one, so those poses already name a destination.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -378,7 +380,12 @@
     <span class="k">return</span> <span class="n">template_shape</span><span class="p">,</span> <span class="n">template_affine</span><span class="p">,</span> <span class="n">transforms_r2r</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_resolve_iterations</span><span class="p">(</span><span class="n">template_iterations</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">n_images</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_resolve_iterations</span><span class="p">(</span>
+    <span class="n">template_iterations</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">n_images</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">builds_initial_space</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Resolve the requested number of global template-refinement iterations.</span>
 
 <span class="sd">    Parameters</span>
@@ -388,6 +395,13 @@
 <span class="sd">        style defaults for two versus three-or-more time points.</span>
 <span class="sd">    n_images : int</span>
 <span class="sd">        Number of input time points.</span>
+<span class="sd">    builds_initial_space : bool, default=True</span>
+<span class="sd">        Whether the opening robust pairwise pass runs. Both the two-timepoint</span>
+<span class="sd">        default of zero and the refusal to honour an explicit count rest on that</span>
+<span class="sd">        pass having landed the mean space exactly by symmetry, so neither is</span>
+<span class="sd">        justified when it does not run. ``init_ltas`` replaces it, and then</span>
+<span class="sd">        nothing robust has happened: without refinement the supplied transforms</span>
+<span class="sd">        would come straight back out unchanged.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -399,12 +413,13 @@
 <span class="sd">    ValueError</span>
 <span class="sd">        If ``template_iterations`` is negative.</span>
 <span class="sd">    """</span>
+    <span class="n">skip_for_two</span> <span class="o">=</span> <span class="n">n_images</span> <span class="o">&lt;=</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">builds_initial_space</span>
     <span class="k">if</span> <span class="n">template_iterations</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">return</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">n_images</span> <span class="o">&lt;=</span> <span class="mi">2</span> <span class="k">else</span> <span class="mi">6</span>
+        <span class="k">return</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">skip_for_two</span> <span class="k">else</span> <span class="mi">6</span>
     <span class="n">resolved</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">template_iterations</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">resolved</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"template_iterations must be &gt;= 0."</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">n_images</span> <span class="o">&lt;=</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">resolved</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">skip_for_two</span> <span class="ow">and</span> <span class="n">resolved</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Skipping iterative template refinement because only two time points were provided."</span><span class="p">)</span>
         <span class="k">return</span> <span class="mi">0</span>
     <span class="k">return</span> <span class="n">resolved</span>
@@ -676,11 +691,13 @@
 <span class="sd">        ``template_geometry`` is given the destination geometry is ignored and</span>
 <span class="sd">        need not be present.</span>
 <span class="sd">    template_geometry : ImageLike or None, optional</span>
-<span class="sd">        Optional image (or path to one) supplying the output template geometry,</span>
-<span class="sd">        replacing the geometry that would otherwise be taken from ``init_ltas``</span>
-<span class="sd">        or derived from the inputs. Only the shape and affine are used, not the</span>
-<span class="sd">        voxel data. Mutually exclusive with ``fix_target`` and</span>
-<span class="sd">        ``use_cras_center``, both of which select a geometry themselves.</span>
+<span class="sd">        Optional image, path to one, or path to a JSON with a ``geometry``</span>
+<span class="sd">        block (see :func:`neuroreg.image.load_geometry_source`) supplying the</span>
+<span class="sd">        output template geometry, replacing the geometry that would otherwise</span>
+<span class="sd">        be taken from ``init_ltas`` or derived from the inputs. Only the shape</span>
+<span class="sd">        and affine are used, not the voxel data. Mutually exclusive with</span>
+<span class="sd">        ``fix_target`` and ``use_cras_center``, both of which select a geometry</span>
+<span class="sd">        themselves.</span>
 <span class="sd">    average : {"mean", "median", 0, 1}, default="median"</span>
 <span class="sd">        Template aggregation mode. Integer aliases match the FreeSurfer CLI.</span>
 <span class="sd">    init_target_index : int or None, optional</span>
@@ -711,7 +728,11 @@
 <span class="sd">        ``template_geometry`` and ``fix_target``, none of which derives one.</span>
 <span class="sd">    template_iterations : int or None, optional</span>
 <span class="sd">        Maximum number of global template-refinement passes. ``None`` uses the</span>
-<span class="sd">        built-in defaults for two versus three-or-more time points.</span>
+<span class="sd">        built-in defaults for two versus three-or-more time points. With exactly</span>
+<span class="sd">        two time points both the default of zero and the refusal to honour an</span>
+<span class="sd">        explicit count rest on the opening pairwise pass having landed the mean</span>
+<span class="sd">        space exactly by symmetry, so neither applies when ``init_ltas``</span>
+<span class="sd">        replaced that pass: refinement then runs, and ``0`` asks for none.</span>
 <span class="sd">    template_eps : float, default=0.03</span>
 <span class="sd">        Convergence threshold in millimeters for the maximum per-iteration</span>
 <span class="sd">        transform change.</span>
@@ -792,7 +813,7 @@
 
     <span class="n">external_geometry</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="k">if</span> <span class="n">template_geometry</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">geom_image</span> <span class="o">=</span> <span class="n">load_image</span><span class="p">(</span><span class="n">template_geometry</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">template_geometry</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="k">else</span> <span class="n">template_geometry</span>
+        <span class="n">geom_image</span> <span class="o">=</span> <span class="n">load_geometry_source</span><span class="p">(</span><span class="n">template_geometry</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"template_geometry"</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">geom_image</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                 <span class="s2">"template_geometry must describe a 3-D grid, but the given image has shape "</span>
@@ -805,7 +826,11 @@
 
     <span class="n">validate_input_geometries</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">derives_geometry</span><span class="o">=</span><span class="n">derives_geometry</span><span class="p">)</span>
     <span class="n">resolved_init_type</span> <span class="o">=</span> <span class="n">resolve_init_type</span><span class="p">(</span><span class="n">init_type</span><span class="p">,</span> <span class="n">default_init_type</span><span class="o">=</span><span class="s2">"centroid"</span><span class="p">)</span>
-    <span class="n">resolved_template_iterations</span> <span class="o">=</span> <span class="n">_resolve_iterations</span><span class="p">(</span><span class="n">template_iterations</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">images</span><span class="p">))</span>
+    <span class="n">resolved_template_iterations</span> <span class="o">=</span> <span class="n">_resolve_iterations</span><span class="p">(</span>
+        <span class="n">template_iterations</span><span class="p">,</span>
+        <span class="nb">len</span><span class="p">(</span><span class="n">images</span><span class="p">),</span>
+        <span class="n">builds_initial_space</span><span class="o">=</span><span class="n">init_ltas</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span>
 
     <span class="k">if</span> <span class="n">init_target_index</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">init_target_index</span><span class="p">,</span> <span class="n">resolved_seed</span> <span class="o">=</span> <span class="n">choose_initial_target</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
@@ -986,7 +1011,7 @@
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../../_static/copybutton.js?v=f281be69"></script>
-    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script data-sd-tabs-storage-prefix="sphinx-design-tab-id-" src="../../../_static/design-tabs.js?v=fcb327ea"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     </body>
 </html>

@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=6a604523" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
     
     
@@ -256,6 +256,7 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">..image</span><span class="w"> </span><span class="kn">import</span> <span class="n">is_geometry_json</span><span class="p">,</span> <span class="n">load_geometry_source</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..transforms</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">LTA</span><span class="p">,</span>
     <span class="n">TRANSFORM_FORMATS</span><span class="p">,</span>
@@ -265,6 +266,18 @@
 <span class="p">)</span>
 
 <span class="c1"># ── helpers ───────────────────────────────────────────────────────────────────</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_geometry_argument</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">flag</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Resolve a geometry option for :func:`read_transform_as_lta`.</span>
+
+<span class="sd">    An image is passed through as its path so the reader opens it and records</span>
+<span class="sd">    it by name. A geometry JSON is loaded here, since the reader opens images</span>
+<span class="sd">    only.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">source</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">load_geometry_source</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">flag</span><span class="p">)</span> <span class="k">if</span> <span class="n">is_geometry_json</span><span class="p">(</span><span class="n">source</span><span class="p">)</span> <span class="k">else</span> <span class="n">source</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_positive_float</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
@@ -495,8 +508,20 @@
         <span class="n">choices</span><span class="o">=</span><span class="n">TRANSFORM_FORMATS</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="s2">"Override output format inference for ambiguous files."</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">conv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--src-img"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Moving/source image geometry for conversion when needed."</span><span class="p">)</span>
-    <span class="n">conv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--dst-img"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Reference/target image geometry for conversion when needed."</span><span class="p">)</span>
+    <span class="n">conv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">"--src-img"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"Moving/source image geometry for conversion when needed. Accepts an image or a "</span>
+            <span class="s2">"JSON with a geometry block, since only the header is read."</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">conv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">"--dst-img"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"Reference/target image geometry for conversion when needed. Accepts an image or a "</span>
+            <span class="s2">"JSON with a geometry block, since only the header is read."</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
     <span class="n">conv_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
         <span class="s2">"--out-type"</span><span class="p">,</span>
         <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">"ras2ras"</span><span class="p">,</span> <span class="s2">"vox2vox"</span><span class="p">],</span>
@@ -592,7 +617,20 @@
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_main_convert</span><span class="p">(</span><span class="n">ns</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="k">try</span><span class="p">:</span>
-        <span class="n">lta</span> <span class="o">=</span> <span class="n">read_transform_as_lta</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">input</span><span class="p">,</span> <span class="n">src_img</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">src_img</span><span class="p">,</span> <span class="n">dst_img</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">dst_img</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">in_format</span><span class="p">)</span>
+        <span class="c1"># Both are read only for their header, so both also accept a geometry</span>
+        <span class="c1"># JSON. An image path is handed over as a path, because the reader opens</span>
+        <span class="c1"># it itself and records it as the geometry's filename; only a JSON has to</span>
+        <span class="c1"># be resolved here, and it then has no filename to record. This runs</span>
+        <span class="c1"># outside the transform read below, so a bad JSON is not reported as an</span>
+        <span class="c1"># unreadable input transform.</span>
+        <span class="n">src_img</span> <span class="o">=</span> <span class="n">_geometry_argument</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">src_img</span><span class="p">,</span> <span class="n">flag</span><span class="o">=</span><span class="s2">"--src-img"</span><span class="p">)</span>
+        <span class="n">dst_img</span> <span class="o">=</span> <span class="n">_geometry_argument</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">dst_img</span><span class="p">,</span> <span class="n">flag</span><span class="o">=</span><span class="s2">"--dst-img"</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ERROR: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">lta</span> <span class="o">=</span> <span class="n">read_transform_as_lta</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">input</span><span class="p">,</span> <span class="n">src_img</span><span class="o">=</span><span class="n">src_img</span><span class="p">,</span> <span class="n">dst_img</span><span class="o">=</span><span class="n">dst_img</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">in_format</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ERROR: cannot read </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">input</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
         <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
@@ -673,7 +711,7 @@
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../../_static/copybutton.js?v=f281be69"></script>
-    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script data-sd-tabs-storage-prefix="sphinx-design-tab-id-" src="../../../_static/design-tabs.js?v=fcb327ea"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     </body>
 </html>

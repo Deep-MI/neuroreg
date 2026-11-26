@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=6a604523" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
     
     
@@ -249,7 +249,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">cast</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">..image</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_image</span><span class="p">,</span> <span class="n">save_image</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..image</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_geometry_source</span><span class="p">,</span> <span class="n">load_image</span><span class="p">,</span> <span class="n">save_image</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..multireg</span><span class="w"> </span><span class="kn">import</span> <span class="n">multireg</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..transforms</span><span class="w"> </span><span class="kn">import</span> <span class="n">LTA</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._outputs</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_image_outputs</span>
@@ -307,9 +307,10 @@
         <span class="s2">"--template-geom"</span><span class="p">,</span>
         <span class="n">metavar</span><span class="o">=</span><span class="s2">"FILE"</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="p">(</span>
-            <span class="s2">"Image supplying the output template geometry, replacing the geometry multireg "</span>
-            <span class="s2">"would otherwise derive. With --ixforms the destination geometry of the input "</span>
-            <span class="s2">"transforms is then ignored and need not be present."</span>
+            <span class="s2">"Image or JSON with a geometry block supplying the output template geometry, replacing "</span>
+            <span class="s2">"the geometry multireg would otherwise derive. Only the header is read. With "</span>
+            <span class="s2">"--ixforms the destination geometry of the input transforms is then ignored and "</span>
+            <span class="s2">"need not be present."</span>
         <span class="p">),</span>
     <span class="p">)</span>
     <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
@@ -364,7 +365,9 @@
         <span class="n">metavar</span><span class="o">=</span><span class="s2">"N"</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="p">(</span>
             <span class="s2">"Maximum number of template-refinement iterations. Defaults to 6 for 3+ "</span>
-            <span class="s2">"time points and 0 for 2 time points."</span>
+            <span class="s2">"time points and 0 for 2, where the initial pass is already exact by "</span>
+            <span class="s2">"symmetry and an explicit count is ignored. Neither applies when --ixforms "</span>
+            <span class="s2">"replaced that pass: refinement then runs, and --noit asks for none."</span>
         <span class="p">),</span>
     <span class="p">)</span>
     <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
@@ -502,7 +505,11 @@
         <span class="n">mov_masks</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">mov_mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">mov_masks</span> <span class="o">=</span> <span class="p">[</span><span class="n">cast</span><span class="p">(</span><span class="n">Any</span><span class="p">,</span> <span class="n">load_image</span><span class="p">(</span><span class="n">path</span><span class="p">))</span> <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">ns</span><span class="o">.</span><span class="n">mov_mask</span><span class="p">]</span>
-        <span class="n">template_geom_img</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">template_geom</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">cast</span><span class="p">(</span><span class="n">Any</span><span class="p">,</span> <span class="n">load_image</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">template_geom</span><span class="p">))</span>
+        <span class="n">template_geom_img</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="kc">None</span>
+            <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">template_geom</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="n">cast</span><span class="p">(</span><span class="n">Any</span><span class="p">,</span> <span class="n">load_geometry_source</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">template_geom</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"--template-geom"</span><span class="p">))</span>
+        <span class="p">)</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ERROR loading image: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
         <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
@@ -599,7 +606,7 @@
     <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../../_static/copybutton.js?v=f281be69"></script>
-    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script data-sd-tabs-storage-prefix="sphinx-design-tab-id-" src="../../../_static/design-tabs.js?v=fcb327ea"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     </body>
 </html>
