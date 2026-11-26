@@ -69,8 +69,8 @@ mri
 ---
 
 Image-volume utilities grouped under a single command, analogous to FreeSurfer's
-``mri_mask``, ``mri_info``, ``mri_diff``, and ``mri_binarize``, plus ``geom``,
-which has no FreeSurfer equivalent.
+``mri_mask``, ``mri_info``, ``mri_diff``, ``mri_binarize`` and
+``mri_add_xform_to_header``, plus ``geom``, which has no FreeSurfer equivalent.
 
 **mask** — apply a binary mask to a volume::
 
@@ -100,6 +100,13 @@ that accept a reference image but no geometry flags::
    mri geom --o target.mgz --fov 256 --vox-size 0.8 --orientation LIA --cras 0,0,0
    mri geom --o target.mgz --like sub.mgz --cras 0,0,0
    mri geom --o target.mgz --like sub.mgz --vox-size 0.5
+
+**tag**: record the talairach transform path and/or embed a colour lookup table
+in an MGH volume, copying everything else byte for byte. The path is recorded
+relative to the output by default; ``--abs-xform-tag`` records it absolute::
+
+   mri tag mri/nu.mgz mri/nu.mgz --xform mri/transforms/talairach.xfm
+   mri tag aseg.mgz aseg.mgz --ctab FreeSurferColorLUT.txt
 
 lta
 ---

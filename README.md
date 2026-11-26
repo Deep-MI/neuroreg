@@ -364,8 +364,8 @@ Run `vol2vol -h` for a full argument summary with defaults.
 
 Small `mri_*`-style volume utilities grouped under a single command, in the same
 spirit as the `lta` transform CLI. Available subcommands are `mask`, `info`,
-`diff`, `binarize`, and `geom`. The argument conventions follow FreeSurfer's
-`mri_*` tools where possible; `geom` has no FreeSurfer equivalent.
+`diff`, `binarize`, `geom`, and `tag`. The argument conventions follow
+FreeSurfer's `mri_*` tools where possible; `geom` has no FreeSurfer equivalent.
 
 ```
 mri mask <input> <mask> <output> [options]
@@ -373,6 +373,7 @@ mri info <input> [selectors]
 mri diff <vol1> <vol2> [options]
 mri binarize --i <input> --o <output> (--min|--max|--match ...) [options]
 mri geom --o <output> (--like <image> | --fov <mm> --vox-size <mm> --orientation <code>) [options]
+mri tag <input> <output> [--xform <xfm> [--abs-xform-tag]] [--ctab <lut>]
 ```
 
 #### `mri mask` — apply a binary mask
@@ -569,6 +570,49 @@ mri geom --o target.mgz --like sub.mgz --vox-size 0.5
 # Feed it to any tool that takes a reference image
 vol2vol --in cross.nii.gz --transform pose.lta --ref target.mgz --out orig.mgz
 multireg --mov tp1.mgz tp2.mgz --template base.mgz --template-geom target.mgz
+```
+
+#### `mri tag`: record a transform path or embed a colour table
+
+Copies an MGH/MGZ volume, recording the path of its talairach transform and/or
+embedding a colour lookup table, as FreeSurfer's `mri_add_xform_to_header` and
+`mri_convert --ctab` do. FreeSurfer stores both in tags after the voxel data:
+`recon-all` stages and `mri_info` read the transform path, and freeview uses an
+embedded table to name and colour a segmentation without an external LUT.
+nibabel neither reads nor keeps these tags, so any volume written through it,
+including by the other commands here, has none.
+
+The header, voxels and every other tag (command lines, field strength and so
+on) are copied byte for byte, so only the requested tags change. The output may
+be the input. Tag the volume in its final form, since a later nibabel rewrite
+drops the tags again.
+
+The transform path is recorded relative to the output's directory by default,
+so a subject directory stays valid when it is moved. FreeSurfer first looks for
+`transforms/talairach.xfm` next to the volume and uses it whenever it exists,
+which covers the standard layout; any other relative path it resolves against
+the current directory, and `mri tag` warns in that case. `--abs-xform-tag`
+records the absolute path instead, which is how `recon-all` records it.
+
+| Argument              | Description                                                         |
+|-----------------------|---------------------------------------------------------------------|
+| `in` (positional)     | Input MGH/MGZ volume.                                               |
+| `out` (positional)    | Output MGH/MGZ volume; may be the input.                            |
+| `--xform FILE`        | Transform whose path to record, typically `transforms/talairach.xfm`. |
+| `--abs-xform-tag`     | Record the absolute path rather than one relative to `out`.        |
+| `--ctab LUT`          | ASCII colour lookup table to embed, such as `FreeSurferColorLUT.txt`. |
+
+**Examples**
+
+```bash
+# Replacement for: mri_add_xform_to_header -c transforms/talairach.xfm nu.mgz nu.mgz
+mri tag mri/nu.mgz mri/nu.mgz --xform mri/transforms/talairach.xfm
+
+# Embed a lookup table so freeview shows label names without an external LUT
+mri tag aseg.mgz aseg.mgz --ctab FreeSurferColorLUT.txt
+
+# Check what a volume carries
+mri info mri/nu.mgz
 ```
 
 Run `mri -h` or `mri <subcommand> -h` for a full argument summary with defaults.
