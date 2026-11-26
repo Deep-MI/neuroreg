@@ -10,6 +10,7 @@ xform, PE direction, field strength, colour table and command lines.
 from __future__ import annotations
 
 import gzip
+import logging
 import os
 import struct
 import sys
@@ -184,16 +185,19 @@ def test_tags_in_place_and_keeps_the_file_mode(tmp_path: Path):
     assert [p.name for p in tmp_path.iterdir()] == ["nu.mgz"]
 
 
-def test_a_kept_relative_xform_is_rebased_into_another_directory(tmp_path: Path):
+def test_a_kept_relative_xform_is_rebased_into_another_directory(tmp_path: Path, caplog):
     # A relative path resolves from the volume's own directory, so a byte copy
-    # elsewhere would name another file.
+    # elsewhere would name another file. FreeSurfer, though, resolves anything
+    # but transforms/talairach.xfm from its current directory, which is said.
     source = _tagged(tmp_path / "subject" / "mri" / "nu.mgz", xform=b"transforms/talairach.xfm")
     out = tmp_path / "elsewhere" / "nu.mgz"
     out.parent.mkdir()
 
-    write_mgh_tags(source, out, color_table=ColorTable({0: ColorTableEntry("Unknown", (0, 0, 0))}))
+    with caplog.at_level(logging.WARNING, logger="neuroreg.image.mgh_tags"):
+        write_mgh_tags(source, out, color_table=ColorTable({0: ColorTableEntry("Unknown", (0, 0, 0))}))
 
     assert read_mgh_tags(out).xform == "../subject/mri/transforms/talairach.xfm"
+    assert "--abs-xform-tag" in caplog.text
 
 
 def test_in_place_leaves_an_unusual_relative_path_alone(tmp_path: Path):
@@ -290,12 +294,15 @@ def test_records_the_transform_relative_to_the_output_wherever_it_runs(subject: 
     assert "WARNING" not in capsys.readouterr().err
 
 
-def test_abs_xform_tag_records_the_absolute_path(subject: Path):
+def test_abs_xform_tag_rewrites_the_same_transform_without_force(subject: Path):
+    # The volume already names this transform, relatively. Asking for the
+    # absolute form of the same file is a rewrite, not a conflict.
+    path = _tagged(subject / "nu.mgz", xform=b"transforms/talairach.xfm")
     xform = subject / "transforms" / "talairach.xfm"
 
-    mri_main(["tag", str(subject / "nu.mgz"), str(subject / "nu.mgz"), "--xform", str(xform), "--abs-xform-tag"])
+    mri_main(["tag", str(path), str(path), "--xform", str(xform), "--abs-xform-tag"])
 
-    assert read_mgh_tags(subject / "nu.mgz").xform == xform.resolve().as_posix()
+    assert read_mgh_tags(path).xform == xform.resolve().as_posix()
 
 
 def test_warns_when_freesurfer_would_not_find_a_relative_path(subject: Path, capsys):

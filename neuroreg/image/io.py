@@ -10,6 +10,7 @@ from typing import Any
 import nibabel as nib
 import numpy as np
 from nibabel.filebasedimages import ImageFileError
+from nibabel.spatialimages import HeaderDataError
 
 from .mgh_tags import MGHTags, apply_scan_parameters_to_mgh, save_nifti_with_tags, write_mgh_image
 
@@ -493,7 +494,12 @@ def save_image(image: Any, path: str | Path, tags: MGHTags | None = None) -> Non
         # The caller decided the tags, so a FreeSurfer extension carried over
         # from a source header is replaced, or removed when there are none.
         if not isinstance(image, nib.Nifti1Image):
-            image = nib.Nifti1Image.from_image(image)
+            try:
+                image = nib.Nifti1Image.from_image(image)
+            except HeaderDataError:
+                # Too large for NIfTI-1's int16 dimensions; nib.save makes the
+                # same fallback.
+                image = nib.Nifti2Image.from_image(image)
         save_nifti_with_tags(image, destination, tags)
         return
     elif has_tags:

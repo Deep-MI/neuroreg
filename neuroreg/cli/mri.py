@@ -40,6 +40,7 @@ from ..image import (
     shape_from_fov,
     write_image_tags,
 )
+from ..image.mgh_tags import STANDARD_XFORM
 from ._args import NumberListParser, number_list
 from ._outputs import output_history, validate_image_outputs
 
@@ -457,10 +458,10 @@ def _print_tags(path: str) -> None:
         return
     try:
         tags = read_image_tags(path)
+        table = tags.color_table
     except ValueError as exc:
         print(f"\n{'tags':>14}: unreadable ({exc})")
         return
-    table = tags.color_table
     if tags.xform is None and table is None:
         return
     print()
@@ -705,7 +706,7 @@ def _main_geom(ns: argparse.Namespace, parser: argparse.ArgumentParser, history:
 
 
 #: The transform name FreeSurfer finds next to a volume regardless of the tag.
-_STANDARD_XFORM = Path("transforms", "talairach.xfm")
+_STANDARD_XFORM = Path(STANDARD_XFORM)
 _MGH_SUFFIXES = (".mgz", ".mgh")
 _NIFTI_SUFFIXES = (".nii.gz", ".nii")
 #: Formats that hold FreeSurfer tags: MGH after the voxels, NIfTI in an extension.
@@ -781,6 +782,15 @@ def _requested_color_table(ns: argparse.Namespace):
     return table
 
 
+def _same_xform(recorded: str, requested: str, out_dir: str) -> bool:
+    """Return whether two transform paths recorded for a volume in ``out_dir`` name one file."""
+
+    def resolve(path: str) -> str:
+        return os.path.normcase(os.path.realpath(os.path.join(out_dir, path)))
+
+    return resolve(recorded) == resolve(requested)
+
+
 def _main_tag(ns: argparse.Namespace) -> None:
     try:
         xform = None
@@ -802,10 +812,12 @@ def _main_tag(ns: argparse.Namespace) -> None:
 
         # Compare against what OUT would inherit, which for another directory
         # is the rebased path, not the string stored in IN.
-        existing = read_image_tags(ns.in_file).rebase_xform(
-            os.path.dirname(os.path.abspath(ns.in_file)), os.path.dirname(os.path.abspath(ns.out))
-        )
-        conflicts = existing.conflicts(xform=xform, color_table=table)
+        out_dir = os.path.dirname(os.path.abspath(ns.out))
+        existing = read_image_tags(ns.in_file).rebase_xform(os.path.dirname(os.path.abspath(ns.in_file)), out_dir)
+        # The same transform written another way (relative or absolute) is not
+        # a conflict; it is rewritten in the requested form below.
+        same_file = xform is not None and existing.xform is not None and _same_xform(existing.xform, xform, out_dir)
+        conflicts = existing.conflicts(xform=None if same_file else xform, color_table=table)
         if conflicts and not ns.force:
             reasons = "; and ".join(conflicts)
             raise ValueError(f"not replacing tags of {ns.in_file}: {reasons}. Pass --force to replace.")

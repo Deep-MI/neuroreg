@@ -49,6 +49,9 @@ TAG_CMDLINE = 3
 TAG_OLD_MGH_XFORM = 30
 #: Path of the talairach transform associated with the volume.
 TAG_MGH_XFORM = 31
+#: Where FreeSurfer looks for the talairach transform, relative to the volume,
+#: before it tries the recorded path.
+STANDARD_XFORM = "transforms/talairach.xfm"
 #: Siemens AutoAlign matrix, copied verbatim from the DICOM protocol.
 TAG_AUTO_ALIGN = 33
 #: Phase-encode direction.
@@ -94,9 +97,12 @@ _MATRIX_TAGS = frozenset({TAG_AUTO_ALIGN, TAG_ORIG_RAS2VOX})
 #: NIfTI-only tag holding TE, TI, flip angle, field strength and phase-encode
 #: direction; NIfTI keeps TR in ``pixdim[4]``.
 TAG_SCAN_PARAMETERS = 45
-# NIfTI-only tags: DOF and FreeSurfer's copy of the geometry. The image header
-# already holds what they describe.
+# NIfTI-only tags: the degrees of freedom (7) and FreeSurfer's copy of the
+# geometry (8, 9), which the image header already holds.
 _NIFTI_ONLY_TAGS = frozenset({7, 8, 9})
+# NIfTI records left out of the MGH view that carry information of their own,
+# so that leaving them out is logged.
+_NIFTI_ONLY_RECORD_NAMES = {7: "DOF", TAG_MRI_FRAME: "frames"}
 # MGH tags whose NIfTI layout differs and is not written here: FreeSurfer
 # stores frames in fewer fields there.
 _MGH_ONLY_TAGS = {TAG_MRI_FRAME: "frames"}
@@ -286,7 +292,7 @@ class MGHTags:
             logger.info("Not carrying over: %s.", ", ".join(dropped))
         return MGHTags(kept, scan=self.scan)
 
-    def rebase_xform(self, source_dir: str | Path, out_dir: str | Path) -> MGHTags:
+    def rebase_xform(self, source_dir: str | Path, out_dir: str | Path, *, warn: bool = False) -> MGHTags:
         """Return the tags with a relative transform path moved to a new directory.
 
         A relative path is relative to the directory of the volume holding it,
@@ -294,12 +300,21 @@ class MGHTags:
         is re-expressed relative to ``out_dir``, or made absolute when the two
         share no relative path. Absolute paths are kept as they are.
 
+        The relative form keeps a moved subject directory valid, but FreeSurfer
+        only finds ``transforms/talairach.xfm`` next to a volume on its own and
+        resolves any other relative path against its current directory.
+
         Parameters
         ----------
         source_dir : str or Path
             Directory of the volume the tags were read from.
         out_dir : str or Path
             Directory of the volume they will be written to.
+        warn : bool, default=False
+            Log a warning when a path is rebased into a relative form other
+            than ``transforms/talairach.xfm``, which FreeSurfer would not find
+            from elsewhere. Set it when the tags are written, not when they are
+            only compared.
 
         Returns
         -------
@@ -317,6 +332,15 @@ class MGHTags:
                 if path and not _is_absolute_xform(path):
                     path = relative_xform_path(os.path.join(source_dir, path), out_dir)
                     payload = path.encode() + b"\0"
+                    if warn and not _is_absolute_xform(path) and path != STANDARD_XFORM:
+                        logger.warning(
+                            "Recording the talairach xform as %s, relative to the output. FreeSurfer only finds "
+                            "%s next to a volume on its own and resolves any other relative path against its "
+                            "current directory; 'mri tag OUT OUT --xform FILE --abs-xform-tag --force' records "
+                            "the absolute path instead.",
+                            path,
+                            STANDARD_XFORM,
+                        )
             rebased.append((tag, payload))
         return MGHTags(rebased, self.trailer, self.scan)
 
@@ -566,7 +590,7 @@ def write_mgh_tags(
     if xform is not None and not xform:
         raise ValueError("the transform path to record must not be empty")
     body, tags = _split_mgh(_read_mgh_bytes(source), str(source))
-    tags = tags.rebase_xform(Path(source).parent, out.parent)
+    tags = tags.rebase_xform(Path(source).parent, out.parent, warn=xform is None)
     if xform is not None:
         _replace_tag(
             tags.tags,
@@ -654,7 +678,7 @@ def inherit_tags(
         logger.warning("Not carrying over the tags of %s: %s", source, exc)
         return MGHTags()
     derived = tags.derive(r2r=r2r, keep_color_table=keep_color_table)
-    return derived.rebase_xform(Path(source).parent, Path(out).parent)
+    return derived.rebase_xform(Path(source).parent, Path(out).parent, warn=True)
 
 
 def encode_nifti_extension(tags: MGHTags) -> bytes | None:
@@ -784,8 +808,18 @@ def decode_nifti_extension(content: bytes) -> MGHTags:
     """
     tags: list[tuple[int, bytes]] = []
     scan = None
+    skipped: list[str] = []
     for tag, payload in _split_nifti_extension(content)[1]:
         if tag in _NIFTI_ONLY_TAGS or tag == TAG_MRI_FRAME:
+            # Only the loss of the DOF and the frame records is worth logging;
+            # the geometry copy restates the image header.
+            if tag in _NIFTI_ONLY_RECORD_NAMES:
+                skipped.append(_NIFTI_ONLY_RECORD_NAMES[tag])
+            continue
+        if tag == TAG_OLD_COLORTABLE and not _is_whole_color_table(payload):
+            # MGH frames this tag without a length, so a table that does not
+            # fill its payload exactly would corrupt every tag after it there.
+            logger.warning("Ignoring a malformed colour table in the NIfTI extension.")
             continue
         if tag == TAG_SCAN_PARAMETERS:
             scan, acquisition_tags = _decode_scan_parameters(payload)
@@ -796,7 +830,17 @@ def decode_nifti_extension(content: bytes) -> MGHTags:
                 raise ValueError(f"matrix tag {tag} holds {len(payload)} bytes, not 16 float32 values")
             payload = _encode_matrix(np.array(struct.unpack(">16f", payload), dtype=np.float64).reshape(4, 4))
         tags.append((tag, payload))
+    if skipped:
+        logger.info("Not reading from the NIfTI extension, as MGH has no place for them: %s.", ", ".join(skipped))
     return MGHTags(tags, scan=scan)
+
+
+def _is_whole_color_table(payload: bytes) -> bool:
+    """Return whether ``payload`` is exactly one valid binary colour table."""
+    try:
+        return decode_color_table(payload)[1] == len(payload)
+    except ValueError:
+        return False
 
 
 def read_nifti_tags(path: str | Path) -> MGHTags:
@@ -997,7 +1041,7 @@ def write_image_tags(
         if extension.get_code() == NIFTI_ECODE_FREESURFER:
             header, raw = _split_nifti_extension(_extension_bytes(extension))
             break
-    raw = MGHTags(raw).rebase_xform(Path(source).parent, out.parent).tags
+    raw = MGHTags(raw).rebase_xform(Path(source).parent, out.parent, warn=xform is None).tags
     if xform is not None:
         new_xform = (TAG_MGH_XFORM, xform.encode() + b"\0")
         _replace_tag(raw, new_xform, replaces=(TAG_MGH_XFORM, TAG_OLD_MGH_XFORM), prepend=True)

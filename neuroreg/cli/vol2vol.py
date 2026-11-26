@@ -703,6 +703,10 @@ def main(args=None) -> None:
             # --out-dtype/--keep-dtype name a type explicitly; refuse rather than
             # write a different one than was asked for.
             check_dtype_storable(target_dtype, ns.out)
+        # The output's values always come from the input, so its tags do too.
+        # r2r is the identity unless a transform moves the output into another
+        # frame, in which case the frame-bound tags no longer apply.
+        tags = inherit_tags(ns.input_file, ns.out, r2r=r2r).with_history(output_history("vol2vol", args))
         if ns.header_only:
             mapped_img = header_map_image(mov_img, r2r)
         elif ns.transform is None and ns.ref is None and ns.ref_cras is None:
@@ -727,6 +731,16 @@ def main(args=None) -> None:
             target_affine, target_shape = _resolve_target_geometry(
                 mov_img, ref_img, effective_lta, ref_cras=ns.ref_cras
             )
+            if ns.interp != "nearest" and tags.color_table is not None:
+                # A colour table marks a label volume, whose values interpolation
+                # mixes into labels that do not exist. It stays allowed, since
+                # interpolating a mask is how a soft mask is made, and the table
+                # is kept, as FreeSurfer keeps it.
+                print(
+                    f"WARNING: {ns.input_file} embeds a colour table, so it holds labels, and "
+                    f"--interp {ns.interp} mixes them; use --interp nearest to keep label values.",
+                    file=sys.stderr,
+                )
             padding_mode, padding_value = _resolve_padding(ns.pad, mov_img)
             mapped_img = reslice_r2r_image(
                 mov_img,
@@ -747,10 +761,6 @@ def main(args=None) -> None:
                 robust_low=ns.robust_low,
                 robust_high=ns.robust_high,
             )
-        # The output's values always come from the input, so its tags do too.
-        # r2r is the identity unless a transform moves the output into another
-        # frame, in which case the frame-bound tags no longer apply.
-        tags = inherit_tags(ns.input_file, ns.out, r2r=r2r).with_history(output_history("vol2vol", args))
         save_image(mapped_img, ns.out, tags=tags)
     except Exception as exc:
         logger.debug("vol2vol failed", exc_info=True)
