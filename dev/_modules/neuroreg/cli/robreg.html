@@ -249,7 +249,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">cast</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..transforms</span><span class="w"> </span><span class="kn">import</span> <span class="n">LTA</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._outputs</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_image_outputs</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._outputs</span><span class="w"> </span><span class="kn">import</span> <span class="n">output_history</span><span class="p">,</span> <span class="n">validate_image_outputs</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_build_parser</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">:</span>
@@ -412,7 +412,7 @@
     <span class="n">ns</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
     <span class="n">validate_image_outputs</span><span class="p">(</span><span class="n">parser</span><span class="p">,</span> <span class="n">ns</span><span class="p">,</span> <span class="s2">"mapmov"</span><span class="p">,</span> <span class="s2">"mapmovhdr"</span><span class="p">,</span> <span class="s2">"outliers"</span><span class="p">)</span>
 
-    <span class="kn">from</span><span class="w"> </span><span class="nn">..image</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_image</span><span class="p">,</span> <span class="n">save_header_mapped_image</span><span class="p">,</span> <span class="n">save_resliced_r2r_image</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">..image</span><span class="w"> </span><span class="kn">import</span> <span class="n">inherit_tags</span><span class="p">,</span> <span class="n">load_image</span><span class="p">,</span> <span class="n">save_header_mapped_image</span><span class="p">,</span> <span class="n">save_resliced_r2r_image</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">..imreg.robreg</span><span class="w"> </span><span class="kn">import</span> <span class="n">robreg</span>
 
     <span class="n">ns</span><span class="o">.</span><span class="n">symmetric</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">ns</span><span class="p">,</span> <span class="s2">"symmetric"</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
@@ -486,6 +486,9 @@
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Transform: </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
     <span class="c1"># ── write mapped image if requested ─────────────────────────────────────</span>
+    <span class="c1"># Mapped outputs keep the moving image's values in the reference frame, so</span>
+    <span class="c1"># they inherit the moving image's tags through the registration.</span>
+    <span class="n">history</span> <span class="o">=</span> <span class="n">output_history</span><span class="p">(</span><span class="s2">"robreg"</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">mapmov</span><span class="p">:</span>
         <span class="n">target_shape</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ref_img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">3</span><span class="p">]))</span>
         <span class="n">save_resliced_r2r_image</span><span class="p">(</span>
@@ -496,12 +499,14 @@
             <span class="n">target_shape</span><span class="o">=</span><span class="n">target_shape</span><span class="p">,</span>
             <span class="n">mode</span><span class="o">=</span><span class="s2">"cubic"</span><span class="p">,</span>
             <span class="n">keep_dtype</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">keep_dtype</span><span class="p">,</span>
+            <span class="n">tags</span><span class="o">=</span><span class="n">inherit_tags</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">mov</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">mapmov</span><span class="p">,</span> <span class="n">r2r</span><span class="o">=</span><span class="n">Mr2r_cpu</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span><span class="o">.</span><span class="n">with_history</span><span class="p">(</span><span class="n">history</span><span class="p">),</span>
         <span class="p">)</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Wrote resliced mapped image: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">mapmov</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"MapMov:    </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">mapmov</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">mapmovhdr</span><span class="p">:</span>
-        <span class="n">save_header_mapped_image</span><span class="p">(</span><span class="n">mov_img</span><span class="p">,</span> <span class="n">Mr2r_cpu</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">ns</span><span class="o">.</span><span class="n">mapmovhdr</span><span class="p">)</span>
+        <span class="n">tags</span> <span class="o">=</span> <span class="n">inherit_tags</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">mov</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">mapmovhdr</span><span class="p">,</span> <span class="n">r2r</span><span class="o">=</span><span class="n">Mr2r_cpu</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span><span class="o">.</span><span class="n">with_history</span><span class="p">(</span><span class="n">history</span><span class="p">)</span>
+        <span class="n">save_header_mapped_image</span><span class="p">(</span><span class="n">mov_img</span><span class="p">,</span> <span class="n">Mr2r_cpu</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">ns</span><span class="o">.</span><span class="n">mapmovhdr</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Wrote header-mapped image: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">mapmovhdr</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"MapMovHdr: </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">mapmovhdr</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 

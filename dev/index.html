@@ -895,13 +895,14 @@ vol2vol<span class="w"> </span>--in<span class="w"> </span>image.mgz<span class=
 <h3><code class="docutils literal notranslate"><span class="pre">mri</span></code> — image-volume utilities<a class="headerlink" href="#mri-image-volume-utilities" title="Link to this heading">¶</a></h3>
 <p>Small <code class="docutils literal notranslate"><span class="pre">mri_*</span></code>-style volume utilities grouped under a single command, in the same
 spirit as the <code class="docutils literal notranslate"><span class="pre">lta</span></code> transform CLI. Available subcommands are <code class="docutils literal notranslate"><span class="pre">mask</span></code>, <code class="docutils literal notranslate"><span class="pre">info</span></code>,
-<code class="docutils literal notranslate"><span class="pre">diff</span></code>, <code class="docutils literal notranslate"><span class="pre">binarize</span></code>, and <code class="docutils literal notranslate"><span class="pre">geom</span></code>. The argument conventions follow FreeSurfer’s
-<code class="docutils literal notranslate"><span class="pre">mri_*</span></code> tools where possible; <code class="docutils literal notranslate"><span class="pre">geom</span></code> has no FreeSurfer equivalent.</p>
+<code class="docutils literal notranslate"><span class="pre">diff</span></code>, <code class="docutils literal notranslate"><span class="pre">binarize</span></code>, <code class="docutils literal notranslate"><span class="pre">geom</span></code>, and <code class="docutils literal notranslate"><span class="pre">tag</span></code>. The argument conventions follow
+FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">mri_*</span></code> tools where possible; <code class="docutils literal notranslate"><span class="pre">geom</span></code> has no FreeSurfer equivalent.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mri</span> <span class="n">mask</span> <span class="o">&lt;</span><span class="nb">input</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">mask</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">output</span><span class="o">&gt;</span> <span class="p">[</span><span class="n">options</span><span class="p">]</span>
 <span class="n">mri</span> <span class="n">info</span> <span class="o">&lt;</span><span class="nb">input</span><span class="o">&gt;</span> <span class="p">[</span><span class="n">selectors</span><span class="p">]</span>
 <span class="n">mri</span> <span class="n">diff</span> <span class="o">&lt;</span><span class="n">vol1</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">vol2</span><span class="o">&gt;</span> <span class="p">[</span><span class="n">options</span><span class="p">]</span>
 <span class="n">mri</span> <span class="n">binarize</span> <span class="o">--</span><span class="n">i</span> <span class="o">&lt;</span><span class="nb">input</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">o</span> <span class="o">&lt;</span><span class="n">output</span><span class="o">&gt;</span> <span class="p">(</span><span class="o">--</span><span class="nb">min</span><span class="o">|--</span><span class="nb">max</span><span class="o">|--</span><span class="n">match</span> <span class="o">...</span><span class="p">)</span> <span class="p">[</span><span class="n">options</span><span class="p">]</span>
 <span class="n">mri</span> <span class="n">geom</span> <span class="o">--</span><span class="n">o</span> <span class="o">&lt;</span><span class="n">output</span><span class="o">&gt;</span> <span class="p">(</span><span class="o">--</span><span class="n">like</span> <span class="o">&lt;</span><span class="n">image</span><span class="o">&gt;</span> <span class="o">|</span> <span class="o">--</span><span class="n">fov</span> <span class="o">&lt;</span><span class="n">mm</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">vox</span><span class="o">-</span><span class="n">size</span> <span class="o">&lt;</span><span class="n">mm</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">orientation</span> <span class="o">&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="p">)</span> <span class="p">[</span><span class="n">options</span><span class="p">]</span>
+<span class="n">mri</span> <span class="n">tag</span> <span class="o">&lt;</span><span class="nb">input</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">output</span><span class="o">&gt;</span> <span class="p">[</span><span class="o">--</span><span class="n">xform</span> <span class="o">&lt;</span><span class="n">xfm</span><span class="o">&gt;</span> <span class="o">|</span> <span class="o">--</span><span class="n">xform</span><span class="o">-</span><span class="kn">from</span><span class="w"> </span><span class="o">&lt;</span><span class="n">vol</span><span class="o">&gt;</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="nb">abs</span><span class="o">-</span><span class="n">xform</span><span class="o">-</span><span class="n">tag</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">ctab</span> <span class="o">&lt;</span><span class="n">lut</span><span class="o">&gt;</span> <span class="o">|</span> <span class="o">--</span><span class="n">ctab</span><span class="o">-</span><span class="kn">from</span><span class="w"> </span><span class="o">&lt;</span><span class="n">vol</span><span class="o">&gt;</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">force</span><span class="p">]</span>
 </pre></div>
 </div>
 <section id="mri-mask-apply-a-binary-mask">
@@ -1245,6 +1246,120 @@ mri<span class="w"> </span>geom<span class="w"> </span>--o<span class="w"> </spa
 <span class="c1"># Feed it to any tool that takes a reference image</span>
 vol2vol<span class="w"> </span>--in<span class="w"> </span>cross.nii.gz<span class="w"> </span>--transform<span class="w"> </span>pose.lta<span class="w"> </span>--ref<span class="w"> </span>target.mgz<span class="w"> </span>--out<span class="w"> </span>orig.mgz
 multireg<span class="w"> </span>--mov<span class="w"> </span>tp1.mgz<span class="w"> </span>tp2.mgz<span class="w"> </span>--template<span class="w"> </span>base.mgz<span class="w"> </span>--template-geom<span class="w"> </span>target.mgz
+</pre></div>
+</div>
+</section>
+<section id="mri-tag-record-a-transform-path-or-embed-a-colour-table">
+<h4><code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">tag</span></code>: record a transform path or embed a colour table<a class="headerlink" href="#mri-tag-record-a-transform-path-or-embed-a-colour-table" title="Link to this heading">¶</a></h4>
+<p>Copies an MGH or NIfTI volume, recording the path of its talairach transform
+and/or embedding a colour lookup table, as FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">mri_add_xform_to_header</span></code>
+and <code class="docutils literal notranslate"><span class="pre">mri_convert</span> <span class="pre">--ctab</span></code> do. FreeSurfer stores both as tags: after the voxel data
+in MGH, and in its NIfTI header extension (code 14) in NIfTI, which FreeSurfer 8
+and surfa read. <code class="docutils literal notranslate"><span class="pre">recon-all</span></code> stages and <code class="docutils literal notranslate"><span class="pre">mri_info</span></code> read the transform path, and
+freeview uses an embedded table to name and colour a segmentation without an
+external LUT. nibabel neither reads nor writes these tags, so a volume written
+through nibabel alone has none.</p>
+<p>Nothing else changes: an MGH volume is copied byte for byte apart from the
+requested tags, including its other tags (command lines, field strength and so
+on), and a NIfTI volume keeps its header and voxels. The output may be the
+input, and keeps its format; <code class="docutils literal notranslate"><span class="pre">vol2vol</span></code> converts between MGH and NIfTI and
+carries the tags across.</p>
+<p>The other commands here carry tags forward, following FreeSurfer’s split
+between what describes the values and what describes the coordinate frame:</p>
+<ul class="simple">
+<li><p>An output keeps the tags of the volume its <strong>values</strong> came from: the input of
+<code class="docutils literal notranslate"><span class="pre">vol2vol</span></code> and <code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">mask</span></code>, the moving image of <code class="docutils literal notranslate"><span class="pre">robreg</span></code>, <code class="docutils literal notranslate"><span class="pre">coreg</span></code> and <code class="docutils literal notranslate"><span class="pre">bbreg</span></code>,
+and each time point for multireg’s <code class="docutils literal notranslate"><span class="pre">--mapmov</span></code>. The colour table, phase-encode
+direction, field strength and command-line history always come along.</p></li>
+<li><p>Tags tied to the <strong>coordinate frame</strong> survive only when the output stays in
+the source frame. After a transform into another frame, the talairach xform
+path and the AutoAlign matrix are dropped, since neither can be updated
+reliably, and the original RAS-to-voxel matrix is re-expressed in the new
+frame. A relative xform path is rebased when the output is written to another
+directory.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">binarize</span></code> drops the colour table, since its output holds new labels.
+<code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">geom</span></code> and multireg’s template have new values, so they start fresh.</p></li>
+<li><p>Each command appends its own command-line entry, in FreeSurfer’s format but
+without the user and machine names. <code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">tag</span></code> adds none, since it promises to
+change only the requested tags.</p></li>
+</ul>
+<p>In NIfTI, the extension is written only when there are tags, and a FreeSurfer
+extension carried over from a source header is replaced rather than duplicated.
+FreeSurfer’s own copy of the geometry (<code class="docutils literal notranslate"><span class="pre">TAG_RAS_XFORM</span></code>) is not written, as surfa
+does not write it either: FreeSurfer then takes the geometry from the sform or
+qform, so it cannot go stale.</p>
+<p>Acquisition parameters cross between the formats as FreeSurfer 8 moves them:
+TR goes into <code class="docutils literal notranslate"><span class="pre">pixdim[4]</span></code> in seconds with the time unit set, so every NIfTI
+reader sees it, and TE, TI, flip angle, field strength and phase-encode
+direction go into the extension’s scan-parameter tag. A NIfTI whose time unit
+is unknown has no TR, as in FreeSurfer, since nibabel writes <code class="docutils literal notranslate"><span class="pre">pixdim[4]</span> <span class="pre">=</span> <span class="pre">1</span></code>
+there by default. Frame metadata has a different layout in the extension and is
+not stored there.</p>
+<p>The transform path is recorded relative to the output’s directory by default,
+so a subject directory stays valid when it is moved. FreeSurfer first looks for
+<code class="docutils literal notranslate"><span class="pre">transforms/talairach.xfm</span></code> next to the volume and uses it whenever it exists,
+which covers the standard layout; any other relative path it resolves against
+the current directory, and <code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">tag</span></code> warns in that case. A transform that shares
+no directory with the volume below the filesystem root is recorded absolute,
+since a relative path would only climb to the root and down again.
+<code class="docutils literal notranslate"><span class="pre">--abs-xform-tag</span></code> always records the absolute path, which is how <code class="docutils literal notranslate"><span class="pre">recon-all</span></code>
+records it.</p>
+<p><code class="docutils literal notranslate"><span class="pre">--xform-from</span></code> and <code class="docutils literal notranslate"><span class="pre">--ctab-from</span></code> copy the tag from another volume, for outputs
+of tools that write none. A copied transform path is resolved from the
+directory of the volume it was recorded in, then recorded like <code class="docutils literal notranslate"><span class="pre">--xform</span></code>.</p>
+<p>A transform path or colour table the input already holds is only replaced with
+<code class="docutils literal notranslate"><span class="pre">--force</span></code>, so a tag set on purpose is not overwritten by accident. Asking for a
+value it already holds is not an error and leaves the file untouched, so a
+pipeline can repeat the step. Colour tables count as the same when their entries
+are, wherever they were loaded from. A FreeSurfer-written volume records an
+absolute path, so replacing it with the relative form also needs <code class="docutils literal notranslate"><span class="pre">--force</span></code>.</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Argument</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">in</span></code> (positional)</p></td>
+<td><p>Input MGH or NIfTI volume.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">out</span></code> (positional)</p></td>
+<td><p>Output volume in the same format; may be the input.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--xform</span> <span class="pre">FILE</span></code></p></td>
+<td><p>Transform whose path to record, typically <code class="docutils literal notranslate"><span class="pre">transforms/talairach.xfm</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--xform-from</span> <span class="pre">VOL</span></code></p></td>
+<td><p>MGH or NIfTI volume whose recorded transform path to copy.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--abs-xform-tag</span></code></p></td>
+<td><p>Record the absolute path rather than one relative to <code class="docutils literal notranslate"><span class="pre">out</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--ctab</span> <span class="pre">LUT</span></code></p></td>
+<td><p>ASCII colour lookup table to embed, such as <code class="docutils literal notranslate"><span class="pre">FreeSurferColorLUT.txt</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--ctab-from</span> <span class="pre">VOL</span></code></p></td>
+<td><p>MGH or NIfTI volume whose embedded colour table to copy.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--force</span></code></p></td>
+<td><p>Replace a transform path or colour table the input already holds.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Examples</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Replacement for: mri_add_xform_to_header -c transforms/talairach.xfm nu.mgz nu.mgz</span>
+mri<span class="w"> </span>tag<span class="w"> </span>mri/nu.mgz<span class="w"> </span>mri/nu.mgz<span class="w"> </span>--xform<span class="w"> </span>mri/transforms/talairach.xfm
+
+<span class="c1"># Embed a lookup table so freeview shows label names without an external LUT</span>
+mri<span class="w"> </span>tag<span class="w"> </span>aseg.mgz<span class="w"> </span>aseg.mgz<span class="w"> </span>--ctab<span class="w"> </span>FreeSurferColorLUT.txt
+
+<span class="c1"># Give a volume written by a tag-less tool the tags of another</span>
+mri<span class="w"> </span>tag<span class="w"> </span>mri/aseg.mgz<span class="w"> </span>mri/aseg.mgz<span class="w"> </span>--xform-from<span class="w"> </span>mri/nu.mgz<span class="w"> </span>--ctab-from<span class="w"> </span>mri/aparc+aseg.orig.mgz
+
+<span class="c1"># Check what a volume carries</span>
+mri<span class="w"> </span>info<span class="w"> </span>mri/nu.mgz
 </pre></div>
 </div>
 <p>Run <code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">-h</span></code> or <code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">&lt;subcommand&gt;</span> <span class="pre">-h</span></code> for a full argument summary with defaults.</p>

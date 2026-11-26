@@ -274,6 +274,7 @@
     <span class="n">clip_and_cast_dtype</span><span class="p">,</span>
     <span class="n">create_image_like</span><span class="p">,</span>
     <span class="n">header_map_image</span><span class="p">,</span>
+    <span class="n">inherit_tags</span><span class="p">,</span>
     <span class="n">is_geometry_json</span><span class="p">,</span>
     <span class="n">load_geometry_source</span><span class="p">,</span>
     <span class="n">load_image</span><span class="p">,</span>
@@ -283,7 +284,7 @@
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..transforms</span><span class="w"> </span><span class="kn">import</span> <span class="n">TRANSFORM_FORMATS</span><span class="p">,</span> <span class="n">affine_from_volume_info</span><span class="p">,</span> <span class="n">read_transform_as_lta</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._args</span><span class="w"> </span><span class="kn">import</span> <span class="n">NumberListParser</span><span class="p">,</span> <span class="n">number_list</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._outputs</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_image_outputs</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._outputs</span><span class="w"> </span><span class="kn">import</span> <span class="n">output_history</span><span class="p">,</span> <span class="n">validate_image_outputs</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_parse_pad</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">float</span><span class="p">:</span>
@@ -946,6 +947,10 @@
             <span class="c1"># --out-dtype/--keep-dtype name a type explicitly; refuse rather than</span>
             <span class="c1"># write a different one than was asked for.</span>
             <span class="n">check_dtype_storable</span><span class="p">(</span><span class="n">target_dtype</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">)</span>
+        <span class="c1"># The output's values always come from the input, so its tags do too.</span>
+        <span class="c1"># r2r is the identity unless a transform moves the output into another</span>
+        <span class="c1"># frame, in which case the frame-bound tags no longer apply.</span>
+        <span class="n">tags</span> <span class="o">=</span> <span class="n">inherit_tags</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">input_file</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">,</span> <span class="n">r2r</span><span class="o">=</span><span class="n">r2r</span><span class="p">)</span><span class="o">.</span><span class="n">with_history</span><span class="p">(</span><span class="n">output_history</span><span class="p">(</span><span class="s2">"vol2vol"</span><span class="p">,</span> <span class="n">args</span><span class="p">))</span>
         <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">header_only</span><span class="p">:</span>
             <span class="n">mapped_img</span> <span class="o">=</span> <span class="n">header_map_image</span><span class="p">(</span><span class="n">mov_img</span><span class="p">,</span> <span class="n">r2r</span><span class="p">)</span>
         <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">transform</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">ns</span><span class="o">.</span><span class="n">ref</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">ns</span><span class="o">.</span><span class="n">ref_cras</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -970,6 +975,16 @@
             <span class="n">target_affine</span><span class="p">,</span> <span class="n">target_shape</span> <span class="o">=</span> <span class="n">_resolve_target_geometry</span><span class="p">(</span>
                 <span class="n">mov_img</span><span class="p">,</span> <span class="n">ref_img</span><span class="p">,</span> <span class="n">effective_lta</span><span class="p">,</span> <span class="n">ref_cras</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">ref_cras</span>
             <span class="p">)</span>
+            <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">interp</span> <span class="o">!=</span> <span class="s2">"nearest"</span> <span class="ow">and</span> <span class="n">tags</span><span class="o">.</span><span class="n">color_table</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># A colour table marks a label volume, whose values interpolation</span>
+                <span class="c1"># mixes into labels that do not exist. It stays allowed, since</span>
+                <span class="c1"># interpolating a mask is how a soft mask is made, and the table</span>
+                <span class="c1"># is kept, as FreeSurfer keeps it.</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"WARNING: </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">input_file</span><span class="si">}</span><span class="s2"> embeds a colour table, so it holds labels, and "</span>
+                    <span class="sa">f</span><span class="s2">"--interp </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">interp</span><span class="si">}</span><span class="s2"> mixes them; use --interp nearest to keep label values."</span><span class="p">,</span>
+                    <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">,</span>
+                <span class="p">)</span>
             <span class="n">padding_mode</span><span class="p">,</span> <span class="n">padding_value</span> <span class="o">=</span> <span class="n">_resolve_padding</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">pad</span><span class="p">,</span> <span class="n">mov_img</span><span class="p">)</span>
             <span class="n">mapped_img</span> <span class="o">=</span> <span class="n">reslice_r2r_image</span><span class="p">(</span>
                 <span class="n">mov_img</span><span class="p">,</span>
@@ -990,7 +1005,7 @@
                 <span class="n">robust_low</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">robust_low</span><span class="p">,</span>
                 <span class="n">robust_high</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">robust_high</span><span class="p">,</span>
             <span class="p">)</span>
-        <span class="n">save_image</span><span class="p">(</span><span class="n">mapped_img</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">)</span>
+        <span class="n">save_image</span><span class="p">(</span><span class="n">mapped_img</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"vol2vol failed"</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ERROR: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>

@@ -246,34 +246,45 @@
 <span class="sd">Small ``mri_*``-style volume utilities grouped under a single command, in the</span>
 <span class="sd">same spirit as the ``lta`` transform CLI. Available subcommands are ``mask``</span>
 <span class="sd">(analogous to FreeSurfer's ``mri_mask``), ``info`` (``mri_info``), ``diff``</span>
-<span class="sd">(``mri_diff``), and ``binarize`` (``mri_binarize``). Run ``mri --help`` or</span>
-<span class="sd">``mri &lt;subcommand&gt; --help`` for the full command syntax.</span>
+<span class="sd">(``mri_diff``), ``binarize`` (``mri_binarize``), ``geom``, and ``tag``</span>
+<span class="sd">(``mri_add_xform_to_header`` and embedding a colour table). Run ``mri --help``</span>
+<span class="sd">or ``mri &lt;subcommand&gt; --help`` for the full command syntax.</span>
 <span class="sd">"""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">nibabel</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nib</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..image</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">MGHTags</span><span class="p">,</span>
     <span class="n">binarize_image</span><span class="p">,</span>
     <span class="n">build_grid_affine</span><span class="p">,</span>
     <span class="n">compare_images</span><span class="p">,</span>
     <span class="n">describe_image</span><span class="p">,</span>
     <span class="n">direction_cosines_from_orientation</span><span class="p">,</span>
     <span class="n">image_value_stats</span><span class="p">,</span>
+    <span class="n">inherit_tags</span><span class="p">,</span>
     <span class="n">load_geometry_source</span><span class="p">,</span>
     <span class="n">load_image</span><span class="p">,</span>
     <span class="n">mask_geometry_differs</span><span class="p">,</span>
+    <span class="n">read_color_lut</span><span class="p">,</span>
+    <span class="n">read_image_tags</span><span class="p">,</span>
+    <span class="n">recognized_image_suffix</span><span class="p">,</span>
+    <span class="n">relative_xform_path</span><span class="p">,</span>
     <span class="n">reslice_and_apply_mask</span><span class="p">,</span>
     <span class="n">save_image</span><span class="p">,</span>
     <span class="n">shape_from_fov</span><span class="p">,</span>
+    <span class="n">write_image_tags</span><span class="p">,</span>
 <span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..image.mgh_tags</span><span class="w"> </span><span class="kn">import</span> <span class="n">STANDARD_XFORM</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._args</span><span class="w"> </span><span class="kn">import</span> <span class="n">NumberListParser</span><span class="p">,</span> <span class="n">number_list</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">._outputs</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_image_outputs</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._outputs</span><span class="w"> </span><span class="kn">import</span> <span class="n">output_history</span><span class="p">,</span> <span class="n">validate_image_outputs</span>
 
 <span class="c1"># ── parser ──────────────────────────────────────────────────────────────────</span>
 
@@ -291,7 +302,7 @@
     <span class="c1"># sub-parsers inherit the class via argparse's parser_class default.</span>
     <span class="n">p</span> <span class="o">=</span> <span class="n">NumberListParser</span><span class="p">(</span>
         <span class="n">prog</span><span class="o">=</span><span class="s2">"mri"</span><span class="p">,</span>
-        <span class="n">description</span><span class="o">=</span><span class="s2">"Image volume utilities (mask, info, diff, binarize, geom)."</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">"Image volume utilities (mask, info, diff, binarize, geom, tag)."</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">sub</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">add_subparsers</span><span class="p">(</span><span class="n">dest</span><span class="o">=</span><span class="s2">"command"</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"COMMAND"</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
@@ -543,6 +554,78 @@
         <span class="n">help</span><span class="o">=</span><span class="s2">"World coordinate of the grid centre (default: 0,0,0)."</span><span class="p">,</span>
     <span class="p">)</span>
 
+    <span class="c1"># ── tag ─────────────────────────────────────────────────────────────────</span>
+    <span class="n">tag_p</span> <span class="o">=</span> <span class="n">sub</span><span class="o">.</span><span class="n">add_parser</span><span class="p">(</span>
+        <span class="s2">"tag"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Record a transform path and/or embed a colour table in an MGH volume."</span><span class="p">,</span>
+        <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">RawDescriptionHelpFormatter</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"Copy an MGH or NIfTI volume, recording the path of its talairach</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"transform and/or embedding a colour lookup table, as FreeSurfer's</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"mri_add_xform_to_header and mri_convert --ctab do. Nothing else</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"changes: an MGH volume is copied byte for byte apart from the</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"requested tags, and a NIfTI volume keeps its header and voxels.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"OUT may be IN to tag a volume in place, and must share its format.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"An MGH volume keeps its tags after the voxel data, a NIfTI volume</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"in FreeSurfer's header extension (code 14), which FreeSurfer 8 and</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"surfa read. The other commands here carry tags forward: an output</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"keeps the tags of the volume its values came from, except those</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"tied to a coordinate frame it no longer lives in.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"--xform is recorded relative to the directory of OUT by default,</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"so a subject directory stays valid when it is moved. FreeSurfer</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"first looks for transforms/talairach.xfm next to the volume and</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"uses that whenever it exists, which covers the standard layout;</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"any other relative path it resolves against the current directory.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"--abs-xform-tag records the absolute path instead, which is how</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"recon-all records it.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"--xform-from and --ctab-from copy the tag from another volume, for</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"outputs of tools that write none. A copied transform path is</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"resolved where it was recorded and then recorded like --xform.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"A tag IN already holds is only replaced with --force, so a tag set</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"on purpose is not overwritten by accident. Asking for a value it</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"already holds is not an error, so a pipeline can repeat the step;</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"colour tables count as the same when their entries are."</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">tag_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"in_file"</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"in"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Input MGH or NIfTI volume."</span><span class="p">)</span>
+    <span class="n">tag_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"out"</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">"out"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Output volume in the same format; may be the input."</span><span class="p">)</span>
+    <span class="n">xform_group</span> <span class="o">=</span> <span class="n">tag_p</span><span class="o">.</span><span class="n">add_mutually_exclusive_group</span><span class="p">()</span>
+    <span class="n">xform_group</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">"--xform"</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"FILE"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Transform whose path to record, typically transforms/talairach.xfm."</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">xform_group</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">"--xform-from"</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"VOL"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"MGH or NIfTI volume whose recorded transform path to copy."</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">tag_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">"--abs-xform-tag"</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">"store_true"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Record the transform's absolute path rather than one relative to the directory of OUT."</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">ctab_group</span> <span class="o">=</span> <span class="n">tag_p</span><span class="o">.</span><span class="n">add_mutually_exclusive_group</span><span class="p">()</span>
+    <span class="n">ctab_group</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">"--ctab"</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"LUT"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"ASCII colour lookup table to embed, such as FreeSurferColorLUT.txt."</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">ctab_group</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">"--ctab-from"</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">"VOL"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"MGH or NIfTI volume whose embedded colour table to copy."</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">tag_p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">"--force"</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">"store_true"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Replace a transform path or colour table IN already holds with a different one."</span><span class="p">,</span>
+    <span class="p">)</span>
+
     <span class="k">return</span> <span class="n">p</span>
 
 
@@ -564,7 +647,7 @@
 <span class="c1"># ── subcommand handlers ───────────────────────────────────────────────────────</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_main_mask</span><span class="p">(</span><span class="n">ns</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_main_mask</span><span class="p">(</span><span class="n">ns</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">,</span> <span class="n">history</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">image</span> <span class="o">=</span> <span class="n">load_image</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">in_file</span><span class="p">)</span>
         <span class="n">mask</span> <span class="o">=</span> <span class="n">load_image</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">mask</span><span class="p">)</span>
@@ -573,7 +656,8 @@
         <span class="k">if</span> <span class="n">mask_geometry_differs</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">target_affine</span><span class="p">,</span> <span class="n">target_shape</span><span class="p">):</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">"Mask:      geometry differs from input; resampling mask to input grid (nearest)."</span><span class="p">)</span>
         <span class="n">masked</span> <span class="o">=</span> <span class="n">reslice_and_apply_mask</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">threshold</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">oval</span><span class="p">)</span>
-        <span class="n">save_image</span><span class="p">(</span><span class="n">masked</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">)</span>
+        <span class="c1"># Masking keeps the input's grid, frame and labels, so all its tags apply.</span>
+        <span class="n">save_image</span><span class="p">(</span><span class="n">masked</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">inherit_tags</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">in_file</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">)</span><span class="o">.</span><span class="n">with_history</span><span class="p">(</span><span class="n">history</span><span class="p">))</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ERROR: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
         <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
@@ -610,6 +694,25 @@
     <span class="nb">print</span><span class="p">(</span><span class="n">_format_matrix</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s2">"ras2vox"</span><span class="p">]))</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_print_tags</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Print the transform path and colour table a volume carries, if any."""</span>
+    <span class="k">if</span> <span class="n">recognized_image_suffix</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_TAGGED_SUFFIXES</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">tags</span> <span class="o">=</span> <span class="n">read_image_tags</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">table</span> <span class="o">=</span> <span class="n">tags</span><span class="o">.</span><span class="n">color_table</span>
+    <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="si">{</span><span class="s1">'tags'</span><span class="si">:</span><span class="s2">&gt;14</span><span class="si">}</span><span class="s2">: unreadable (</span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
+        <span class="k">return</span>
+    <span class="k">if</span> <span class="n">tags</span><span class="o">.</span><span class="n">xform</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">table</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="nb">print</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">tags</span><span class="o">.</span><span class="n">xform</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="s1">'talairach xfm'</span><span class="si">:</span><span class="s2">&gt;14</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">tags</span><span class="o">.</span><span class="n">xform</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">table</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="s1">'color table'</span><span class="si">:</span><span class="s2">&gt;14</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">table</span><span class="o">.</span><span class="n">entries</span><span class="p">)</span><span class="si">}</span><span class="s2"> entries (</span><span class="si">{</span><span class="n">table</span><span class="o">.</span><span class="n">fname</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
+
+
 <span class="k">def</span><span class="w"> </span><span class="nf">_main_info</span><span class="p">(</span><span class="n">ns</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">img</span> <span class="o">=</span> <span class="n">load_image</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">file</span><span class="p">)</span>
@@ -620,6 +723,7 @@
 
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">ns</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">_INFO_SELECTORS</span><span class="p">):</span>
         <span class="n">_print_info_dump</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+        <span class="n">_print_tags</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">file</span><span class="p">)</span>
         <span class="k">return</span>
 
     <span class="c1"># Scriptable mode: print only the requested value(s), one per line.</span>
@@ -708,7 +812,7 @@
     <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_main_binarize</span><span class="p">(</span><span class="n">ns</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_main_binarize</span><span class="p">(</span><span class="n">ns</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">,</span> <span class="n">history</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">img</span> <span class="o">=</span> <span class="n">load_image</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">input_file</span><span class="p">)</span>
         <span class="n">out</span> <span class="o">=</span> <span class="n">binarize_image</span><span class="p">(</span>
@@ -723,7 +827,10 @@
             <span class="n">frame</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">frame</span><span class="p">,</span>
             <span class="n">out_dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span> <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">uchar</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="n">save_image</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">)</span>
+        <span class="c1"># The output holds new labels, so a colour table would name the wrong</span>
+        <span class="c1"># structures; everything else still describes the same grid and frame.</span>
+        <span class="n">tags</span> <span class="o">=</span> <span class="n">inherit_tags</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">input_file</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">,</span> <span class="n">keep_color_table</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">with_history</span><span class="p">(</span><span class="n">history</span><span class="p">)</span>
+        <span class="n">save_image</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ERROR: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
         <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
@@ -813,7 +920,7 @@
     <span class="k">return</span> <span class="n">cosines</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">vox_size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">cras</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_main_geom</span><span class="p">(</span><span class="n">ns</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">,</span> <span class="n">parser</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_main_geom</span><span class="p">(</span><span class="n">ns</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">,</span> <span class="n">parser</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">,</span> <span class="n">history</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="c1"># Inside the boundary so an unreadable --like reports like the other</span>
         <span class="c1"># subcommands. parser.error raises SystemExit, not Exception, so usage</span>
@@ -823,7 +930,8 @@
         <span class="c1"># uint8 zeros: the payload is irrelevant, only the header is, and this</span>
         <span class="c1"># keeps a 320^3 reference file a few KB once compressed.</span>
         <span class="n">img</span> <span class="o">=</span> <span class="n">nib</span><span class="o">.</span><span class="n">Nifti1Image</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">),</span> <span class="n">affine</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
-        <span class="n">save_image</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">)</span>
+        <span class="c1"># A new volume with no values of its own: only how it was made applies.</span>
+        <span class="n">save_image</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">MGHTags</span><span class="p">()</span><span class="o">.</span><span class="n">with_history</span><span class="p">(</span><span class="n">history</span><span class="p">))</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ERROR: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
         <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
@@ -837,6 +945,148 @@
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"   voxel sizes: </span><span class="si">{</span><span class="n">out_vox</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">out_vox</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">out_vox</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"          cras: </span><span class="si">{</span><span class="n">out_cras</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">out_cras</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">out_cras</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"   Orientation: </span><span class="si">{</span><span class="n">written</span><span class="p">[</span><span class="s1">'orientation'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+
+<span class="c1">#: The transform name FreeSurfer finds next to a volume regardless of the tag.</span>
+<span class="n">_STANDARD_XFORM</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">STANDARD_XFORM</span><span class="p">)</span>
+<span class="n">_MGH_SUFFIXES</span> <span class="o">=</span> <span class="p">(</span><span class="s2">".mgz"</span><span class="p">,</span> <span class="s2">".mgh"</span><span class="p">)</span>
+<span class="n">_NIFTI_SUFFIXES</span> <span class="o">=</span> <span class="p">(</span><span class="s2">".nii.gz"</span><span class="p">,</span> <span class="s2">".nii"</span><span class="p">)</span>
+<span class="c1">#: Formats that hold FreeSurfer tags: MGH after the voxels, NIfTI in an extension.</span>
+<span class="n">_TAGGED_SUFFIXES</span> <span class="o">=</span> <span class="p">(</span><span class="o">*</span><span class="n">_MGH_SUFFIXES</span><span class="p">,</span> <span class="o">*</span><span class="n">_NIFTI_SUFFIXES</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_validate_tag_args</span><span class="p">(</span><span class="n">ns</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">,</span> <span class="n">parser</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Reject ``mri tag`` invocations that cannot do anything useful."""</span>
+    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">xform</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">ns</span><span class="o">.</span><span class="n">xform_from</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">ns</span><span class="o">.</span><span class="n">ctab</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">ns</span><span class="o">.</span><span class="n">ctab_from</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="s2">"mri tag needs --xform/--xform-from and/or --ctab/--ctab-from: there is nothing to record otherwise."</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">abs_xform_tag</span> <span class="ow">and</span> <span class="n">ns</span><span class="o">.</span><span class="n">xform</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">ns</span><span class="o">.</span><span class="n">xform_from</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--abs-xform-tag only says how to record a transform path, and none was given."</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">flag</span><span class="p">,</span> <span class="n">source</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">"--xform-from"</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">xform_from</span><span class="p">),</span> <span class="p">(</span><span class="s2">"--ctab-from"</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">ctab_from</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="n">source</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">recognized_image_suffix</span><span class="p">(</span><span class="n">source</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_TAGGED_SUFFIXES</span><span class="p">:</span>
+            <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">flag</span><span class="si">}</span><span class="s2"> copies a tag from an MGH or NIfTI volume, the formats that hold one."</span><span class="p">)</span>
+    <span class="n">in_suffix</span><span class="p">,</span> <span class="n">out_suffix</span> <span class="o">=</span> <span class="n">recognized_image_suffix</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">in_file</span><span class="p">),</span> <span class="n">recognized_image_suffix</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">in_suffix</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_TAGGED_SUFFIXES</span><span class="p">:</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="s2">"mri tag reads MGH or NIfTI input only, the formats that hold tags; "</span>
+            <span class="s2">"convert the volume first, for example with vol2vol."</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">out_suffix</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_TAGGED_SUFFIXES</span><span class="p">:</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"tags can only be stored in MGH or NIfTI volumes, so OUT needs one of their extensions."</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">in_suffix</span> <span class="ow">in</span> <span class="n">_MGH_SUFFIXES</span><span class="p">)</span> <span class="o">!=</span> <span class="p">(</span><span class="n">out_suffix</span> <span class="ow">in</span> <span class="n">_MGH_SUFFIXES</span><span class="p">):</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="s2">"mri tag copies a volume and so keeps its format; vol2vol converts between MGH and NIfTI "</span>
+            <span class="s2">"and carries the tags across."</span>
+        <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_xform_tag_value</span><span class="p">(</span><span class="n">xform</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">out</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">absolute</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the transform path to record for a volume written to ``out``.</span>
+
+<span class="sd">    The relative form is relative to the directory ``out`` is written to, not</span>
+<span class="sd">    the current one, since that is the only location the path can be resolved</span>
+<span class="sd">    from later. See :func:`~neuroreg.image.mgh_tags.relative_xform_path` for</span>
+<span class="sd">    when the absolute path is recorded instead.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">absolute</span><span class="p">:</span>
+        <span class="c1"># Forward slashes, like the relative form, so the tag reads the same</span>
+        <span class="c1"># wherever FreeSurfer runs.</span>
+        <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">xform</span><span class="p">))</span><span class="o">.</span><span class="n">as_posix</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">relative_xform_path</span><span class="p">(</span><span class="n">xform</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">out</span><span class="p">)))</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_requested_xform_target</span><span class="p">(</span><span class="n">ns</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the absolute path of the transform to record, if one was requested.</span>
+
+<span class="sd">    A path copied with --xform-from is resolved from the directory of the</span>
+<span class="sd">    volume it was recorded in, the only place a relative one means anything.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">xform</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">xform</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">xform_from</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">recorded</span> <span class="o">=</span> <span class="n">read_image_tags</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">xform_from</span><span class="p">)</span><span class="o">.</span><span class="n">xform</span>
+    <span class="k">if</span> <span class="n">recorded</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">xform_from</span><span class="si">}</span><span class="s2"> records no talairach xform to copy"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">xform_from</span><span class="p">)),</span> <span class="n">recorded</span><span class="p">))</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_requested_color_table</span><span class="p">(</span><span class="n">ns</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Return the colour table to embed, if one was requested."""</span>
+    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">ctab</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">read_color_lut</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">ctab</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">ctab_from</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">table</span> <span class="o">=</span> <span class="n">read_image_tags</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">ctab_from</span><span class="p">)</span><span class="o">.</span><span class="n">color_table</span>
+    <span class="k">if</span> <span class="n">table</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">ctab_from</span><span class="si">}</span><span class="s2"> embeds no colour table to copy"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">table</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_same_xform</span><span class="p">(</span><span class="n">recorded</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">requested</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">out_dir</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return whether two transform paths recorded for a volume in ``out_dir`` name one file."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">resolve</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">normcase</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">out_dir</span><span class="p">,</span> <span class="n">path</span><span class="p">)))</span>
+
+    <span class="k">return</span> <span class="n">resolve</span><span class="p">(</span><span class="n">recorded</span><span class="p">)</span> <span class="o">==</span> <span class="n">resolve</span><span class="p">(</span><span class="n">requested</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_main_tag</span><span class="p">(</span><span class="n">ns</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">xform</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="n">_requested_xform_target</span><span class="p">(</span><span class="n">ns</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">target</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">Path</span><span class="p">(</span><span class="n">target</span><span class="p">)</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+                <span class="c1"># mri_add_xform_to_header -c records the name without checking</span>
+                <span class="c1"># it either: the transform may legitimately be written later.</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"WARNING: </span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s2"> does not exist; recording its path anyway."</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+            <span class="n">xform</span> <span class="o">=</span> <span class="n">_xform_tag_value</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">abs_xform_tag</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isabs</span><span class="p">(</span><span class="n">xform</span><span class="p">)</span> <span class="ow">and</span> <span class="n">Path</span><span class="p">(</span><span class="n">xform</span><span class="p">)</span> <span class="o">!=</span> <span class="n">_STANDARD_XFORM</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"WARNING: FreeSurfer resolves the relative path </span><span class="si">{</span><span class="n">xform</span><span class="si">}</span><span class="s2"> against its current "</span>
+                    <span class="sa">f</span><span class="s2">"directory, and only finds </span><span class="si">{</span><span class="n">_STANDARD_XFORM</span><span class="si">}</span><span class="s2"> next to the volume on its own. "</span>
+                    <span class="s2">"Pass --abs-xform-tag if FreeSurfer has to find this transform from elsewhere."</span><span class="p">,</span>
+                    <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">,</span>
+                <span class="p">)</span>
+        <span class="n">table</span> <span class="o">=</span> <span class="n">_requested_color_table</span><span class="p">(</span><span class="n">ns</span><span class="p">)</span>
+
+        <span class="c1"># Compare against what OUT would inherit, which for another directory</span>
+        <span class="c1"># is the rebased path, not the string stored in IN.</span>
+        <span class="n">out_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">))</span>
+        <span class="n">existing</span> <span class="o">=</span> <span class="n">read_image_tags</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">in_file</span><span class="p">)</span><span class="o">.</span><span class="n">rebase_xform</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">in_file</span><span class="p">)),</span> <span class="n">out_dir</span><span class="p">)</span>
+        <span class="c1"># The same transform written another way (relative or absolute) is not</span>
+        <span class="c1"># a conflict; it is rewritten in the requested form below.</span>
+        <span class="n">same_file</span> <span class="o">=</span> <span class="n">xform</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">existing</span><span class="o">.</span><span class="n">xform</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">_same_xform</span><span class="p">(</span><span class="n">existing</span><span class="o">.</span><span class="n">xform</span><span class="p">,</span> <span class="n">xform</span><span class="p">,</span> <span class="n">out_dir</span><span class="p">)</span>
+        <span class="n">conflicts</span> <span class="o">=</span> <span class="n">existing</span><span class="o">.</span><span class="n">conflicts</span><span class="p">(</span><span class="n">xform</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">same_file</span> <span class="k">else</span> <span class="n">xform</span><span class="p">,</span> <span class="n">color_table</span><span class="o">=</span><span class="n">table</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">conflicts</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">ns</span><span class="o">.</span><span class="n">force</span><span class="p">:</span>
+            <span class="n">reasons</span> <span class="o">=</span> <span class="s2">"; and "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">conflicts</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"not replacing tags of </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">in_file</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">reasons</span><span class="si">}</span><span class="s2">. Pass --force to replace."</span><span class="p">)</span>
+        <span class="c1"># A value IN already holds is left as it is, so a repeated step changes</span>
+        <span class="c1"># nothing, including the name a matching colour table was recorded with.</span>
+        <span class="k">if</span> <span class="n">xform</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">existing</span><span class="o">.</span><span class="n">xform</span> <span class="o">==</span> <span class="n">xform</span><span class="p">:</span>
+            <span class="n">xform</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">existing_table</span> <span class="o">=</span> <span class="n">existing</span><span class="o">.</span><span class="n">color_table</span> <span class="k">if</span> <span class="n">table</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">existing_table</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">existing_table</span><span class="o">.</span><span class="n">entries</span> <span class="o">==</span> <span class="n">table</span><span class="o">.</span><span class="n">entries</span><span class="p">:</span>
+            <span class="n">table</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="n">in_place</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">)</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">samefile</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">in_file</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">)</span>
+        <span class="n">unchanged</span> <span class="o">=</span> <span class="n">in_place</span> <span class="ow">and</span> <span class="n">xform</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">table</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">unchanged</span><span class="p">:</span>
+            <span class="n">write_image_tags</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">in_file</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">,</span> <span class="n">xform</span><span class="o">=</span><span class="n">xform</span><span class="p">,</span> <span class="n">color_table</span><span class="o">=</span><span class="n">table</span><span class="p">)</span>
+        <span class="c1"># Report the tags as stored, so what is printed is what a reader gets.</span>
+        <span class="n">written</span> <span class="o">=</span> <span class="n">read_image_tags</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ERROR: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Output: </span><span class="si">{</span><span class="n">ns</span><span class="o">.</span><span class="n">out</span><span class="si">}</span><span class="s2">"</span> <span class="o">+</span> <span class="p">(</span><span class="s2">" (unchanged: it already holds these tags)"</span> <span class="k">if</span> <span class="n">unchanged</span> <span class="k">else</span> <span class="s2">""</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">written</span><span class="o">.</span><span class="n">xform</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"     xform tag: </span><span class="si">{</span><span class="n">written</span><span class="o">.</span><span class="n">xform</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">written</span><span class="o">.</span><span class="n">color_table</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">table</span> <span class="o">=</span> <span class="n">written</span><span class="o">.</span><span class="n">color_table</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"   color table: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">table</span><span class="o">.</span><span class="n">entries</span><span class="p">)</span><span class="si">}</span><span class="s2"> entries (</span><span class="si">{</span><span class="n">table</span><span class="o">.</span><span class="n">fname</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
 
 
 <span class="c1"># ── entry point ───────────────────────────────────────────────────────────────</span>
@@ -862,16 +1112,22 @@
     <span class="n">ns</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
     <span class="n">validate_image_outputs</span><span class="p">(</span><span class="n">parser</span><span class="p">,</span> <span class="n">ns</span><span class="p">,</span> <span class="s2">"out"</span><span class="p">)</span>
 
+    <span class="n">history</span> <span class="o">=</span> <span class="n">output_history</span><span class="p">(</span><span class="s2">"mri"</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">command</span> <span class="o">==</span> <span class="s2">"mask"</span><span class="p">:</span>
-        <span class="n">_main_mask</span><span class="p">(</span><span class="n">ns</span><span class="p">)</span>
+        <span class="n">_main_mask</span><span class="p">(</span><span class="n">ns</span><span class="p">,</span> <span class="n">history</span><span class="p">)</span>
     <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">command</span> <span class="o">==</span> <span class="s2">"info"</span><span class="p">:</span>
         <span class="n">_main_info</span><span class="p">(</span><span class="n">ns</span><span class="p">)</span>
     <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">command</span> <span class="o">==</span> <span class="s2">"diff"</span><span class="p">:</span>
         <span class="n">_main_diff</span><span class="p">(</span><span class="n">ns</span><span class="p">)</span>
     <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">command</span> <span class="o">==</span> <span class="s2">"binarize"</span><span class="p">:</span>
-        <span class="n">_main_binarize</span><span class="p">(</span><span class="n">ns</span><span class="p">)</span>
+        <span class="n">_main_binarize</span><span class="p">(</span><span class="n">ns</span><span class="p">,</span> <span class="n">history</span><span class="p">)</span>
     <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">command</span> <span class="o">==</span> <span class="s2">"geom"</span><span class="p">:</span>
-        <span class="n">_main_geom</span><span class="p">(</span><span class="n">ns</span><span class="p">,</span> <span class="n">parser</span><span class="p">)</span></div>
+        <span class="n">_main_geom</span><span class="p">(</span><span class="n">ns</span><span class="p">,</span> <span class="n">parser</span><span class="p">,</span> <span class="n">history</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">ns</span><span class="o">.</span><span class="n">command</span> <span class="o">==</span> <span class="s2">"tag"</span><span class="p">:</span>
+        <span class="c1"># tag promises that only the requested tags change, so it records no</span>
+        <span class="c1"># history of its own.</span>
+        <span class="n">_validate_tag_args</span><span class="p">(</span><span class="n">ns</span><span class="p">,</span> <span class="n">parser</span><span class="p">)</span>
+        <span class="n">_main_tag</span><span class="p">(</span><span class="n">ns</span><span class="p">)</span></div>
 
 
 
