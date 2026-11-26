@@ -1,6 +1,6 @@
 """Geometry options accept a target JSON wherever they accept an image.
 
-``--ref``, ``--template-geom`` and ``--dst-img`` all read only the header of
+``--ref``, ``--template-geom`` and ``--dst`` all read only the header of
 what they are given, so each also takes a centroid target JSON carrying a
 ``geometry`` block. These tests pin that the JSON and the equivalent image are
 interchangeable, which is the whole point of the option.
@@ -167,22 +167,22 @@ def test_lta_convert_blames_a_bad_geometry_json_not_the_transform(tmp_path: Path
     target.write_text('{"centroids": {"1": [1.0, 2.0, 3.0]}}\n')
 
     with pytest.raises(SystemExit):
-        lta_main(["convert", str(source), str(tmp_path / "out.lta"), "--dst-img", str(target)])
+        lta_main(["convert", str(source), str(tmp_path / "out.lta"), "--dst", str(target)])
 
     err = capsys.readouterr().err
-    assert "--dst-img" in err
+    assert "--dst" in err
     assert f"cannot read {source}" not in err
 
 
-def test_lta_convert_dst_img_accepts_a_geometry_json(tmp_path: Path):
+def test_lta_convert_dst_accepts_a_geometry_json(tmp_path: Path):
     mov = _write_mov(tmp_path / "mov.mgz")
     source = tmp_path / "in.lta"
     LTA.from_matrix(np.eye(4), str(mov), nib.load(str(mov)), "atlas", None, lta_type=1).write(source)
     from_json = tmp_path / "from_json.lta"
     from_image = tmp_path / "from_image.lta"
 
-    lta_main(["convert", str(source), str(from_json), "--dst-img", _atlas_json()])
-    lta_main(["convert", str(source), str(from_image), "--dst-img", str(_equivalent_image(tmp_path / "geom.mgz"))])
+    lta_main(["convert", str(source), str(from_json), "--dst", _atlas_json()])
+    lta_main(["convert", str(source), str(from_image), "--dst", str(_equivalent_image(tmp_path / "geom.mgz"))])
 
     written = LTA.read(from_json)
     assert written.dst["valid"] == 1
@@ -198,7 +198,7 @@ def test_lta_convert_dst_img_accepts_a_geometry_json(tmp_path: Path):
     assert from_image_lta.dst["filename"].endswith("geom.mgz")
 
 
-def test_lta_convert_dst_img_json_does_not_keep_a_stale_filename(tmp_path: Path):
+def test_lta_convert_dst_json_does_not_keep_a_stale_filename(tmp_path: Path):
     # The input names its destination "atlas". Once the JSON replaces that
     # geometry, keeping the old name would attribute the new grid to a file it
     # did not come from, and a JSON has no image file of its own to record.
@@ -207,22 +207,22 @@ def test_lta_convert_dst_img_json_does_not_keep_a_stale_filename(tmp_path: Path)
     LTA.from_matrix(np.eye(4), str(mov), nib.load(str(mov)), "atlas", None, lta_type=1).write(source)
     out = tmp_path / "out.lta"
 
-    lta_main(["convert", str(source), str(out), "--dst-img", _atlas_json()])
+    lta_main(["convert", str(source), str(out), "--dst", _atlas_json()])
 
     written = LTA.read(out)
     assert list(written.dst["volume"]) == [256, 256, 256]
     assert written.dst["filename"] != "atlas"
 
 
-def test_lta_convert_src_img_accepts_a_geometry_json(tmp_path: Path):
-    # --src-img is the same kind of header-only option as --dst-img, so it has
+def test_lta_convert_src_accepts_a_geometry_json(tmp_path: Path):
+    # --src is the same kind of header-only option as --dst, so it has
     # to accept the same inputs; one of two would be its own trap.
     mov = _write_mov(tmp_path / "mov.mgz")
     source = tmp_path / "in.lta"
     LTA.from_matrix(np.eye(4), str(mov), nib.load(str(mov)), "atlas", None, lta_type=1).write(source)
     out = tmp_path / "out.lta"
 
-    lta_main(["convert", str(source), str(out), "--src-img", _atlas_json()])
+    lta_main(["convert", str(source), str(out), "--src", _atlas_json()])
 
     written = LTA.read(out)
     assert written.src["valid"] == 1

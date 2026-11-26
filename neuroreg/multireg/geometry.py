@@ -320,7 +320,7 @@ def create_template_geometry(images: Sequence[Any], center_ras: np.ndarray) -> t
 
 #: How to supply a destination geometry when the given transforms carry none.
 _MISSING_DST_REMEDY = (
-    "Attach one with 'lta convert --dst-img', building the grid first with 'mri geom' if no "
+    "Attach one with 'lta convert --dst', building the grid first with 'mri geom' if no "
     "suitable reference image exists."
 )
 
