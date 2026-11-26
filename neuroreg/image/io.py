@@ -10,6 +10,9 @@ from typing import Any
 import nibabel as nib
 import numpy as np
 from nibabel.filebasedimages import ImageFileError
+from nibabel.spatialimages import HeaderDataError
+
+from .mgh_tags import MGHTags, apply_scan_parameters_to_mgh, save_nifti_with_tags, write_mgh_image
 
 logger = logging.getLogger(__name__)
 
@@ -420,7 +423,7 @@ def as_mgh_image(data: np.ndarray, affine: np.ndarray, header: Any | None = None
     return image
 
 
-def save_image(image: Any, path: str | Path) -> None:
+def save_image(image: Any, path: str | Path, tags: MGHTags | None = None) -> None:
     """Write an image, choosing the on-disk format from the output extension.
 
     Unlike calling ``image.to_filename`` directly, the output format follows the
@@ -444,12 +447,23 @@ def save_image(image: Any, path: str | Path) -> None:
     data dtype to float32 when converting from a non-MGH source (see
     :func:`as_mgh_image`).
 
+    nibabel neither reads nor writes the tags FreeSurfer stores after the
+    voxels of an MGH volume, so ``tags`` are written explicitly. Which tags an
+    output should carry depends on what produced it, so the caller decides,
+    typically with :func:`~neuroreg.image.mgh_tags.inherit_tags`.
+
     Parameters
     ----------
     image : Any
         Nibabel-like image to write.
     path : str or Path
         Output filename. Its extension selects the output format.
+    tags : MGHTags or None, optional
+        FreeSurfer tags to store: after the voxels for MGH/MGZ, as FreeSurfer's
+        NIfTI header extension (code 14) for ``.nii``/``.nii.gz``, where an
+        extension carried over from a source header is replaced. Analyze pairs
+        cannot hold them, which is logged. ``None`` leaves NIfTI extensions as
+        nibabel carries them.
 
     Returns
     -------
@@ -464,9 +478,32 @@ def save_image(image: Any, path: str | Path) -> None:
         corrupting values (see :func:`as_mgh_image`).
     """
     destination = Path(path)
-    if recognized_image_suffix(destination) in _MGH_SUFFIXES:
+    has_tags = tags is not None and bool(tags.tags)
+    suffix = recognized_image_suffix(destination)
+    if suffix in _MGH_SUFFIXES:
         header = image.header if isinstance(image, nib.MGHImage) else None
         image = as_mgh_image(np.asanyarray(image.dataobj), np.asarray(image.affine, dtype=np.float64), header)
+        if tags is not None and tags.scan is not None:
+            # An MGH source's header already holds these; a NIfTI source's
+            # reach the MGH scan parameters only this way.
+            apply_scan_parameters_to_mgh(image.header, tags.scan)
+        if has_tags:
+            write_mgh_image(image, destination, tags)
+            return
+    elif suffix in _NIFTI_SUFFIXES and tags is not None:
+        # The caller decided the tags, so a FreeSurfer extension carried over
+        # from a source header is replaced, or removed when there are none.
+        if not isinstance(image, nib.Nifti1Image):
+            try:
+                image = nib.Nifti1Image.from_image(image)
+            except HeaderDataError:
+                # Too large for NIfTI-1's int16 dimensions; nib.save makes the
+                # same fallback.
+                image = nib.Nifti2Image.from_image(image)
+        save_nifti_with_tags(image, destination, tags)
+        return
+    elif has_tags:
+        logger.info("Not storing %d tag(s) in %s: only MGH and NIfTI outputs carry them.", len(tags.tags), path)
     try:
         nib.save(image, str(destination))
     except (ImageFileError, NotImplementedError) as exc:

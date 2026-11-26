@@ -689,6 +689,7 @@ def save_resliced_r2r_image(
     padding_mode: str = "zeros",
     padding_value: float | None = None,
     keep_dtype: bool = False,
+    tags: Any = None,
 ) -> Any:
     """Reslice and write an image using a shared RAS-to-RAS mapping path.
 
@@ -718,6 +719,8 @@ def save_resliced_r2r_image(
         ``mri_vol2vol --keep-precision`` behavior. Nearest-neighbor resampling
         of integer- or boolean-valued inputs always preserves the source dtype.
         Otherwise, when ``False``, the written mapped output uses ``float32``.
+    tags : MGHTags or None, optional
+        MGH tags to store with the output; see :func:`save_image`.
 
     Returns
     -------
@@ -741,7 +744,7 @@ def save_resliced_r2r_image(
         padding_value=padding_value,
         keep_dtype=keep_dtype,
     )
-    save_image(mapped_img, output_path)
+    save_image(mapped_img, output_path, tags=tags)
     return mapped_img
 
 
@@ -749,6 +752,7 @@ def save_header_mapped_image(
     image: Any,
     r2r: torch.Tensor | np.ndarray,
     output_path: str,
+    tags: Any = None,
 ) -> Any:
     """Write a header-only mapped image using a shared helper.
 
@@ -760,6 +764,8 @@ def save_header_mapped_image(
         Source-to-target RAS transform.
     output_path : str
         Destination filename for the output image.
+    tags : MGHTags or None, optional
+        MGH tags to store with the output; see :func:`save_image`.
 
     Returns
     -------
@@ -767,7 +773,7 @@ def save_header_mapped_image(
         Written header-mapped image object.
     """
     mapped_img = header_map_image(image, r2r)
-    save_image(mapped_img, output_path)
+    save_image(mapped_img, output_path, tags=tags)
     return mapped_img
 
 

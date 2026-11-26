@@ -9,7 +9,7 @@ import sys
 from typing import Any, cast
 
 from ..transforms import LINEAR_RAS_TO_RAS, LINEAR_VOX_TO_VOX, LTA, convert_transform_type
-from ._outputs import validate_image_outputs
+from ._outputs import output_history, validate_image_outputs
 
 
 def _parse_int_csv(value: str) -> list[int]:
@@ -212,7 +212,7 @@ def main(args=None) -> None:
     SystemExit
         If argument parsing fails or image loading raises an exception.
     """
-    from ..image import load_image, save_header_mapped_image
+    from ..image import inherit_tags, load_image, save_header_mapped_image, save_resliced_r2r_image
     from ..imreg.coreg import coreg
 
     parser = _build_parser()
@@ -250,8 +250,6 @@ def main(args=None) -> None:
         method=ns.method,
         device=ns.device,
         return_v2v=False,
-        mapped_name=ns.mapmov,
-        keep_dtype=ns.keep_dtype,
         init_lta=ns.init_lta,
         symmetric=ns.symmetric,
         isotropic=ns.isotropic,
@@ -306,11 +304,27 @@ def main(args=None) -> None:
     LTA.from_matrix(v2v, ns.mov, mov_img, ns.ref, ref_img, lta_type=0).write(ns.out)
     logger.info("Wrote LTA: %s", ns.out)
     print(f"Output: {ns.out}")
+    # Mapped outputs keep the moving image's values in the reference frame, so
+    # they inherit the moving image's tags through the registration. They are
+    # written here rather than by coreg() so the tags can be attached; the
+    # reslice is the one coreg() would do: cubic, onto the reference grid.
+    history = output_history("coreg", args)
     if ns.mapmov:
+        save_resliced_r2r_image(
+            mov_img,
+            r2r_cpu.numpy(),
+            ns.mapmov,
+            target_affine=ref_img.affine,
+            target_shape=tuple(int(v) for v in ref_img.shape[:3]),
+            mode="cubic",
+            keep_dtype=ns.keep_dtype,
+            tags=inherit_tags(ns.mov, ns.mapmov, r2r=r2r_cpu.numpy()).with_history(history),
+        )
         logger.info("Wrote resliced mapped image: %s", ns.mapmov)
         print(f"MapMov:    {ns.mapmov}")
     if ns.mapmovhdr:
-        save_header_mapped_image(mov_img, r2r_cpu.numpy(), ns.mapmovhdr)
+        tags = inherit_tags(ns.mov, ns.mapmovhdr, r2r=r2r_cpu.numpy()).with_history(history)
+        save_header_mapped_image(mov_img, r2r_cpu.numpy(), ns.mapmovhdr, tags=tags)
         logger.info("Wrote header-mapped image: %s", ns.mapmovhdr)
         print(f"MapMovHdr: {ns.mapmovhdr}")
 

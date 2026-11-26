@@ -1,8 +1,10 @@
-"""Shared output-path validation for the command-line entry points."""
+"""Shared output handling for the command-line entry points."""
 
 from __future__ import annotations
 
 import argparse
+import sys
+from collections.abc import Sequence
 
 
 def validate_image_outputs(parser: argparse.ArgumentParser, ns: argparse.Namespace, *dests: str) -> None:
@@ -48,3 +50,24 @@ def validate_image_outputs(parser: argparse.ArgumentParser, ns: argparse.Namespa
                     f"--{dest.replace('_', '-')} needs a recognized image extension "
                     f"({', '.join(IMAGE_SUFFIXES)}), got: {path}"
                 )
+
+
+def output_history(program: str, args: Sequence[str] | None) -> str:
+    """Return the command-line tag recording this invocation.
+
+    Parameters
+    ----------
+    program : str
+        Command name, such as ``"vol2vol"``.
+    args : sequence of str or None
+        The arguments ``main`` received; ``None`` means they came from
+        :data:`sys.argv`, as when the command runs from a shell.
+
+    Returns
+    -------
+    str
+        Entry for :meth:`neuroreg.image.MGHTags.with_history`.
+    """
+    from ..image import history_entry
+
+    return history_entry(program, list(sys.argv[1:] if args is None else args))

@@ -7,10 +7,10 @@ import logging
 import sys
 from typing import Any, cast
 
-from ..image import load_geometry_source, load_image, save_image
+from ..image import MGHTags, inherit_tags, load_geometry_source, load_image, save_image
 from ..multireg import multireg
 from ..transforms import LTA
-from ._outputs import validate_image_outputs
+from ._outputs import output_history, validate_image_outputs
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -293,7 +293,10 @@ def main(args=None) -> None:
             mapped_keep_dtype=ns.keep_dtype,
             verbose=ns.verbose or ns.debug,
         )
-        save_image(result.template_image, ns.template)
+        history = output_history("multireg", args)
+        # The template's values are new, built from all time points, so it
+        # inherits nothing; it only records how it was made.
+        save_image(result.template_image, ns.template, tags=MGHTags().with_history(history))
         print(f"InitialTP:   {result.initial_target_index + 1}")
         print(f"Seed:        {result.seed}")
         print(f"Iterations:  {result.template_iterations_run}")
@@ -310,8 +313,13 @@ def main(args=None) -> None:
             print(f"LTAs:        {len(ns.lta)}")
         if ns.mapmov is not None:
             mapped_images = result.mapped_images if result.mapped_images is not None else []
-            for mapmov_path, mapped_image in zip(ns.mapmov, mapped_images, strict=False):
-                save_image(mapped_image, mapmov_path)
+            for mapmov_path, mov_path, mapped_image, matrix in zip(
+                ns.mapmov, ns.mov, mapped_images, result.transforms_r2r, strict=False
+            ):
+                # A mapped time point keeps its own values, so it inherits from
+                # its own input, moved into template space by its transform.
+                tags = inherit_tags(mov_path, mapmov_path, r2r=matrix).with_history(history)
+                save_image(mapped_image, mapmov_path, tags=tags)
             print(f"MapMov:      {len(ns.mapmov)}")
     except Exception as exc:
         # Registration and output writing report like the other commands rather

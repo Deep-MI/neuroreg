@@ -40,6 +40,20 @@ from .map import (
     save_header_mapped_image,
     save_resliced_r2r_image,
 )
+from .mgh_tags import (
+    ColorTable,
+    ColorTableEntry,
+    MGHTags,
+    ScanParameters,
+    history_entry,
+    inherit_tags,
+    read_color_lut,
+    read_image_tags,
+    read_mgh_tags,
+    relative_xform_path,
+    write_image_tags,
+    write_mgh_tags,
+)
 from .pyramid import build_gaussian_pyramid, get_pyramid_limits
 from .segmentation import extract_wm_surface, simplify_segmentation, surfaces_from_segmentation
 from .smooth import get_gaussian_kernel, smooth
@@ -67,6 +81,18 @@ __all__ = [
     "recognized_image_suffix",
     "check_dtype_storable",
     "IMAGE_SUFFIXES",
+    "ColorTable",
+    "ColorTableEntry",
+    "MGHTags",
+    "ScanParameters",
+    "history_entry",
+    "inherit_tags",
+    "read_color_lut",
+    "read_image_tags",
+    "read_mgh_tags",
+    "relative_xform_path",
+    "write_image_tags",
+    "write_mgh_tags",
     "map",
     "map_r2r",
     "cast_image_dtype",

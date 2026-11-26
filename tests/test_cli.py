@@ -661,11 +661,6 @@ class TestCoregCli:
         def fake_coreg(*args, **kwargs):
             captured["args"] = args
             captured.update(kwargs)
-            mapped_name = kwargs.get("mapped_name")
-            if mapped_name is not None:
-                ref_img = cast(Any, args[1])
-                zeros = torch.zeros(tuple(int(v) for v in ref_img.shape[:3]), dtype=torch.float32).numpy()
-                nib.save(nib.Nifti1Image(zeros, affine=ref_img.affine), str(mapped_name))
             transform = torch.eye(4, dtype=torch.float64)
             transform[0, 3] = 2.5
             transform[1, 3] = -1.0
@@ -702,12 +697,15 @@ class TestCoregCli:
         expected_r2r[1, 3] = -1.0
         expected_v2v = np.linalg.inv(ref_affine) @ expected_r2r @ mov_affine
 
-        assert captured["mapped_name"] == str(out_map)
-        assert captured["keep_dtype"] is False
+        # The CLI writes --mapmov itself, so it can attach the moving image's
+        # tags; coreg() is no longer asked to write it.
+        assert "mapped_name" not in captured
         assert captured["return_v2v"] is False
         assert np.asarray(captured["lta_matrix"]) == pytest.approx(expected_v2v)
         assert out_path.exists()
-        assert out_map.exists()
+        mapped = nib.load(str(out_map))
+        assert mapped.shape[:3] == (8, 8, 8)
+        assert mapped.affine == pytest.approx(ref_affine)
         assert out_hdr.exists()
         mapped_hdr = nib.load(str(out_hdr))
         assert mapped_hdr.affine == pytest.approx(expected_r2r @ mov_affine)
@@ -725,9 +723,6 @@ class TestCoregCli:
 
         def fake_coreg(*args, **kwargs):
             captured.update(kwargs)
-            ref_img = cast(Any, args[1])
-            zeros = torch.zeros(tuple(int(v) for v in ref_img.shape[:3]), dtype=torch.uint8).numpy()
-            nib.save(nib.Nifti1Image(zeros, affine=ref_img.affine), str(kwargs["mapped_name"]))
             return _TensorRequiringCpu(torch.eye(4))
 
         class _DummyLTA:
@@ -751,4 +746,7 @@ class TestCoregCli:
             ]
         )
 
-        assert captured["keep_dtype"] is True
+        # The cubic reslice is cast back to the moving image's uint8, as
+        # mri_vol2vol --keep-precision does; without the flag it is float32.
+        assert "keep_dtype" not in captured
+        assert nib.load(str(out_map)).get_data_dtype() == np.uint8

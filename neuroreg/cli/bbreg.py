@@ -12,7 +12,7 @@ from typing import Any
 import numpy as np
 
 from ..image import load_image
-from ._outputs import validate_image_outputs
+from ._outputs import output_history, validate_image_outputs
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -329,7 +329,7 @@ def main(args=None) -> None:
         exits after reporting an error.
     """
     from ..bbreg.register import register_surface
-    from ..image import save_header_mapped_image, save_resliced_r2r_image
+    from ..image import inherit_tags, save_header_mapped_image, save_resliced_r2r_image
 
     parser = _build_parser()
     ns = parser.parse_args(args)
@@ -408,6 +408,9 @@ def main(args=None) -> None:
         target_img = _load_target_geometry_image(ns, mode)
         mr2r_np = mr2r.detach().cpu().numpy()
         target_shape = tuple(int(v) for v in target_img.shape[:3])
+        # Mapped outputs keep the moving image's values in the target frame, so
+        # they inherit the moving image's tags through the registration.
+        history = output_history("bbreg", args)
         if ns.mapmov:
             save_resliced_r2r_image(
                 mov_img,
@@ -417,11 +420,13 @@ def main(args=None) -> None:
                 target_shape=target_shape,
                 mode="cubic",
                 keep_dtype=ns.keep_dtype,
+                tags=inherit_tags(ns.mov, ns.mapmov, r2r=mr2r_np).with_history(history),
             )
             logger.info("Wrote resliced mapped image: %s", ns.mapmov)
             print(f"MapMov:    {ns.mapmov}")
         if ns.mapmovhdr:
-            save_header_mapped_image(mov_img, mr2r_np, ns.mapmovhdr)
+            tags = inherit_tags(ns.mov, ns.mapmovhdr, r2r=mr2r_np).with_history(history)
+            save_header_mapped_image(mov_img, mr2r_np, ns.mapmovhdr, tags=tags)
             logger.info("Wrote header-mapped image: %s", ns.mapmovhdr)
             print(f"MapMovHdr: {ns.mapmovhdr}")
 

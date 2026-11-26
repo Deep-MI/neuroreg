@@ -4,34 +4,45 @@
 Small ``mri_*``-style volume utilities grouped under a single command, in the
 same spirit as the ``lta`` transform CLI. Available subcommands are ``mask``
 (analogous to FreeSurfer's ``mri_mask``), ``info`` (``mri_info``), ``diff``
-(``mri_diff``), and ``binarize`` (``mri_binarize``). Run ``mri --help`` or
-``mri <subcommand> --help`` for the full command syntax.
+(``mri_diff``), ``binarize`` (``mri_binarize``), ``geom``, and ``tag``
+(``mri_add_xform_to_header`` and embedding a colour table). Run ``mri --help``
+or ``mri <subcommand> --help`` for the full command syntax.
 """
 
 from __future__ import annotations
 
 import argparse
+import os
 import sys
+from pathlib import Path
 
 import nibabel as nib
 import numpy as np
 
 from ..image import (
+    MGHTags,
     binarize_image,
     build_grid_affine,
     compare_images,
     describe_image,
     direction_cosines_from_orientation,
     image_value_stats,
+    inherit_tags,
     load_geometry_source,
     load_image,
     mask_geometry_differs,
+    read_color_lut,
+    read_image_tags,
+    recognized_image_suffix,
+    relative_xform_path,
     reslice_and_apply_mask,
     save_image,
     shape_from_fov,
+    write_image_tags,
 )
+from ..image.mgh_tags import STANDARD_XFORM
 from ._args import NumberListParser, number_list
-from ._outputs import validate_image_outputs
+from ._outputs import output_history, validate_image_outputs
 
 # ── parser ──────────────────────────────────────────────────────────────────
 
@@ -49,7 +60,7 @@ def _build_parser() -> argparse.ArgumentParser:
     # sub-parsers inherit the class via argparse's parser_class default.
     p = NumberListParser(
         prog="mri",
-        description="Image volume utilities (mask, info, diff, binarize, geom).",
+        description="Image volume utilities (mask, info, diff, binarize, geom, tag).",
     )
     sub = p.add_subparsers(dest="command", metavar="COMMAND", required=True)
 
@@ -301,6 +312,78 @@ def _build_parser() -> argparse.ArgumentParser:
         help="World coordinate of the grid centre (default: 0,0,0).",
     )
 
+    # ── tag ─────────────────────────────────────────────────────────────────
+    tag_p = sub.add_parser(
+        "tag",
+        help="Record a transform path and/or embed a colour table in an MGH volume.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=(
+            "Copy an MGH or NIfTI volume, recording the path of its talairach\n"
+            "transform and/or embedding a colour lookup table, as FreeSurfer's\n"
+            "mri_add_xform_to_header and mri_convert --ctab do. Nothing else\n"
+            "changes: an MGH volume is copied byte for byte apart from the\n"
+            "requested tags, and a NIfTI volume keeps its header and voxels.\n"
+            "OUT may be IN to tag a volume in place, and must share its format.\n"
+            "\n"
+            "An MGH volume keeps its tags after the voxel data, a NIfTI volume\n"
+            "in FreeSurfer's header extension (code 14), which FreeSurfer 8 and\n"
+            "surfa read. The other commands here carry tags forward: an output\n"
+            "keeps the tags of the volume its values came from, except those\n"
+            "tied to a coordinate frame it no longer lives in.\n"
+            "\n"
+            "--xform is recorded relative to the directory of OUT by default,\n"
+            "so a subject directory stays valid when it is moved. FreeSurfer\n"
+            "first looks for transforms/talairach.xfm next to the volume and\n"
+            "uses that whenever it exists, which covers the standard layout;\n"
+            "any other relative path it resolves against the current directory.\n"
+            "--abs-xform-tag records the absolute path instead, which is how\n"
+            "recon-all records it.\n"
+            "\n"
+            "--xform-from and --ctab-from copy the tag from another volume, for\n"
+            "outputs of tools that write none. A copied transform path is\n"
+            "resolved where it was recorded and then recorded like --xform.\n"
+            "\n"
+            "A tag IN already holds is only replaced with --force, so a tag set\n"
+            "on purpose is not overwritten by accident. Asking for a value it\n"
+            "already holds is not an error, so a pipeline can repeat the step;\n"
+            "colour tables count as the same when their entries are."
+        ),
+    )
+    tag_p.add_argument("in_file", metavar="in", help="Input MGH or NIfTI volume.")
+    tag_p.add_argument("out", metavar="out", help="Output volume in the same format; may be the input.")
+    xform_group = tag_p.add_mutually_exclusive_group()
+    xform_group.add_argument(
+        "--xform",
+        metavar="FILE",
+        help="Transform whose path to record, typically transforms/talairach.xfm.",
+    )
+    xform_group.add_argument(
+        "--xform-from",
+        metavar="VOL",
+        help="MGH or NIfTI volume whose recorded transform path to copy.",
+    )
+    tag_p.add_argument(
+        "--abs-xform-tag",
+        action="store_true",
+        help="Record the transform's absolute path rather than one relative to the directory of OUT.",
+    )
+    ctab_group = tag_p.add_mutually_exclusive_group()
+    ctab_group.add_argument(
+        "--ctab",
+        metavar="LUT",
+        help="ASCII colour lookup table to embed, such as FreeSurferColorLUT.txt.",
+    )
+    ctab_group.add_argument(
+        "--ctab-from",
+        metavar="VOL",
+        help="MGH or NIfTI volume whose embedded colour table to copy.",
+    )
+    tag_p.add_argument(
+        "--force",
+        action="store_true",
+        help="Replace a transform path or colour table IN already holds with a different one.",
+    )
+
     return p
 
 
@@ -322,7 +405,7 @@ _INFO_SELECTORS = (
 # ── subcommand handlers ───────────────────────────────────────────────────────
 
 
-def _main_mask(ns: argparse.Namespace) -> None:
+def _main_mask(ns: argparse.Namespace, history: str) -> None:
     try:
         image = load_image(ns.in_file)
         mask = load_image(ns.mask)
@@ -331,7 +414,8 @@ def _main_mask(ns: argparse.Namespace) -> None:
         if mask_geometry_differs(mask, target_affine, target_shape):
             print("Mask:      geometry differs from input; resampling mask to input grid (nearest).")
         masked = reslice_and_apply_mask(image, mask, threshold=ns.threshold, fill=ns.oval)
-        save_image(masked, ns.out)
+        # Masking keeps the input's grid, frame and labels, so all its tags apply.
+        save_image(masked, ns.out, tags=inherit_tags(ns.in_file, ns.out).with_history(history))
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -368,6 +452,25 @@ def _print_info_dump(d: dict) -> None:
     print(_format_matrix(d["ras2vox"]))
 
 
+def _print_tags(path: str) -> None:
+    """Print the transform path and colour table a volume carries, if any."""
+    if recognized_image_suffix(path) not in _TAGGED_SUFFIXES:
+        return
+    try:
+        tags = read_image_tags(path)
+        table = tags.color_table
+    except ValueError as exc:
+        print(f"\n{'tags':>14}: unreadable ({exc})")
+        return
+    if tags.xform is None and table is None:
+        return
+    print()
+    if tags.xform is not None:
+        print(f"{'talairach xfm':>14}: {tags.xform}")
+    if table is not None:
+        print(f"{'color table':>14}: {len(table.entries)} entries ({table.fname})")
+
+
 def _main_info(ns: argparse.Namespace) -> None:
     try:
         img = load_image(ns.file)
@@ -378,6 +481,7 @@ def _main_info(ns: argparse.Namespace) -> None:
 
     if not any(getattr(ns, name) for name in _INFO_SELECTORS):
         _print_info_dump(d)
+        _print_tags(ns.file)
         return
 
     # Scriptable mode: print only the requested value(s), one per line.
@@ -466,7 +570,7 @@ def _main_diff(ns: argparse.Namespace) -> None:
     sys.exit(status)
 
 
-def _main_binarize(ns: argparse.Namespace) -> None:
+def _main_binarize(ns: argparse.Namespace, history: str) -> None:
     try:
         img = load_image(ns.input_file)
         out = binarize_image(
@@ -481,7 +585,10 @@ def _main_binarize(ns: argparse.Namespace) -> None:
             frame=ns.frame,
             out_dtype=np.uint8 if ns.uchar else np.int32,
         )
-        save_image(out, ns.out)
+        # The output holds new labels, so a colour table would name the wrong
+        # structures; everything else still describes the same grid and frame.
+        tags = inherit_tags(ns.input_file, ns.out, keep_color_table=False).with_history(history)
+        save_image(out, ns.out, tags=tags)
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -571,7 +678,7 @@ def _resolve_geom_components(
     return cosines, shape, np.asarray(vox_size, dtype=np.float64), np.asarray(cras, dtype=np.float64)
 
 
-def _main_geom(ns: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
+def _main_geom(ns: argparse.Namespace, parser: argparse.ArgumentParser, history: str) -> None:
     try:
         # Inside the boundary so an unreadable --like reports like the other
         # subcommands. parser.error raises SystemExit, not Exception, so usage
@@ -581,7 +688,8 @@ def _main_geom(ns: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
         # uint8 zeros: the payload is irrelevant, only the header is, and this
         # keeps a 320^3 reference file a few KB once compressed.
         img = nib.Nifti1Image(np.zeros(shape, dtype=np.uint8), affine, dtype=np.uint8)
-        save_image(img, ns.out)
+        # A new volume with no values of its own: only how it was made applies.
+        save_image(img, ns.out, tags=MGHTags().with_history(history))
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -595,6 +703,148 @@ def _main_geom(ns: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
     print(f"   voxel sizes: {out_vox[0]:.6f}, {out_vox[1]:.6f}, {out_vox[2]:.6f}")
     print(f"          cras: {out_cras[0]:.6f} {out_cras[1]:.6f} {out_cras[2]:.6f}")
     print(f"   Orientation: {written['orientation']}")
+
+
+#: The transform name FreeSurfer finds next to a volume regardless of the tag.
+_STANDARD_XFORM = Path(STANDARD_XFORM)
+_MGH_SUFFIXES = (".mgz", ".mgh")
+_NIFTI_SUFFIXES = (".nii.gz", ".nii")
+#: Formats that hold FreeSurfer tags: MGH after the voxels, NIfTI in an extension.
+_TAGGED_SUFFIXES = (*_MGH_SUFFIXES, *_NIFTI_SUFFIXES)
+
+
+def _validate_tag_args(ns: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
+    """Reject ``mri tag`` invocations that cannot do anything useful."""
+    if ns.xform is None and ns.xform_from is None and ns.ctab is None and ns.ctab_from is None:
+        parser.error(
+            "mri tag needs --xform/--xform-from and/or --ctab/--ctab-from: there is nothing to record otherwise."
+        )
+    if ns.abs_xform_tag and ns.xform is None and ns.xform_from is None:
+        parser.error("--abs-xform-tag only says how to record a transform path, and none was given.")
+    for flag, source in (("--xform-from", ns.xform_from), ("--ctab-from", ns.ctab_from)):
+        if source is not None and recognized_image_suffix(source) not in _TAGGED_SUFFIXES:
+            parser.error(f"{flag} copies a tag from an MGH or NIfTI volume, the formats that hold one.")
+    in_suffix, out_suffix = recognized_image_suffix(ns.in_file), recognized_image_suffix(ns.out)
+    if in_suffix not in _TAGGED_SUFFIXES:
+        parser.error(
+            "mri tag reads MGH or NIfTI input only, the formats that hold tags; "
+            "convert the volume first, for example with vol2vol."
+        )
+    if out_suffix not in _TAGGED_SUFFIXES:
+        parser.error("tags can only be stored in MGH or NIfTI volumes, so OUT needs one of their extensions.")
+    if (in_suffix in _MGH_SUFFIXES) != (out_suffix in _MGH_SUFFIXES):
+        parser.error(
+            "mri tag copies a volume and so keeps its format; vol2vol converts between MGH and NIfTI "
+            "and carries the tags across."
+        )
+
+
+def _xform_tag_value(xform: str, out: str, absolute: bool) -> str:
+    """Return the transform path to record for a volume written to ``out``.
+
+    The relative form is relative to the directory ``out`` is written to, not
+    the current one, since that is the only location the path can be resolved
+    from later. See :func:`~neuroreg.image.mgh_tags.relative_xform_path` for
+    when the absolute path is recorded instead.
+    """
+    if absolute:
+        # Forward slashes, like the relative form, so the tag reads the same
+        # wherever FreeSurfer runs.
+        return Path(os.path.abspath(xform)).as_posix()
+    return relative_xform_path(xform, os.path.dirname(os.path.abspath(out)))
+
+
+def _requested_xform_target(ns: argparse.Namespace) -> str | None:
+    """Return the absolute path of the transform to record, if one was requested.
+
+    A path copied with --xform-from is resolved from the directory of the
+    volume it was recorded in, the only place a relative one means anything.
+    """
+    if ns.xform is not None:
+        return os.path.abspath(ns.xform)
+    if ns.xform_from is None:
+        return None
+    recorded = read_image_tags(ns.xform_from).xform
+    if recorded is None:
+        raise ValueError(f"{ns.xform_from} records no talairach xform to copy")
+    return os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(ns.xform_from)), recorded))
+
+
+def _requested_color_table(ns: argparse.Namespace):
+    """Return the colour table to embed, if one was requested."""
+    if ns.ctab is not None:
+        return read_color_lut(ns.ctab)
+    if ns.ctab_from is None:
+        return None
+    table = read_image_tags(ns.ctab_from).color_table
+    if table is None:
+        raise ValueError(f"{ns.ctab_from} embeds no colour table to copy")
+    return table
+
+
+def _same_xform(recorded: str, requested: str, out_dir: str) -> bool:
+    """Return whether two transform paths recorded for a volume in ``out_dir`` name one file."""
+
+    def resolve(path: str) -> str:
+        return os.path.normcase(os.path.realpath(os.path.join(out_dir, path)))
+
+    return resolve(recorded) == resolve(requested)
+
+
+def _main_tag(ns: argparse.Namespace) -> None:
+    try:
+        xform = None
+        target = _requested_xform_target(ns)
+        if target is not None:
+            if not Path(target).is_file():
+                # mri_add_xform_to_header -c records the name without checking
+                # it either: the transform may legitimately be written later.
+                print(f"WARNING: {target} does not exist; recording its path anyway.", file=sys.stderr)
+            xform = _xform_tag_value(target, ns.out, ns.abs_xform_tag)
+            if not os.path.isabs(xform) and Path(xform) != _STANDARD_XFORM:
+                print(
+                    f"WARNING: FreeSurfer resolves the relative path {xform} against its current "
+                    f"directory, and only finds {_STANDARD_XFORM} next to the volume on its own. "
+                    "Pass --abs-xform-tag if FreeSurfer has to find this transform from elsewhere.",
+                    file=sys.stderr,
+                )
+        table = _requested_color_table(ns)
+
+        # Compare against what OUT would inherit, which for another directory
+        # is the rebased path, not the string stored in IN.
+        out_dir = os.path.dirname(os.path.abspath(ns.out))
+        existing = read_image_tags(ns.in_file).rebase_xform(os.path.dirname(os.path.abspath(ns.in_file)), out_dir)
+        # The same transform written another way (relative or absolute) is not
+        # a conflict; it is rewritten in the requested form below.
+        same_file = xform is not None and existing.xform is not None and _same_xform(existing.xform, xform, out_dir)
+        conflicts = existing.conflicts(xform=None if same_file else xform, color_table=table)
+        if conflicts and not ns.force:
+            reasons = "; and ".join(conflicts)
+            raise ValueError(f"not replacing tags of {ns.in_file}: {reasons}. Pass --force to replace.")
+        # A value IN already holds is left as it is, so a repeated step changes
+        # nothing, including the name a matching colour table was recorded with.
+        if xform is not None and existing.xform == xform:
+            xform = None
+        existing_table = existing.color_table if table is not None else None
+        if existing_table is not None and existing_table.entries == table.entries:
+            table = None
+
+        in_place = os.path.exists(ns.out) and os.path.samefile(ns.in_file, ns.out)
+        unchanged = in_place and xform is None and table is None
+        if not unchanged:
+            write_image_tags(ns.in_file, ns.out, xform=xform, color_table=table)
+        # Report the tags as stored, so what is printed is what a reader gets.
+        written = read_image_tags(ns.out)
+    except Exception as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"Output: {ns.out}" + (" (unchanged: it already holds these tags)" if unchanged else ""))
+    if written.xform is not None:
+        print(f"     xform tag: {written.xform}")
+    if written.color_table is not None:
+        table = written.color_table
+        print(f"   color table: {len(table.entries)} entries ({table.fname})")
 
 
 # ── entry point ───────────────────────────────────────────────────────────────
@@ -618,16 +868,22 @@ def main(args=None) -> None:
     ns = parser.parse_args(args)
     validate_image_outputs(parser, ns, "out")
 
+    history = output_history("mri", args)
     if ns.command == "mask":
-        _main_mask(ns)
+        _main_mask(ns, history)
     elif ns.command == "info":
         _main_info(ns)
     elif ns.command == "diff":
         _main_diff(ns)
     elif ns.command == "binarize":
-        _main_binarize(ns)
+        _main_binarize(ns, history)
     elif ns.command == "geom":
-        _main_geom(ns, parser)
+        _main_geom(ns, parser, history)
+    elif ns.command == "tag":
+        # tag promises that only the requested tags change, so it records no
+        # history of its own.
+        _validate_tag_args(ns, parser)
+        _main_tag(ns)
 
 
 if __name__ == "__main__":
