@@ -11,6 +11,8 @@ import nibabel as nib
 import numpy as np
 from nibabel.filebasedimages import ImageFileError
 
+from .mgh_tags import MGHTags, write_mgh_image
+
 logger = logging.getLogger(__name__)
 
 _4DFP_TRANSVERSE_BASIS = np.array(
@@ -420,7 +422,7 @@ def as_mgh_image(data: np.ndarray, affine: np.ndarray, header: Any | None = None
     return image
 
 
-def save_image(image: Any, path: str | Path) -> None:
+def save_image(image: Any, path: str | Path, tags: MGHTags | None = None) -> None:
     """Write an image, choosing the on-disk format from the output extension.
 
     Unlike calling ``image.to_filename`` directly, the output format follows the
@@ -444,12 +446,20 @@ def save_image(image: Any, path: str | Path) -> None:
     data dtype to float32 when converting from a non-MGH source (see
     :func:`as_mgh_image`).
 
+    nibabel neither reads nor writes the tags FreeSurfer stores after the
+    voxels of an MGH volume, so ``tags`` are written explicitly. Which tags an
+    output should carry depends on what produced it, so the caller decides,
+    typically with :func:`~neuroreg.image.mgh_tags.inherit_tags`.
+
     Parameters
     ----------
     image : Any
         Nibabel-like image to write.
     path : str or Path
         Output filename. Its extension selects the output format.
+    tags : MGHTags or None, optional
+        Tags to store after the voxels. Only MGH/MGZ outputs carry them; for
+        any other format they are not written, which is logged.
 
     Returns
     -------
@@ -464,9 +474,15 @@ def save_image(image: Any, path: str | Path) -> None:
         corrupting values (see :func:`as_mgh_image`).
     """
     destination = Path(path)
+    has_tags = tags is not None and bool(tags.tags)
     if recognized_image_suffix(destination) in _MGH_SUFFIXES:
         header = image.header if isinstance(image, nib.MGHImage) else None
         image = as_mgh_image(np.asanyarray(image.dataobj), np.asarray(image.affine, dtype=np.float64), header)
+        if has_tags:
+            write_mgh_image(image, destination, tags)
+            return
+    elif has_tags:
+        logger.info("Not storing %d MGH tag(s) in %s: only MGH/MGZ outputs carry them.", len(tags.tags), path)
     try:
         nib.save(image, str(destination))
     except (ImageFileError, NotImplementedError) as exc:

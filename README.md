@@ -579,13 +579,34 @@ embedding a colour lookup table, as FreeSurfer's `mri_add_xform_to_header` and
 `mri_convert --ctab` do. FreeSurfer stores both in tags after the voxel data:
 `recon-all` stages and `mri_info` read the transform path, and freeview uses an
 embedded table to name and colour a segmentation without an external LUT.
-nibabel neither reads nor keeps these tags, so any volume written through it,
-including by the other commands here, has none.
+nibabel neither reads nor keeps these tags, so any volume written through
+nibabel alone has none.
 
 The header, voxels and every other tag (command lines, field strength and so
 on) are copied byte for byte, so only the requested tags change. The output may
-be the input. Tag the volume in its final form, since a later nibabel rewrite
-drops the tags again.
+be the input.
+
+The other commands here carry tags forward when they write MGH/MGZ, following
+FreeSurfer's split between what describes the values and what describes the
+coordinate frame:
+
+- An output keeps the tags of the volume its **values** came from: the input of
+  `vol2vol` and `mri mask`, the moving image of `robreg`, `coreg` and `bbreg`,
+  and each time point for multireg's `--mapmov`. The colour table, phase-encode
+  direction, field strength and command-line history always come along.
+- Tags tied to the **coordinate frame** survive only when the output stays in
+  the source frame. After a transform into another frame, the talairach xform
+  path and the AutoAlign matrix are dropped, since neither can be updated
+  reliably, and the original RAS-to-voxel matrix is re-expressed in the new
+  frame. A relative xform path is rebased when the output is written to another
+  directory.
+- `mri binarize` drops the colour table, since its output holds new labels.
+  `mri geom` and multireg's template have new values, so they start fresh.
+- Each command appends its own command-line entry, in FreeSurfer's format but
+  without the user and machine names. `mri tag` adds none, since it promises to
+  change only the requested tags.
+
+Only MGH/MGZ outputs carry tags for now; NIfTI support is planned.
 
 The transform path is recorded relative to the output's directory by default,
 so a subject directory stays valid when it is moved. FreeSurfer first looks for

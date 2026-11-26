@@ -32,6 +32,7 @@ from ..image import (
     clip_and_cast_dtype,
     create_image_like,
     header_map_image,
+    inherit_tags,
     is_geometry_json,
     load_geometry_source,
     load_image,
@@ -41,7 +42,7 @@ from ..image import (
 )
 from ..transforms import TRANSFORM_FORMATS, affine_from_volume_info, read_transform_as_lta
 from ._args import NumberListParser, number_list
-from ._outputs import validate_image_outputs
+from ._outputs import output_history, validate_image_outputs
 
 
 def _parse_pad(value: str) -> str | float:
@@ -746,7 +747,11 @@ def main(args=None) -> None:
                 robust_low=ns.robust_low,
                 robust_high=ns.robust_high,
             )
-        save_image(mapped_img, ns.out)
+        # The output's values always come from the input, so its tags do too.
+        # r2r is the identity unless a transform moves the output into another
+        # frame, in which case the frame-bound tags no longer apply.
+        tags = inherit_tags(ns.input_file, ns.out, r2r=r2r).with_history(output_history("vol2vol", args))
+        save_image(mapped_img, ns.out, tags=tags)
     except Exception as exc:
         logger.debug("vol2vol failed", exc_info=True)
         print(f"ERROR: {exc}", file=sys.stderr)

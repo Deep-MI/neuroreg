@@ -23,13 +23,22 @@ from __future__ import annotations
 
 import gzip
 import io
+import logging
 import os
+import platform
+import shlex
 import struct
 import tempfile
+import time
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
+import numpy as np
 from nibabel.freesurfer.mghformat import MGHHeader
+
+logger = logging.getLogger(__name__)
 
 #: Embedded colour lookup table. Written without a length field.
 TAG_OLD_COLORTABLE = 1
@@ -39,6 +48,30 @@ TAG_CMDLINE = 3
 TAG_OLD_MGH_XFORM = 30
 #: Path of the talairach transform associated with the volume.
 TAG_MGH_XFORM = 31
+#: Siemens AutoAlign matrix, copied verbatim from the DICOM protocol.
+TAG_AUTO_ALIGN = 33
+#: Phase-encode direction.
+TAG_PEDIR = 41
+#: Per-frame metadata.
+TAG_MRI_FRAME = 42
+#: Field strength of the acquisition.
+TAG_FIELDSTRENGTH = 43
+#: RAS-to-voxel matrix of the original acquisition grid.
+TAG_ORIG_RAS2VOX = 44
+
+# Tags describing the voxel values or how they were acquired. They stay valid
+# wherever the values go, whatever coordinate frame the output lives in.
+_VALUE_TAGS = frozenset({TAG_OLD_COLORTABLE, TAG_PEDIR, TAG_MRI_FRAME, TAG_FIELDSTRENGTH})
+# Readable names for the tags dropped when an output leaves the source frame.
+_FRAME_TAG_NAMES = {
+    TAG_MGH_XFORM: "talairach xform path",
+    TAG_OLD_MGH_XFORM: "legacy xform path",
+    TAG_AUTO_ALIGN: "AutoAlign matrix",
+}
+# FreeSurfer writes a matrix tag as text in a fixed, NUL-padded buffer.
+_MATRIX_STRLEN = 4 * 4 * 100
+# A RAS-to-RAS map this close to identity leaves the coordinate frame alone.
+_IDENTITY_ATOL = 1e-6
 
 # Ids that FreeSurfer also writes without a length field. They only occur in
 # warp-field volumes, whose payloads this module does not decode, so a file
@@ -126,6 +159,93 @@ class MGHTags:
     def command_lines(self) -> list[str]:
         """Return the recorded command lines, oldest first."""
         return [_decode_c_string(payload) for tag, payload in self.tags if tag == TAG_CMDLINE]
+
+    def derive(self, *, r2r: Any = None, keep_color_table: bool = True) -> MGHTags:
+        """Return the tags an output derived from this volume's values carries.
+
+        Tags describing the values (colour table, phase-encode direction,
+        field strength, frame metadata) and the command-line history always
+        carry over. Tags tied to the coordinate frame carry over only when the
+        output stays in it, meaning ``r2r`` is absent or the identity. When it
+        does not, the original RAS-to-voxel matrix is re-expressed in the new
+        frame, while the talairach path, the AutoAlign matrix and any unknown
+        tag are dropped: none of them can be updated reliably, and FreeSurfer
+        would act on a stale value. Anything after a zero tag is not carried.
+
+        Parameters
+        ----------
+        r2r : array-like of shape (4, 4) or None, optional
+            RAS-to-RAS map from this volume's frame to the output's.
+        keep_color_table : bool, default=True
+            Whether the output still holds the same labels. Pass ``False`` when
+            the values were relabelled, for example by binarizing, since the
+            table would then name the wrong structures.
+
+        Returns
+        -------
+        MGHTags
+            Tags for the output, in the original order.
+        """
+        matrix = None if r2r is None else np.asarray(r2r, dtype=np.float64)
+        moved = matrix is not None and not np.allclose(matrix, np.eye(4), atol=_IDENTITY_ATOL)
+        kept: list[tuple[int, bytes]] = []
+        dropped: list[str] = []
+        for tag, payload in self.tags:
+            if tag == TAG_OLD_COLORTABLE and not keep_color_table:
+                dropped.append("colour table")
+                continue
+            if moved and tag == TAG_ORIG_RAS2VOX:
+                try:
+                    # Mapping p_new = M p_old means p_old = M^-1 p_new.
+                    payload = _encode_matrix(_decode_matrix(payload) @ np.linalg.inv(matrix))
+                except (ValueError, np.linalg.LinAlgError):
+                    dropped.append("unreadable original RAS-to-voxel matrix")
+                    continue
+            elif moved and tag not in _VALUE_TAGS and tag != TAG_CMDLINE:
+                dropped.append(_FRAME_TAG_NAMES.get(tag, f"tag {tag}"))
+                continue
+            kept.append((tag, payload))
+        if dropped:
+            logger.info("Not carrying over: %s.", ", ".join(dropped))
+        return MGHTags(kept)
+
+    def rebase_xform(self, source_dir: str | Path, out_dir: str | Path) -> MGHTags:
+        """Return the tags with a relative transform path moved to a new directory.
+
+        A relative path is relative to the directory of the volume holding it,
+        so writing the volume elsewhere would make it point somewhere else. It
+        is re-expressed relative to ``out_dir``, or made absolute when the two
+        share no relative path. Absolute paths are kept as they are.
+
+        Parameters
+        ----------
+        source_dir : str or Path
+            Directory of the volume the tags were read from.
+        out_dir : str or Path
+            Directory of the volume they will be written to.
+
+        Returns
+        -------
+        MGHTags
+            Tags with any relative transform path rebased.
+        """
+        rebased: list[tuple[int, bytes]] = []
+        for tag, payload in self.tags:
+            if tag in (TAG_MGH_XFORM, TAG_OLD_MGH_XFORM):
+                path = _decode_c_string(payload)
+                if path and not os.path.isabs(path):
+                    target = os.path.abspath(os.path.join(source_dir, path))
+                    try:
+                        path = os.path.relpath(target, os.path.abspath(out_dir))
+                    except ValueError:
+                        path = target
+                    payload = path.encode() + b"\0"
+            rebased.append((tag, payload))
+        return MGHTags(rebased, self.trailer)
+
+    def with_history(self, entry: str) -> MGHTags:
+        """Return the tags with ``entry`` appended as the newest command line."""
+        return MGHTags([*self.tags, (TAG_CMDLINE, entry.encode() + b"\0")], self.trailer)
 
 
 # ── colour tables ─────────────────────────────────────────────────────────────
@@ -347,10 +467,114 @@ def write_mgh_tags(
             replaces=(TAG_OLD_COLORTABLE,),
             prepend=False,
         )
-    raw = body + b"".join(_encode_tag(tag, payload) for tag, payload in tags.tags) + tags.trailer
-    if out.name.lower().endswith(".mgz"):
-        raw = gzip.compress(raw, compresslevel=_GZIP_LEVEL)
-    _atomic_write(out, raw)
+    _write_mgh(out, body, tags)
+
+
+def write_mgh_image(image: Any, out: str | Path, tags: MGHTags) -> None:
+    """Write an ``MGHImage`` followed by ``tags``.
+
+    nibabel writes the header, voxels and scan parameters, which is everything
+    up to where the tags begin, so its output is used unchanged and the tags
+    are appended to it.
+
+    Parameters
+    ----------
+    image : nibabel.MGHImage
+        Image to write.
+    out : str or Path
+        Output path ending in ``.mgz`` (compressed) or ``.mgh``.
+    tags : MGHTags
+        Tags to append.
+
+    Returns
+    -------
+    None
+        The volume is written for its side effect.
+
+    Raises
+    ------
+    ValueError
+        If ``out`` is not an MGH path.
+    """
+    out = Path(out)
+    if not out.name.lower().endswith(_MGH_SUFFIXES):
+        raise ValueError(f"tags can only be stored in MGH volumes (.mgz or .mgh), not {out.name!r}")
+    _write_mgh(out, image.to_bytes(), tags)
+
+
+def inherit_tags(
+        source: str | Path,
+        out: str | Path,
+        *,
+        r2r: Any = None,
+        keep_color_table: bool = True,
+) -> MGHTags:
+    """Return the tags an output inherits from the volume its values came from.
+
+    Reads the tags of ``source``, applies :meth:`MGHTags.derive`, and rebases a
+    relative transform path from the directory of ``source`` to that of
+    ``out``. A source that is not an MGH volume has no tags. A source whose tags
+    cannot be read contributes none, with a warning, rather than failing the
+    command that is writing the output.
+
+    Parameters
+    ----------
+    source : str or Path
+        Volume the output's voxel values were derived from.
+    out : str or Path
+        Path the output will be written to.
+    r2r : array-like of shape (4, 4) or None, optional
+        RAS-to-RAS map from the frame of ``source`` to that of the output.
+    keep_color_table : bool, default=True
+        Whether the output still holds the source's labels.
+
+    Returns
+    -------
+    MGHTags
+        Tags for the output.
+    """
+    if not str(source).lower().endswith(_MGH_SUFFIXES):
+        return MGHTags()
+    try:
+        tags = read_mgh_tags(source)
+    except (OSError, ValueError) as exc:
+        logger.warning("Not carrying over the tags of %s: %s", source, exc)
+        return MGHTags()
+    derived = tags.derive(r2r=r2r, keep_color_table=keep_color_table)
+    return derived.rebase_xform(Path(source).parent, Path(out).parent)
+
+
+def history_entry(program: str, arguments: Sequence[str]) -> str:
+    """Build a command-line tag recording how a volume was written.
+
+    The fields follow the layout FreeSurfer writes, so ``mri_info`` and other
+    readers show it alongside FreeSurfer's own entries. The user and machine
+    names FreeSurfer also records are left out, since volumes are often shared
+    beyond the place they were made.
+
+    Parameters
+    ----------
+    program : str
+        Name of the command, such as ``"vol2vol"``.
+    arguments : sequence of str
+        Its arguments, without the program name.
+
+    Returns
+    -------
+    str
+        The entry, for :meth:`MGHTags.with_history`.
+    """
+    from .._version import __version__
+
+    fields = (
+        ("ProgramName", program),
+        ("ProgramArguments", shlex.join([program, *arguments])),
+        ("ProgramVersion", f"neuroreg {__version__}"),
+        ("TimeStamp", time.strftime("%Y/%m/%d-%H:%M:%S-GMT", time.gmtime())),
+        ("Platform", platform.system()),
+        ("PlatformVersion", platform.release()),
+    )
+    return "  ".join(f"{name}: {value}" for name, value in fields)
 
 
 # ── internals ─────────────────────────────────────────────────────────────────
@@ -444,6 +668,28 @@ def _split_mgh(raw: bytes, name: str) -> tuple[bytes, MGHTags]:
         raise ValueError(f"cannot read the tags of {name}: {exc}") from exc
     tags.trailer = raw[reader.pos :]
     return raw[:scan_end], tags
+
+
+def _write_mgh(out: Path, body: bytes, tags: MGHTags) -> None:
+    """Write ``body``, which ends after the scan parameters, then ``tags``."""
+    raw = body + b"".join(_encode_tag(tag, payload) for tag, payload in tags.tags) + tags.trailer
+    if out.name.lower().endswith(".mgz"):
+        raw = gzip.compress(raw, compresslevel=_GZIP_LEVEL)
+    _atomic_write(out, raw)
+
+
+def _decode_matrix(payload: bytes) -> np.ndarray:
+    """Parse a FreeSurfer matrix tag: a label followed by 16 numbers, row major."""
+    fields = _decode_c_string(payload).split()
+    if len(fields) != 17:
+        raise ValueError(f"expected a label and 16 matrix entries, got {len(fields)} fields")
+    return np.array([float(value) for value in fields[1:]], dtype=np.float64).reshape(4, 4)
+
+
+def _encode_matrix(matrix: np.ndarray) -> bytes:
+    """Format a matrix tag exactly as FreeSurfer's ``FStagsIO::write_matrix`` does."""
+    text = "Matrix " + " ".join(f"{value:10f}" for value in np.asarray(matrix, dtype=np.float64).ravel())
+    return text.encode().ljust(_MATRIX_STRLEN, b"\0")
 
 
 def _encode_tag(tag: int, payload: bytes) -> bytes:

@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from ..transforms import LTA
-from ._outputs import validate_image_outputs
+from ._outputs import output_history, validate_image_outputs
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -168,7 +168,7 @@ def main(args=None) -> None:
     ns = parser.parse_args(args)
     validate_image_outputs(parser, ns, "mapmov", "mapmovhdr", "outliers")
 
-    from ..image import load_image, save_header_mapped_image, save_resliced_r2r_image
+    from ..image import inherit_tags, load_image, save_header_mapped_image, save_resliced_r2r_image
     from ..imreg.robreg import robreg
 
     ns.symmetric = getattr(ns, "symmetric", True)
@@ -242,6 +242,9 @@ def main(args=None) -> None:
     print(f"Transform: {ns.out}")
 
     # ── write mapped image if requested ─────────────────────────────────────
+    # Mapped outputs keep the moving image's values in the reference frame, so
+    # they inherit the moving image's tags through the registration.
+    history = output_history("robreg", args)
     if ns.mapmov:
         target_shape = cast(tuple[int, int, int], tuple(int(v) for v in ref_img.shape[:3]))
         save_resliced_r2r_image(
@@ -252,12 +255,14 @@ def main(args=None) -> None:
             target_shape=target_shape,
             mode="cubic",
             keep_dtype=ns.keep_dtype,
+            tags=inherit_tags(ns.mov, ns.mapmov, r2r=Mr2r_cpu.numpy()).with_history(history),
         )
         logger.info("Wrote resliced mapped image: %s", ns.mapmov)
         print(f"MapMov:    {ns.mapmov}")
 
     if ns.mapmovhdr:
-        save_header_mapped_image(mov_img, Mr2r_cpu.numpy(), ns.mapmovhdr)
+        tags = inherit_tags(ns.mov, ns.mapmovhdr, r2r=Mr2r_cpu.numpy()).with_history(history)
+        save_header_mapped_image(mov_img, Mr2r_cpu.numpy(), ns.mapmovhdr, tags=tags)
         logger.info("Wrote header-mapped image: %s", ns.mapmovhdr)
         print(f"MapMovHdr: {ns.mapmovhdr}")
 

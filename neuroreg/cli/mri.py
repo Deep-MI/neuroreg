@@ -20,12 +20,14 @@ import nibabel as nib
 import numpy as np
 
 from ..image import (
+    MGHTags,
     binarize_image,
     build_grid_affine,
     compare_images,
     describe_image,
     direction_cosines_from_orientation,
     image_value_stats,
+    inherit_tags,
     load_geometry_source,
     load_image,
     mask_geometry_differs,
@@ -38,7 +40,7 @@ from ..image import (
     write_mgh_tags,
 )
 from ._args import NumberListParser, number_list
-from ._outputs import validate_image_outputs
+from ._outputs import output_history, validate_image_outputs
 
 # ── parser ──────────────────────────────────────────────────────────────────
 
@@ -320,9 +322,10 @@ def _build_parser() -> argparse.ArgumentParser:
             "voxels and every other tag are copied byte for byte, so nothing\n"
             "else changes. OUT may be IN to tag a volume in place.\n"
             "\n"
-            "Tags live after the voxel data, where nibabel-based tools, the\n"
-            "other commands here included, neither read nor keep them, so tag\n"
-            "the file in its final form.\n"
+            "Tags live after the voxel data, where nibabel-based tools neither\n"
+            "read nor keep them. The other commands here do carry them forward:\n"
+            "an output keeps the tags of the volume its values came from, except\n"
+            "those tied to a coordinate frame it no longer lives in.\n"
             "\n"
             "--xform is recorded relative to the directory of OUT by default,\n"
             "so a subject directory stays valid when it is moved. FreeSurfer\n"
@@ -372,7 +375,7 @@ _INFO_SELECTORS = (
 # ── subcommand handlers ───────────────────────────────────────────────────────
 
 
-def _main_mask(ns: argparse.Namespace) -> None:
+def _main_mask(ns: argparse.Namespace, history: str) -> None:
     try:
         image = load_image(ns.in_file)
         mask = load_image(ns.mask)
@@ -381,7 +384,8 @@ def _main_mask(ns: argparse.Namespace) -> None:
         if mask_geometry_differs(mask, target_affine, target_shape):
             print("Mask:      geometry differs from input; resampling mask to input grid (nearest).")
         masked = reslice_and_apply_mask(image, mask, threshold=ns.threshold, fill=ns.oval)
-        save_image(masked, ns.out)
+        # Masking keeps the input's grid, frame and labels, so all its tags apply.
+        save_image(masked, ns.out, tags=inherit_tags(ns.in_file, ns.out).with_history(history))
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -536,7 +540,7 @@ def _main_diff(ns: argparse.Namespace) -> None:
     sys.exit(status)
 
 
-def _main_binarize(ns: argparse.Namespace) -> None:
+def _main_binarize(ns: argparse.Namespace, history: str) -> None:
     try:
         img = load_image(ns.input_file)
         out = binarize_image(
@@ -551,7 +555,10 @@ def _main_binarize(ns: argparse.Namespace) -> None:
             frame=ns.frame,
             out_dtype=np.uint8 if ns.uchar else np.int32,
         )
-        save_image(out, ns.out)
+        # The output holds new labels, so a colour table would name the wrong
+        # structures; everything else still describes the same grid and frame.
+        tags = inherit_tags(ns.input_file, ns.out, keep_color_table=False).with_history(history)
+        save_image(out, ns.out, tags=tags)
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -641,7 +648,7 @@ def _resolve_geom_components(
     return cosines, shape, np.asarray(vox_size, dtype=np.float64), np.asarray(cras, dtype=np.float64)
 
 
-def _main_geom(ns: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
+def _main_geom(ns: argparse.Namespace, parser: argparse.ArgumentParser, history: str) -> None:
     try:
         # Inside the boundary so an unreadable --like reports like the other
         # subcommands. parser.error raises SystemExit, not Exception, so usage
@@ -651,7 +658,8 @@ def _main_geom(ns: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
         # uint8 zeros: the payload is irrelevant, only the header is, and this
         # keeps a 320^3 reference file a few KB once compressed.
         img = nib.Nifti1Image(np.zeros(shape, dtype=np.uint8), affine, dtype=np.uint8)
-        save_image(img, ns.out)
+        # A new volume with no values of its own: only how it was made applies.
+        save_image(img, ns.out, tags=MGHTags().with_history(history))
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         sys.exit(1)
@@ -756,17 +764,20 @@ def main(args=None) -> None:
     ns = parser.parse_args(args)
     validate_image_outputs(parser, ns, "out")
 
+    history = output_history("mri", args)
     if ns.command == "mask":
-        _main_mask(ns)
+        _main_mask(ns, history)
     elif ns.command == "info":
         _main_info(ns)
     elif ns.command == "diff":
         _main_diff(ns)
     elif ns.command == "binarize":
-        _main_binarize(ns)
+        _main_binarize(ns, history)
     elif ns.command == "geom":
-        _main_geom(ns, parser)
+        _main_geom(ns, parser, history)
     elif ns.command == "tag":
+        # tag promises that only the requested tags change, so it records no
+        # history of its own.
         _validate_tag_args(ns, parser)
         _main_tag(ns)
 
