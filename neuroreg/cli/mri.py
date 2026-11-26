@@ -23,6 +23,7 @@ from ..image import (
     describe_image,
     direction_cosines_from_orientation,
     image_value_stats,
+    load_geometry_source,
     load_image,
     mask_geometry_differs,
     reslice_and_apply_mask,
@@ -260,7 +261,10 @@ def _build_parser() -> argparse.ArgumentParser:
         "--like",
         dest="like",
         metavar="FILE",
-        help="Image supplying any geometry component not given explicitly (extent, not dimensions).",
+        help=(
+            "Image or geometry JSON supplying any geometry component not given explicitly "
+            "(extent, not dimensions)."
+        ),
     )
     size_group = geom_p.add_mutually_exclusive_group()
     size_group.add_argument(
@@ -518,7 +522,7 @@ def _resolve_geom_components(
         Via :meth:`argparse.ArgumentParser.error` when a component cannot be
         resolved or an orientation code is invalid.
     """
-    like = load_image(ns.like) if ns.like is not None else None
+    like = load_geometry_source(ns.like, label="--like") if ns.like is not None else None
     like_zooms = None if like is None else np.asarray(like.header.get_zooms()[:3], dtype=np.float64)
     if like_zooms is not None and np.any(like_zooms <= 0):
         parser.error(f"--like has a non-positive voxel size: {like_zooms.tolist()}")

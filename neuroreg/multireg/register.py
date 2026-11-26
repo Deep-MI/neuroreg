@@ -12,7 +12,7 @@ from typing import Any
 
 import numpy as np
 
-from ..image import cast_image_dtype, load_image
+from ..image import cast_image_dtype, load_geometry_source, load_image
 from ..image.map import coerce_image_data_3d
 from ..imreg.init import InitType, resolve_init_type
 from ..imreg.robreg import robreg
@@ -103,7 +103,9 @@ def _resolve_init_ltas(
         the template geometry and the destination blocks are never read, so the
         transforms neither have to agree on a destination nor carry one at all.
         That is what makes a pose fitted by ``segreg`` against a centroid target
-        usable here, since its destination block is marked ``valid = 0``.
+        that carries no geometry of its own usable here, since such a transform
+        has its destination block marked ``valid = 0``. The bundled targets do
+        carry one, so those poses already name a destination.
 
     Returns
     -------
@@ -136,7 +138,12 @@ def _resolve_init_ltas(
     return template_shape, template_affine, transforms_r2r
 
 
-def _resolve_iterations(template_iterations: int | None, n_images: int) -> int:
+def _resolve_iterations(
+    template_iterations: int | None,
+    n_images: int,
+    *,
+    builds_initial_space: bool = True,
+) -> int:
     """Resolve the requested number of global template-refinement iterations.
 
     Parameters
@@ -146,6 +153,13 @@ def _resolve_iterations(template_iterations: int | None, n_images: int) -> int:
         style defaults for two versus three-or-more time points.
     n_images : int
         Number of input time points.
+    builds_initial_space : bool, default=True
+        Whether the opening robust pairwise pass runs. Both the two-timepoint
+        default of zero and the refusal to honour an explicit count rest on that
+        pass having landed the mean space exactly by symmetry, so neither is
+        justified when it does not run. ``init_ltas`` replaces it, and then
+        nothing robust has happened: without refinement the supplied transforms
+        would come straight back out unchanged.
 
     Returns
     -------
@@ -157,12 +171,13 @@ def _resolve_iterations(template_iterations: int | None, n_images: int) -> int:
     ValueError
         If ``template_iterations`` is negative.
     """
+    skip_for_two = n_images <= 2 and builds_initial_space
     if template_iterations is None:
-        return 0 if n_images <= 2 else 6
+        return 0 if skip_for_two else 6
     resolved = int(template_iterations)
     if resolved < 0:
         raise ValueError("template_iterations must be >= 0.")
-    if n_images <= 2 and resolved > 0:
+    if skip_for_two and resolved > 0:
         logger.info("Skipping iterative template refinement because only two time points were provided.")
         return 0
     return resolved
@@ -432,11 +447,13 @@ def multireg(
         ``template_geometry`` is given the destination geometry is ignored and
         need not be present.
     template_geometry : ImageLike or None, optional
-        Optional image (or path to one) supplying the output template geometry,
-        replacing the geometry that would otherwise be taken from ``init_ltas``
-        or derived from the inputs. Only the shape and affine are used, not the
-        voxel data. Mutually exclusive with ``fix_target`` and
-        ``use_cras_center``, both of which select a geometry themselves.
+        Optional image, path to one, or path to a JSON with a ``geometry``
+        block (see :func:`neuroreg.image.load_geometry_source`) supplying the
+        output template geometry, replacing the geometry that would otherwise
+        be taken from ``init_ltas`` or derived from the inputs. Only the shape
+        and affine are used, not the voxel data. Mutually exclusive with
+        ``fix_target`` and ``use_cras_center``, both of which select a geometry
+        themselves.
     average : {"mean", "median", 0, 1}, default="median"
         Template aggregation mode. Integer aliases match the FreeSurfer CLI.
     init_target_index : int or None, optional
@@ -467,7 +484,11 @@ def multireg(
         ``template_geometry`` and ``fix_target``, none of which derives one.
     template_iterations : int or None, optional
         Maximum number of global template-refinement passes. ``None`` uses the
-        built-in defaults for two versus three-or-more time points.
+        built-in defaults for two versus three-or-more time points. With exactly
+        two time points both the default of zero and the refusal to honour an
+        explicit count rest on the opening pairwise pass having landed the mean
+        space exactly by symmetry, so neither applies when ``init_ltas``
+        replaced that pass: refinement then runs, and ``0`` asks for none.
     template_eps : float, default=0.03
         Convergence threshold in millimeters for the maximum per-iteration
         transform change.
@@ -548,7 +569,7 @@ def multireg(
 
     external_geometry: tuple[tuple[int, int, int], np.ndarray] | None = None
     if template_geometry is not None:
-        geom_image = load_image(template_geometry) if isinstance(template_geometry, str | Path) else template_geometry
+        geom_image = load_geometry_source(template_geometry, label="template_geometry")
         if len(geom_image.shape) < 3:
             raise ValueError(
                 "template_geometry must describe a 3-D grid, but the given image has shape "
@@ -561,7 +582,11 @@ def multireg(
 
     validate_input_geometries(images, derives_geometry=derives_geometry)
     resolved_init_type = resolve_init_type(init_type, default_init_type="centroid")
-    resolved_template_iterations = _resolve_iterations(template_iterations, len(images))
+    resolved_template_iterations = _resolve_iterations(
+        template_iterations,
+        len(images),
+        builds_initial_space=init_ltas is None,
+    )
 
     if init_target_index is None:
         init_target_index, resolved_seed = choose_initial_target(images, seed=seed)

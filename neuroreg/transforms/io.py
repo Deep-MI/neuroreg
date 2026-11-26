@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from .afni import AFNIAffine
 from .antsmat import ANTsMatTransform
@@ -65,10 +66,27 @@ def infer_transform_format(path: str, explicit: str | None = None) -> str:
     )
 
 
+def _geometry_fname(source: Any) -> str | None:
+    """Return the filename to record in an LTA for a geometry source.
+
+    The geometry arguments accept anything :func:`neuroreg.transforms.lta._header_info`
+    reads, which includes loaded images, not only paths. Recording the value
+    itself as the filename is only correct for a path: an image stringifies to a
+    multi-line repr, which would be written into the volume-info block in place
+    of the geometry lines and silently corrupt the transform.
+    """
+    if source is None:
+        return None
+    if isinstance(source, (str, Path)):
+        return str(source)
+    filename = getattr(source, "get_filename", lambda: None)()
+    return filename or ""
+
+
 def read_transform_as_lta(
         path: str,
-        src_img: str | None = None,
-        dst_img: str | None = None,
+        src_img: Any = None,
+        dst_img: Any = None,
         fmt: str | None = None,
 ) -> LTA:
     """Read a supported transform file and convert it to an :class:`LTA`.
@@ -77,10 +95,13 @@ def read_transform_as_lta(
     ----------
     path : str
         Transform file to read.
-    src_img : str, optional
-        Moving/source image geometry path for geometry-dependent formats.
-    dst_img : str, optional
-        Reference/target image geometry path for geometry-dependent formats.
+    src_img : Any, optional
+        Moving/source image geometry for geometry-dependent formats: a path, a
+        loaded image, or a header-like geometry dict. The filename recorded in
+        the LTA is the path when one is given, else the image's own filename.
+    dst_img : Any, optional
+        Reference/target image geometry for geometry-dependent formats, in the
+        same forms as ``src_img``.
     fmt : str, optional
         Explicit input-format override.
 
@@ -96,6 +117,8 @@ def read_transform_as_lta(
         source/destination geometry that was not supplied.
     """
     resolved_format = infer_transform_format(path, explicit=fmt)
+    src_fname = _geometry_fname(src_img)
+    dst_fname = _geometry_fname(dst_img)
     if resolved_format == "lta":
         lta = LTA.read(path)
         if src_img is None and dst_img is None:
@@ -103,33 +126,48 @@ def read_transform_as_lta(
         # An LTA already carries geometry, but the caller naming images is
         # asking for those blocks, which is the only way to give a transform a
         # destination it was written without.
-        return lta.with_geometry(src_img=src_img, dst_img=dst_img, src_fname=src_img, dst_fname=dst_img)
+        return lta.with_geometry(src_img=src_img, dst_img=dst_img, src_fname=src_fname, dst_fname=dst_fname)
     if resolved_format == "xfm":
-        return XFM.read(path).to_lta(src_fname=src_img, src_img=src_img, dst_fname=dst_img, dst_img=dst_img)
+        return XFM.read(path).to_lta(src_fname=src_fname, src_img=src_img, dst_fname=dst_fname, dst_img=dst_img)
     if resolved_format == "itk":
-        return ITKTransform.read(path).to_lta(src_fname=src_img, src_img=src_img, dst_fname=dst_img, dst_img=dst_img)
+        return ITKTransform.read(path).to_lta(
+            src_fname=src_fname,
+            src_img=src_img,
+            dst_fname=dst_fname,
+            dst_img=dst_img,
+        )
     if resolved_format == "antsmat":
         return ANTsMatTransform.read(path).to_lta(
-            src_fname=src_img,
+            src_fname=src_fname,
             src_img=src_img,
-            dst_fname=dst_img,
+            dst_fname=dst_fname,
             dst_img=dst_img,
         )
     if resolved_format == "afni":
-        return AFNIAffine.read(path).to_lta(src_fname=src_img, src_img=src_img, dst_fname=dst_img, dst_img=dst_img)
+        return AFNIAffine.read(path).to_lta(
+            src_fname=src_fname,
+            src_img=src_img,
+            dst_fname=dst_fname,
+            dst_img=dst_img,
+        )
     if resolved_format == "niftyreg":
         return NiftyRegTransform.read(path).to_lta(
-            src_fname=src_img,
+            src_fname=src_fname,
             src_img=src_img,
-            dst_fname=dst_img,
+            dst_fname=dst_fname,
             dst_img=dst_img,
         )
     if src_img is None or dst_img is None:
         kind = "FSL" if resolved_format == "fsl" else "register.dat"
         raise ValueError(f"{kind} conversion requires both source and destination image geometry.")
     if resolved_format == "fsl":
-        return FSLMat.read(path).to_lta(src_fname=src_img, src_img=src_img, dst_fname=dst_img, dst_img=dst_img)
-    return RegisterDat.read(path).to_lta(src_fname=src_img, src_img=src_img, dst_fname=dst_img, dst_img=dst_img)
+        return FSLMat.read(path).to_lta(src_fname=src_fname, src_img=src_img, dst_fname=dst_fname, dst_img=dst_img)
+    return RegisterDat.read(path).to_lta(
+        src_fname=src_fname,
+        src_img=src_img,
+        dst_fname=dst_fname,
+        dst_img=dst_img,
+    )
 
 
 def write_lta_as_transform(

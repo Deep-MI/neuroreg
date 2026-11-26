@@ -236,7 +236,28 @@ def test_load_bundled_atlas_targets():
     assert 2 in fsaverage_target.centroids
     assert fsaverage_target.geometry is not None
     assert 1002 in mni_target.centroids
-    assert mni_target.geometry is None
+    # Both bundled targets carry a conformed destination geometry, so an LTA
+    # fitted against either is complete and needs no repair afterwards.
+    assert mni_target.geometry is not None
+    assert mni_target.geometry["dims"] == [256, 256, 256]
+    assert mni_target.geometry["delta"] == [1.0, 1.0, 1.0]
+    assert mni_target.geometry["Pxyz_c"] == pytest.approx([0.0, 0.0, 0.0])
+    assert mni_target.geometry["Mdc"] == pytest.approx(fsaverage_target.geometry["Mdc"])
+
+
+def test_mni_atlas_geometry_contains_every_centroid():
+    # The conformed grid is chosen rather than the template's native
+    # 193x229x193, so it has to be shown to cover the anatomy it is used for.
+    target = load_atlas_target(MNI_ATLAS_NAME)
+    assert target.geometry is not None
+
+    points = np.array(list(target.centroids.values()), dtype=np.float64)
+    inverse = np.linalg.inv(affine_from_header(target.geometry))
+    voxels = (np.c_[points, np.ones(len(points))] @ inverse.T)[:, :3]
+    dims = np.asarray(target.geometry["dims"], dtype=np.float64)
+
+    assert np.all(voxels >= -0.5)
+    assert np.all(voxels <= dims - 0.5)
 
 
 def test_load_fsaverage_resources():
@@ -702,7 +723,7 @@ def test_cli_bundled_fsaverage_target_writes_valid_dst_lta(tmp_path: Path):
     assert lta.dst["volume"] == [256, 256, 256]
 
 
-def test_cli_bundled_mni_target_writes_invalid_dst_lta(tmp_path: Path):
+def test_cli_bundled_mni_target_writes_valid_dst_lta(tmp_path: Path):
     mov_seg = tmp_path / "mov_seg.nii.gz"
     out_lta = tmp_path / "mni_out.lta"
     _write_seg(mov_seg, affine=np.eye(4))
@@ -719,10 +740,12 @@ def test_cli_bundled_mni_target_writes_invalid_dst_lta(tmp_path: Path):
     ])
 
     lta = LTA.read(out_lta)
-    assert lta.dst["valid"] == 0
+    assert lta.dst["valid"] == 1
     assert lta.dst["filename"] == MNI_ATLAS_NAME
-    with pytest.raises(ValueError, match="valid = 0"):
-        lta.v2v()
+    assert lta.dst["volume"] == [256, 256, 256]
+    # The reason the geometry is bundled: without it this raised, so every
+    # caller had to attach a destination before the transform was usable.
+    assert lta.v2v().shape == (4, 4)
 
 
 def test_cli_external_centroid_target_with_geometry_writes_valid_dst_lta(tmp_path: Path):

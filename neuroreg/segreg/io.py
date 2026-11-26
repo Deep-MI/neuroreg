@@ -82,19 +82,28 @@ def _coerce_geometry(payload: dict[str, Any]) -> GeometryDict:
         missing = ", ".join(missing_keys)
         raise ValueError(f"geometry is missing required key(s): {missing}")
 
+    # Every value is checked rather than coerced: a typo here would otherwise
+    # become a plausible but wrong grid (int() truncates 1.5 to 1) or a NaN or
+    # singular affine, far from the file that caused it.
     try:
-        dims = [int(v) for v in payload["dims"]]
+        raw_dims = np.asarray(payload["dims"], dtype=np.float64)
     except (TypeError, ValueError) as exc:
         raise ValueError("geometry['dims'] must be a sequence of 3 integers") from exc
-    if len(dims) != 3:
+    if raw_dims.shape != (3,):
         raise ValueError("geometry['dims'] must contain exactly 3 values")
+    if not np.all(np.isfinite(raw_dims)) or np.any(raw_dims != np.round(raw_dims)) or np.any(raw_dims < 1):
+        raise ValueError(f"geometry['dims'] must be 3 positive integers, got {payload['dims']!r}")
+    dims = [int(v) for v in raw_dims]
 
     try:
-        delta = [float(v) for v in payload["delta"]]
+        raw_delta = np.asarray(payload["delta"], dtype=np.float64)
     except (TypeError, ValueError) as exc:
         raise ValueError("geometry['delta'] must be a sequence of 3 numbers") from exc
-    if len(delta) != 3:
+    if raw_delta.shape != (3,):
         raise ValueError("geometry['delta'] must contain exactly 3 values")
+    if not np.all(np.isfinite(raw_delta)) or np.any(raw_delta <= 0):
+        raise ValueError(f"geometry['delta'] must be 3 finite positive voxel sizes, got {payload['delta']!r}")
+    delta = [float(v) for v in raw_delta]
 
     try:
         mdc = np.asarray(payload["Mdc"], dtype=np.float64)
@@ -102,6 +111,8 @@ def _coerce_geometry(payload: dict[str, Any]) -> GeometryDict:
         raise ValueError("geometry['Mdc'] must be a 3x3 numeric array") from exc
     if mdc.shape != (3, 3):
         raise ValueError("geometry['Mdc'] must have shape (3, 3)")
+    if not np.all(np.isfinite(mdc)) or abs(np.linalg.det(mdc)) < 1e-6:
+        raise ValueError("geometry['Mdc'] must be finite and non-singular")
 
     try:
         pxyz_c = np.asarray(payload["Pxyz_c"], dtype=np.float64)
@@ -109,6 +120,8 @@ def _coerce_geometry(payload: dict[str, Any]) -> GeometryDict:
         raise ValueError("geometry['Pxyz_c'] must be a numeric array with 3 values") from exc
     if pxyz_c.shape != (3,):
         raise ValueError("geometry['Pxyz_c'] must have shape (3,)")
+    if not np.all(np.isfinite(pxyz_c)):
+        raise ValueError("geometry['Pxyz_c'] must be finite")
 
     return {
         "dims": dims,
@@ -132,6 +145,42 @@ def geometry_from_image(image: Any) -> GeometryDict:
         Geometry metadata compatible with bundled atlas targets and LTA writing.
     """
     return _coerce_geometry(_header_info(image))
+
+
+def read_geometry_json(path: str | Path) -> GeometryDict | None:
+    """Read only the ``geometry`` block of a target JSON file.
+
+    Unlike :func:`read_target_json`, centroids are neither required nor
+    validated, so a file that holds nothing but a ``geometry`` block is
+    accepted. That is what a grid description needs; a centroid target that
+    also carries geometry reads the same way.
+
+    Parameters
+    ----------
+    path : str or Path
+        Path to a JSON file.
+
+    Returns
+    -------
+    GeometryDict or None
+        The validated geometry, or ``None`` if the file has no ``geometry`` key.
+
+    Raises
+    ------
+    ValueError
+        If the file does not decode to an object, or its geometry is malformed.
+    """
+    target_path = Path(path)
+    with target_path.open() as f:
+        data = json.load(f)
+    if not isinstance(data, dict):
+        raise ValueError(f"Geometry JSON at '{target_path}' must decode to an object.")
+    raw_geometry = data.get("geometry")
+    if raw_geometry is None:
+        return None
+    if not isinstance(raw_geometry, dict):
+        raise ValueError(f"Geometry JSON at '{target_path}' has a non-object 'geometry' section.")
+    return _coerce_geometry(raw_geometry)
 
 
 def read_target_json(path: str | Path) -> TargetFile:
