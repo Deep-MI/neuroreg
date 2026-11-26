@@ -403,6 +403,40 @@ class TestFSLMat:
         restored = fsl.to_lta(src_fname=src_img, src_img=src_img, dst_fname=dst_img, dst_img=dst_img)
         assert restored.r2r() == pytest.approx(M, rel=1e-6, abs=1e-6)
 
+    # RAS-to-RAS transforms fslpy derives from _FLIRT, as
+    # ref.getAffine("fsl", "world") @ _FLIRT @ mov.getAffine("world", "fsl").
+    # A round trip cannot catch a missing flip, because both directions would
+    # skip it alike, so the conversion is pinned to these instead.
+    _FLIRT = np.array([[0.99, -0.05, 0.0, 5.0], [0.05, 0.99, 0.0, 2.0], [0.0, 0.0, 1.0, -3.0], [0, 0, 0, 1]])
+    _FSLPY_R2R = {
+        ("ras", "ras"): [[0.99, 0.05, 0, 20.29], [-0.05, 0.99, 0, 3.25], [0, 0, 1, -3], [0, 0, 0, 1]],
+        ("ras", "lia"): [[0.99, 0.05, 0, 95.29], [0, 0, 1, -136], [0.05, -0.99, 0, 104.75], [0, 0, 0, 1]],
+        ("lia", "ras"): [[0.99, 0, -0.05, -72.32], [-0.05, 0, -0.99, 115.12], [0, 1, 0, 130], [0, 0, 0, 1]],
+        ("lia", "lia"): [[0.99, 0, -0.05, 2.68], [0, 1, 0, -3], [0.05, 0, 0.99, -7.12], [0, 0, 0, 1]],
+    }
+
+    @pytest.mark.parametrize("suffix", [".nii.gz", ".mgz"])
+    @pytest.mark.parametrize(("mov_orient", "ref_orient"), list(_FSLPY_R2R))
+    def test_to_lta_matches_fslpy_whatever_the_file_type(
+        self, tmp_path: Path, suffix: str, mov_orient: str, ref_orient: str
+    ):
+        # FLIRT flips a positive-determinant image whatever file the geometry
+        # is read from later, so an .mgz copy must convert like the NIfTI.
+        ras = np.diag([1.0, 1.2, 0.9, 1.0])
+        ras[:3, 3] = (-10.0, -20.0, 5.0)
+        lia = np.array([[-1.0, 0, 0, 128], [0, 0, 1.0, -128], [0, -1.0, 0, 128], [0, 0, 0, 1]])
+        affines = {"ras": ras, "lia": lia}
+        image_class = nib.Nifti1Image if suffix == ".nii.gz" else nib.MGHImage
+        mov = tmp_path / f"mov{suffix}"
+        ref = tmp_path / f"ref{suffix}"
+        nib.save(image_class(np.zeros((40, 50, 30), np.float32), affines[mov_orient]), mov)
+        nib.save(image_class(np.zeros((64, 64, 64), np.float32), affines[ref_orient]), ref)
+
+        lta = FSLMat(self._FLIRT).to_lta(src_fname=str(mov), src_img=str(mov), dst_fname=str(ref), dst_img=str(ref))
+
+        assert lta.r2r() == pytest.approx(np.asarray(self._FSLPY_R2R[mov_orient, ref_orient]), abs=1e-4)
+        assert FSLMat.from_lta(lta).matrix == pytest.approx(self._FLIRT, abs=1e-6)
+
 
 class TestITKTransform:
     def test_read_write_roundtrip(self, tmp_path: Path):
