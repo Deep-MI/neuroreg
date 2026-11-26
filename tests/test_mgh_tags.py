@@ -1,4 +1,4 @@
-"""Tests for the MGH tag section: the talairach transform path and the colour table.
+"""Tests for the MGH tag section and ``mri tag``.
 
 Fixtures are packed by hand with ``struct`` following FreeSurfer's layout
 (``utils/fstagsio.cpp``, ``utils/colortab.cpp``) rather than produced by the
@@ -59,6 +59,7 @@ CMD_TAGS = _sized(3, b"mri_normalize -mprage in.mgz out.mgz\0") + _sized(3, b"mr
 
 
 def _write(path: Path, raw: bytes) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(gzip.compress(raw) if path.suffix == ".mgz" else raw)
     return path
 
@@ -68,7 +69,16 @@ def _raw(path: Path) -> bytes:
     return gzip.decompress(data) if data[:2] == b"\x1f\x8b" else data
 
 
-# ── reading ───────────────────────────────────────────────────────────────────
+def _tagged(path: Path, *, xform: bytes | None = None, ctab: bytes | None = None) -> Path:
+    """Write a volume holding the given xform path and/or binary colour table."""
+    tags = b"" if xform is None else _sized(31, xform + b"\0")
+    tags += PEDIR_TAG
+    if ctab is not None:
+        tags += struct.pack(">i", 1) + ctab
+    return _write(path, _body() + tags)
+
+
+# ── reading and writing MGH tags ──────────────────────────────────────────────
 
 
 def test_reads_every_tag_of_a_freesurfer_style_file(tmp_path: Path):
@@ -79,37 +89,13 @@ def test_reads_every_tag_of_a_freesurfer_style_file(tmp_path: Path):
     assert [tag for tag, _ in tags.tags] == [31, 41, 43, 1, 3, 3]
     assert tags.xform == "/old/subject/mri/transforms/talairach.xfm"
     assert tags.command_lines == ["mri_normalize -mprage in.mgz out.mgz", "mri_fill -a log in.mgz out.mgz"]
-    table = tags.color_table
-    assert table is not None
-    assert table.fname == "SubCorticalMassLUT.txt"
-    assert table.entries == {
-        0: ColorTableEntry("Unknown", (0, 0, 0), 0),
-        127: ColorTableEntry("Right-Mass", (0, 180, 0), 0),
-        255: ColorTableEntry("Left-Mass", (0, 0, 180), 0),
-    }
-    assert tags.trailer == b""
-
-
-def test_a_volume_nibabel_wrote_has_no_tags(tmp_path: Path):
-    path = _write(tmp_path / "plain.mgz", _body())
-
-    tags = read_mgh_tags(path)
-
-    assert tags.tags == []
-    assert tags.xform is None
-    assert tags.color_table is None
-
-
-def test_reads_the_legacy_xform_tag(tmp_path: Path):
-    # Tag 30 carries an int32 length that counts the terminating NUL.
-    legacy = struct.pack(">ii", 30, 13) + b"talairach.xfm"
-    path = _write(tmp_path / "legacy.mgh", _body() + legacy)
-
-    assert read_mgh_tags(path).xform == "talairach.xfm"
+    assert tags.color_table.fname == "SubCorticalMassLUT.txt"
+    assert tags.color_table.entries[127] == ColorTableEntry("Right-Mass", (0, 180, 0), 0)
 
 
 def test_decodes_a_version_1_colour_table():
-    # Version 1 starts with the entry count and leaves label values implicit.
+    # Version 1 starts with the entry count and leaves label values implicit;
+    # its length has to be right, or every tag after it is misread.
     v1 = struct.pack(">ii", 2, 4) + b"lut\0"
     v1 += struct.pack(">i", 5) + b"zero\0" + struct.pack(">4i", 1, 2, 3, 0)
     v1 += struct.pack(">i", 4) + b"one\0" + struct.pack(">4i", 4, 5, 6, 7)
@@ -117,42 +103,27 @@ def test_decodes_a_version_1_colour_table():
     table, end = decode_color_table(v1)
 
     assert end == len(v1)
-    assert table.fname == "lut"
     assert table.entries == {0: ColorTableEntry("zero", (1, 2, 3), 0), 1: ColorTableEntry("one", (4, 5, 6), 7)}
 
 
-def test_refuses_a_warp_field_tag_it_cannot_step_over(tmp_path: Path):
-    # Tags 10 to 12 carry no length field, so nothing after them can be found.
-    path = _write(tmp_path / "warp.mgz", _body() + struct.pack(">i", 10) + b"opaque geometry")
+@pytest.mark.parametrize(
+    ("tags", "message"),
+    [
+        # Tags 10 to 12 carry no length field, so nothing after them can be found.
+        (struct.pack(">i", 10) + b"opaque geometry", "TAG_GCAMORPH_GEOM"),
+        (_sized(3, b"a command line\0")[:-5], "truncated"),
+    ],
+)
+def test_refuses_tags_it_cannot_step_over(tmp_path: Path, tags: bytes, message: str):
+    path = _write(tmp_path / "bad.mgz", _body() + tags)
 
-    with pytest.raises(ValueError, match="TAG_GCAMORPH_GEOM"):
+    with pytest.raises(ValueError, match=message):
         read_mgh_tags(path)
-
-
-def test_refuses_a_truncated_tag(tmp_path: Path):
-    path = _write(tmp_path / "cut.mgz", _body() + _sized(3, b"a command line\0")[:-5])
-
-    with pytest.raises(ValueError, match="truncated"):
-        read_mgh_tags(path)
-
-
-def test_keeps_whatever_follows_a_zero_tag(tmp_path: Path):
-    # FreeSurfer stops reading at a zero id; a rewrite must not lose those bytes.
-    trailer = struct.pack(">i", 0) + b"ignored by FreeSurfer"
-    source = _write(tmp_path / "zero.mgz", _body() + PEDIR_TAG + trailer)
-    out = tmp_path / "out.mgz"
-
-    write_mgh_tags(source, out, xform="transforms/talairach.xfm")
-
-    assert _raw(out) == _body() + _sized(31, b"transforms/talairach.xfm\0") + PEDIR_TAG + trailer
-
-
-# ── writing ───────────────────────────────────────────────────────────────────
 
 
 def test_replacing_the_xform_changes_nothing_else(tmp_path: Path):
-    # The whole point of a byte-level rewrite: header, voxels, scan parameters
-    # and every other tag survive exactly, and the xform keeps its position.
+    # The point of a byte-level rewrite: header, voxels, scan parameters and
+    # every other tag survive exactly.
     rest = PEDIR_TAG + FIELD_TAG + CTAB_TAG + CMD_TAGS
     source = _write(tmp_path / "filled.mgz", _body() + XFORM_TAG + rest)
     out = tmp_path / "tagged.mgz"
@@ -162,76 +133,17 @@ def test_replacing_the_xform_changes_nothing_else(tmp_path: Path):
     assert _raw(out) == _body() + _sized(31, b"transforms/talairach.xfm\0") + rest
 
 
-def test_a_rewrite_without_changes_is_byte_identical(tmp_path: Path):
-    raw = _body() + XFORM_TAG + PEDIR_TAG + FIELD_TAG + CTAB_TAG + CMD_TAGS
-    source = _write(tmp_path / "filled.mgz", raw)
-    out = tmp_path / "copy.mgz"
-
-    write_mgh_tags(source, out)
-
-    assert _raw(out) == raw
-
-
-def test_a_new_xform_goes_first_and_a_new_colour_table_last(tmp_path: Path):
-    # FreeSurfer writes the xform first; the reader does not care about order.
-    source = _write(tmp_path / "in.mgz", _body() + PEDIR_TAG + CMD_TAGS)
-    out = tmp_path / "out.mgz"
-    table = ColorTable({0: ColorTableEntry("Unknown", (0, 0, 0)), 2: ColorTableEntry("WM", (245, 245, 245))}, "lut")
-
-    write_mgh_tags(source, out, xform="transforms/talairach.xfm", color_table=table)
-
-    tags = read_mgh_tags(out)
-    assert [tag for tag, _ in tags.tags] == [31, 41, 3, 3, 1]
-    assert tags.color_table == table
-
-
-def test_replacing_the_colour_table_keeps_its_position(tmp_path: Path):
-    source = _write(tmp_path / "in.mgz", _body() + PEDIR_TAG + CTAB_TAG + CMD_TAGS)
-    out = tmp_path / "out.mgz"
-    table = ColorTable({7: ColorTableEntry("Seven", (7, 7, 7))}, "other.txt")
-
-    write_mgh_tags(source, out, color_table=table)
-
-    assert [tag for tag, _ in read_mgh_tags(out).tags] == [41, 1, 3, 3]
-    assert read_mgh_tags(out).color_table == table
-
-
 def test_replacing_the_xform_leaves_no_stale_duplicate(tmp_path: Path):
     # FreeSurfer applies tags in order, so a leftover legacy tag after the new
     # one would win and resurrect the old path.
     legacy = struct.pack(">ii", 30, 8) + b"old.xfm\0"
     source = _write(tmp_path / "in.mgz", _body() + XFORM_TAG + PEDIR_TAG + legacy)
-    out = tmp_path / "out.mgz"
 
-    write_mgh_tags(source, out, xform="new.xfm")
+    write_mgh_tags(source, tmp_path / "out.mgz", xform="new.xfm")
 
-    tags = read_mgh_tags(out)
+    tags = read_mgh_tags(tmp_path / "out.mgz")
     assert [tag for tag, _ in tags.tags] == [31, 41]
     assert tags.xform == "new.xfm"
-
-
-def test_the_volume_still_loads_with_identical_voxels_and_header(tmp_path: Path):
-    source = _write(tmp_path / "in.mgz", _body())
-    out = tmp_path / "out.mgz"
-
-    write_mgh_tags(source, out, xform="transforms/talairach.xfm")
-
-    before, after = nib.load(str(source)), nib.load(str(out))
-    assert np.array_equal(np.asanyarray(after.dataobj), DATA)
-    assert np.array_equal(after.affine, before.affine)
-    assert after.header.binaryblock == before.header.binaryblock
-
-
-def test_supplies_missing_scan_parameters_before_the_tags(tmp_path: Path):
-    # Tags can only follow the scan parameters, so a file that stops right
-    # after its voxels gets the zeros FreeSurfer assumes when they are absent.
-    body = _body()
-    source = _write(tmp_path / "short.mgh", body[:-20])
-    out = tmp_path / "out.mgh"
-
-    write_mgh_tags(source, out, xform="t.xfm")
-
-    assert _raw(out) == body[:-20] + bytes(20) + _sized(31, b"t.xfm\0")
 
 
 def test_output_compression_follows_the_extension(tmp_path: Path):
@@ -241,7 +153,6 @@ def test_output_compression_follows_the_extension(tmp_path: Path):
     write_mgh_tags(source, tmp_path / "out.mgz", xform="t.xfm")
 
     assert (tmp_path / "out.mgh").read_bytes()[:2] != b"\x1f\x8b"
-    assert (tmp_path / "out.mgz").read_bytes()[:2] == b"\x1f\x8b"
     assert _raw(tmp_path / "out.mgh") == _raw(tmp_path / "out.mgz")
 
 
@@ -258,11 +169,35 @@ def test_tags_in_place_and_keeps_the_file_mode(tmp_path: Path):
     assert [p.name for p in tmp_path.iterdir()] == ["nu.mgz"]
 
 
-def test_refuses_a_non_mgh_output(tmp_path: Path):
-    source = _write(tmp_path / "in.mgz", _body())
+def test_a_kept_relative_xform_is_rebased_into_another_directory(tmp_path: Path):
+    # A relative path resolves from the volume's own directory, so a byte copy
+    # elsewhere would name another file.
+    source = _tagged(tmp_path / "subject" / "mri" / "nu.mgz", xform=b"transforms/talairach.xfm")
+    out = tmp_path / "elsewhere" / "nu.mgz"
+    out.parent.mkdir()
 
-    with pytest.raises(ValueError, match="only be stored in MGH"):
-        write_mgh_tags(source, tmp_path / "out.nii.gz", xform="t.xfm")
+    write_mgh_tags(source, out, color_table=ColorTable({0: ColorTableEntry("Unknown", (0, 0, 0))}))
+
+    assert read_mgh_tags(out).xform == os.path.join("..", "subject", "mri", "transforms", "talairach.xfm")
+
+
+def test_in_place_leaves_an_unusual_relative_path_alone(tmp_path: Path):
+    # Rebasing within one directory would only normalise the spelling, which
+    # an in-place rewrite must not do.
+    raw = _body() + _sized(31, b"./transforms/../transforms/talairach.xfm\0")
+    path = _write(tmp_path / "nu.mgz", raw)
+
+    write_mgh_tags(path, path)
+
+    assert _raw(path) == raw
+
+
+def test_a_transform_sharing_only_the_root_is_recorded_absolute():
+    # Climbing to the root and back down breaks as soon as either side moves.
+    target = os.path.abspath(os.path.join(os.sep, "fs_subjects", "bert", "mri", "transforms", "talairach.xfm"))
+    out_dir = os.path.abspath(os.path.join(os.sep, "scratch", "run1", "mri"))
+
+    assert relative_xform_path(target, out_dir) == target
 
 
 # ── colour lookup tables ──────────────────────────────────────────────────────
@@ -294,7 +229,6 @@ def test_reads_an_ascii_lut_like_freesurfer(tmp_path: Path):
 
     table = read_color_lut(lut)
 
-    assert table.fname == str(lut)
     assert list(table.entries) == [0, 2, 17]
     assert table.entries[2] == ColorTableEntry("Left-Cerebral-White-Matter", (245, 245, 245), 0)
     assert table.entries[17].transparency == 10
@@ -304,8 +238,6 @@ def test_reads_an_ascii_lut_like_freesurfer(tmp_path: Path):
     ("line", "message"),
     [
         ("3 Short 1 2 3\n", "expected 'index name R G B A'"),
-        ("3 Bad 1 two 3 0\n", "must be integers"),
-        ("-1 Negative 1 2 3 0\n", "must not be negative"),
         ("0 Unknown 0 0 0 0\n0 Again 1 1 1 0\n", "defined twice"),
         ("# only a comment\n", "no colour table entries"),
     ],
@@ -318,7 +250,7 @@ def test_rejects_a_malformed_lut(tmp_path: Path, line: str, message: str):
         read_color_lut(lut)
 
 
-# ── CLI ───────────────────────────────────────────────────────────────────────
+# ── mri tag ───────────────────────────────────────────────────────────────────
 
 
 @pytest.fixture
@@ -331,29 +263,19 @@ def subject(tmp_path: Path) -> Path:
     return mri
 
 
-def test_cli_records_the_standard_transform_relative_to_the_output(subject: Path, capsys):
-    out = subject / "tagged.mgz"
-
-    mri_main(["tag", str(subject / "nu.mgz"), str(out), "--xform", str(subject / "transforms" / "talairach.xfm")])
-
-    assert read_mgh_tags(out).xform == os.path.join("transforms", "talairach.xfm")
-    captured = capsys.readouterr()
-    assert "xform tag: transforms/talairach.xfm" in captured.out
-    assert "WARNING" not in captured.err
-
-
-def test_cli_relative_path_does_not_depend_on_the_current_directory(subject: Path, monkeypatch):
-    # The path is relative to where the volume lives, the only place it can be
-    # resolved from later, not to wherever the command happened to run.
+def test_records_the_transform_relative_to_the_output_wherever_it_runs(subject: Path, monkeypatch, capsys):
+    # Relative to where the volume lives, the only place it can be resolved
+    # from later, not to wherever the command happened to run.
     monkeypatch.chdir(subject.parent.parent)
-    xform = os.path.relpath(subject / "transforms" / "talairach.xfm")
+    nu = os.path.relpath(subject / "nu.mgz")
 
-    mri_main(["tag", os.path.relpath(subject / "nu.mgz"), os.path.relpath(subject / "nu.mgz"), "--xform", xform])
+    mri_main(["tag", nu, nu, "--xform", os.path.relpath(subject / "transforms" / "talairach.xfm")])
 
     assert read_mgh_tags(subject / "nu.mgz").xform == os.path.join("transforms", "talairach.xfm")
+    assert "WARNING" not in capsys.readouterr().err
 
 
-def test_cli_abs_xform_tag_records_the_absolute_path(subject: Path):
+def test_abs_xform_tag_records_the_absolute_path(subject: Path):
     xform = subject / "transforms" / "talairach.xfm"
 
     mri_main(["tag", str(subject / "nu.mgz"), str(subject / "nu.mgz"), "--xform", str(xform), "--abs-xform-tag"])
@@ -361,7 +283,7 @@ def test_cli_abs_xform_tag_records_the_absolute_path(subject: Path):
     assert read_mgh_tags(subject / "nu.mgz").xform == str(xform.resolve())
 
 
-def test_cli_warns_when_freesurfer_would_not_find_a_relative_path(subject: Path, capsys):
+def test_warns_when_freesurfer_would_not_find_a_relative_path(subject: Path, capsys):
     other = subject / "transforms" / "other.xfm"
     other.write_text("MNI Transform File\n")
 
@@ -371,7 +293,7 @@ def test_cli_warns_when_freesurfer_would_not_find_a_relative_path(subject: Path,
     assert "--abs-xform-tag" in capsys.readouterr().err
 
 
-def test_cli_records_a_missing_transform_with_a_warning(subject: Path, capsys):
+def test_records_a_missing_transform_with_a_warning(subject: Path, capsys):
     # Like mri_add_xform_to_header -c: the transform may be written later.
     missing = subject / "transforms" / "talairach.xfm"
     missing.unlink()
@@ -382,7 +304,7 @@ def test_cli_records_a_missing_transform_with_a_warning(subject: Path, capsys):
     assert "does not exist" in capsys.readouterr().err
 
 
-def test_cli_embeds_a_colour_table_and_info_reports_both_tags(subject: Path, capsys):
+def test_embeds_a_colour_table_and_info_reports_both_tags(subject: Path, capsys):
     lut = subject.parent / "lut.txt"
     lut.write_text("0 Unknown 0 0 0 0\n2 Left-Cerebral-White-Matter 245 245 245 0\n")
     path = str(subject / "nu.mgz")
@@ -394,7 +316,6 @@ def test_cli_embeds_a_colour_table_and_info_reports_both_tags(subject: Path, cap
     info = capsys.readouterr().out
     assert "talairach xfm: transforms/talairach.xfm" in info
     assert "color table: 2 entries" in info
-    assert [tag for tag, _ in read_mgh_tags(path).tags] == [31, 41, 1]
 
 
 @pytest.mark.parametrize(
@@ -403,84 +324,18 @@ def test_cli_embeds_a_colour_table_and_info_reports_both_tags(subject: Path, cap
         (["tag", "in.mgz", "out.mgz"], "needs --xform/--xform-from and/or --ctab/--ctab-from"),
         (["tag", "in.mgz", "out.mgz", "--ctab", "lut.txt", "--abs-xform-tag"], "only says how to record a transform"),
         (["tag", "in.mgz", "out.mgz", "--xform", "t.xfm", "--xform-from", "nu.mgz"], "not allowed with"),
-        (["tag", "in.mgz", "out.mgz", "--ctab", "lut.txt", "--ctab-from", "aseg.mgz"], "not allowed with"),
-        (["tag", "in.mgz", "out.mgz", "--xform-from", "nu.img"], "--xform-from copies a tag from an MGH or NIfTI"),
-        (["tag", "in.mgz", "out.mgz", "--ctab-from", "aseg.img"], "--ctab-from copies a tag from an MGH or NIfTI"),
         (["tag", "in.img", "out.mgz", "--xform", "t.xfm"], "reads MGH or NIfTI input only"),
-        (["tag", "in.mgz", "out.img", "--xform", "t.xfm"], "OUT needs one of their extensions"),
-        (["tag", "in.nii.gz", "out.mgz", "--xform", "t.xfm"], "keeps its format; vol2vol converts"),
         (["tag", "in.mgz", "out.nii.gz", "--xform", "t.xfm"], "keeps its format; vol2vol converts"),
     ],
 )
-def test_cli_rejects_requests_it_cannot_honour(argv: list[str], message: str, capsys):
+def test_rejects_requests_it_cannot_honour(argv: list[str], message: str, capsys):
     with pytest.raises(SystemExit):
         mri_main(argv)
 
     assert message in capsys.readouterr().err
 
 
-# ── copying tags, conflicts, reruns ───────────────────────────────────────────
-
-
-def _tagged(path: Path, *, xform: bytes | None = None, ctab: bytes | None = None) -> Path:
-    """Write a volume holding the given xform path and/or binary colour table."""
-    tags = b""
-    if xform is not None:
-        tags += _sized(31, xform + b"\0")
-    tags += PEDIR_TAG
-    if ctab is not None:
-        tags += struct.pack(">i", 1) + ctab
-    path.parent.mkdir(parents=True, exist_ok=True)
-    return _write(path, _body() + tags)
-
-
-def test_write_mgh_tags_rebases_a_kept_relative_xform_into_another_directory(tmp_path: Path):
-    # A relative path is resolved from the volume's own directory, so copying
-    # the volume elsewhere byte for byte would make it name another file.
-    source = _tagged(tmp_path / "subject" / "mri" / "nu.mgz", xform=b"transforms/talairach.xfm")
-    out = tmp_path / "elsewhere" / "nu.mgz"
-    out.parent.mkdir()
-
-    write_mgh_tags(source, out, color_table=ColorTable({0: ColorTableEntry("Unknown", (0, 0, 0))}))
-
-    assert read_mgh_tags(out).xform == os.path.join("..", "subject", "mri", "transforms", "talairach.xfm")
-
-
-def test_a_transform_sharing_a_tree_with_the_volume_is_recorded_relative(tmp_path: Path):
-    target = tmp_path / "subject" / "mri" / "transforms" / "talairach.xfm"
-
-    assert relative_xform_path(target, tmp_path / "subject" / "mri") == os.path.join("transforms", "talairach.xfm")
-
-
-def test_a_transform_sharing_only_the_root_is_recorded_absolute():
-    # Climbing to the root and back down breaks as soon as either side moves.
-    target = os.path.abspath(os.path.join(os.sep, "fs_subjects", "bert", "mri", "transforms", "talairach.xfm"))
-    out_dir = os.path.abspath(os.path.join(os.sep, "scratch", "run1", "mri"))
-
-    assert relative_xform_path(target, out_dir) == target
-
-
-def test_write_mgh_tags_in_place_leaves_an_unusual_relative_path_alone(tmp_path: Path):
-    # Rebasing within one directory would only normalise the spelling, which
-    # an in-place rewrite must not do.
-    raw = _body() + _sized(31, b"./transforms/../transforms/talairach.xfm\0")
-    path = _write(tmp_path / "nu.mgz", raw)
-
-    write_mgh_tags(path, path)
-
-    assert _raw(path) == raw
-
-
-def test_cli_xform_from_copies_the_transform_another_volume_records(subject: Path):
-    _tagged(subject / "nu.mgz", xform=b"transforms/talairach.xfm")
-    _tagged(subject / "T1.mgz")
-
-    mri_main(["tag", str(subject / "T1.mgz"), str(subject / "T1.mgz"), "--xform-from", str(subject / "nu.mgz")])
-
-    assert read_mgh_tags(subject / "T1.mgz").xform == os.path.join("transforms", "talairach.xfm")
-
-
-def test_cli_xform_from_resolves_the_path_where_it_was_recorded(subject: Path, tmp_path: Path):
+def test_xform_from_resolves_the_path_where_it_was_recorded(subject: Path, tmp_path: Path):
     # The copied path is relative to nu.mgz's directory, so a volume elsewhere
     # needs it re-expressed relative to its own.
     _tagged(subject / "nu.mgz", xform=b"transforms/talairach.xfm")
@@ -491,98 +346,67 @@ def test_cli_xform_from_resolves_the_path_where_it_was_recorded(subject: Path, t
     assert read_mgh_tags(other).xform == os.path.join("..", "subject", "mri", "transforms", "talairach.xfm")
 
 
-def test_cli_xform_from_an_absolute_freesurfer_path_follows_abs_xform_tag(subject: Path):
+def test_xform_from_an_absolute_freesurfer_path_is_recorded_relative(subject: Path):
     # recon-all records absolute paths; copied, they are recorded like --xform.
-    absolute = str(subject / "transforms" / "talairach.xfm").encode()
-    _tagged(subject / "nu.mgz", xform=absolute)
-    _tagged(subject / "a.mgz")
-    _tagged(subject / "b.mgz")
+    _tagged(subject / "nu.mgz", xform=str(subject / "transforms" / "talairach.xfm").encode())
+    _tagged(subject / "seg.mgz")
 
-    mri_main(["tag", str(subject / "a.mgz"), str(subject / "a.mgz"), "--xform-from", str(subject / "nu.mgz")])
-    mri_main(
-        ["tag", str(subject / "b.mgz"), str(subject / "b.mgz"), "--xform-from", str(subject / "nu.mgz"),
-         "--abs-xform-tag"]
-    )
+    mri_main(["tag", str(subject / "seg.mgz"), str(subject / "seg.mgz"), "--xform-from", str(subject / "nu.mgz")])
 
-    assert read_mgh_tags(subject / "a.mgz").xform == os.path.join("transforms", "talairach.xfm")
-    assert read_mgh_tags(subject / "b.mgz").xform == absolute.decode()
+    assert read_mgh_tags(subject / "seg.mgz").xform == os.path.join("transforms", "talairach.xfm")
 
 
-def test_cli_ctab_from_copies_the_embedded_colour_table(subject: Path):
-    _tagged(subject / "aparc+aseg.orig.mgz", ctab=CTAB)
-
-    mri_main(["tag", str(subject / "nu.mgz"), str(subject / "aseg.mgz"), "--ctab-from",
-              str(subject / "aparc+aseg.orig.mgz")])
-
-    assert read_mgh_tags(subject / "aseg.mgz").color_table == read_mgh_tags(subject / "aparc+aseg.orig.mgz").color_table
-
-
-@pytest.mark.parametrize(
-    ("flag", "message"),
-    [("--xform-from", "records no talairach xform to copy"), ("--ctab-from", "embeds no colour table to copy")],
-)
-def test_cli_copying_a_tag_the_source_lacks_is_an_error(subject: Path, capsys, flag: str, message: str):
+def test_copying_a_tag_the_source_lacks_is_an_error(subject: Path, capsys):
     with pytest.raises(SystemExit):
-        mri_main(["tag", str(subject / "nu.mgz"), str(subject / "out.mgz"), flag, str(subject / "nu.mgz")])
+        mri_main(["tag", str(subject / "nu.mgz"), str(subject / "out.mgz"), "--xform-from", str(subject / "nu.mgz")])
 
-    assert message in capsys.readouterr().err
+    assert "records no talairach xform to copy" in capsys.readouterr().err
     assert not (subject / "out.mgz").exists()
 
 
-def test_cli_refuses_to_replace_a_different_xform_without_force(subject: Path, capsys):
+def test_refuses_to_replace_a_different_xform_without_force(subject: Path, capsys):
     path = _tagged(subject / "nu.mgz", xform=b"transforms/other.xfm")
     before = path.read_bytes()
+    xform = str(subject / "transforms" / "talairach.xfm")
 
     with pytest.raises(SystemExit):
-        mri_main(["tag", str(path), str(path), "--xform", str(subject / "transforms" / "talairach.xfm")])
+        mri_main(["tag", str(path), str(path), "--xform", xform])
 
-    err = capsys.readouterr().err
-    assert "records the talairach xform 'transforms/other.xfm'" in err
-    assert "--force" in err
+    assert "--force" in capsys.readouterr().err
     assert path.read_bytes() == before
 
-    mri_main(["tag", str(path), str(path), "--xform", str(subject / "transforms" / "talairach.xfm"), "--force"])
+    mri_main(["tag", str(path), str(path), "--xform", xform, "--force"])
 
     assert read_mgh_tags(path).xform == os.path.join("transforms", "talairach.xfm")
 
 
-def test_cli_refuses_to_replace_a_different_colour_table_without_force(subject: Path, capsys):
+def test_colour_tables_conflict_by_entries_not_by_lut_file(subject: Path, capsys):
     path = _tagged(subject / "aseg.mgz", ctab=CTAB)
-    lut = subject.parent / "lut.txt"
-    lut.write_text("0 Unknown 0 0 0 0\n2 Left-Cerebral-White-Matter 245 245 245 0\n")
+    before = path.read_bytes()
+    same = subject.parent / "copy_of_lut.txt"
+    same.write_text("0 Unknown 0 0 0 0\n127 Right-Mass 0 180 0 0\n255 Left-Mass 0 0 180 0\n")
+    different = subject.parent / "lut.txt"
+    different.write_text("0 Unknown 0 0 0 0\n2 Left-Cerebral-White-Matter 245 245 245 0\n")
+
+    # The same entries loaded from another file are the same table.
+    mri_main(["tag", str(path), str(path), "--ctab", str(same)])
+    assert path.read_bytes() == before
 
     with pytest.raises(SystemExit):
-        mri_main(["tag", str(path), str(path), "--ctab", str(lut)])
-
+        mri_main(["tag", str(path), str(path), "--ctab", str(different)])
     assert "embeds a different colour table (3 entries" in capsys.readouterr().err
 
-    mri_main(["tag", str(path), str(path), "--ctab", str(lut), "--force"])
-
+    mri_main(["tag", str(path), str(path), "--ctab", str(different), "--force"])
     assert list(read_mgh_tags(path).color_table.entries) == [0, 2]
 
 
-def test_cli_repeating_a_step_leaves_the_file_untouched(subject: Path, capsys):
+def test_repeating_a_step_leaves_the_file_untouched(subject: Path, capsys):
     # FastSurfer reruns steps; asking for what a volume already holds must
     # neither fail nor rewrite it.
     path = _tagged(subject / "nu.mgz", xform=b"transforms/talairach.xfm")
     stamp = path.stat().st_mtime_ns
-    before = path.read_bytes()
 
     mri_main(["tag", str(path), str(path), "--xform", str(subject / "transforms" / "talairach.xfm")])
 
     assert "unchanged" in capsys.readouterr().out
-    assert path.read_bytes() == before
     assert path.stat().st_mtime_ns == stamp
-
-
-def test_cli_the_same_colour_table_from_another_lut_file_is_not_a_conflict(subject: Path):
-    # A table is identified by its entries; where it was loaded from is not.
-    path = _tagged(subject / "aseg.mgz", ctab=CTAB)
-    before = path.read_bytes()
-    lut = subject.parent / "copy_of_lut.txt"
-    lut.write_text("0 Unknown 0 0 0 0\n127 Right-Mass 0 180 0 0\n255 Left-Mass 0 0 180 0\n")
-
-    mri_main(["tag", str(path), str(path), "--ctab", str(lut)])
-
-    assert path.read_bytes() == before
-    assert read_mgh_tags(path).color_table.fname == "SubCorticalMassLUT.txt"

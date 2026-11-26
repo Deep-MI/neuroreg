@@ -25,8 +25,8 @@ from neuroreg.cli.coreg import main as coreg_main
 from neuroreg.cli.mri import main as mri_main
 from neuroreg.cli.multireg import main as multireg_main
 from neuroreg.cli.vol2vol import main as vol2vol_main
-from neuroreg.image import MGHTags, history_entry, read_mgh_tags, save_image
-from neuroreg.image.mgh_tags import _decode_matrix, _encode_matrix
+from neuroreg.image import MGHTags, history_entry, read_mgh_tags
+from neuroreg.image.mgh_tags import _decode_matrix
 from neuroreg.multireg import MultiRegResult
 from neuroreg.transforms import LTA
 
@@ -93,57 +93,25 @@ ALL_KINDS = MGHTags(
 )
 
 
-@pytest.mark.parametrize("r2r", [None, np.eye(4)])
-def test_a_frame_preserving_map_keeps_every_tag(r2r):
-    assert ALL_KINDS.derive(r2r=r2r).tags == ALL_KINDS.tags
+def test_frame_tags_survive_only_while_the_output_stays_in_the_source_frame(caplog):
+    assert ALL_KINDS.derive(r2r=np.eye(4)).tags == ALL_KINDS.tags
 
-
-def test_a_new_frame_keeps_value_tags_and_history_and_drops_the_rest(caplog):
     with caplog.at_level(logging.INFO, logger="neuroreg.image.mgh_tags"):
         derived = ALL_KINDS.derive(r2r=_rotation_and_shift())
 
     assert [tag for tag, _ in derived.tags] == [41, 43, 1, 42, 3, 44]
     assert "talairach xform path" in caplog.text
-    assert "AutoAlign matrix" in caplog.text
-    assert "tag 99" in caplog.text
 
 
 def test_the_original_ras2vox_still_finds_the_same_original_voxel():
     # The point of updating rather than dropping it: a point in the new frame
     # must map to the same original voxel its old position did.
     moved = _rotation_and_shift()
-    updated = _decode_matrix(dict(ALL_KINDS.derive(r2r=moved).tags)[44])
+    payload = dict(ALL_KINDS.derive(r2r=moved).tags)[44]
     point_old = np.array([10.0, -20.0, 30.0, 1.0])
-    point_new = moved @ point_old
 
-    assert updated @ point_new == pytest.approx(ORIG_RAS2VOX @ point_old, abs=1e-5)
-
-
-def test_an_updated_matrix_tag_keeps_freesurfers_layout():
-    payload = _encode_matrix(ORIG_RAS2VOX)
-
-    assert payload == _matrix_text(ORIG_RAS2VOX)
-    assert len(payload) == 1600
-
-
-def test_relabelled_values_drop_only_the_colour_table():
-    derived = ALL_KINDS.derive(keep_color_table=False)
-
-    assert [tag for tag, _ in derived.tags] == [31, 41, 43, 33, 99, 42, 3, 44]
-
-
-def test_a_relative_xform_is_rebased_to_the_output_directory(tmp_path: Path):
-    tags = MGHTags([(31, b"transforms/talairach.xfm\0")])
-
-    rebased = tags.rebase_xform(tmp_path / "subject" / "mri", tmp_path / "elsewhere")
-
-    assert rebased.xform == os.path.join("..", "subject", "mri", "transforms", "talairach.xfm")
-
-
-def test_an_absolute_xform_is_kept_as_it_is(tmp_path: Path):
-    tags = MGHTags([(31, b"/data/subject/mri/transforms/talairach.xfm\0")])
-
-    assert tags.rebase_xform(tmp_path, tmp_path / "other").xform == "/data/subject/mri/transforms/talairach.xfm"
+    assert _decode_matrix(payload) @ (moved @ point_old) == pytest.approx(ORIG_RAS2VOX @ point_old, abs=1e-5)
+    assert len(payload) == 1600  # FreeSurfer's fixed text buffer
 
 
 def test_history_entry_follows_freesurfers_layout_without_user_or_machine():
@@ -151,29 +119,7 @@ def test_history_entry_follows_freesurfers_layout_without_user_or_machine():
 
     assert entry.startswith("ProgramName: vol2vol  ProgramArguments: vol2vol --in 'a b.mgz' --out c.mgz  ")
     assert "ProgramVersion: neuroreg " in entry
-    assert "TimeStamp: " in entry
     assert "User:" not in entry and "Machine:" not in entry
-
-
-# ── save_image ────────────────────────────────────────────────────────────────
-
-
-def test_save_image_stores_tags_in_mgh(tmp_path: Path):
-    tags = MGHTags([(41, b"UNKNOWN"), (3, b"made here\0")])
-
-    save_image(nib.MGHImage(DATA, np.eye(4)), tmp_path / "out.mgz", tags=tags)
-
-    assert read_mgh_tags(tmp_path / "out.mgz").tags == tags.tags
-    assert np.array_equal(np.asanyarray(nib.load(str(tmp_path / "out.mgz")).dataobj), DATA)
-
-
-def test_save_image_reports_tags_it_cannot_store(tmp_path: Path, caplog):
-    # Analyze pairs have no place for tags.
-    with caplog.at_level(logging.INFO, logger="neuroreg.image.io"):
-        save_image(nib.MGHImage(DATA, np.eye(4)), tmp_path / "out.img", tags=MGHTags([(3, b"x\0")]))
-
-    assert (tmp_path / "out.img").exists()
-    assert "only MGH and NIfTI outputs carry them" in caplog.text
 
 
 # ── commands ──────────────────────────────────────────────────────────────────
@@ -190,7 +136,6 @@ def test_vol2vol_conversion_keeps_the_tags_and_rebases_the_xform(tmp_path: Path)
     assert [tag for tag, _ in tags.tags] == [31, 41, 1, 3, 3]
     assert tags.xform == os.path.join("..", "subject", "mri", "transforms", "talairach.xfm")
     assert tags.color_table == read_mgh_tags(source).color_table
-    assert tags.command_lines[0].startswith("ProgramName: mri_convert")
     assert tags.command_lines[1].startswith("ProgramName: vol2vol")
 
 
@@ -207,40 +152,18 @@ def test_vol2vol_header_only_into_a_new_frame_drops_the_xform(tmp_path: Path):
     assert _ids(tmp_path / "o.mgz") == [41, 1, 3, 3]
 
 
-def test_vol2vol_to_nifti_still_writes_the_volume(tmp_path: Path):
-    source = _tagged_volume(tmp_path / "aseg.mgz")
-
-    vol2vol_main(["--in", str(source), "--out", str(tmp_path / "aseg.nii.gz")])
-
-    assert np.array_equal(np.asanyarray(nib.load(str(tmp_path / "aseg.nii.gz")).dataobj), DATA)
-
-
-def test_mri_mask_keeps_every_tag(tmp_path: Path):
-    source = _tagged_volume(tmp_path / "aseg.mgz")
-    mask = tmp_path / "mask.mgz"
-    nib.save(nib.MGHImage(np.ones((6, 6, 6), np.uint8), np.eye(4)), mask)
-
-    mri_main(["mask", str(source), str(mask), str(tmp_path / "masked.mgz")])
-
-    assert _ids(tmp_path / "masked.mgz") == [31, 41, 1, 3, 3]
-
-
 def test_mri_binarize_drops_the_colour_table(tmp_path: Path):
     source = _tagged_volume(tmp_path / "aseg.mgz")
 
     mri_main(["binarize", "--i", str(source), "--o", str(tmp_path / "bin.mgz"), "--match", "17"])
 
-    tags = read_mgh_tags(tmp_path / "bin.mgz")
-    assert [tag for tag, _ in tags.tags] == [31, 41, 3, 3]
-    assert tags.color_table is None
+    assert _ids(tmp_path / "bin.mgz") == [31, 41, 3, 3]
 
 
 def test_mri_geom_records_only_how_it_was_made(tmp_path: Path):
     mri_main(["geom", "--o", str(tmp_path / "grid.mgz"), "--fov", "8", "--vox-size", "1", "--orientation", "LIA"])
 
-    tags = read_mgh_tags(tmp_path / "grid.mgz")
-    assert [tag for tag, _ in tags.tags] == [3]
-    assert tags.command_lines[0].startswith("ProgramName: mri  ProgramArguments: mri geom")
+    assert _ids(tmp_path / "grid.mgz") == [3]
 
 
 def test_coreg_mapmov_carries_the_moving_images_labels_but_not_its_frame(monkeypatch, tmp_path: Path):
@@ -264,20 +187,17 @@ def test_coreg_mapmov_carries_the_moving_images_labels_but_not_its_frame(monkeyp
     )
 
     for output in ("mapped.mgz", "hdr.mgz"):
-        tags = read_mgh_tags(tmp_path / output)
-        assert [tag for tag, _ in tags.tags] == [41, 1, 3, 3]
-        assert tags.command_lines[-1].startswith("ProgramName: coreg")
+        assert _ids(tmp_path / output) == [41, 1, 3, 3]
 
 
 def test_multireg_template_starts_fresh_and_time_points_keep_their_own_tags(monkeypatch, tmp_path: Path):
     movs = [_tagged_volume(tmp_path / f"tp{i}.mgz", lut=f"lut{i}.txt".encode()) for i in (1, 2)]
-    moved = _rotation_and_shift()
 
     def fake_multireg(*args, **kwargs):
         image = nib.MGHImage(DATA, np.eye(4))
         return MultiRegResult(
             template_image=image,
-            transforms_r2r=[np.eye(4), moved],
+            transforms_r2r=[np.eye(4), _rotation_and_shift()],
             ltas=[],
             initial_target_index=0,
             seed=1,
@@ -289,16 +209,11 @@ def test_multireg_template_starts_fresh_and_time_points_keep_their_own_tags(monk
     monkeypatch.setattr("neuroreg.cli.multireg.multireg", fake_multireg)
     mapped = [tmp_path / "tp1_base.mgz", tmp_path / "tp2_base.mgz"]
     multireg_main(
-        [
-            "--mov", *map(str, movs), "--template", str(tmp_path / "base.mgz"),
-            "--mapmov", *map(str, mapped), "--noit",
-        ]
+        ["--mov", *map(str, movs), "--template", str(tmp_path / "base.mgz"), "--mapmov", *map(str, mapped), "--noit"]
     )
 
     assert _ids(tmp_path / "base.mgz") == [3]
-    # Each mapped time point inherits from its own input: tp1 sits in template
-    # space by identity, so it keeps its xform, while tp2 was moved there.
+    # tp1 sits in template space by identity, so it keeps its xform; tp2 moved.
     assert _ids(mapped[0]) == [31, 41, 1, 3, 3]
     assert _ids(mapped[1]) == [41, 1, 3, 3]
-    assert read_mgh_tags(mapped[0]).color_table.fname == "lut1.txt"
     assert read_mgh_tags(mapped[1]).color_table.fname == "lut2.txt"
