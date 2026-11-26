@@ -170,7 +170,7 @@ def test_lta_convert_blames_a_bad_geometry_json_not_the_transform(tmp_path: Path
         lta_main(["convert", str(source), str(tmp_path / "out.lta"), "--dst", str(target)])
 
     err = capsys.readouterr().err
-    assert "--dst" in err
+    assert "--dst was given" in err
     assert f"cannot read {source}" not in err
 
 

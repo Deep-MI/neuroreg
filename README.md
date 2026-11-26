@@ -659,7 +659,7 @@ subcommands: `diff`, `invert`, `concat`, and `convert`.
 lta diff    LTA1 [LTA2] [options]                   # Compare transforms
 lta invert  INPUT OUTPUT                            # Invert a transform
 lta concat  LTA1 LTA2 OUTPUT                        # Concatenate two transforms
-lta convert INPUT OUTPUT [--src SRC --dst DST]  # Convert formats
+lta convert INPUT OUTPUT [--src SRC --dst DST]      # Convert formats
 ```
 
 ---
