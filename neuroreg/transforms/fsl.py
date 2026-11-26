@@ -10,24 +10,6 @@ from .lta import LTA, _AnyHeader, _header_info, _header_to_vol_info, affine_from
 from .regdat import RegisterDat
 
 
-def _is_nifti_like(path: str) -> bool:
-    """Return whether a filename looks like a NIfTI/Analyze image path.
-
-    Parameters
-    ----------
-    path : str
-        Candidate image filename.
-
-    Returns
-    -------
-    bool
-        ``True`` when the suffix matches one of the NIfTI/Analyze extensions
-        that trigger FSL's handedness convention adjustments.
-    """
-    lower = path.lower()
-    return lower.endswith('.nii') or lower.endswith('.nii.gz') or lower.endswith('.img') or lower.endswith('.hdr')
-
-
 def _diag_spacing(info: dict) -> np.ndarray:
     """Construct a diagonal voxel-size matrix from volume metadata.
 
@@ -49,13 +31,22 @@ def _diag_spacing(info: dict) -> np.ndarray:
     return mat
 
 
-def _apply_fsl_nifti_convention(
+def _apply_fsl_convention(
         ref: dict,
         mov: dict,
         d_ref: np.ndarray,
         d_mov: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Apply FSL's NIfTI handedness convention to spacing matrices.
+    """Apply FSL's handedness convention to spacing matrices.
+
+    FLIRT works in scaled voxel coordinates, and for an image whose
+    voxel-to-RAS affine has a positive determinant (neurological storage) it
+    flips the first voxel axis, so its coordinates always have the handedness
+    of radiological storage. The flip depends only on the determinant: FLIRT
+    reads every image as NIfTI, so the matrix is in this convention whatever
+    file the geometry is later taken from (``.mgz``, a geometry JSON, or an
+    in-memory image). FreeSurfer's ``MRIfsl2TkReg`` and ``MRItkreg2FSL``
+    apply the same rule.
 
     Parameters
     ----------
@@ -67,7 +58,7 @@ def _apply_fsl_nifti_convention(
     Returns
     -------
     tuple[np.ndarray, np.ndarray]
-        Possibly adjusted ``(d_ref, d_mov)`` pair following FSL's NIfTI
+        Possibly adjusted ``(d_ref, d_mov)`` pair following FSL's
         convention for positive-determinant affines.
     """
     ref_aff = affine_from_volume_info(ref)
@@ -99,13 +90,8 @@ def _fsl_to_tkreg(ref: dict, mov: dict, fsl_matrix: np.ndarray) -> np.ndarray:
     np.ndarray
         Equivalent ``(4, 4)`` affine in tkregister voxel-space convention.
     """
-    inv_d_mov = np.linalg.inv(_diag_spacing(mov))
-    d_ref = _diag_spacing(ref)
-    mov_path = mov.get('filename', '')
-    ref_path = ref.get('filename', '')
-    if _is_nifti_like(mov_path) or _is_nifti_like(ref_path):
-        d_ref, d_mov = _apply_fsl_nifti_convention(ref, mov, d_ref, _diag_spacing(mov))
-        inv_d_mov = np.linalg.inv(d_mov)
+    d_ref, d_mov = _apply_fsl_convention(ref, mov, _diag_spacing(ref), _diag_spacing(mov))
+    inv_d_mov = np.linalg.inv(d_mov)
     t_mov = vox2tkras_from_volume_info(mov)
     t_ref = vox2tkras_from_volume_info(ref)
     return t_mov @ inv_d_mov @ np.linalg.inv(fsl_matrix) @ d_ref @ np.linalg.inv(t_ref)
@@ -126,12 +112,7 @@ def _tkreg_to_fsl(ref: dict, mov: dict, tkreg_matrix: np.ndarray) -> np.ndarray:
     np.ndarray
         Equivalent ``(4, 4)`` affine in FSL voxel-space convention.
     """
-    d_mov = _diag_spacing(mov)
-    d_ref = _diag_spacing(ref)
-    mov_path = mov.get('filename', '')
-    ref_path = ref.get('filename', '')
-    if _is_nifti_like(mov_path) or _is_nifti_like(ref_path):
-        d_ref, d_mov = _apply_fsl_nifti_convention(ref, mov, d_ref, d_mov)
+    d_ref, d_mov = _apply_fsl_convention(ref, mov, _diag_spacing(ref), _diag_spacing(mov))
     t_mov = vox2tkras_from_volume_info(mov)
     t_ref = vox2tkras_from_volume_info(ref)
     return np.linalg.inv(d_mov @ np.linalg.inv(t_mov) @ tkreg_matrix @ t_ref @ np.linalg.inv(d_ref))
