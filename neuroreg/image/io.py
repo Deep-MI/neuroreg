@@ -11,7 +11,7 @@ import nibabel as nib
 import numpy as np
 from nibabel.filebasedimages import ImageFileError
 
-from .mgh_tags import MGHTags, save_nifti_with_tags, write_mgh_image
+from .mgh_tags import MGHTags, apply_scan_parameters_to_mgh, save_nifti_with_tags, write_mgh_image
 
 logger = logging.getLogger(__name__)
 
@@ -482,6 +482,10 @@ def save_image(image: Any, path: str | Path, tags: MGHTags | None = None) -> Non
     if suffix in _MGH_SUFFIXES:
         header = image.header if isinstance(image, nib.MGHImage) else None
         image = as_mgh_image(np.asanyarray(image.dataobj), np.asarray(image.affine, dtype=np.float64), header)
+        if tags is not None and tags.scan is not None:
+            # An MGH source's header already holds these; a NIfTI source's
+            # reach the MGH scan parameters only this way.
+            apply_scan_parameters_to_mgh(image.header, tags.scan)
         if has_tags:
             write_mgh_image(image, destination, tags)
             return

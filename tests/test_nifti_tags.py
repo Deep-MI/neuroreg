@@ -21,7 +21,7 @@ from nibabel.nifti1 import Nifti1Extension
 
 from neuroreg.cli.mri import main as mri_main
 from neuroreg.cli.vol2vol import main as vol2vol_main
-from neuroreg.image import MGHTags, inherit_tags, read_image_tags, read_mgh_tags, save_image
+from neuroreg.image import MGHTags, ScanParameters, inherit_tags, read_image_tags, read_mgh_tags, save_image
 from neuroreg.image.mgh_tags import (
     _decode_matrix,
     _encode_matrix,
@@ -110,14 +110,124 @@ def test_writes_freesurfers_layout_and_ends_with_the_end_tag():
     assert content == b">\x00\x00\x01" + XFORM + CTAB + _tag(3, b"made here\0") + END
 
 
-def test_mgh_only_tags_are_not_written_and_reported(caplog):
+def test_frames_are_not_written_and_unknown_acquisition_values_add_nothing(caplog):
+    # FreeSurfer writes PE direction UNKNOWN and field strength 0 into every
+    # MGH; carrying them into NIfTI would say nothing.
     tags = MGHTags([(41, b"UNKNOWN"), (43, b"\0\0\0\0"), (42, b"frames"), (3, b"x\0")])
 
     with caplog.at_level(logging.INFO, logger="neuroreg.image.mgh_tags"):
         content = encode_nifti_extension(tags)
 
-    assert decode_nifti_extension(content).tags == [(3, b"x\0")]
-    assert "phase-encode direction, field strength, frames" in caplog.text
+    assert content == b">\x00\x00\x01" + _tag(3, b"x\0") + END
+    assert "Not storing in the NIfTI extension: frames." in caplog.text
+
+
+# ── acquisition parameters ────────────────────────────────────────────────────
+
+ROW = b"ROW\0"
+TESLA_3 = struct.pack("<f", 3.0)  # MGH tag 43: native byte order, little-endian
+
+
+def test_acquisition_values_go_into_freesurfers_scan_parameter_tag():
+    tags = MGHTags([(41, ROW), (43, TESLA_3), (3, b"x\0")], scan=ScanParameters(2300.0, 2.98, 900.0, 0.157))
+
+    content = encode_nifti_extension(tags)
+
+    # FStagsIO::write_scan_parameters: TE, TI as float32, flip as float64,
+    # field strength as float32, then the PE direction. TR is not part of it.
+    expected = _tag(45, struct.pack(">ffdf", 2.98, 900.0, 0.157, 3.0) + ROW)
+    assert content == b">\x00\x00\x01" + expected + _tag(3, b"x\0") + END
+
+
+def test_the_scan_parameter_tag_reads_back_into_mgh_layout():
+    payload = struct.pack(">ffdf", 2.98, 900.0, 0.157, 3.0) + ROW
+
+    tags = decode_nifti_extension(_freesurfer_extension(_tag(45, payload)))
+
+    assert tags.tags == [(41, ROW), (43, TESLA_3)]
+    assert (tags.scan.te, tags.scan.ti, tags.scan.flip_angle) == pytest.approx((2.98, 900.0, 0.157))
+
+
+def test_a_freesurfer_scan_parameter_tag_holding_only_defaults_adds_no_tags():
+    payload = struct.pack(">ffdf", 0.0, 0.0, 0.0, 0.0) + b"UNKNOWN"
+
+    tags = decode_nifti_extension(_freesurfer_extension(_tag(45, payload), HISTORY))
+
+    assert _ids(tags) == [3]
+
+
+@pytest.mark.parametrize(("unit", "pixdim", "expected"), [("sec", 2.3, 2300.0), ("msec", 2300.0, 2300.0)])
+def test_tr_is_read_from_pixdim_in_milliseconds(tmp_path: Path, unit: str, pixdim: float, expected: float):
+    image = nib.Nifti1Image(np.zeros((4, 4, 4, 2), np.float32), AFFINE)
+    image.header.set_xyzt_units("mm", unit)
+    image.header["pixdim"][4] = pixdim
+    nib.save(image, str(tmp_path / "bold.nii.gz"))
+
+    assert read_nifti_tags(tmp_path / "bold.nii.gz").scan.tr == pytest.approx(expected)
+
+
+def test_nibabels_default_pixdim_is_not_a_tr(tmp_path: Path):
+    # nibabel writes pixdim[4] = 1 with unknown units; FreeSurfer reads unknown
+    # units as no TR, and so does this.
+    nib.save(nib.Nifti1Image(DATA, AFFINE), str(tmp_path / "plain.nii.gz"))
+
+    assert read_nifti_tags(tmp_path / "plain.nii.gz").scan is None
+
+
+def test_save_image_writes_tr_where_nifti_keeps_it_and_restores_the_header(tmp_path: Path):
+    image = nib.Nifti1Image(DATA, AFFINE)
+    before = image.header.binaryblock
+
+    save_image(image, tmp_path / "out.nii.gz", tags=MGHTags(scan=ScanParameters(tr=2300.0)))
+
+    header = nib.load(str(tmp_path / "out.nii.gz")).header
+    assert float(header["pixdim"][4]) == pytest.approx(2.3)
+    assert header.get_xyzt_units() == ("mm", "sec")
+    assert header.extensions == []
+    assert image.header.binaryblock == before
+
+
+def test_vol2vol_keeps_every_acquisition_value_from_mgh_to_nifti_and_back(tmp_path: Path):
+    mgh = nib.MGHImage(DATA, AFFINE)
+    for key, value in {"tr": 2300.0, "te": 2.98, "ti": 900.0, "flip_angle": 0.157}.items():
+        mgh.header[key] = value
+    source = tmp_path / "t1.mgz"
+    source.write_bytes(gzip.compress(mgh.to_bytes() + _tag(41, ROW) + _tag(43, TESLA_3)))
+
+    vol2vol_main(["--in", str(source), "--out", str(tmp_path / "t1.nii.gz")])
+    vol2vol_main(["--in", str(tmp_path / "t1.nii.gz"), "--out", str(tmp_path / "back.mgz")])
+
+    back = nib.load(str(tmp_path / "back.mgz")).header
+    assert [float(back[k]) for k in ("tr", "te", "ti", "flip_angle")] == pytest.approx([2300.0, 2.98, 900.0, 0.157])
+    tags = read_mgh_tags(tmp_path / "back.mgz")
+    assert (41, ROW) in tags.tags
+    assert (43, TESLA_3) in tags.tags
+
+
+def test_mri_tag_on_nifti_leaves_tr_and_its_units_alone(tmp_path: Path):
+    path = tmp_path / "bold.nii.gz"
+    image = nib.Nifti1Image(np.zeros((4, 4, 4, 2), np.float32), AFFINE)
+    image.header.set_xyzt_units("mm", "msec")
+    image.header["pixdim"][4] = 2300.0
+    nib.save(image, str(path))
+    lut = tmp_path / "lut.txt"
+    lut.write_text("0 Unknown 0 0 0 0\n")
+
+    mri_main(["tag", str(path), str(path), "--ctab", str(lut)])
+
+    header = nib.load(str(path)).header
+    assert header.get_xyzt_units() == ("mm", "msec")
+    assert float(header["pixdim"][4]) == pytest.approx(2300.0)
+
+
+def test_mgh_scan_parameters_are_read_from_the_footer(tmp_path: Path):
+    mgh = nib.MGHImage(DATA, AFFINE)
+    mgh.header["tr"], mgh.header["te"], mgh.header["ti"], mgh.header["flip_angle"] = 2300.0, 2.98, 900.0, 0.157
+    nib.save(mgh, str(tmp_path / "t1.mgz"))
+
+    scan = read_mgh_tags(tmp_path / "t1.mgz").scan
+
+    assert (scan.tr, scan.te, scan.ti, scan.flip_angle) == pytest.approx((2300.0, 2.98, 900.0, 0.157))
 
 
 def test_nothing_to_store_writes_no_extension():

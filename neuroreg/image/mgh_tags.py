@@ -31,7 +31,7 @@ import struct
 import tempfile
 import time
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -82,12 +82,22 @@ _TAG_END_NIIHDREXTENSION = -1
 _NIFTI_EXTENSION_HEADER = b">\x00\x00\x01"
 # Tags whose matrix is text in MGH but 16 big-endian float32 in the extension.
 _MATRIX_TAGS = frozenset({TAG_AUTO_ALIGN, TAG_ORIG_RAS2VOX})
-# NIfTI-only tags: DOF, FreeSurfer's copy of the geometry, and the scan
-# parameters. The image header already holds what they describe.
-_NIFTI_ONLY_TAGS = frozenset({7, 8, 9, 45})
-# MGH tags whose NIfTI layout differs and is not written here: FreeSurfer folds
-# the first two into the scan-parameter tag, and stores frames in fewer fields.
-_MGH_ONLY_TAGS = {TAG_PEDIR: "phase-encode direction", TAG_FIELDSTRENGTH: "field strength", TAG_MRI_FRAME: "frames"}
+#: NIfTI-only tag holding TE, TI, flip angle, field strength and phase-encode
+#: direction; NIfTI keeps TR in ``pixdim[4]``.
+TAG_SCAN_PARAMETERS = 45
+# NIfTI-only tags: DOF and FreeSurfer's copy of the geometry. The image header
+# already holds what they describe.
+_NIFTI_ONLY_TAGS = frozenset({7, 8, 9})
+# MGH tags whose NIfTI layout differs and is not written here: FreeSurfer
+# stores frames in fewer fields there.
+_MGH_ONLY_TAGS = {TAG_MRI_FRAME: "frames"}
+# FreeSurfer's values for an unknown phase-encode direction and field strength.
+_UNKNOWN_PEDIR = b"UNKNOWN"
+# Seconds, milliseconds and microseconds, as nibabel names NIfTI time units,
+# to the milliseconds FreeSurfer keeps TR in. Unknown units give no TR, as in
+# FreeSurfer's niiRead; nibabel writes pixdim[4] = 1 with unknown units by
+# default, which must not be read as a TR of one second.
+_TR_TO_MS = {"sec": 1000.0, "msec": 1.0, "usec": 0.001}
 _NIFTI_SUFFIXES = (".nii", ".nii.gz")
 # A RAS-to-RAS map this close to identity leaves the coordinate frame alone.
 _IDENTITY_ATOL = 1e-6
@@ -142,6 +152,32 @@ class ColorTable:
     fname: str = ""
 
 
+@dataclass(frozen=True)
+class ScanParameters:
+    """Acquisition parameters FreeSurfer keeps with a volume, in its units.
+
+    MGH stores them after the voxels. NIfTI stores TR in ``pixdim[4]`` and the
+    rest in FreeSurfer's header extension. Field strength and phase-encode
+    direction are not here: MGH keeps them as tags, which travel with the rest.
+
+    Parameters
+    ----------
+    tr : float, default=0.0
+        Repetition time in milliseconds; 0 when unknown.
+    te : float, default=0.0
+        Echo time in milliseconds.
+    ti : float, default=0.0
+        Inversion time in milliseconds.
+    flip_angle : float, default=0.0
+        Flip angle in radians.
+    """
+
+    tr: float = 0.0
+    te: float = 0.0
+    ti: float = 0.0
+    flip_angle: float = 0.0
+
+
 @dataclass
 class MGHTags:
     """The tags of an MGH volume, in file order.
@@ -153,10 +189,15 @@ class MGHTags:
     trailer : bytes, default=b""
         Bytes after the last tag that FreeSurfer does not read as one, such as
         a zero id it treats as the end. Kept so a rewrite loses nothing.
+    scan : ScanParameters or None, default=None
+        Acquisition parameters of the volume the tags were read from, so they
+        can be carried into another format. ``None`` when there are none, as
+        for a volume with new values.
     """
 
     tags: list[tuple[int, bytes]] = field(default_factory=list)
     trailer: bytes = b""
+    scan: ScanParameters | None = None
 
     @property
     def xform(self) -> str | None:
@@ -183,9 +224,10 @@ class MGHTags:
         """Return the tags an output derived from this volume's values carries.
 
         Tags describing the values (colour table, phase-encode direction,
-        field strength, frame metadata) and the command-line history always
-        carry over. Tags tied to the coordinate frame carry over only when the
-        output stays in it, meaning ``r2r`` is absent or the identity. When it
+        field strength, frame metadata), the acquisition parameters and the
+        command-line history always carry over. Tags tied to the coordinate
+        frame carry over only when the output stays in it, meaning ``r2r`` is
+        absent or the identity. When it
         does not, the original RAS-to-voxel matrix is re-expressed in the new
         frame, while the talairach path, the AutoAlign matrix and any unknown
         tag are dropped: none of them can be updated reliably, and FreeSurfer
@@ -226,7 +268,7 @@ class MGHTags:
             kept.append((tag, payload))
         if dropped:
             logger.info("Not carrying over: %s.", ", ".join(dropped))
-        return MGHTags(kept)
+        return MGHTags(kept, scan=self.scan)
 
     def rebase_xform(self, source_dir: str | Path, out_dir: str | Path) -> MGHTags:
         """Return the tags with a relative transform path moved to a new directory.
@@ -251,7 +293,7 @@ class MGHTags:
         if os.path.abspath(source_dir) == os.path.abspath(out_dir):
             # Same directory: the path already resolves correctly, and leaving
             # it untouched keeps an in-place rewrite byte for byte.
-            return MGHTags(list(self.tags), self.trailer)
+            return MGHTags(list(self.tags), self.trailer, self.scan)
         rebased: list[tuple[int, bytes]] = []
         for tag, payload in self.tags:
             if tag in (TAG_MGH_XFORM, TAG_OLD_MGH_XFORM):
@@ -260,11 +302,11 @@ class MGHTags:
                     path = relative_xform_path(os.path.join(source_dir, path), out_dir)
                     payload = path.encode() + b"\0"
             rebased.append((tag, payload))
-        return MGHTags(rebased, self.trailer)
+        return MGHTags(rebased, self.trailer, self.scan)
 
     def with_history(self, entry: str) -> MGHTags:
         """Return the tags with ``entry`` appended as the newest command line."""
-        return MGHTags([*self.tags, (TAG_CMDLINE, entry.encode() + b"\0")], self.trailer)
+        return MGHTags([*self.tags, (TAG_CMDLINE, entry.encode() + b"\0")], self.trailer, self.scan)
 
     def conflicts(self, *, xform: str | None = None, color_table: ColorTable | None = None) -> list[str]:
         """Describe each requested tag that would overwrite a different value.
@@ -609,6 +651,12 @@ def encode_nifti_extension(tags: MGHTags) -> bytes | None:
     is absent, as surfa relies on, and a copy can only go stale. Tags with an
     MGH-only layout are not stored, which is logged.
 
+    TE, TI, flip angle, field strength and phase-encode direction go into the
+    scan-parameter tag, written only when one of them differs from
+    FreeSurfer's default for unknown, so that a volume carrying nothing does
+    not gain an extension. TR is not part of it: NIfTI keeps TR in
+    ``pixdim[4]``, which :func:`save_nifti_with_tags` sets.
+
     Parameters
     ----------
     tags : MGHTags
@@ -621,7 +669,12 @@ def encode_nifti_extension(tags: MGHTags) -> bytes | None:
     """
     encoded: list[bytes] = []
     skipped: list[str] = []
+    scan_tag = _encode_scan_parameters(tags)
+    if scan_tag is not None:
+        encoded.append(struct.pack(">iq", TAG_SCAN_PARAMETERS, len(scan_tag)) + scan_tag)
     for tag, payload in tags.tags:
+        if tag in (TAG_PEDIR, TAG_FIELDSTRENGTH):
+            continue
         if tag in _MGH_ONLY_TAGS:
             skipped.append(_MGH_ONLY_TAGS[tag])
             continue
@@ -647,9 +700,11 @@ def encode_nifti_extension(tags: MGHTags) -> bytes | None:
 def decode_nifti_extension(content: bytes) -> MGHTags:
     """Parse FreeSurfer's NIfTI header extension into tags in MGH layout.
 
-    NIfTI-only tags (DOF, the geometry copy, scan parameters) are skipped,
-    since the image header carries what they describe, and so is the frame
-    metadata, whose layout differs. nibabel strips trailing zero bytes from
+    The scan-parameter tag becomes the MGH phase-encode direction and field
+    strength tags, when they say anything, and the TE, TI and flip angle of
+    ``scan``. NIfTI-only tags (DOF, the geometry copy) are skipped, since the
+    image header carries what they describe, and so is the frame metadata,
+    whose layout differs. nibabel strips trailing zero bytes from
     extension content, which can shorten the last tag of an extension written
     without an end tag; such a tag is padded back to its declared length.
 
@@ -672,6 +727,7 @@ def decode_nifti_extension(content: bytes) -> MGHTags:
         raise ValueError("NIfTI extension 14 does not start with FreeSurfer's big-endian marker")
     reader = _Reader(content, len(_NIFTI_EXTENSION_HEADER))
     tags: list[tuple[int, bytes]] = []
+    scan = None
     while len(content) - reader.pos >= 12:
         tag = reader.int32()
         length = reader.int64()
@@ -687,12 +743,16 @@ def decode_nifti_extension(content: bytes) -> MGHTags:
             payload = reader.take(length)
         if tag in _NIFTI_ONLY_TAGS or tag == TAG_MRI_FRAME:
             continue
+        if tag == TAG_SCAN_PARAMETERS:
+            scan, acquisition_tags = _decode_scan_parameters(payload)
+            tags.extend(acquisition_tags)
+            continue
         if tag in _MATRIX_TAGS:
             if len(payload) != 64:
                 raise ValueError(f"matrix tag {tag} holds {len(payload)} bytes, not 16 float32 values")
             payload = _encode_matrix(np.array(struct.unpack(">16f", payload), dtype=np.float64).reshape(4, 4))
         tags.append((tag, payload))
-    return MGHTags(tags)
+    return MGHTags(tags, scan=scan)
 
 
 def read_nifti_tags(path: str | Path) -> MGHTags:
@@ -706,7 +766,9 @@ def read_nifti_tags(path: str | Path) -> MGHTags:
     Returns
     -------
     MGHTags
-        Its tags; empty if it has no FreeSurfer extension.
+        Its tags; empty if it has no FreeSurfer extension. ``scan`` holds the
+        TR from ``pixdim[4]`` when the header names a time unit, and the other
+        acquisition parameters from the extension.
 
     Raises
     ------
@@ -715,10 +777,17 @@ def read_nifti_tags(path: str | Path) -> MGHTags:
     """
     import nibabel as nib
 
-    for extension in getattr(nib.load(str(path)).header, "extensions", []):
+    header = nib.load(str(path)).header
+    tags = MGHTags()
+    for extension in getattr(header, "extensions", []):
         if extension.get_code() == NIFTI_ECODE_FREESURFER:
-            return decode_nifti_extension(_extension_bytes(extension))
-    return MGHTags()
+            tags = decode_nifti_extension(_extension_bytes(extension))
+            break
+    factor = _TR_TO_MS.get(header.get_xyzt_units()[1])
+    tr = float(header["pixdim"][4]) * factor if factor is not None else 0.0
+    if tr > 0 or tags.scan is not None:
+        tags.scan = replace(tags.scan or ScanParameters(), tr=tr)
+    return tags
 
 
 def read_image_tags(path: str | Path) -> MGHTags:
@@ -751,9 +820,11 @@ def save_nifti_with_tags(image: Any, out: str | Path, tags: MGHTags | None) -> N
     """Save a NIfTI image with ``tags`` as its FreeSurfer extension.
 
     Any FreeSurfer extension the image already carries is replaced, never
-    duplicated; other extensions are kept. The extension is attached only for
-    the save, so the caller's image and every other header field are left as
-    they were.
+    duplicated; other extensions are kept. A known TR is written where NIfTI
+    keeps it, ``pixdim[4]`` in seconds with the time unit set, as FreeSurfer
+    does, so every NIfTI reader sees it. Both changes are made only for the
+    save, so the caller's image and its other header fields are left as they
+    were.
 
     Parameters
     ----------
@@ -775,14 +846,46 @@ def save_nifti_with_tags(image: Any, out: str | Path, tags: MGHTags | None) -> N
     content = None if tags is None else encode_nifti_extension(tags)
     header = image.header
     original = header.extensions
+    original_pixdim = header["pixdim"].copy()
+    original_units = header["xyzt_units"].copy()
     kept = [extension for extension in original if extension.get_code() != NIFTI_ECODE_FREESURFER]
     if content is not None:
         kept.append(Nifti1Extension(NIFTI_ECODE_FREESURFER, content))
     header.extensions = Nifti1Extensions(kept)
+    tr = tags.scan.tr if tags is not None and tags.scan is not None else 0.0
     try:
+        if tr > 0:
+            pixdim = original_pixdim.copy()
+            pixdim[4] = tr / 1000.0
+            header["pixdim"] = pixdim
+            spatial = header.get_xyzt_units()[0]
+            header.set_xyzt_units(xyz="mm" if spatial == "unknown" else spatial, t="sec")
         nib.save(image, str(out))
     finally:
         header.extensions = original
+        header["pixdim"] = original_pixdim
+        header["xyzt_units"] = original_units
+
+
+def apply_scan_parameters_to_mgh(header: Any, scan: ScanParameters) -> None:
+    """Set an MGH header's TR, TE, TI and flip angle from ``scan``.
+
+    Parameters
+    ----------
+    header : nibabel.freesurfer.mghformat.MGHHeader
+        Header to update in place.
+    scan : ScanParameters
+        Acquisition parameters, in FreeSurfer's units.
+
+    Returns
+    -------
+    None
+        The header is updated in place.
+    """
+    header["tr"] = scan.tr
+    header["te"] = scan.te
+    header["ti"] = scan.ti
+    header["flip_angle"] = scan.flip_angle
 
 
 def write_image_tags(
@@ -832,6 +935,10 @@ def write_image_tags(
 
     image = nib.load(str(source))
     tags = read_nifti_tags(source).rebase_xform(Path(source).parent, out.parent)
+    if tags.scan is not None:
+        # TR already sits in the header being copied; restating it would only
+        # risk rewriting its units.
+        tags.scan = replace(tags.scan, tr=0.0)
     if xform is not None:
         _replace_tag(tags.tags, (TAG_MGH_XFORM, xform.encode() + b"\0"), replaces=(TAG_MGH_XFORM,), prepend=True)
     if color_table is not None:
@@ -976,7 +1083,10 @@ def _split_mgh(raw: bytes, name: str) -> tuple[bytes, MGHTags]:
     if len(raw) < scan_end:
         raise ValueError(f"{name} is truncated inside its scan parameters")
 
-    tags = MGHTags()
+    # Stored as TR, flip angle, TE, TI and field of view, the last of which the
+    # header geometry already gives.
+    tr, flip_angle, te, ti, _ = struct.unpack(">5f", raw[footer:scan_end])
+    tags = MGHTags(scan=ScanParameters(tr=tr, te=te, ti=ti, flip_angle=flip_angle))
     reader = _Reader(raw, scan_end)
     try:
         while len(raw) - reader.pos >= 4:
@@ -1014,6 +1124,52 @@ def _write_mgh(out: Path, body: bytes, tags: MGHTags) -> None:
     if out.name.lower().endswith(".mgz"):
         raw = gzip.compress(raw, compresslevel=_GZIP_LEVEL)
     _atomic_write(out, raw)
+
+
+def _field_strength(payload: bytes | None) -> float:
+    """Return the field strength an MGH tag 43 holds, or 0 when it has none.
+
+    Unlike every other MGH value, FreeSurfer writes this float in the byte
+    order of the machine it runs on (``mriio.cpp``: "written to file in native
+    endian"). Every platform FreeSurfer is built for is little-endian, so the
+    tag is read and written that way.
+    """
+    if payload is None or len(payload) != 4:
+        return 0.0
+    return float(struct.unpack("<f", payload)[0])
+
+
+def _encode_scan_parameters(tags: MGHTags) -> bytes | None:
+    """Build FreeSurfer's NIfTI scan-parameter tag, or ``None`` if it says nothing.
+
+    The layout is ``FStagsIO::write_scan_parameters``: TE and TI as big-endian
+    float32, the flip angle as float64, the field strength as float32, then the
+    phase-encode direction, with its NUL when known and as ``UNKNOWN`` without
+    one otherwise.
+    """
+    scan = tags.scan or ScanParameters()
+    payloads = dict(tags.tags)
+    pedir = _decode_c_string(payloads.get(TAG_PEDIR, b"")).encode()
+    known_pedir = pedir not in (b"", _UNKNOWN_PEDIR)
+    field_strength = _field_strength(payloads.get(TAG_FIELDSTRENGTH))
+    if not (known_pedir or field_strength or scan.te or scan.ti or scan.flip_angle):
+        return None
+    fixed = struct.pack(">ffdf", scan.te, scan.ti, scan.flip_angle, field_strength)
+    return fixed + (pedir + b"\0" if known_pedir else _UNKNOWN_PEDIR)
+
+
+def _decode_scan_parameters(payload: bytes) -> tuple[ScanParameters, list[tuple[int, bytes]]]:
+    """Split a NIfTI scan-parameter tag into acquisition parameters and MGH tags."""
+    if len(payload) < 20:
+        raise ValueError(f"the scan-parameter tag holds {len(payload)} bytes, fewer than its 20 fixed ones")
+    te, ti, flip_angle, field_strength = struct.unpack(">ffdf", payload[:20])
+    pedir = _decode_c_string(payload[20:]).encode()
+    tags: list[tuple[int, bytes]] = []
+    if pedir not in (b"", _UNKNOWN_PEDIR):
+        tags.append((TAG_PEDIR, pedir + b"\0"))
+    if field_strength:
+        tags.append((TAG_FIELDSTRENGTH, struct.pack("<f", field_strength)))
+    return ScanParameters(te=te, ti=ti, flip_angle=flip_angle), tags
 
 
 def _decode_matrix(payload: bytes) -> np.ndarray:

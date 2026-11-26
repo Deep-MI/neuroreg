@@ -612,9 +612,15 @@ In NIfTI, the extension is written only when there are tags, and a FreeSurfer
 extension carried over from a source header is replaced rather than duplicated.
 FreeSurfer's own copy of the geometry (`TAG_RAS_XFORM`) is not written, as surfa
 does not write it either: FreeSurfer then takes the geometry from the sform or
-qform, so it cannot go stale. The phase-encode direction, field strength and
-frame metadata have a different layout in the extension and are not stored
-there yet.
+qform, so it cannot go stale.
+
+Acquisition parameters cross between the formats as FreeSurfer 8 moves them:
+TR goes into `pixdim[4]` in seconds with the time unit set, so every NIfTI
+reader sees it, and TE, TI, flip angle, field strength and phase-encode
+direction go into the extension's scan-parameter tag. A NIfTI whose time unit
+is unknown has no TR, as in FreeSurfer, since nibabel writes `pixdim[4] = 1`
+there by default. Frame metadata has a different layout in the extension and is
+not stored there.
 
 The transform path is recorded relative to the output's directory by default,
 so a subject directory stays valid when it is moved. FreeSurfer first looks for
