@@ -609,11 +609,14 @@ def write_mgh_tags(
 
 
 def write_mgh_image(image: Any, out: str | Path, tags: MGHTags) -> None:
-    """Write an ``MGHImage`` followed by ``tags``.
+    """Write an ``MGHImage`` followed by ``tags``, and no other tags.
 
     nibabel writes the header, voxels and scan parameters, which is everything
-    up to where the tags begin, so its output is used unchanged and the tags
-    are appended to it.
+    up to where the tags begin, so that part of its output is used and the
+    tags are appended to it. Anything nibabel writes after the scan parameters
+    is cut off first: newer nibabel versions write back the tags a header was
+    read with while the header is unchanged (nipy/nibabel#1540), which would
+    otherwise precede these and bring back tags left out on purpose.
 
     Parameters
     ----------
@@ -637,7 +640,9 @@ def write_mgh_image(image: Any, out: str | Path, tags: MGHTags) -> None:
     out = Path(out)
     if not out.name.lower().endswith(_MGH_SUFFIXES):
         raise ValueError(f"tags can only be stored in MGH volumes (.mgz or .mgh), not {out.name!r}")
-    _write_mgh(out, image.to_bytes(), tags)
+    raw = image.to_bytes()
+    end = MGHHeader.from_fileobj(io.BytesIO(raw)).get_footer_offset() + _SCAN_PARAMETERS_SIZE
+    _write_mgh(out, raw[:end], tags)
 
 
 def inherit_tags(

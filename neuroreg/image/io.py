@@ -447,10 +447,11 @@ def save_image(image: Any, path: str | Path, tags: MGHTags | None = None) -> Non
     data dtype to float32 when converting from a non-MGH source (see
     :func:`as_mgh_image`).
 
-    nibabel neither reads nor writes the tags FreeSurfer stores after the
-    voxels of an MGH volume, so ``tags`` are written explicitly. Which tags an
-    output should carry depends on what produced it, so the caller decides,
-    typically with :func:`~neuroreg.image.mgh_tags.inherit_tags`.
+    nibabel does not interpret the tags FreeSurfer stores after the voxels of
+    an MGH volume (newer versions only write back unchanged ones), so ``tags``
+    are written explicitly. Which tags an output should carry depends on what
+    produced it, so the caller decides, typically with
+    :func:`~neuroreg.image.mgh_tags.inherit_tags`.
 
     Parameters
     ----------
@@ -461,9 +462,10 @@ def save_image(image: Any, path: str | Path, tags: MGHTags | None = None) -> Non
     tags : MGHTags or None, optional
         FreeSurfer tags to store: after the voxels for MGH/MGZ, as FreeSurfer's
         NIfTI header extension (code 14) for ``.nii``/``.nii.gz``, where an
-        extension carried over from a source header is replaced. Analyze pairs
-        cannot hold them, which is logged. ``None`` leaves NIfTI extensions as
-        nibabel carries them.
+        extension carried over from a source header is replaced. Given, they
+        are the only tags written, even when there are none. Analyze pairs
+        cannot hold them, which is logged. ``None`` leaves tags and NIfTI
+        extensions to nibabel.
 
     Returns
     -------
@@ -487,7 +489,12 @@ def save_image(image: Any, path: str | Path, tags: MGHTags | None = None) -> Non
             # An MGH source's header already holds these; a NIfTI source's
             # reach the MGH scan parameters only this way.
             apply_scan_parameters_to_mgh(image.header, tags.scan)
-        if has_tags:
+        if has_tags or (tags is not None and header is not None):
+            # The caller decided the tags, so they are written even when there
+            # are none if the header came from an MGH source: nib.save would
+            # write back the tags that header was read with. A fresh header
+            # carries none, so nib.save, which streams rather than building
+            # the file in memory, stays the path for it.
             write_mgh_image(image, destination, tags)
             return
     elif suffix in _NIFTI_SUFFIXES and tags is not None:
