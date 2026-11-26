@@ -252,24 +252,6 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">.regdat</span><span class="w"> </span><span class="kn">import</span> <span class="n">RegisterDat</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_is_nifti_like</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">"""Return whether a filename looks like a NIfTI/Analyze image path.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    path : str</span>
-<span class="sd">        Candidate image filename.</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    bool</span>
-<span class="sd">        ``True`` when the suffix matches one of the NIfTI/Analyze extensions</span>
-<span class="sd">        that trigger FSL's handedness convention adjustments.</span>
-<span class="sd">    """</span>
-    <span class="n">lower</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
-    <span class="k">return</span> <span class="n">lower</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">'.nii'</span><span class="p">)</span> <span class="ow">or</span> <span class="n">lower</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">'.nii.gz'</span><span class="p">)</span> <span class="ow">or</span> <span class="n">lower</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">'.img'</span><span class="p">)</span> <span class="ow">or</span> <span class="n">lower</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">'.hdr'</span><span class="p">)</span>
-
-
 <span class="k">def</span><span class="w"> </span><span class="nf">_diag_spacing</span><span class="p">(</span><span class="n">info</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Construct a diagonal voxel-size matrix from volume metadata.</span>
 
@@ -291,13 +273,22 @@
     <span class="k">return</span> <span class="n">mat</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_apply_fsl_nifti_convention</span><span class="p">(</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_apply_fsl_convention</span><span class="p">(</span>
         <span class="n">ref</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
         <span class="n">mov</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
         <span class="n">d_ref</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
         <span class="n">d_mov</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">"""Apply FSL's NIfTI handedness convention to spacing matrices.</span>
+<span class="w">    </span><span class="sd">"""Apply FSL's handedness convention to spacing matrices.</span>
+
+<span class="sd">    FLIRT works in scaled voxel coordinates, and for an image whose</span>
+<span class="sd">    voxel-to-RAS affine has a positive determinant (neurological storage) it</span>
+<span class="sd">    flips the first voxel axis, so its coordinates always have the handedness</span>
+<span class="sd">    of radiological storage. The flip depends only on the determinant: FLIRT</span>
+<span class="sd">    reads every image as NIfTI, so the matrix is in this convention whatever</span>
+<span class="sd">    file the geometry is later taken from (``.mgz``, a geometry JSON, or an</span>
+<span class="sd">    in-memory image). FreeSurfer's ``MRIfsl2TkReg`` and ``MRItkreg2FSL``</span>
+<span class="sd">    apply the same rule.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -309,7 +300,7 @@
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    tuple[np.ndarray, np.ndarray]</span>
-<span class="sd">        Possibly adjusted ``(d_ref, d_mov)`` pair following FSL's NIfTI</span>
+<span class="sd">        Possibly adjusted ``(d_ref, d_mov)`` pair following FSL's</span>
 <span class="sd">        convention for positive-determinant affines.</span>
 <span class="sd">    """</span>
     <span class="n">ref_aff</span> <span class="o">=</span> <span class="n">affine_from_volume_info</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span>
@@ -341,13 +332,8 @@
 <span class="sd">    np.ndarray</span>
 <span class="sd">        Equivalent ``(4, 4)`` affine in tkregister voxel-space convention.</span>
 <span class="sd">    """</span>
-    <span class="n">inv_d_mov</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">_diag_spacing</span><span class="p">(</span><span class="n">mov</span><span class="p">))</span>
-    <span class="n">d_ref</span> <span class="o">=</span> <span class="n">_diag_spacing</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span>
-    <span class="n">mov_path</span> <span class="o">=</span> <span class="n">mov</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'filename'</span><span class="p">,</span> <span class="s1">''</span><span class="p">)</span>
-    <span class="n">ref_path</span> <span class="o">=</span> <span class="n">ref</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'filename'</span><span class="p">,</span> <span class="s1">''</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">_is_nifti_like</span><span class="p">(</span><span class="n">mov_path</span><span class="p">)</span> <span class="ow">or</span> <span class="n">_is_nifti_like</span><span class="p">(</span><span class="n">ref_path</span><span class="p">):</span>
-        <span class="n">d_ref</span><span class="p">,</span> <span class="n">d_mov</span> <span class="o">=</span> <span class="n">_apply_fsl_nifti_convention</span><span class="p">(</span><span class="n">ref</span><span class="p">,</span> <span class="n">mov</span><span class="p">,</span> <span class="n">d_ref</span><span class="p">,</span> <span class="n">_diag_spacing</span><span class="p">(</span><span class="n">mov</span><span class="p">))</span>
-        <span class="n">inv_d_mov</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">d_mov</span><span class="p">)</span>
+    <span class="n">d_ref</span><span class="p">,</span> <span class="n">d_mov</span> <span class="o">=</span> <span class="n">_apply_fsl_convention</span><span class="p">(</span><span class="n">ref</span><span class="p">,</span> <span class="n">mov</span><span class="p">,</span> <span class="n">_diag_spacing</span><span class="p">(</span><span class="n">ref</span><span class="p">),</span> <span class="n">_diag_spacing</span><span class="p">(</span><span class="n">mov</span><span class="p">))</span>
+    <span class="n">inv_d_mov</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">d_mov</span><span class="p">)</span>
     <span class="n">t_mov</span> <span class="o">=</span> <span class="n">vox2tkras_from_volume_info</span><span class="p">(</span><span class="n">mov</span><span class="p">)</span>
     <span class="n">t_ref</span> <span class="o">=</span> <span class="n">vox2tkras_from_volume_info</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">t_mov</span> <span class="o">@</span> <span class="n">inv_d_mov</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">fsl_matrix</span><span class="p">)</span> <span class="o">@</span> <span class="n">d_ref</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">t_ref</span><span class="p">)</span>
@@ -368,12 +354,7 @@
 <span class="sd">    np.ndarray</span>
 <span class="sd">        Equivalent ``(4, 4)`` affine in FSL voxel-space convention.</span>
 <span class="sd">    """</span>
-    <span class="n">d_mov</span> <span class="o">=</span> <span class="n">_diag_spacing</span><span class="p">(</span><span class="n">mov</span><span class="p">)</span>
-    <span class="n">d_ref</span> <span class="o">=</span> <span class="n">_diag_spacing</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span>
-    <span class="n">mov_path</span> <span class="o">=</span> <span class="n">mov</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'filename'</span><span class="p">,</span> <span class="s1">''</span><span class="p">)</span>
-    <span class="n">ref_path</span> <span class="o">=</span> <span class="n">ref</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'filename'</span><span class="p">,</span> <span class="s1">''</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">_is_nifti_like</span><span class="p">(</span><span class="n">mov_path</span><span class="p">)</span> <span class="ow">or</span> <span class="n">_is_nifti_like</span><span class="p">(</span><span class="n">ref_path</span><span class="p">):</span>
-        <span class="n">d_ref</span><span class="p">,</span> <span class="n">d_mov</span> <span class="o">=</span> <span class="n">_apply_fsl_nifti_convention</span><span class="p">(</span><span class="n">ref</span><span class="p">,</span> <span class="n">mov</span><span class="p">,</span> <span class="n">d_ref</span><span class="p">,</span> <span class="n">d_mov</span><span class="p">)</span>
+    <span class="n">d_ref</span><span class="p">,</span> <span class="n">d_mov</span> <span class="o">=</span> <span class="n">_apply_fsl_convention</span><span class="p">(</span><span class="n">ref</span><span class="p">,</span> <span class="n">mov</span><span class="p">,</span> <span class="n">_diag_spacing</span><span class="p">(</span><span class="n">ref</span><span class="p">),</span> <span class="n">_diag_spacing</span><span class="p">(</span><span class="n">mov</span><span class="p">))</span>
     <span class="n">t_mov</span> <span class="o">=</span> <span class="n">vox2tkras_from_volume_info</span><span class="p">(</span><span class="n">mov</span><span class="p">)</span>
     <span class="n">t_ref</span> <span class="o">=</span> <span class="n">vox2tkras_from_volume_info</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">d_mov</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">t_mov</span><span class="p">)</span> <span class="o">@</span> <span class="n">tkreg_matrix</span> <span class="o">@</span> <span class="n">t_ref</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">d_ref</span><span class="p">))</span>
