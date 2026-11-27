@@ -18,13 +18,18 @@ Example::
 multireg
 --------
 
-Longitudinal multi-timepoint template construction with reusable LTAs for later
-template rebuilds, optionally on a caller-defined voxel grid.
+Longitudinal multi-timepoint template construction: a pre-alignment to one time
+point, then a global loop to the template (two time points need only the
+pre-alignment). The registration can start from initial transforms such as
+``segreg`` poses to an atlas, keeping their pose, and the resulting LTAs can be
+reused for later template rebuilds, optionally on a caller-defined voxel grid.
 
 Examples::
 
    multireg --mov tp1.mgz tp2.mgz tp3.mgz --template subject_template.mgz \
             --lta tp1.lta tp2.lta tp3.lta --average median
+   multireg --mov tp1_norm.mgz tp2_norm.mgz --ixforms tp1_pose.lta tp2_pose.lta \
+            --template base.mgz --lta tp1.lta tp2.lta
    multireg --mov tp1_orig.mgz tp2_orig.mgz tp3_orig.mgz \
             --template subject_template_orig.mgz \
             --ixforms tp1.lta tp2.lta tp3.lta --noit --average median
