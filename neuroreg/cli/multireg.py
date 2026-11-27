@@ -121,8 +121,9 @@ def _build_parser() -> argparse.ArgumentParser:
         "--noit",
         action="store_true",
         help=(
-            "Skip the global loop and build the template from the pre-alignment. With --ixforms "
-            "there is no pre-alignment either, so the inputs are only mapped, as in FreeSurfer."
+            "Skip the global loop and build the template from the pre-alignment; the same as "
+            "--iterate 0. With --ixforms there is no pre-alignment either, so the inputs are only "
+            "mapped, as in FreeSurfer."
         ),
     )
     iter_group.add_argument(
@@ -130,8 +131,9 @@ def _build_parser() -> argparse.ArgumentParser:
         type=int,
         metavar="N",
         help=(
-            "Maximum number of global loop iterations, 6 by default. Only for 3 or more time "
-            "points: with 2 the pre-alignment is symmetric and is the registration."
+            "Maximum number of global loop iterations, 6 by default; 0 is the same as --noit. "
+            "Only for 3 or more time points: with 2 the pre-alignment is symmetric and is the "
+            "registration."
         ),
     )
     iter_group.add_argument(
@@ -260,20 +262,29 @@ def main(args=None) -> None:
         parser.error("--lta requires exactly one output path per --mov input.")
     if ns.ixforms is not None and len(ns.ixforms) != len(ns.mov):
         parser.error("--ixforms requires exactly one input LTA per --mov input.")
-    maps_only = ns.map_only or (ns.ixforms is not None and ns.noit and ns.prealign is None)
+    # --iterate 0 asks for exactly what --noit does, so every rule below reads
+    # this rather than either flag.
+    no_global_loop = ns.noit or ns.iterate == 0
+    maps_only = ns.map_only or (ns.ixforms is not None and no_global_loop and ns.prealign is None)
     if ns.map_only and ns.prealign is False:
         parser.error("--map-only already skips the pre-alignment; --no-prealign is redundant.")
     if ns.fixtp and (maps_only or ns.prealign is False):
         # --fixtp keeps the pre-alignment target's space, so there must be a
         # pre-alignment, and --ixforms --noit, like --map-only, has none.
-        source = "--no-prealign" if ns.prealign is False else "--map-only" if ns.map_only else "--ixforms with --noit"
+        source = (
+            "--no-prealign"
+            if ns.prealign is False
+            else "--map-only"
+            if ns.map_only
+            else "--ixforms with --noit (or --iterate 0)"
+        )
         parser.error(f"--fixtp keeps the space of the pre-alignment target, and {source} skips the pre-alignment.")
     if len(ns.mov) == 2 and ns.iterate:
         parser.error(
             "--iterate applies to 3 or more time points: with 2 the pre-alignment is symmetric and is the "
             "registration, so there is no global loop to iterate."
         )
-    if len(ns.mov) == 2 and ns.prealign is False and not ns.noit:
+    if len(ns.mov) == 2 and ns.prealign is False and not no_global_loop:
         parser.error(
             "With 2 time points the pre-alignment is the registration, so --no-prealign leaves nothing to "
             "register. Use --map-only to only map the inputs."

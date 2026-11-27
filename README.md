@@ -129,8 +129,8 @@ multireg --mov <tp1.nii.gz> <tp2.nii.gz> ... --template <template.nii.gz> [optio
 | `--ixforms FILE ...` | —        | Initial transforms into template space. The pre-alignment starts from them and the template keeps their pose, on their shared destination grid (only its orientation if its voxel size differs from the inputs'). |
 | `--template-geom FILE` | —      | Image supplying the output template geometry instead of deriving one. With `--ixforms`, their destination geometry is then ignored and need not be present. |
 | `--average MODE`     | `median` | Template aggregation mode: `mean`, `median`, `0` (=mean), or `1` (=median).     |
-| `--noit`             | off      | Skip the global loop. With `--ixforms` there is no pre-alignment either, so the inputs are only mapped, as in FreeSurfer. |
-| `--iterate N`        | `6`      | Maximum number of global loop iterations; 3 or more time points only.           |
+| `--noit`             | off      | Skip the global loop; the same as `--iterate 0`. With `--ixforms` there is no pre-alignment either, so the inputs are only mapped, as in FreeSurfer. |
+| `--iterate N`        | `6`      | Maximum number of global loop iterations (`0` is `--noit`); 3 or more time points only. |
 | `--map-only`         | off      | Do not register: map with `--ixforms`, or through the headers, and build the template. |
 | `--no-prealign`      | off      | Register only in the global loop, from `--ixforms` or the headers, without choosing a target time point. 3 or more time points only. |
 | `--fixtp`            | off      | Keep the pre-alignment target's space instead of the unbiased one; with `--template-geom`, sampled on that grid. |

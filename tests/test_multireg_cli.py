@@ -302,6 +302,7 @@ class TestMultiregCli:
         ("flags", "reason"),
         [
             (["--ixforms", "tp1.lta", "tp2.lta", "--noit", "--fixtp"], "--ixforms with --noit"),
+            (["--ixforms", "tp1.lta", "tp2.lta", "--iterate", "0", "--fixtp"], "--ixforms with --noit"),
             (["--map-only", "--fixtp"], "--map-only"),
             (["--no-prealign", "--noit", "--fixtp"], "--no-prealign"),
             (["--no-prealign"], "Use --map-only"),
@@ -360,6 +361,37 @@ class TestMultiregCli:
         assert "ERROR:" in err
         assert "must include valid destination geometry" in err
         assert "lta convert --dst" in err
+
+    @pytest.mark.parametrize("no_loop", [["--noit"], ["--iterate", "0"]])
+    def test_main_maps_two_time_points_without_prealignment_with_either_spelling(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, no_loop: list[str]
+    ):
+        # --iterate 0 is --noit, so both must reach the same call.
+        mov1 = tmp_path / "tp1.nii.gz"
+        mov2 = tmp_path / "tp2.nii.gz"
+        _write_zero_image(mov1)
+        _write_zero_image(mov2)
+        captured: dict[str, Any] = {}
+
+        def fake_multireg(*args, **kwargs):
+            captured.update(kwargs)
+            identity = np.eye(4, dtype=np.float64)
+            return MultiRegResult(
+                template_image=nib.Nifti1Image(np.ones((8, 8, 8), dtype=np.float32), np.eye(4, dtype=np.float32)),
+                transforms_r2r=[identity, identity],
+                ltas=[],
+                initial_target_index=0,
+                seed=123,
+            )
+
+        monkeypatch.setattr("neuroreg.cli.multireg.multireg", fake_multireg)
+
+        multireg_main(
+            ["--mov", str(mov1), str(mov2), "--template", str(tmp_path / "t.nii.gz"), "--no-prealign", *no_loop]
+        )
+
+        assert captured["prealign"] is False
+        assert captured["template_iterations"] == 0
 
     def test_main_accepts_fixtp_without_ixforms(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         # The rejection must be specific to the combination, not to --fixtp.
