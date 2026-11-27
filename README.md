@@ -93,14 +93,28 @@ robreg --mov T1_repeat.nii.gz --ref T1_baseline.mgz --out T1_repeat_to_T1_baseli
 Builds a within-subject template from multiple same-contrast time points using
 the robust pairwise `robreg` path as its registration kernel.
 
+As in FreeSurfer's `mri_robust_template`, registration has two phases: a
+**pre-alignment**, which registers every time point to one target time point and
+builds an unbiased initial space from the results, and a **global loop**, which
+registers every time point to the current template and rebuilds it. With two
+time points the pre-alignment is the whole registration: it is symmetric, and the
+mean of two images is their median, so there is no global loop.
+
 This command supports these key workflows:
 
 - full multi-timepoint registration and template construction
-- template rebuilding from precomputed LTAs via `--ixforms`, which is useful for
-  the later FastSurfer-style "reuse transforms and just rebuild the template"
-  pass
+- registration started from initial transforms via `--ixforms`, for example
+  poses to an atlas from `segreg`: the pre-alignment starts from them and the
+  template keeps their pose, so the base comes out upright
+- template rebuilding from precomputed LTAs via `--ixforms ... --noit` (or
+  `--map-only`), the FastSurfer-style "reuse transforms and just rebuild the
+  template" pass
 - template building on a caller-defined voxel grid via `--template-geom`, for
   example one written by `mri geom`
+
+Time points must share one voxel size; differing ones are rejected unless
+`--allow-diff-vox-size` is given, since the template takes the coarsest and finer
+time points would be downsampled.
 
 ```
 multireg --mov <tp1.nii.gz> <tp2.nii.gz> ... --template <template.nii.gz> [options]
@@ -112,13 +126,17 @@ multireg --mov <tp1.nii.gz> <tp2.nii.gz> ... --template <template.nii.gz> [optio
 |----------------------|----------|---------------------------------------------------------------------------------|
 | `--template FILE`    | required | Output template image.                                                          |
 | `--lta FILE ...`     | —        | Optional output LTAs, one per input time point.                                 |
-| `--ixforms FILE ...` | —        | Reuse precomputed LTAs as input transforms into template space.                 |
+| `--ixforms FILE ...` | —        | Initial transforms into template space. The pre-alignment starts from them and the template keeps their pose, on their shared destination grid (only its orientation if its voxel size differs from the inputs'). |
 | `--template-geom FILE` | —      | Image supplying the output template geometry instead of deriving one. With `--ixforms`, their destination geometry is then ignored and need not be present. |
 | `--average MODE`     | `median` | Template aggregation mode: `mean`, `median`, `0` (=mean), or `1` (=median).     |
-| `--noit`             | off      | Stop after the initial template build instead of running iterative refinement.  |
-| `--iterate N`        | auto     | Maximum number of refinement iterations (`0` for 2 TPs, `6` for 3+ by default). |
+| `--noit`             | off      | Skip the global loop. With `--ixforms` there is no pre-alignment either, so the inputs are only mapped, as in FreeSurfer. |
+| `--iterate N`        | `6`      | Maximum number of global loop iterations; 3 or more time points only.           |
+| `--map-only`         | off      | Do not register: map with `--ixforms`, or through the headers, and build the template. |
+| `--no-prealign`      | off      | Register only in the global loop, from `--ixforms` or the headers, without choosing a target time point. 3 or more time points only. |
+| `--fixtp`            | off      | Keep the pre-alignment target's space instead of the unbiased one.              |
+| `--allow-diff-vox-size` | off   | Accept differing voxel sizes, with a warning.                                   |
 | `--template-eps F`   | `0.03`   | Stop iterative refinement when the maximum transform update falls below this.   |
-| `--inittp N`         | auto     | 1-based initial target time point.                                              |
+| `--inittp N`         | auto     | 1-based pre-alignment target time point.                                        |
 | `--mapmov FILE ...`  | —        | Optional output paths for mapped input images in template space, one per input. |
 | `--keep-dtype`       | off      | Preserve each input's own dtype for `--mapmov` outputs and the initial target's dtype for the template. |
 
@@ -134,9 +152,16 @@ multireg --mov tp1_orig.mgz tp2_orig.mgz tp3_orig.mgz \
          --template subject_template_orig.mgz \
          --ixforms tp1.lta tp2.lta tp3.lta --noit --average median
 
-# Build on a caller-defined grid, here one created with mri geom. The input
-# poses only initialize the registrations, so they need no destination geometry
-# (segreg fits them against centroids and marks their destination invalid).
+# Upright base: start from poses to the MNI centroid target. The template keeps
+# their orientation, at the inputs' voxel size.
+for tp in tp1 tp2; do
+  segreg --seg ${tp}_aseg.mgz --centroids mni_icbm152_t1_tal_nlin_asym_09c --dof 6 --lta ${tp}_pose.lta
+done
+multireg --mov tp1_norm.mgz tp2_norm.mgz --ixforms tp1_pose.lta tp2_pose.lta \
+         --template base.mgz --lta tp1.lta tp2.lta
+
+# Build on a caller-defined grid, here one created with mri geom. The grid comes
+# from --template-geom, so the poses need no destination geometry of their own.
 mri geom --o std.mgz --like tp1_conform.mgz --orientation LIA --cras -0.1,-16.4,6.2
 multireg --mov tp1_norm.mgz tp2_norm.mgz tp3_norm.mgz \
          --ixforms tp1_pose.lta tp2_pose.lta tp3_pose.lta \

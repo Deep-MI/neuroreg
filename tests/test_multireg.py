@@ -64,20 +64,20 @@ def test_seed_and_initial_target_choice_are_deterministic():
     assert choice1[1] == seed1
 
 
-def test_multireg_warns_on_voxel_size_mismatch(monkeypatch: pytest.MonkeyPatch):
+def test_multireg_rejects_differing_voxel_sizes_unless_allowed(monkeypatch: pytest.MonkeyPatch):
+    # As in FreeSurfer: the template takes the coarsest size, so a finer time
+    # point would be downsampled, which the caller has to ask for.
     images = [
         _make_img(affine=np.diag([1.0, 1.0, 1.0, 1.0])),
         _make_img(affine=np.diag([1.2, 1.0, 1.0, 1.0])),
     ]
     register_module = importlib.import_module("neuroreg.multireg.register")
+    monkeypatch.setattr(register_module, "robreg", lambda *args, **kwargs: _fake_tensor(np.eye(4, dtype=np.float64)))
 
-    def fake_robreg(src, trg, **kwargs):
-        return _fake_tensor(np.eye(4, dtype=np.float64))
-
-    monkeypatch.setattr(register_module, "robreg", fake_robreg)
-
-    with pytest.warns(RuntimeWarning, match="Input voxel sizes differ"):
-        result = multireg(images, init_target_index=0, nmax=1, template_iterations=0)
+    with pytest.raises(ValueError, match="voxel sizes differ"):
+        multireg(images, init_target_index=0, nmax=1)
+    with pytest.warns(RuntimeWarning, match="voxel sizes differ"):
+        result = multireg(images, init_target_index=0, nmax=1, allow_diff_vox_size=True)
 
     assert len(result.transforms_r2r) == 2
 
@@ -111,79 +111,107 @@ def test_multireg_builds_template_and_expected_transforms(monkeypatch: pytest.Mo
     assert result.iteration_distances == []
 
 
-def test_multireg_honours_iterate_for_two_inputs_when_init_ltas_replace_the_pairwise_pass(
-    monkeypatch: pytest.MonkeyPatch,
+def _translation(x: float) -> np.ndarray:
+    matrix = np.eye(4, dtype=np.float64)
+    matrix[0, 3] = x
+    return matrix
+
+
+def _init_ltas(matrices, images, template_image) -> list[LTA]:
+    return [
+        LTA.from_matrix(matrix, f"tp{index + 1}.nii.gz", image, "template.nii.gz", template_image, lta_type=1)
+        for index, (matrix, image) in enumerate(zip(matrices, images, strict=False))
+    ]
+
+
+def test_two_inputs_have_no_global_loop(monkeypatch: pytest.MonkeyPatch):
+    # The pre-alignment of two time points is symmetric and is the registration,
+    # so asking for iterations, or for registration without it, is an error.
+    images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0))]
+    register_module = importlib.import_module("neuroreg.multireg.register")
+    monkeypatch.setattr(register_module, "robreg", lambda *args, **kwargs: _fake_tensor(np.eye(4, dtype=np.float64)))
+
+    with pytest.raises(ValueError, match="no global loop"):
+        multireg(images, init_target_index=0, nmax=1, template_iterations=2)
+    with pytest.raises(ValueError, match="leaves nothing"):
+        multireg(images, init_target_index=0, nmax=1, prealign=False)
+    assert multireg(images, init_target_index=0, nmax=1).template_iterations_run == 0
+
+
+@pytest.mark.parametrize(("fix_target", "expected_x"), [(False, [-0.2, -1.3]), (True, [0.0, -1.1])])
+def test_init_ltas_seed_the_prealignment_and_keep_their_pose(
+    monkeypatch: pytest.MonkeyPatch, fix_target: bool, expected_x: list[float]
 ):
-    # The two-timepoint skip assumes the opening robust pass ran and landed the
-    # mean space exactly by symmetry. init_ltas replaces that pass, so without
-    # refinement the supplied transforms come straight back out unchanged.
+    # TP 2 starts from its pose relative to the target, and the registration
+    # refines it by 0.4 mm. Without fix_target that correction is split evenly,
+    # so the template stays where the given transforms put it on average; with
+    # fix_target the target keeps its given transform.
     images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0))]
+    given = [np.eye(4, dtype=np.float64), _translation(-1.5)]
+    seeds = []
     register_module = importlib.import_module("neuroreg.multireg.register")
-    monkeypatch.setattr(
-        register_module,
-        "robreg",
-        lambda *args, **kwargs: _fake_tensor(np.eye(4, dtype=np.float64)),
-    )
-    template_image = _make_img()
-    init_ltas = []
-    for index, image in enumerate(images):
-        matrix = np.eye(4, dtype=np.float64)
-        matrix[0, 3] = -1.5 * index
-        init_ltas.append(
-            LTA.from_matrix(matrix, f"tp{index + 1}.nii.gz", image, "template.nii.gz", template_image, lta_type=1)
-        )
 
-    result = multireg(images, init_target_index=0, init_ltas=init_ltas, nmax=1, template_iterations=2)
+    def fake_robreg(src, trg, **kwargs):
+        seeds.append(np.asarray(kwargs["init_transform"]))
+        return _fake_tensor(kwargs["init_transform"] @ _translation(0.4))
 
-    assert result.template_iterations_run > 0
-    # Without the pairwise pass, an ignored request returns the inputs verbatim.
-    assert not np.array_equal(np.asarray(result.transforms_r2r[1]), init_ltas[1].r2r())
+    monkeypatch.setattr(register_module, "robreg", fake_robreg)
 
-
-def test_multireg_refines_two_inputs_with_init_ltas_without_being_asked(monkeypatch: pytest.MonkeyPatch):
-    # The default of zero for two inputs rests on the same symmetry argument as
-    # the skip, so it cannot hold when init_ltas replaced the pairwise pass:
-    # asking for nothing would otherwise mean no registration ran at all.
-    images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0))]
-    register_module = importlib.import_module("neuroreg.multireg.register")
-    monkeypatch.setattr(
-        register_module,
-        "robreg",
-        lambda *args, **kwargs: _fake_tensor(np.eye(4, dtype=np.float64)),
-    )
-    template_image = _make_img()
-    init_ltas = []
-    for index, image in enumerate(images):
-        matrix = np.eye(4, dtype=np.float64)
-        matrix[0, 3] = -1.5 * index
-        init_ltas.append(
-            LTA.from_matrix(matrix, f"tp{index + 1}.nii.gz", image, "template.nii.gz", template_image, lta_type=1)
-        )
-
-    result = multireg(images, init_target_index=0, init_ltas=init_ltas, nmax=1)
-
-    assert result.template_iterations_run > 0
-    assert not np.array_equal(np.asarray(result.transforms_r2r[1]), init_ltas[1].r2r())
-
-    # --noit is how the caller asks for the transforms exactly as given.
-    mapped_only = multireg(images, init_target_index=0, init_ltas=init_ltas, nmax=1, template_iterations=0)
-    assert mapped_only.template_iterations_run == 0
-    assert np.array_equal(np.asarray(mapped_only.transforms_r2r[1]), init_ltas[1].r2r())
-
-
-def test_multireg_still_skips_iterations_for_two_inputs_that_were_registered(monkeypatch: pytest.MonkeyPatch):
-    # The original reasoning still holds when the pairwise pass does run.
-    images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0))]
-    register_module = importlib.import_module("neuroreg.multireg.register")
-    monkeypatch.setattr(
-        register_module,
-        "robreg",
-        lambda *args, **kwargs: _fake_tensor(np.eye(4, dtype=np.float64)),
+    result = multireg(
+        images, init_target_index=0, init_ltas=_init_ltas(given, images, _make_img()), nmax=1, fix_target=fix_target
     )
 
-    result = multireg(images, init_target_index=0, nmax=1, template_iterations=2)
-
+    assert seeds[0] == pytest.approx(given[1])
+    assert [matrix[0, 3] for matrix in result.transforms_r2r] == pytest.approx(expected_x)
     assert result.template_iterations_run == 0
+
+
+def test_two_inputs_can_only_be_mapped_without_the_prealignment(monkeypatch: pytest.MonkeyPatch):
+    images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0))]
+    register_module = importlib.import_module("neuroreg.multireg.register")
+    monkeypatch.setattr(register_module, "robreg", lambda *args, **kwargs: pytest.fail("mapping registers nothing"))
+    given = [np.eye(4, dtype=np.float64), _translation(-1.5)]
+
+    result = multireg(images, init_ltas=_init_ltas(given, images, _make_img()), prealign=False, template_iterations=0)
+
+    assert result.transforms_r2r[1] == pytest.approx(given[1])
+
+
+def test_no_prealign_registers_only_in_the_global_loop(monkeypatch: pytest.MonkeyPatch):
+    # No time point is chosen as a target: every registration is to the template.
+    images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0)), _make_img(shift=(-2, 0, 0))]
+    targets = []
+    register_module = importlib.import_module("neuroreg.multireg.register")
+
+    def fake_robreg(src, trg, **kwargs):
+        targets.append(trg)
+        return _fake_tensor(np.eye(4, dtype=np.float64))
+
+    monkeypatch.setattr(register_module, "robreg", fake_robreg)
+
+    result = multireg(images, init_target_index=0, nmax=1, prealign=False, template_iterations=1)
+
+    assert len(targets) == 3
+    assert not any(target is image for target in targets for image in images)
+    assert result.template_iterations_run == 1
+
+
+def test_init_ltas_grid_keeps_the_orientation_but_takes_the_inputs_voxel_size(monkeypatch: pytest.MonkeyPatch):
+    # An atlas destination is typically 1 mm; finer inputs must not be resampled
+    # onto it, but the template should keep its orientation (here LIA).
+    voxel = 0.8
+    images = [_make_img(affine=np.diag([voxel, voxel, voxel, 1.0])) for _ in range(2)]
+    lia = np.array([[-1.0, 0, 0, 10], [0, 0, 1, -10], [0, -1, 0, 10], [0, 0, 0, 1]])
+    destination = nib.Nifti1Image(np.zeros((32, 32, 32), np.float32), lia)
+    register_module = importlib.import_module("neuroreg.multireg.register")
+    monkeypatch.setattr(register_module, "robreg", lambda *args, **kwargs: pytest.fail("mapping registers nothing"))
+    identity = np.eye(4, dtype=np.float64)
+
+    result = multireg(images, init_ltas=_init_ltas([identity, identity], images, destination), template_iterations=0)
+
+    affine = np.asarray(result.template_image.affine)
+    assert np.linalg.norm(affine[:3, :3], axis=0) == pytest.approx([voxel] * 3)
+    assert affine[:3, :3] / voxel == pytest.approx(lia[:3, :3])
 
 
 def test_multireg_iterative_refinement_reuses_previous_transforms(monkeypatch: pytest.MonkeyPatch):
@@ -304,41 +332,13 @@ def test_multireg_rebuilds_template_from_precomputed_ltas(monkeypatch: pytest.Mo
     assert len(result.mapped_images) == 2
 
 
-def test_multireg_rejects_fix_target_with_init_ltas(monkeypatch: pytest.MonkeyPatch):
-    # Both determine the template space, so accepting the pair would silently
-    # discard one. A caller who passes both should be told, not have to find it
-    # in a log.
-    images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0))]
+def test_multireg_fix_target_needs_the_prealignment(monkeypatch: pytest.MonkeyPatch):
+    images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0)), _make_img(shift=(-2, 0, 0))]
     register_module = importlib.import_module("neuroreg.multireg.register")
-    template_image = _make_img()
-    identity = np.eye(4, dtype=np.float64)
-    init_ltas = [
-        LTA.from_matrix(identity, f"tp{index + 1}.nii.gz", image, "template.nii.gz", template_image, lta_type=1)
-        for index, image in enumerate(images)
-    ]
-    monkeypatch.setattr(
-        register_module,
-        "robreg",
-        lambda *args, **kwargs: pytest.fail("multireg must reject the pair before registering"),
-    )
+    monkeypatch.setattr(register_module, "robreg", lambda *args, **kwargs: _fake_tensor(np.eye(4, dtype=np.float64)))
 
-    with pytest.raises(ValueError, match="pass only one"):
-        multireg(images, init_target_index=0, init_ltas=init_ltas, template_iterations=0, fix_target=True)
-
-
-def test_multireg_accepts_fix_target_without_init_ltas(monkeypatch: pytest.MonkeyPatch):
-    # The rejection must be specific to the combination, not to fix_target.
-    images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0))]
-    register_module = importlib.import_module("neuroreg.multireg.register")
-    monkeypatch.setattr(
-        register_module,
-        "robreg",
-        lambda *args, **kwargs: _fake_tensor(np.eye(4, dtype=np.float64)),
-    )
-
-    result = multireg(images, init_target_index=0, nmax=1, template_iterations=0, fix_target=True)
-
-    assert result.template_image.shape == images[0].shape
+    with pytest.raises(ValueError, match="needs the pre-alignment"):
+        multireg(images, init_target_index=0, prealign=False, fix_target=True)
 
 
 def _geom_affine(voxel_size: float, corner: tuple[float, float, float]) -> np.ndarray:

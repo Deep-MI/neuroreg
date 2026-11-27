@@ -25,8 +25,10 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="multireg",
         description=(
             "FreeSurfer-style multi-timepoint robust registration.\n"
-            "Registers all time points to a deterministic initial target,\n"
-            "constructs an unbiased mean space, and iteratively refines the template."
+            "A pre-alignment registers all time points to a deterministic initial target\n"
+            "and constructs an unbiased mean space; a global loop then registers them to\n"
+            "the template and refines it. With two time points the pre-alignment alone is\n"
+            "the registration."
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -55,10 +57,11 @@ def _build_parser() -> argparse.ArgumentParser:
         nargs="*",
         metavar="FILE",
         help=(
-            "Optional input LTAs, one per --mov image. They initialize each registration and "
-            "supply the template geometry from their (shared) destination geometry, so a coarse "
-            "pre-alignment is enough. Template iterations refine them, meaning the output LTAs "
-            "usually differ; add --noit to use them exactly as given."
+            "Optional input LTAs, one per --mov image, for example poses to an atlas. The "
+            "pre-alignment starts from them and keeps their pose, so the template lands in the "
+            "space they define, on their shared destination grid (only its orientation if its "
+            "voxel size differs from the inputs'). Add --noit to use them exactly as given, as in "
+            "FreeSurfer, or --no-prealign to start the global loop from them directly."
         ),
     )
     p.add_argument(
@@ -97,9 +100,10 @@ def _build_parser() -> argparse.ArgumentParser:
         "--fixtp",
         action="store_true",
         help=(
-            "Keep the chosen initial target as the output space instead of constructing an "
-            "unbiased mean space. Cannot be combined with --ixforms or --template-geom, which "
-            "supply the template space themselves."
+            "Keep the pre-alignment target's space instead of constructing an unbiased mean space. "
+            "With --ixforms the template sits where the target's transform puts it. Needs the "
+            "pre-alignment, and cannot be combined with --template-geom, which supplies the "
+            "template space itself."
         ),
     )
     p.add_argument(
@@ -115,17 +119,45 @@ def _build_parser() -> argparse.ArgumentParser:
     iter_group.add_argument(
         "--noit",
         action="store_true",
-        help="Stop after the initial mean-space pass instead of iteratively refining the template.",
+        help=(
+            "Skip the global loop and build the template from the pre-alignment. With --ixforms "
+            "there is no pre-alignment either, so the inputs are only mapped, as in FreeSurfer."
+        ),
     )
     iter_group.add_argument(
         "--iterate",
         type=int,
         metavar="N",
         help=(
-            "Maximum number of template-refinement iterations. Defaults to 6 for 3+ "
-            "time points and 0 for 2, where the initial pass is already exact by "
-            "symmetry and an explicit count is ignored. Neither applies when --ixforms "
-            "replaced that pass: refinement then runs, and --noit asks for none."
+            "Maximum number of global loop iterations, 6 by default. Only for 3 or more time "
+            "points: with 2 the pre-alignment is symmetric and is the registration."
+        ),
+    )
+    iter_group.add_argument(
+        "--map-only",
+        action="store_true",
+        help=(
+            "Do not register: map each input with its --ixforms transform, or through its header "
+            "without --ixforms, and build the template from them."
+        ),
+    )
+    p.add_argument(
+        "--no-prealign",
+        dest="prealign",
+        action="store_false",
+        default=None,
+        help=(
+            "Skip the pre-alignment and register only in the global loop, starting from --ixforms "
+            "or from the image headers. Avoids choosing a target time point. Needs 3 or more time "
+            "points, since with 2 the pre-alignment is the registration; use --map-only there."
+        ),
+    )
+    p.add_argument(
+        "--allow-diff-vox-size",
+        action="store_true",
+        help=(
+            "Accept inputs with different voxel sizes, with a warning. By default they are "
+            "rejected: the template takes the coarsest size, so finer time points are downsampled."
         ),
     )
     p.add_argument(
@@ -227,14 +259,24 @@ def main(args=None) -> None:
         parser.error("--lta requires exactly one output path per --mov input.")
     if ns.ixforms is not None and len(ns.ixforms) != len(ns.mov):
         parser.error("--ixforms requires exactly one input LTA per --mov input.")
-    if ns.ixforms is not None and ns.fixtp:
-        # Both choose the template space: --fixtp keeps the initial target time
-        # point's grid, --ixforms takes it from the given LTAs' destination
-        # geometry. Honouring one would silently discard the other. The
-        # transforms differ only as a consequence of landing in a different
-        # space; --inittp is what selects the registration target, and it
-        # composes with either flag.
-        parser.error("--ixforms and --fixtp both determine the template space; pass only one.")
+    maps_only = ns.map_only or (ns.ixforms is not None and ns.noit and ns.prealign is None)
+    if ns.map_only and ns.prealign is False:
+        parser.error("--map-only already skips the pre-alignment; --no-prealign is redundant.")
+    if ns.fixtp and (maps_only or ns.prealign is False):
+        # --fixtp keeps the pre-alignment target's space, so there must be a
+        # pre-alignment, and --ixforms --noit, like --map-only, has none.
+        source = "--no-prealign" if ns.prealign is False else "--map-only" if ns.map_only else "--ixforms with --noit"
+        parser.error(f"--fixtp keeps the space of the pre-alignment target, and {source} skips the pre-alignment.")
+    if len(ns.mov) == 2 and ns.iterate:
+        parser.error(
+            "--iterate applies to 3 or more time points: with 2 the pre-alignment is symmetric and is the "
+            "registration, so there is no global loop to iterate."
+        )
+    if len(ns.mov) == 2 and ns.prealign is False and not ns.noit:
+        parser.error(
+            "With 2 time points the pre-alignment is the registration, so --no-prealign leaves nothing to "
+            "register. Use --map-only to only map the inputs."
+        )
     if ns.template_geom is not None and ns.fixtp:
         # Same reasoning as above: --fixtp keeps the initial target time point's
         # grid, --template-geom supplies a grid outright.
@@ -270,7 +312,7 @@ def main(args=None) -> None:
         print(f"ERROR loading image: {exc}", file=sys.stderr)
         sys.exit(1)
     logger.info("Starting multireg with %d time points.", len(mov_imgs))
-    template_iterations = 0 if ns.noit else ns.iterate
+    template_iterations = 0 if ns.noit or ns.map_only else ns.iterate
     try:
         result = multireg(
             mov_imgs,
@@ -289,6 +331,8 @@ def main(args=None) -> None:
             use_cras_center=ns.cras_center,
             template_iterations=template_iterations,
             template_eps=ns.template_eps,
+            prealign=False if ns.map_only else ns.prealign,
+            allow_diff_vox_size=ns.allow_diff_vox_size,
             return_mapped=ns.mapmov is not None,
             mapped_keep_dtype=ns.keep_dtype,
             verbose=ns.verbose or ns.debug,

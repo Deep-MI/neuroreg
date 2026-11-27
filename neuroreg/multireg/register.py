@@ -20,6 +20,7 @@ from ..transforms import LTA, affine_dist
 from .geometry import (
     check_template_grid_covers_inputs,
     create_template_geometry,
+    init_transform_template_geometry,
     mean_mapped_centroid,
     project_to_rotation,
     ras_center,
@@ -83,83 +84,78 @@ def _c_rand_choice(start: int, end: int, seed: int) -> int:
     return int(libc.rand() % (end - start + 1) + start)
 
 
-def _resolve_init_ltas(
+def _load_init_ltas(
     init_ltas: Sequence[TransformLike],
     *,
-    template_geometry: tuple[tuple[int, int, int], np.ndarray] | None = None,
-) -> tuple[
-    tuple[int, int, int],
-    np.ndarray,
-    list[np.ndarray],
-]:
-    """Resolve precomputed LTAs into template geometry and RAS transforms.
+    read_destination: bool,
+) -> tuple[list[np.ndarray], tuple[tuple[int, int, int], np.ndarray] | None]:
+    """Load precomputed LTAs as RAS transforms, with their shared destination grid.
 
     Parameters
     ----------
     init_ltas : sequence of TransformLike
         Precomputed timepoint-to-template LTAs or paths to them.
-    template_geometry : tuple or None, optional
-        Externally supplied ``(shape, affine)``. When given it is returned as
-        the template geometry and the destination blocks are never read, so the
-        transforms neither have to agree on a destination nor carry one at all.
-        That is what makes a pose fitted by ``segreg`` against a centroid target
-        that carries no geometry of its own usable here, since such a transform
-        has its destination block marked ``valid = 0``. The bundled targets do
-        carry one, so those poses already name a destination.
+    read_destination : bool
+        Whether the destination grid is needed. It is not when a template
+        geometry is supplied outright, and then the destination blocks are never
+        read, so the transforms neither have to agree on a destination nor carry
+        one at all. That is what makes a pose fitted by ``segreg`` against a
+        centroid target without geometry usable, since such a transform has its
+        destination block marked ``valid = 0``. The bundled targets do carry
+        one, so those poses already name a destination.
 
     Returns
     -------
-    template_shape : tuple of int
-        Template image shape, from ``template_geometry`` when given and from the
-        shared destination geometry otherwise.
-    template_affine : numpy.ndarray
-        Template voxel-to-RAS affine, from the same source.
     transforms_r2r : list of numpy.ndarray
         RAS-to-RAS matrices for each input time point.
+    destination : tuple or None
+        ``(shape, affine)`` of the shared destination grid, or ``None`` when
+        ``read_destination`` is ``False``.
 
     Raises
     ------
     ValueError
-        If ``init_ltas`` is empty, or no ``template_geometry`` is given and the
-        LTAs do not share identical destination geometry.
+        If ``init_ltas`` is empty, or the destination is needed and the LTAs do
+        not share an identical, valid one.
     """
     loaded_ltas = [LTA.read(transform) if isinstance(transform, str | Path) else transform for transform in init_ltas]
     if not loaded_ltas:
         raise ValueError("init_ltas must not be empty when provided.")
-    if template_geometry is not None:
-        return *template_geometry, [transform.r2r() for transform in loaded_ltas]
+    transforms_r2r = [np.asarray(transform.r2r(), dtype=np.float64) for transform in loaded_ltas]
+    if not read_destination:
+        return transforms_r2r, None
     template_shape, template_affine = template_geometry_from_lta(loaded_ltas[0])
-    transforms_r2r = [loaded_ltas[0].r2r()]
     for transform in loaded_ltas[1:]:
         current_shape, current_affine = template_geometry_from_lta(transform)
         if current_shape != template_shape or not np.allclose(current_affine, template_affine, atol=1e-6):
             raise ValueError("All init_ltas must share identical destination geometry.")
-        transforms_r2r.append(transform.r2r())
-    return template_shape, template_affine, transforms_r2r
+    return transforms_r2r, (template_shape, template_affine)
 
 
 def _resolve_iterations(
     template_iterations: int | None,
     n_images: int,
     *,
-    builds_initial_space: bool = True,
+    prealign: bool,
 ) -> int:
     """Resolve the requested number of global template-refinement iterations.
+
+    With two time points the pre-alignment is the registration: registering
+    one to the other is symmetric, and the mean of two images is also their
+    median, so both are represented equally and there is nothing for a global
+    loop to improve. Two time points therefore never run one, and a request for
+    it, or for registration without the pre-alignment, is an error rather than
+    being quietly changed.
 
     Parameters
     ----------
     template_iterations : int or None
-        User-requested maximum iteration count. ``None`` applies the FreeSurfer-
-        style defaults for two versus three-or-more time points.
+        User-requested maximum iteration count. ``None`` applies the defaults:
+        6 for three or more time points, and none for two.
     n_images : int
         Number of input time points.
-    builds_initial_space : bool, default=True
-        Whether the opening robust pairwise pass runs. Both the two-timepoint
-        default of zero and the refusal to honour an explicit count rest on that
-        pass having landed the mean space exactly by symmetry, so neither is
-        justified when it does not run. ``init_ltas`` replaces it, and then
-        nothing robust has happened: without refinement the supplied transforms
-        would come straight back out unchanged.
+    prealign : bool
+        Whether the pre-alignment runs.
 
     Returns
     -------
@@ -169,36 +165,58 @@ def _resolve_iterations(
     Raises
     ------
     ValueError
-        If ``template_iterations`` is negative.
+        If ``template_iterations`` is negative, or with two time points if it
+        asks for iterations, or if the pre-alignment is skipped without asking
+        for none (``0``), which only maps the inputs.
     """
-    skip_for_two = n_images <= 2 and builds_initial_space
-    if template_iterations is None:
-        return 0 if skip_for_two else 6
-    resolved = int(template_iterations)
-    if resolved < 0:
+    if template_iterations is not None and int(template_iterations) < 0:
         raise ValueError("template_iterations must be >= 0.")
-    if skip_for_two and resolved > 0:
-        logger.info("Skipping iterative template refinement because only two time points were provided.")
+    if n_images <= 2:
+        if template_iterations:
+            raise ValueError(
+                "With two time points the pre-alignment is the registration: it is symmetric, and the mean "
+                "of two images is their median, so there is no global loop to iterate. Leave "
+                "template_iterations unset, or pass 0 together with prealign=False to only map the inputs."
+            )
+        if not prealign and template_iterations is None:
+            raise ValueError(
+                "With two time points the pre-alignment is the registration, so skipping it leaves nothing "
+                "to register. Pass template_iterations=0 to only map the inputs (--map-only)."
+            )
         return 0
-    return resolved
+    return 6 if template_iterations is None else int(template_iterations)
 
 
-def _build_initial_space(
+def _prealign(
     images: Sequence[Any],
     masks: Sequence[Any | None],
     *,
     target_index: int,
+    init_r2r: Sequence[np.ndarray] | None,
     init_type: InitType,
     nmax: int,
     sat: float,
     symmetric: bool,
     device: str,
-    use_cras_center: bool,
     fix_target: bool,
     verbose: bool,
-    template_geometry: tuple[tuple[int, int, int], np.ndarray] | None = None,
-) -> tuple[tuple[int, int, int], np.ndarray, list[np.ndarray]]:
-    """Build the initial common space from pairwise registrations.
+) -> tuple[list[np.ndarray], list[np.ndarray], np.ndarray]:
+    """Register every time point to the target and build the initial common space.
+
+    Without ``init_r2r`` this is FreeSurfer's opening round: each time point is
+    registered to the target, and the transforms are composed with the mean of
+    the target-to-each transforms, which places the template in the unbiased
+    middle space (or, with ``fix_target``, they are kept in the target's space).
+
+    With ``init_r2r`` (timepoint-to-template transforms ``X``) each registration
+    starts from the relative pose ``X_target^-1 X_i``, and the result is
+    expressed in the space the transforms define: time point ``i`` maps through
+    the target's given transform, ``X_target P_i``. The average correction
+    relative to the given transforms is then removed, so the template stays
+    where they put it on average whichever time point was the target. With
+    ``fix_target`` it is not removed, and the template sits where the target's
+    own transform puts it. With identity transforms both reduce exactly to the
+    case without ``init_r2r``.
 
     Parameters
     ----------
@@ -207,9 +225,12 @@ def _build_initial_space(
     masks : sequence of Any or None
         Optional per-timepoint masks aligned with ``images``.
     target_index : int
-        Index of the initial target time point.
+        Index of the target time point.
+    init_r2r : sequence of numpy.ndarray or None
+        Optional initial timepoint-to-template RAS transforms.
     init_type : InitType
-        Pairwise initialization mode forwarded to ``robreg``.
+        Pairwise initialization mode forwarded to ``robreg`` when no initial
+        transforms are given.
     nmax : int
         Maximum number of outer IRLS iterations per pairwise call.
     sat : float
@@ -218,35 +239,31 @@ def _build_initial_space(
         Whether to use symmetric halfway-space pairwise registration.
     device : str
         Torch device string forwarded to ``robreg``.
-    use_cras_center : bool
-        If ``True``, center the template on the average image CRAS instead of the
-        average mapped intensity centroid.
     fix_target : bool
-        If ``True``, keep the initial target geometry instead of constructing an
-        unbiased mean-space grid.
+        If ``True``, keep the target's space instead of the average one.
     verbose : bool
         Whether to request verbose logging from the pairwise kernel.
-    template_geometry : tuple or None, optional
-        Externally supplied ``(shape, affine)``. When given it is returned as
-        the template geometry and none is derived, so neither the mapped
-        centroid nor the averaged input orientation is computed. The transforms
-        are unaffected: they map into the same common RAS space either way.
 
     Returns
     -------
-    template_shape : tuple of int
-        Output template grid shape.
-    template_affine : numpy.ndarray
-        Output template voxel-to-RAS affine.
     transforms_r2r : list of numpy.ndarray
-        Initial timepoint-to-template RAS transforms.
+        Timepoint-to-template RAS transforms.
+    pairwise_r2r : list of numpy.ndarray
+        Timepoint-to-target RAS transforms from the pairwise registrations.
+    mean_space_from_target_r2r : numpy.ndarray
+        RAS transform from the target into the template space, as used to place
+        a derived grid; the identity with ``fix_target``.
 
     Raises
     ------
     ValueError
-        If the composed mean-space transform is measurably non-rigid.
+        If a composed transform is measurably non-rigid.
     """
-    pairwise_r2r: list[np.ndarray] = [np.eye(4, dtype=np.float64) for _ in images]
+    identity = np.eye(4, dtype=np.float64)
+    given = [identity] * len(images) if init_r2r is None else [np.asarray(m, dtype=np.float64) for m in init_r2r]
+    target_given = given[target_index]
+    target_given_inv = np.linalg.inv(target_given)
+    pairwise_r2r: list[np.ndarray] = [identity.copy() for _ in images]
     target_image = images[target_index]
     target_mask = masks[target_index]
     for index, (image, mask) in enumerate(zip(images, masks, strict=False)):
@@ -260,6 +277,7 @@ def _build_initial_space(
             src_mask=mask,
             trg_mask=target_mask,
             init_type=init_type,
+            init_transform=None if init_r2r is None else target_given_inv @ given[index],
             nmax=nmax,
             sat=sat,
             symmetric=symmetric,
@@ -272,46 +290,22 @@ def _build_initial_space(
         else:
             pairwise_r2r[index] = np.asarray(pairwise_result, dtype=np.float64)
     if fix_target:
-        return (
-            tuple(int(v) for v in target_image.shape[:3]),
-            np.asarray(target_image.affine, dtype=np.float64),
-            pairwise_r2r,
-        )
+        return [target_given @ matrix for matrix in pairwise_r2r], pairwise_r2r, identity
 
-    target_to_each = [np.linalg.inv(matrix) for matrix in pairwise_r2r]
-    # Build the unbiased mean space exactly as FreeSurfer's MultiRegistration:
-    # average the translation parts arithmetically and average the rotation parts
-    # via their axis-angle rotation vectors (log-Euclidean mean on SO(3)).
-    # Averaging the rotation matrices directly and SVD-projecting (the previous
-    # approach) biases the template pose by a small fixed rotation (~0.1 deg).
-    mean_translation = np.mean(
-        np.stack([matrix[:3, 3] for matrix in target_to_each], axis=0),
-        axis=0,
-    )
-    mean_rotation = rotation_mean([matrix[:3, :3] for matrix in target_to_each])
-    mean_space_from_target_r2r = np.eye(4, dtype=np.float64)
-    mean_space_from_target_r2r[:3, :3] = mean_rotation
-    mean_space_from_target_r2r[:3, 3] = mean_translation
-    if template_geometry is not None:
-        # Deriving a grid here would read every input volume to find the mapped
-        # centroid and would average the input orientations, both of which can
-        # fail on inputs that an explicit grid is meant to accommodate.
-        template_shape, template_affine = template_geometry
-    else:
-        center_ras = (
-            np.mean(np.stack([ras_center(image) for image in images], axis=0), axis=0)
-            if use_cras_center
-            else mean_mapped_centroid(
-                images,
-                pairwise_r2r,
-                target_index=target_index,
-                mean_space_from_target_r2r=mean_space_from_target_r2r,
-            )
-        )
-        template_shape, template_affine = create_template_geometry(images, center_ras)
+    # Build the unbiased space as FreeSurfer's MultiRegistration does: average
+    # the translation parts arithmetically and the rotation parts via their
+    # axis-angle rotation vectors (log-Euclidean mean on SO(3)). Averaging the
+    # rotation matrices directly and SVD-projecting biases the template pose by
+    # a small fixed rotation (~0.1 deg). Each term maps the template back to
+    # itself through the target and time point i; without initial transforms it
+    # is the target-to-each transform, as in FreeSurfer.
+    corrections = [given[i] @ np.linalg.inv(pairwise_r2r[i]) @ target_given_inv for i in range(len(images))]
+    mean_space_from_target_r2r = identity.copy()
+    mean_space_from_target_r2r[:3, :3] = rotation_mean([matrix[:3, :3] for matrix in corrections])
+    mean_space_from_target_r2r[:3, 3] = np.mean(np.stack([matrix[:3, 3] for matrix in corrections], axis=0), axis=0)
     final_r2r = []
     for matrix in pairwise_r2r:
-        combined = mean_space_from_target_r2r @ matrix
+        combined = mean_space_from_target_r2r @ (target_given @ matrix)
         projected = project_to_rotation(combined[:3, :3])
         error = np.linalg.norm(projected - combined[:3, :3], ord="fro")
         if error > 1e-4:
@@ -321,7 +315,7 @@ def _build_initial_space(
             )
         combined[:3, :3] = projected
         final_r2r.append(combined)
-    return template_shape, template_affine, final_r2r
+    return final_r2r, pairwise_r2r, mean_space_from_target_r2r
 
 
 def compute_seed(movables: Sequence[ImageLike]) -> int:
@@ -425,11 +419,19 @@ def multireg(
     use_cras_center: bool = False,
     template_iterations: int | None = None,
     template_eps: float = 0.03,
+    prealign: bool | None = None,
+    allow_diff_vox_size: bool = False,
     return_mapped: bool = False,
     mapped_keep_dtype: bool = False,
     verbose: bool = False,
 ) -> MultiRegResult:
     """Run the FreeSurfer-style multi-timepoint registration pipeline.
+
+    The registration has two phases, as in FreeSurfer's ``mri_robust_template``:
+    a pre-alignment, which registers every time point to one target time point
+    and builds an unbiased initial space from the results, and a global loop,
+    which registers every time point to the current template and rebuilds it.
+    With two time points the pre-alignment alone is the registration.
 
     Parameters
     ----------
@@ -438,14 +440,16 @@ def multireg(
     masks : sequence of ImageLike or None, optional
         Optional per-timepoint masks aligned with ``movables``.
     init_ltas : sequence of TransformLike or None, optional
-        Optional precomputed LTAs supplying the initial timepoint-to-template
-        transforms and, from their shared destination geometry, the template
-        space. The transforms are starting points: each is refined by the
-        template iterations unless ``template_iterations`` is 0. Mutually
-        exclusive with ``fix_target`` and ``use_cras_center``, which choose or
-        place a template space these transforms already fix. When
+        Optional precomputed timepoint-to-template LTAs, for example poses to
+        an atlas. The pre-alignment starts from them, and its result is
+        expressed in the space they define, so the template keeps their pose.
+        The template grid takes their shared destination grid, or only its
+        orientation when its voxel size differs from the inputs' (see
+        :func:`~neuroreg.multireg.geometry.init_transform_template_geometry`).
+        With ``template_iterations=0`` and ``prealign`` unset they are used
+        exactly as given, as FreeSurfer's ``--ixforms --noit``. When
         ``template_geometry`` is given the destination geometry is ignored and
-        need not be present.
+        need not be present. Mutually exclusive with ``use_cras_center``.
     template_geometry : ImageLike or None, optional
         Optional image, path to one, or path to a JSON with a ``geometry``
         block (see :func:`neuroreg.image.load_geometry_source`) supplying the
@@ -463,10 +467,12 @@ def multireg(
         Seed override for initial target selection. ``None`` and ``0`` recompute
         the seed from image content.
     fix_target : bool, default=False
-        If ``True``, keep the initial target geometry instead of constructing an
-        unbiased mean-space template grid. Mutually exclusive with ``init_ltas``
-        and ``template_geometry``, which choose the template space themselves,
-        and with ``use_cras_center``, since no geometry is then derived.
+        If ``True``, keep the pre-alignment target's space instead of the
+        unbiased average one: without ``init_ltas`` the template takes the
+        target's own grid, with them it sits where the target's transform puts
+        it. Needs the pre-alignment. Mutually exclusive with
+        ``template_geometry``, which chooses the template space itself, and with
+        ``use_cras_center``, since no geometry is then derived.
     init_type : InitType or None, optional
         Pairwise registration initialization mode.
     nmax : int, default=5
@@ -483,15 +489,25 @@ def multireg(
         geometry is centered, so it is mutually exclusive with ``init_ltas``,
         ``template_geometry`` and ``fix_target``, none of which derives one.
     template_iterations : int or None, optional
-        Maximum number of global template-refinement passes. ``None`` uses the
-        built-in defaults for two versus three-or-more time points. With exactly
-        two time points both the default of zero and the refusal to honour an
-        explicit count rest on the opening pairwise pass having landed the mean
-        space exactly by symmetry, so neither applies when ``init_ltas``
-        replaced that pass: refinement then runs, and ``0`` asks for none.
+        Maximum number of global loop passes. ``None`` runs 6 for three or more
+        time points. Two time points never run the global loop, because the
+        pre-alignment already registers them symmetrically; asking for passes
+        then is an error.
     template_eps : float, default=0.03
         Convergence threshold in millimeters for the maximum per-iteration
         transform change.
+    prealign : bool or None, optional
+        Whether to run the pre-alignment. ``None`` runs it, except with
+        ``init_ltas`` and ``template_iterations=0``, which use the transforms as
+        given. Skipping it registers only in the global loop, starting from
+        ``init_ltas`` or from the image headers, which avoids choosing a target
+        time point. Two time points have no global loop, so they can skip it
+        only to map without registering (``template_iterations=0``).
+    allow_diff_vox_size : bool, default=False
+        Accept inputs with different voxel sizes, with a warning. By default
+        they are rejected, as in FreeSurfer: the template takes the coarsest
+        size, so finer time points would be downsampled and differ from the
+        rest in noise and detail.
     return_mapped : bool, default=False
         If ``True``, include mapped images in the returned result.
     mapped_keep_dtype : bool, default=False
@@ -535,11 +551,13 @@ def multireg(
 
     if init_ltas is not None and len(init_ltas) != len(images):
         raise ValueError("Number of init_ltas must match the number of input images.")
-    if init_ltas is not None and fix_target:
+    # FreeSurfer's --ixforms --noit: transforms given and no iterations asked
+    # for means they are final, so there is nothing to pre-align either.
+    resolved_prealign = prealign if prealign is not None else not (init_ltas is not None and template_iterations == 0)
+    if fix_target and not resolved_prealign:
         raise ValueError(
-            "init_ltas and fix_target both determine the template space; pass only one. "
-            "init_ltas take it from their shared destination geometry, fix_target from the "
-            "initial target time point."
+            "fix_target keeps the space of the pre-alignment target, so it needs the pre-alignment, which is "
+            "skipped here."
         )
     if template_geometry is not None and fix_target:
         raise ValueError(
@@ -553,8 +571,8 @@ def multireg(
     derives_geometry = init_ltas is None and template_geometry is None and not fix_target
     if use_cras_center and not derives_geometry:
         # use_cras_center picks between two ways of centering a grid that is
-        # being derived. Each alternative supplies a complete grid, placement
-        # included, so there is nothing left to center.
+        # being derived. Each alternative supplies the grid, or with init_ltas
+        # its orientation and placement, so there is nothing left to center.
         source = (
             "init_ltas"
             if init_ltas is not None
@@ -580,13 +598,14 @@ def multireg(
             np.asarray(geom_image.affine, dtype=np.float64),
         )
 
-    validate_input_geometries(images, derives_geometry=derives_geometry)
+    validate_input_geometries(images, derives_geometry=derives_geometry, allow_diff_vox_size=allow_diff_vox_size)
     resolved_init_type = resolve_init_type(init_type, default_init_type="centroid")
-    resolved_template_iterations = _resolve_iterations(
-        template_iterations,
-        len(images),
-        builds_initial_space=init_ltas is None,
-    )
+    resolved_template_iterations = _resolve_iterations(template_iterations, len(images), prealign=resolved_prealign)
+
+    init_r2r: list[np.ndarray] | None = None
+    destination: tuple[tuple[int, int, int], np.ndarray] | None = None
+    if init_ltas is not None:
+        init_r2r, destination = _load_init_ltas(init_ltas, read_destination=external_geometry is None)
 
     if init_target_index is None:
         init_target_index, resolved_seed = choose_initial_target(images, seed=seed)
@@ -594,28 +613,52 @@ def multireg(
         if not 0 <= init_target_index < len(images):
             raise ValueError(f"init_target_index must be in [0, {len(images) - 1}], got {init_target_index}.")
         resolved_seed = compute_seed(images) if seed in (None, 0) else int(seed)
-    logger.info("Using TP %d as the initial target (seed=%d).", init_target_index + 1, resolved_seed)
 
-    if init_ltas is None:
-        template_shape, template_affine, current_transforms = _build_initial_space(
+    identity = np.eye(4, dtype=np.float64)
+    if resolved_prealign:
+        logger.info("Using TP %d as the initial target (seed=%d).", init_target_index + 1, resolved_seed)
+        current_transforms, pairwise_r2r, mean_space_from_target_r2r = _prealign(
             images,
             loaded_masks,
             target_index=init_target_index,
+            init_r2r=init_r2r,
             init_type=resolved_init_type,
             nmax=nmax,
             sat=sat,
             symmetric=symmetric,
             device=device,
-            use_cras_center=use_cras_center,
             fix_target=fix_target,
             verbose=verbose,
-            template_geometry=external_geometry,
         )
     else:
-        template_shape, template_affine, current_transforms = _resolve_init_ltas(
-            init_ltas,
-            template_geometry=external_geometry,
+        logger.info("Skipping the pre-alignment; starting from %s.", "init_ltas" if init_r2r else "the image headers")
+        current_transforms = [identity.copy() for _ in images] if init_r2r is None else init_r2r
+        pairwise_r2r = [identity.copy() for _ in images]
+        mean_space_from_target_r2r = identity
+
+    if external_geometry is not None:
+        # Deriving a grid would read every input volume to find the mapped
+        # centroid and would average the input orientations, both of which can
+        # fail on inputs that an explicit grid is meant to accommodate.
+        template_shape, template_affine = external_geometry
+    elif destination is not None:
+        template_shape, template_affine = init_transform_template_geometry(images, current_transforms, destination)
+    elif fix_target:
+        target = images[init_target_index]
+        template_shape = tuple(int(v) for v in target.shape[:3])
+        template_affine = np.asarray(target.affine, dtype=np.float64)
+    else:
+        center_ras = (
+            np.mean(np.stack([ras_center(image) for image in images], axis=0), axis=0)
+            if use_cras_center
+            else mean_mapped_centroid(
+                images,
+                pairwise_r2r,
+                target_index=init_target_index,
+                mean_space_from_target_r2r=mean_space_from_target_r2r,
+            )
         )
+        template_shape, template_affine = create_template_geometry(images, center_ras)
 
     check_template_grid_covers_inputs(
         images,

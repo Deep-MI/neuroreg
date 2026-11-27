@@ -66,13 +66,17 @@ class TestMultiregCli:
     def test_main_writes_template_ltas_and_mapmovs(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         mov1 = tmp_path / "tp1.nii.gz"
         mov2 = tmp_path / "tp2.nii.gz"
+        mov3 = tmp_path / "tp3.nii.gz"
         template = tmp_path / "template.nii.gz"
         lta1 = tmp_path / "tp1.lta"
         lta2 = tmp_path / "tp2.lta"
+        lta3 = tmp_path / "tp3.lta"
         mapmov1 = tmp_path / "tp1_mapped.nii.gz"
         mapmov2 = tmp_path / "tp2_mapped.nii.gz"
+        mapmov3 = tmp_path / "tp3_mapped.nii.gz"
         _write_zero_image(mov1)
         _write_zero_image(mov2)
+        _write_zero_image(mov3)
 
         captured: dict[str, Any] = {}
 
@@ -81,13 +85,12 @@ class TestMultiregCli:
             captured.update(kwargs)
             template_img = nib.Nifti1Image(np.ones((8, 8, 8), dtype=np.float32), np.eye(4, dtype=np.float32))
             mapped_images = [
-                nib.Nifti1Image(np.zeros((8, 8, 8), dtype=np.uint8), np.eye(4, dtype=np.float32)),
-                nib.Nifti1Image(np.zeros((8, 8, 8), dtype=np.uint8), np.eye(4, dtype=np.float32)),
+                nib.Nifti1Image(np.zeros((8, 8, 8), dtype=np.uint8), np.eye(4, dtype=np.float32)) for _ in range(3)
             ]
             identity = np.eye(4, dtype=np.float64)
             return MultiRegResult(
                 template_image=template_img,
-                transforms_r2r=[identity, identity],
+                transforms_r2r=[identity, identity, identity],
                 ltas=[],
                 initial_target_index=1,
                 seed=123,
@@ -108,14 +111,17 @@ class TestMultiregCli:
                 "--mov",
                 str(mov1),
                 str(mov2),
+                str(mov3),
                 "--template",
                 str(template),
                 "--lta",
                 str(lta1),
                 str(lta2),
+                str(lta3),
                 "--mapmov",
                 str(mapmov1),
                 str(mapmov2),
+                str(mapmov3),
                 "--average",
                 "1",
                 "--inittp",
@@ -140,12 +146,14 @@ class TestMultiregCli:
         assert captured["return_mapped"] is True
         assert captured["mapped_keep_dtype"] is True
         args = captured["args"][0]
-        assert len(args) == 2
+        assert len(args) == 3
         assert template.exists()
         assert lta1.exists()
         assert lta2.exists()
+        assert lta3.exists()
         assert mapmov1.exists()
         assert mapmov2.exists()
+        assert mapmov3.exists()
 
     def test_main_rejects_mismatched_lta_count(self, tmp_path: Path):
         mov1 = tmp_path / "tp1.nii.gz"
@@ -290,31 +298,31 @@ class TestMultiregCli:
                 ]
             )
 
-    def test_main_rejects_ixforms_with_fixtp(self, tmp_path: Path, capsys):
-        # Both choose the template space, so accepting the pair would silently
-        # discard --fixtp rather than doing what was asked.
+    @pytest.mark.parametrize(
+        ("flags", "reason"),
+        [
+            (["--ixforms", "tp1.lta", "tp2.lta", "--noit", "--fixtp"], "--ixforms with --noit"),
+            (["--map-only", "--fixtp"], "--map-only"),
+            (["--no-prealign", "--noit", "--fixtp"], "--no-prealign"),
+            (["--no-prealign"], "Use --map-only"),
+            (["--iterate", "3"], "no global loop"),
+        ],
+    )
+    def test_main_rejects_what_two_time_points_or_a_missing_prealignment_cannot_do(
+        self, tmp_path: Path, capsys, flags: list[str], reason: str
+    ):
+        # --fixtp keeps the pre-alignment target's space, so it needs one; and
+        # two time points are registered by the pre-alignment alone.
         mov1 = tmp_path / "tp1.nii.gz"
         mov2 = tmp_path / "tp2.nii.gz"
-        template = tmp_path / "template.nii.gz"
         _write_zero_image(mov1)
         _write_zero_image(mov2)
+        flags = [str(tmp_path / flag) if flag.endswith(".lta") else flag for flag in flags]
 
         with pytest.raises(SystemExit):
-            multireg_main(
-                [
-                    "--mov",
-                    str(mov1),
-                    str(mov2),
-                    "--template",
-                    str(template),
-                    "--ixforms",
-                    str(tmp_path / "tp1.lta"),
-                    str(tmp_path / "tp2.lta"),
-                    "--fixtp",
-                ]
-            )
+            multireg_main(["--mov", str(mov1), str(mov2), "--template", str(tmp_path / "template.nii.gz"), *flags])
 
-        assert "pass only one" in capsys.readouterr().err
+        assert reason in capsys.readouterr().err
 
     def test_main_reports_ixforms_without_destination_geometry(self, tmp_path: Path, capsys):
         # LTAs from atlas registration with no target image (e.g. centroid-based
