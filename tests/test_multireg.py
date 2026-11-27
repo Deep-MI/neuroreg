@@ -551,17 +551,23 @@ def test_multireg_accepts_a_template_grid_framing_part_of_the_inputs(monkeypatch
     assert result.template_image.shape[:3] == (6, 6, 6)
 
 
-def test_multireg_template_geometry_rejects_fix_target(monkeypatch: pytest.MonkeyPatch):
+def test_multireg_fix_target_with_template_geometry_samples_the_target_space_on_the_given_grid(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    # fix_target chooses where the time points land (the target's space, so
+    # its transform is the identity and the other is not averaged), and
+    # template_geometry only chooses the grid sampling that space.
     images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0))]
     register_module = importlib.import_module("neuroreg.multireg.register")
-    monkeypatch.setattr(
-        register_module,
-        "robreg",
-        lambda *args, **kwargs: pytest.fail("multireg must reject the pair before registering"),
-    )
+    monkeypatch.setattr(register_module, "robreg", lambda *args, **kwargs: _fake_tensor(_translation(1.0)))
+    grid = _make_img(shape=(15, 16, 17), affine=_geom_affine(0.8, (-1.0, -2.0, -3.0)))
 
-    with pytest.raises(ValueError, match="pass only one"):
-        multireg(images, init_target_index=0, template_iterations=0, template_geometry=_make_img(), fix_target=True)
+    result = multireg(images, init_target_index=0, nmax=1, template_geometry=grid, fix_target=True)
+
+    assert result.transforms_r2r[0] == pytest.approx(np.eye(4))
+    assert result.transforms_r2r[1] == pytest.approx(_translation(1.0))
+    assert result.template_image.shape[:3] == (15, 16, 17)
+    assert np.asarray(result.template_image.affine) == pytest.approx(grid.affine)
 
 
 def test_multireg_template_geometry_ignores_disagreeing_init_lta_geometry(monkeypatch: pytest.MonkeyPatch):

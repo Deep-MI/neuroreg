@@ -479,32 +479,6 @@ class TestMultiregCli:
             assert np.asarray(mapped.affine) == pytest.approx(geom_affine)
             assert _peak_ras(mapped) == pytest.approx(source_peak_ras, abs=1e-4)
 
-    def test_main_rejects_template_geom_with_fixtp(self, tmp_path: Path, capsys):
-        mov1 = tmp_path / "tp1.nii.gz"
-        mov2 = tmp_path / "tp2.nii.gz"
-        geom = tmp_path / "std.nii.gz"
-        _write_zero_image(mov1)
-        _write_zero_image(mov2)
-        _write_zero_image(geom)
-
-        with pytest.raises(SystemExit):
-            multireg_main(
-                [
-                    "--mov",
-                    str(mov1),
-                    str(mov2),
-                    "--template",
-                    str(tmp_path / "template.nii.gz"),
-                    "--template-geom",
-                    str(geom),
-                    "--fixtp",
-                ]
-            )
-
-        err = capsys.readouterr().err
-        assert "--template-geom and --fixtp" in err
-        assert "pass only one" in err
-
     def test_main_rejects_ixforms_with_cras_center(self, tmp_path: Path, capsys):
         # --ixforms supplies the template grid, placement included, so there is
         # nothing left for --cras-center to center.

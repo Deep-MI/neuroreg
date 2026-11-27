@@ -133,7 +133,7 @@ multireg --mov <tp1.nii.gz> <tp2.nii.gz> ... --template <template.nii.gz> [optio
 | `--iterate N`        | `6`      | Maximum number of global loop iterations; 3 or more time points only.           |
 | `--map-only`         | off      | Do not register: map with `--ixforms`, or through the headers, and build the template. |
 | `--no-prealign`      | off      | Register only in the global loop, from `--ixforms` or the headers, without choosing a target time point. 3 or more time points only. |
-| `--fixtp`            | off      | Keep the pre-alignment target's space instead of the unbiased one.              |
+| `--fixtp`            | off      | Keep the pre-alignment target's space instead of the unbiased one; with `--template-geom`, sampled on that grid. |
 | `--allow-diff-vox-size` | off   | Accept differing voxel sizes, with a warning.                                   |
 | `--template-eps F`   | `0.03`   | Stop iterative refinement when the maximum transform update falls below this.   |
 | `--inittp N`         | auto     | 1-based pre-alignment target time point.                                        |

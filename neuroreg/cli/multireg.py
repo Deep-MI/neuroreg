@@ -68,9 +68,10 @@ def _build_parser() -> argparse.ArgumentParser:
         "--template-geom",
         metavar="FILE",
         help=(
-            "Image or JSON with a geometry block supplying the output template geometry, replacing "
-            "the geometry multireg would otherwise derive. Only the header is read. With "
-            "--ixforms the destination geometry of the input transforms is then ignored and "
+            "Image or JSON with a geometry block supplying the output template grid, replacing "
+            "the one multireg would otherwise derive or take from --ixforms or --fixtp. Only the "
+            "header is read, and only the grid is chosen: where the time points land is still set "
+            "by the registration. With --ixforms their destination geometry is then ignored and "
             "need not be present."
         ),
     )
@@ -101,9 +102,9 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help=(
             "Keep the pre-alignment target's space instead of constructing an unbiased mean space. "
-            "With --ixforms the template sits where the target's transform puts it. Needs the "
-            "pre-alignment, and cannot be combined with --template-geom, which supplies the "
-            "template space itself."
+            "With --ixforms the template sits where the target's transform puts it. With "
+            "--template-geom that space is sampled on the given grid instead of the target's. "
+            "Needs the pre-alignment."
         ),
     )
     p.add_argument(
@@ -277,10 +278,6 @@ def main(args=None) -> None:
             "With 2 time points the pre-alignment is the registration, so --no-prealign leaves nothing to "
             "register. Use --map-only to only map the inputs."
         )
-    if ns.template_geom is not None and ns.fixtp:
-        # Same reasoning as above: --fixtp keeps the initial target time point's
-        # grid, --template-geom supplies a grid outright.
-        parser.error("--template-geom and --fixtp both determine the template space; pass only one.")
     if ns.cras_center and (ns.ixforms is not None or ns.template_geom is not None or ns.fixtp):
         # --cras-center only selects how a derived geometry is centered, and none
         # of these derives one: each supplies a grid, placement included.

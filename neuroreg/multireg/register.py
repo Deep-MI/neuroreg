@@ -453,11 +453,12 @@ def multireg(
     template_geometry : ImageLike or None, optional
         Optional image, path to one, or path to a JSON with a ``geometry``
         block (see :func:`neuroreg.image.load_geometry_source`) supplying the
-        output template geometry, replacing the geometry that would otherwise
-        be taken from ``init_ltas`` or derived from the inputs. Only the shape
-        and affine are used, not the voxel data. Mutually exclusive with
-        ``fix_target`` and ``use_cras_center``, both of which select a geometry
-        themselves.
+        output template geometry, replacing the grid that would otherwise be
+        taken from ``init_ltas``, the target (``fix_target``) or derived from the
+        inputs. Only the shape and affine are used, not the voxel data. It only
+        chooses the grid: the space the transforms land in is still set by the
+        registration, ``init_ltas`` and ``fix_target``. Mutually exclusive with
+        ``use_cras_center``, which only centers a derived grid.
     average : {"mean", "median", 0, 1}, default="median"
         Template aggregation mode. Integer aliases match the FreeSurfer CLI.
     init_target_index : int or None, optional
@@ -470,8 +471,8 @@ def multireg(
         If ``True``, keep the pre-alignment target's space instead of the
         unbiased average one: without ``init_ltas`` the template takes the
         target's own grid, with them it sits where the target's transform puts
-        it. Needs the pre-alignment. Mutually exclusive with
-        ``template_geometry``, which chooses the template space itself, and with
+        it. With ``template_geometry`` that space is sampled on the given grid
+        instead. Needs the pre-alignment. Mutually exclusive with
         ``use_cras_center``, since no geometry is then derived.
     init_type : InitType or None, optional
         Pairwise registration initialization mode.
@@ -558,12 +559,6 @@ def multireg(
         raise ValueError(
             "fix_target keeps the space of the pre-alignment target, so it needs the pre-alignment, which is "
             "skipped here."
-        )
-    if template_geometry is not None and fix_target:
-        raise ValueError(
-            "template_geometry and fix_target both determine the template space; pass only one. "
-            "template_geometry takes it from the given image, fix_target from the initial target "
-            "time point."
         )
     # The template geometry is derived from the inputs only when nothing else
     # supplies one. Both the centering choice and the orientation-averaging
