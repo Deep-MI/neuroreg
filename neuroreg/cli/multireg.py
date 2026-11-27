@@ -86,8 +86,8 @@ def _build_parser() -> argparse.ArgumentParser:
         type=int,
         metavar="N",
         help=(
-            "1-based initial target time point. When omitted, choose a deterministic "
-            "pseudo-random target from the inputs."
+            "1-based pre-alignment target time point. When omitted, choose a deterministic "
+            "pseudo-random target from the inputs. Needs the pre-alignment."
         ),
     )
     p.add_argument(
@@ -197,21 +197,21 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="init_type",
         action="store_const",
         const="header",
-        help="Use header alignment only for the pairwise registrations.",
+        help="Start each pre-alignment registration from the headers (not with --ixforms).",
     )
     init_group.add_argument(
         "--init-centroid",
         dest="init_type",
         action="store_const",
         const="centroid",
-        help="Initialize the pairwise registrations by aligning intensity centroids in RAS.",
+        help="Start each pre-alignment registration by aligning intensity centroids in RAS (default).",
     )
     init_group.add_argument(
         "--init-center",
         dest="init_type",
         action="store_const",
         const="image_center",
-        help="Initialize the pairwise registrations by aligning geometric image centers in RAS.",
+        help="Start each pre-alignment registration by aligning geometric image centers in RAS.",
     )
     p.add_argument(
         "--device",
@@ -224,7 +224,7 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help=(
             "Write --mapmov outputs in each input's own dtype and the --template "
-            "output in the initial target time point's dtype, instead of float32."
+            "output in the inputs' dtype, instead of float32. All inputs must share one dtype."
         ),
     )
     p.add_argument("--verbose", action="store_true", help="Enable INFO-level logging.")
@@ -303,6 +303,14 @@ def main(args=None) -> None:
         parser.error("--mapmov requires exactly one output path per --mov input.")
     if ns.inittp is not None and not 1 <= ns.inittp <= len(ns.mov):
         parser.error(f"--inittp must be in [1, {len(ns.mov)}].")
+    skips_prealign = maps_only or ns.prealign is False
+    if ns.inittp is not None and skips_prealign:
+        parser.error("--inittp chooses the pre-alignment target, and the pre-alignment is skipped here.")
+    if ns.init_type is not None and (ns.ixforms is not None or skips_prealign):
+        # The global loop always starts from the current transforms, so --init-*
+        # only ever chooses how a pre-alignment registration starts.
+        source = "--ixforms gives the starting poses" if ns.ixforms is not None else "there is no pre-alignment"
+        parser.error(f"--init-* chooses how each pre-alignment registration starts, and {source}.")
     level = logging.DEBUG if ns.debug else (logging.INFO if ns.verbose else logging.WARNING)
     logging.basicConfig(level=level, format="%(levelname)s %(name)s: %(message)s")
     logger = logging.getLogger("neuroreg.cli.multireg")
@@ -349,8 +357,9 @@ def main(args=None) -> None:
         # The template's values are new, built from all time points, so it
         # inherits nothing; it only records how it was made.
         save_image(result.template_image, ns.template, tags=MGHTags().with_history(history))
-        print(f"InitialTP:   {result.initial_target_index + 1}")
-        print(f"Seed:        {result.seed}")
+        initial_tp = "none" if result.initial_target_index is None else result.initial_target_index + 1
+        print(f"InitialTP:   {initial_tp}")
+        print(f"Seed:        {'none' if result.seed is None else result.seed}")
         print(f"Iterations:  {result.template_iterations_run}")
         if result.iteration_distances:
             print(f"LastChange:  {result.iteration_distances[-1]:.6f}")

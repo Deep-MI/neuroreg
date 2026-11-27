@@ -307,6 +307,9 @@ class TestMultiregCli:
             (["--no-prealign", "--noit", "--fixtp"], "--no-prealign"),
             (["--no-prealign"], "Use --map-only"),
             (["--iterate", "3"], "no global loop"),
+            (["--map-only", "--inittp", "1"], "--inittp chooses the pre-alignment target"),
+            (["--map-only", "--init-header"], "there is no pre-alignment"),
+            (["--ixforms", "tp1.lta", "tp2.lta", "--init-header"], "--ixforms gives the starting poses"),
         ],
     )
     def test_main_rejects_what_two_time_points_or_a_missing_prealignment_cannot_do(

@@ -10,6 +10,7 @@ import pytest
 
 from neuroreg.image import cast_image_dtype
 from neuroreg.multireg import choose_initial_target, compute_seed, multireg
+from neuroreg.multireg.geometry import validate_input_geometries
 from neuroreg.transforms import LTA
 
 
@@ -134,7 +135,7 @@ def test_two_inputs_have_no_global_loop(monkeypatch: pytest.MonkeyPatch):
     with pytest.raises(ValueError, match="no global loop"):
         multireg(images, init_target_index=0, nmax=1, template_iterations=2)
     with pytest.raises(ValueError, match="leaves nothing"):
-        multireg(images, init_target_index=0, nmax=1, prealign=False)
+        multireg(images, nmax=1, prealign=False)
     assert multireg(images, init_target_index=0, nmax=1).template_iterations_run == 0
 
 
@@ -189,11 +190,55 @@ def test_no_prealign_registers_only_in_the_global_loop(monkeypatch: pytest.Monke
 
     monkeypatch.setattr(register_module, "robreg", fake_robreg)
 
-    result = multireg(images, init_target_index=0, nmax=1, prealign=False, template_iterations=1)
+    result = multireg(images, nmax=1, prealign=False, template_iterations=1)
 
     assert len(targets) == 3
     assert not any(target is image for target in targets for image in images)
     assert result.template_iterations_run == 1
+    assert result.initial_target_index is None
+    assert result.seed is None
+
+
+def test_options_of_a_skipped_or_seeded_prealignment_are_rejected(monkeypatch: pytest.MonkeyPatch):
+    # The target and init_type only matter to the pre-alignment registrations,
+    # and init_type not even there once init_ltas give the starting poses.
+    images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0)), _make_img(shift=(-2, 0, 0))]
+    identity = np.eye(4, dtype=np.float64)
+    ltas = _init_ltas([identity] * 3, images, _make_img())
+    register_module = importlib.import_module("neuroreg.multireg.register")
+    monkeypatch.setattr(register_module, "robreg", lambda *args, **kwargs: _fake_tensor(identity))
+
+    with pytest.raises(ValueError, match="init_target_index chooses the pre-alignment target"):
+        multireg(images, init_target_index=0, prealign=False)
+    with pytest.raises(ValueError, match="init_type chooses"):
+        multireg(images, init_type="header", prealign=False)
+    with pytest.raises(ValueError, match="init_type chooses"):
+        multireg(images, init_type="header", init_ltas=ltas)
+
+
+@pytest.mark.parametrize("template_iterations", [None, 0])
+def test_non_rigid_init_ltas_are_only_accepted_for_mapping(monkeypatch: pytest.MonkeyPatch, template_iterations):
+    # Every registration is rigid, so a scaling can only be applied as given.
+    images = [_make_img(shift=(0, 0, 0)), _make_img(shift=(2, 0, 0)), _make_img(shift=(-2, 0, 0))]
+    scaled = np.diag([1.1, 1.0, 1.0, 1.0])
+    ltas = _init_ltas([np.eye(4), scaled, np.eye(4)], images, _make_img())
+    register_module = importlib.import_module("neuroreg.multireg.register")
+    monkeypatch.setattr(register_module, "robreg", lambda *args, **kwargs: _fake_tensor(np.eye(4)))
+
+    if template_iterations is None:
+        with pytest.raises(ValueError, match="TP 2 are not rigid"):
+            multireg(images, init_ltas=ltas, nmax=1)
+    else:
+        result = multireg(images, init_ltas=ltas, template_iterations=0)
+        assert result.transforms_r2r[1] == pytest.approx(scaled)
+
+
+def test_permuted_voxel_sizes_count_as_equal():
+    # One protocol scanned axially and sagittally stores the same sizes in
+    # another axis order; that is not a voxel size difference.
+    images = [_make_img(affine=np.diag([1.0, 1.0, 1.2, 1.0])), _make_img(affine=np.diag([1.2, 1.0, 1.0, 1.0]))]
+
+    validate_input_geometries(images)
 
 
 def test_init_ltas_grid_keeps_the_orientation_but_takes_the_inputs_voxel_size(monkeypatch: pytest.MonkeyPatch):
@@ -212,6 +257,28 @@ def test_init_ltas_grid_keeps_the_orientation_but_takes_the_inputs_voxel_size(mo
     affine = np.asarray(result.template_image.affine)
     assert np.linalg.norm(affine[:3, :3], axis=0) == pytest.approx([voxel] * 3)
     assert affine[:3, :3] / voxel == pytest.approx(lia[:3, :3])
+
+
+def test_init_ltas_grid_covers_an_input_stored_in_another_axis_order(monkeypatch: pytest.MonkeyPatch):
+    # A sagittal scan (slices along L-R) re-gridded into an LIA destination:
+    # each template axis must span the input's extent along that axis, not the
+    # input's extent along its own axis of the same index.
+    voxel = 0.8
+    sagittal = np.array([[0, 0, voxel, 0], [voxel, 0, 0, 0], [0, voxel, 0, 0], [0, 0, 0, 1.0]])
+    images = [_make_img((8, 30, 40), affine=sagittal) for _ in range(2)]
+    lia = np.array([[-1.0, 0, 0, 10], [0, 0, 1, -10], [0, -1, 0, 10], [0, 0, 0, 1]])
+    destination = nib.Nifti1Image(np.zeros((32, 32, 32), np.float32), lia)
+    register_module = importlib.import_module("neuroreg.multireg.register")
+    monkeypatch.setattr(register_module, "robreg", lambda *args, **kwargs: pytest.fail("mapping registers nothing"))
+    identity = np.eye(4, dtype=np.float64)
+
+    result = multireg(images, init_ltas=_init_ltas([identity, identity], images, destination), template_iterations=0)
+
+    # L-R spans 40 voxels, S-I 30 and A-P 8. The grid is centered on the image
+    # centers, at voxel shape / 2, which can cost up to two voxels of padding.
+    shape = np.asarray(result.template_image.shape[:3])
+    assert np.all(shape >= [40, 30, 8])
+    assert np.all(shape <= [42, 32, 10])
 
 
 def test_multireg_iterative_refinement_reuses_previous_transforms(monkeypatch: pytest.MonkeyPatch):
@@ -322,7 +389,7 @@ def test_multireg_rebuilds_template_from_precomputed_ltas(monkeypatch: pytest.Mo
         lambda *args, **kwargs: pytest.fail("robreg should not be called when reusing init_ltas with no iterations"),
     )
 
-    result = multireg(images, init_target_index=0, init_ltas=init_ltas, template_iterations=0, return_mapped=True)
+    result = multireg(images, init_ltas=init_ltas, template_iterations=0, return_mapped=True)
 
     assert len(result.transforms_r2r) == 2
     assert result.transforms_r2r[0] == pytest.approx(matrices[0])
@@ -338,7 +405,7 @@ def test_multireg_fix_target_needs_the_prealignment(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(register_module, "robreg", lambda *args, **kwargs: _fake_tensor(np.eye(4, dtype=np.float64)))
 
     with pytest.raises(ValueError, match="needs the pre-alignment"):
-        multireg(images, init_target_index=0, prealign=False, fix_target=True)
+        multireg(images, prealign=False, fix_target=True)
 
 
 def _geom_affine(voxel_size: float, corner: tuple[float, float, float]) -> np.ndarray:
@@ -450,7 +517,7 @@ def test_multireg_rejects_cras_center_with_init_ltas(monkeypatch: pytest.MonkeyP
     )
 
     with pytest.raises(ValueError, match="init_ltas supplies the geometry"):
-        multireg(images, init_target_index=0, init_ltas=init_ltas, template_iterations=0, use_cras_center=True)
+        multireg(images, init_ltas=init_ltas, template_iterations=0, use_cras_center=True)
 
 
 def test_multireg_rejects_cras_center_with_fix_target(monkeypatch: pytest.MonkeyPatch):
@@ -489,7 +556,7 @@ def test_multireg_does_not_claim_to_average_orientations_it_never_averages(monke
 
     with warnings.catch_warnings():
         warnings.simplefilter("error", RuntimeWarning)
-        multireg(images, init_target_index=0, init_ltas=init_ltas, template_iterations=0)
+        multireg(images, init_ltas=init_ltas, template_iterations=0)
         multireg(images, init_target_index=0, template_iterations=0, fix_target=True)
 
 
@@ -596,11 +663,10 @@ def test_multireg_template_geometry_ignores_disagreeing_init_lta_geometry(monkey
     geom_image = _make_img(shape=(10, 10, 10), affine=_geom_affine(1.0, (2.0, 2.0, 2.0)))
 
     with pytest.raises(ValueError, match="identical destination geometry"):
-        multireg(images, init_target_index=0, init_ltas=init_ltas, template_iterations=0)
+        multireg(images, init_ltas=init_ltas, template_iterations=0)
 
     result = multireg(
         images,
-        init_target_index=0,
         init_ltas=init_ltas,
         template_iterations=0,
         template_geometry=geom_image,
@@ -707,3 +773,11 @@ def test_multireg_keep_dtype_casts_template_to_target_dtype_without_wraparound(m
     template_data = np.asarray(result.template_image.dataobj)
     assert template_data.min() >= 0
     assert template_data.max() <= 255
+
+
+def test_multireg_keep_dtype_needs_one_input_dtype():
+    data = (_make_blob() * 255).astype(np.uint8)
+    images = [nib.Nifti1Image(data, np.eye(4)), nib.Nifti1Image(data.astype(np.int16), np.eye(4))]
+
+    with pytest.raises(ValueError, match="they differ"):
+        multireg(images, nmax=1, mapped_keep_dtype=True)

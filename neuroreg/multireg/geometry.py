@@ -400,8 +400,10 @@ def init_transform_template_geometry(
     size is the one the inputs call for. Otherwise only its orientation is kept:
     an atlas destination is typically 1 mm, and taking it outright would
     resample finer inputs onto it. The voxel size then follows the inputs, as
-    for a derived grid, the dimensions cover their fields of view, and the grid
-    is centered on the average of the image centers mapped into template space.
+    for a derived grid, and the grid is centered on the average of the image
+    centers mapped into template space. Its extent along each of its own axes
+    covers every input's field of view as mapped there, so inputs stored in
+    another axis order (a sagittal scan into an LIA grid) are not cropped.
 
     Parameters
     ----------
@@ -431,12 +433,32 @@ def init_transform_template_geometry(
         size,
         np.round(dst_sizes, 6).tolist(),
     )
-    shape = template_grid_shape(images, size)
-    centers = [
-        (np.asarray(r2r, dtype=np.float64) @ np.append(ras_center(image), 1.0))[:3]
-        for image, r2r in zip(images, transforms_r2r, strict=False)
-    ]
-    return shape, grid_affine(dst_affine[:3, :3] / dst_sizes, size, shape, np.mean(np.stack(centers), axis=0))
+    cosines = dst_affine[:3, :3] / dst_sizes
+    center = np.mean(
+        np.stack(
+            [
+                (np.asarray(r2r, dtype=np.float64) @ np.append(ras_center(image), 1.0))[:3]
+                for image, r2r in zip(images, transforms_r2r, strict=False)
+            ]
+        ),
+        axis=0,
+    )
+    # How far each input's field of view reaches below and above the center,
+    # in voxels along each grid axis: its mapped corners, projected onto them.
+    unit_corners = np.array([[i, j, k] for i in (0, 1) for j in (0, 1) for k in (0, 1)], dtype=np.float64)
+    low = np.zeros(3, dtype=np.float64)
+    high = np.zeros(3, dtype=np.float64)
+    for image, r2r in zip(images, transforms_r2r, strict=False):
+        voxel_corners = unit_corners * np.asarray(image.shape[:3], dtype=np.float64) - 0.5
+        ras = np.asarray(r2r, dtype=np.float64) @ np.asarray(image.affine, dtype=np.float64)
+        mapped = (np.c_[voxel_corners, np.ones(8)] @ ras.T)[:, :3]
+        projected = (mapped - center) @ cosines / size
+        low = np.minimum(low, projected.min(axis=0))
+        high = np.maximum(high, projected.max(axis=0))
+    # The center sits at voxel shape / 2, so the grid covers shape / 2 + 0.5
+    # voxels below it and shape / 2 - 0.5 above.
+    shape = tuple(int(v) for v in np.ceil(np.maximum(-2.0 * low - 1.0, 2.0 * high + 1.0) - 1e-4))
+    return shape, grid_affine(cosines, size, shape, center)
 
 
 #: How to supply a destination geometry when the given transforms carry none.
@@ -639,7 +661,9 @@ def validate_input_geometries(
     ref_voxel_sizes = voxel_sizes(images[0])
     for idx, image in enumerate(images[1:], start=1):
         sizes = voxel_sizes(image)
-        if not np.allclose(sizes, ref_voxel_sizes, atol=VOXEL_SIZE_TOLERANCE):
+        # Sorted, so the same resolution stored in another axis order (an
+        # axial and a sagittal scan of one protocol) is not a difference.
+        if not np.allclose(np.sort(sizes), np.sort(ref_voxel_sizes), atol=VOXEL_SIZE_TOLERANCE):
             message = (
                 f"Input voxel sizes differ: image 1 has {np.round(ref_voxel_sizes, 6).tolist()} mm and image "
                 f"{idx + 1} has {np.round(sizes, 6).tolist()} mm."

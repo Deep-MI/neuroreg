@@ -38,13 +38,17 @@ TransformLike = str | Path | LTA
 
 @dataclass(slots=True)
 class MultiRegResult:
-    """Outputs of the FreeSurfer-style multi-timepoint registration pipeline."""
+    """Outputs of the FreeSurfer-style multi-timepoint registration pipeline.
+
+    ``initial_target_index`` and ``seed`` are ``None`` when the pre-alignment,
+    the only step that registers to a target time point, was skipped.
+    """
 
     template_image: Any
     transforms_r2r: list[np.ndarray]
     ltas: list[LTA]
-    initial_target_index: int
-    seed: int
+    initial_target_index: int | None
+    seed: int | None
     mapped_images: list[Any] | None = None
     template_iterations_run: int = 0
     iteration_distances: list[float] = field(default_factory=list)
@@ -132,6 +136,12 @@ def _load_init_ltas(
     return transforms_r2r, (template_shape, template_affine)
 
 
+def _is_rigid(matrix: np.ndarray) -> bool:
+    """Return whether a 4 x 4 RAS transform is a rotation plus translation."""
+    rotation = np.asarray(matrix, dtype=np.float64)[:3, :3]
+    return bool(np.allclose(rotation.T @ rotation, np.eye(3), atol=1e-4) and np.linalg.det(rotation) > 0)
+
+
 def _resolve_iterations(
     template_iterations: int | None,
     n_images: int,
@@ -215,8 +225,9 @@ def _prealign(
     relative to the given transforms is then removed, so the template stays
     where they put it on average whichever time point was the target. With
     ``fix_target`` it is not removed, and the template sits where the target's
-    own transform puts it. With identity transforms both reduce exactly to the
-    case without ``init_r2r``.
+    own transform puts it. With identity transforms the composition reduces
+    exactly to the case without ``init_r2r``; the registrations then differ only
+    in starting from those poses rather than as ``init_type`` says.
 
     Parameters
     ----------
@@ -447,7 +458,8 @@ def multireg(
         orientation when its voxel size differs from the inputs' (see
         :func:`~neuroreg.multireg.geometry.init_transform_template_geometry`).
         With ``template_iterations=0`` and ``prealign`` unset they are used
-        exactly as given, as FreeSurfer's ``--ixforms --noit``. When
+        exactly as given, as FreeSurfer's ``--ixforms --noit``; only then may
+        they scale or shear, since every registration here is rigid. When
         ``template_geometry`` is given the destination geometry is ignored and
         need not be present. Mutually exclusive with ``use_cras_center``.
     template_geometry : ImageLike or None, optional
@@ -462,8 +474,8 @@ def multireg(
     average : {"mean", "median", 0, 1}, default="median"
         Template aggregation mode. Integer aliases match the FreeSurfer CLI.
     init_target_index : int or None, optional
-        Zero-based initial target index. If omitted, select one deterministically
-        from image content.
+        Zero-based pre-alignment target index. If omitted, select one
+        deterministically from image content. Needs the pre-alignment.
     seed : int or None, optional
         Seed override for initial target selection. ``None`` and ``0`` recompute
         the seed from image content.
@@ -475,7 +487,9 @@ def multireg(
         instead. Needs the pre-alignment. Mutually exclusive with
         ``use_cras_center``, since no geometry is then derived.
     init_type : InitType or None, optional
-        Pairwise registration initialization mode.
+        How each pre-alignment registration starts (default ``"centroid"``).
+        Only applies without ``init_ltas`` and with the pre-alignment: the
+        global loop always starts from the current transforms.
     nmax : int, default=5
         Maximum number of outer IRLS iterations per pairwise registration.
     sat : float, default=6.0
@@ -513,8 +527,9 @@ def multireg(
         If ``True``, include mapped images in the returned result.
     mapped_keep_dtype : bool, default=False
         If ``True``, preserve source dtypes for returned mapped images and cast
-        the output template to the initial target time point's dtype (clipping
-        cubic-interpolation over/undershoot instead of rescaling).
+        the output template to the inputs' dtype (clipping cubic-interpolation
+        over/undershoot instead of rescaling). All inputs must then share one
+        dtype.
     verbose : bool, default=False
         Whether to enable verbose pairwise-registration logging.
 
@@ -560,6 +575,22 @@ def multireg(
             "fix_target keeps the space of the pre-alignment target, so it needs the pre-alignment, which is "
             "skipped here."
         )
+    if init_target_index is not None and not resolved_prealign:
+        raise ValueError("init_target_index chooses the pre-alignment target, and the pre-alignment is skipped here.")
+    if init_type is not None and (init_ltas is not None or not resolved_prealign):
+        # Every global-loop registration starts from the previous transform, so
+        # init_type only ever chooses how a pre-alignment registration starts.
+        raise ValueError(
+            "init_type chooses how each pre-alignment registration starts without init_ltas; with init_ltas "
+            "they start from those poses, and without a pre-alignment there is nothing to start."
+        )
+    if mapped_keep_dtype:
+        dtypes = sorted({np.dtype(image.get_data_dtype()).name for image in images})
+        if len(dtypes) > 1:
+            raise ValueError(
+                f"mapped_keep_dtype keeps the inputs' dtype for the template, but they differ ({', '.join(dtypes)}); "
+                "convert the time points to one dtype first."
+            )
     # The template geometry is derived from the inputs only when nothing else
     # supplies one. Both the centering choice and the orientation-averaging
     # warning depend on that single fact, so it is settled once here.
@@ -601,10 +632,22 @@ def multireg(
     destination: tuple[tuple[int, int, int], np.ndarray] | None = None
     if init_ltas is not None:
         init_r2r, destination = _load_init_ltas(init_ltas, read_destination=external_geometry is None)
+        non_rigid = [str(index + 1) for index, matrix in enumerate(init_r2r) if not _is_rigid(matrix)]
+        if non_rigid and (resolved_prealign or resolved_template_iterations > 0):
+            # As FreeSurfer's mri_robust_template without --affine: the
+            # registration is rigid, so it cannot start from, or keep, a
+            # scaling or shear. Mapping alone applies them as given.
+            raise ValueError(
+                f"init_ltas for TP {', '.join(non_rigid)} are not rigid, but multireg registers rigidly. Use "
+                "rigid (6 DOF) transforms, or only map with them (template_iterations=0 and prealign unset)."
+            )
 
-    if init_target_index is None:
+    # Only the pre-alignment registers to a target time point, so only then is
+    # one chosen; choosing it reads every input's voxels.
+    resolved_seed: int | None = None
+    if resolved_prealign and init_target_index is None:
         init_target_index, resolved_seed = choose_initial_target(images, seed=seed)
-    else:
+    elif resolved_prealign:
         if not 0 <= init_target_index < len(images):
             raise ValueError(f"init_target_index must be in [0, {len(images) - 1}], got {init_target_index}.")
         resolved_seed = compute_seed(images) if seed in (None, 0) else int(seed)
@@ -649,7 +692,9 @@ def multireg(
             else mean_mapped_centroid(
                 images,
                 pairwise_r2r,
-                target_index=init_target_index,
+                # Without a pre-alignment the transforms are identities, and any
+                # image serves as the intermediate space.
+                target_index=0 if init_target_index is None else init_target_index,
                 mean_space_from_target_r2r=mean_space_from_target_r2r,
             )
         )
@@ -662,7 +707,8 @@ def multireg(
         template_affine=template_affine,
     )
 
-    target_image = images[init_target_index]
+    # The target only lends its header type to the template; any input will do.
+    target_image = images[0 if init_target_index is None else init_target_index]
     current_template, mapped_images = build_template(
         images,
         current_transforms,
@@ -743,7 +789,8 @@ def multireg(
         )
 
     if mapped_keep_dtype:
-        current_template = cast_image_dtype(current_template, np.dtype(target_image.get_data_dtype()))
+        # All inputs share this dtype; that was checked above.
+        current_template = cast_image_dtype(current_template, np.dtype(images[0].get_data_dtype()))
 
     ltas = build_ltas(current_transforms, source_names, images, current_template)
     return MultiRegResult(

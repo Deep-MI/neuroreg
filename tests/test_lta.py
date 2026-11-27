@@ -1058,6 +1058,6 @@ class TestAttachGeometry:
             for i, img in enumerate(images)
         ]
 
-        result = multireg(images, init_target_index=0, init_ltas=repaired, template_iterations=0)
+        result = multireg(images, init_ltas=repaired, template_iterations=0)
 
         assert result.template_image.shape == (8, 8, 8)

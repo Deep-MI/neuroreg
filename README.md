@@ -126,7 +126,7 @@ multireg --mov <tp1.nii.gz> <tp2.nii.gz> ... --template <template.nii.gz> [optio
 |----------------------|----------|---------------------------------------------------------------------------------|
 | `--template FILE`    | required | Output template image.                                                          |
 | `--lta FILE ...`     | —        | Optional output LTAs, one per input time point.                                 |
-| `--ixforms FILE ...` | —        | Initial transforms into template space. The pre-alignment starts from them and the template keeps their pose, on their shared destination grid (only its orientation if its voxel size differs from the inputs'). |
+| `--ixforms FILE ...` | —        | Initial transforms into template space. The pre-alignment starts from them and the template keeps their pose, on their shared destination grid (only its orientation if its voxel size differs from the inputs'). Must be rigid unless the inputs are only mapped. |
 | `--template-geom FILE` | —      | Image supplying the output template geometry instead of deriving one. With `--ixforms`, their destination geometry is then ignored and need not be present. |
 | `--average MODE`     | `median` | Template aggregation mode: `mean`, `median`, `0` (=mean), or `1` (=median).     |
 | `--noit`             | off      | Skip the global loop; the same as `--iterate 0`. With `--ixforms` there is no pre-alignment either, so the inputs are only mapped, as in FreeSurfer. |
@@ -136,9 +136,9 @@ multireg --mov <tp1.nii.gz> <tp2.nii.gz> ... --template <template.nii.gz> [optio
 | `--fixtp`            | off      | Keep the pre-alignment target's space instead of the unbiased one; with `--template-geom`, sampled on that grid. |
 | `--allow-diff-vox-size` | off   | Accept differing voxel sizes, with a warning.                                   |
 | `--template-eps F`   | `0.03`   | Stop iterative refinement when the maximum transform update falls below this.   |
-| `--inittp N`         | auto     | 1-based pre-alignment target time point.                                        |
+| `--inittp N`         | auto     | 1-based pre-alignment target time point; needs the pre-alignment.               |
 | `--mapmov FILE ...`  | —        | Optional output paths for mapped input images in template space, one per input. |
-| `--keep-dtype`       | off      | Preserve each input's own dtype for `--mapmov` outputs and the initial target's dtype for the template. |
+| `--keep-dtype`       | off      | Preserve each input's own dtype for `--mapmov` outputs and the inputs' shared dtype for the template; all inputs must share one dtype. |
 
 **Examples**
 
