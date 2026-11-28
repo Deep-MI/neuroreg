@@ -153,6 +153,94 @@ def _convert_vox_transform_between_grids(
     return (torch.inverse(trg_to) @ ras_to_ras @ src_to).to(dtype=transform.dtype)
 
 
+def _source_axis_order(v2v: np.ndarray) -> list[int]:
+    """Return FreeSurfer's signed 1-based target axis for each source voxel axis.
+
+    Port of the axis choice in ``Registration::reorientSource``: each source
+    axis goes to the target axis it is most aligned with in the source to
+    target voxel transform, with the sign of that alignment, and conflicts are
+    resolved as FreeSurfer does.
+    """
+    m = np.asarray(v2v, dtype=np.float64)[:3, :3]
+
+    def signed(axis: int, column: int) -> int:
+        return -axis if m[axis - 1, column] < 0.0 else axis
+
+    axes = [signed(int(np.argmax(np.abs(m[:, column]))) + 1, column) for column in range(3)]
+    if abs(axes[0]) * abs(axes[1]) * abs(axes[2]) != 6:
+        xd, yd, zd = (abs(a) for a in axes)
+        if xd == 2 and yd == 1:
+            axes[2] = signed(3, 2)
+        elif xd == 3 and zd == 1:
+            axes[1] = signed(2, 1)
+        elif yd == 3 and zd == 2:
+            axes[0] = signed(1, 0)
+        else:
+            axes = [signed(1, 0), signed(2, 1), signed(3, 2)]
+    return axes
+
+
+def _reorient_source(
+    src: Tensor,
+    src_mask: Tensor | None,
+    src_affine: Tensor,
+    trg_affine: Tensor,
+    initial_transform: Tensor | None,
+) -> tuple[Tensor, Tensor | None, Tensor, Tensor | None, Tensor | None]:
+    """Reorder the source voxel axes to match the target, as FreeSurfer does.
+
+    Port of ``Registration::reorientSource``: the source axes are permuted and
+    flipped so that the starting voxel to voxel transform (the explicit
+    initialization, else the headers) is close to the identity. Without this a
+    source and target of opposite handedness (LIA against RAS) give a voxel
+    transform with a negative determinant, which no rigid update, and in
+    particular not the symmetric halfway square root, can represent.
+
+    Returns
+    -------
+    src, src_mask, src_affine, initial_transform : Tensor or None
+        The inputs expressed in the reordered source voxel grid.
+    reorder : Tensor or None
+        Reordered to original source voxel transform, or ``None`` when the
+        axes already match.
+    """
+    src_affine_np = src_affine.detach().cpu().double().numpy()
+    if initial_transform is not None:
+        v2v = initial_transform.detach().cpu().double().numpy()
+    else:
+        v2v = np.linalg.inv(trg_affine.detach().cpu().double().numpy()) @ src_affine_np
+    axes = _source_axis_order(v2v)
+    if axes == [1, 2, 3]:
+        return src, src_mask, src_affine, initial_transform, None
+
+    new_axis = [abs(a) - 1 for a in axes]
+    order = [0, 0, 0]
+    for old, new in enumerate(new_axis):
+        order[new] = old
+    flips = [new for new, a in zip(new_axis, axes, strict=True) if a < 0]
+    old_shape = [int(v) for v in src.shape[:3]]
+    reorder_np = np.zeros((4, 4), dtype=np.float64)
+    reorder_np[3, 3] = 1.0
+    for old, (new, a) in enumerate(zip(new_axis, axes, strict=True)):
+        reorder_np[old, new] = 1.0 if a > 0 else -1.0
+        if a < 0:
+            reorder_np[old, 3] = old_shape[old] - 1
+
+    def apply(volume: Tensor) -> Tensor:
+        out = volume.permute(*order)
+        return (out.flip(flips) if flips else out).contiguous()
+
+    reorder = torch.from_numpy(reorder_np)
+    new_affine = torch.from_numpy(src_affine_np @ reorder_np).to(device=src_affine.device, dtype=src_affine.dtype)
+    new_init = (
+        (initial_transform.double() @ reorder.to(initial_transform.device)).to(dtype=initial_transform.dtype)
+        if initial_transform is not None
+        else None
+    )
+    logger.info("Reordering source axes to fit the target: %s", axes)
+    return apply(src), apply(src_mask) if src_mask is not None else None, new_affine, new_init, reorder
+
+
 def _resolve_initial_transform(
     *,
     src_affine: Tensor,
@@ -345,6 +433,12 @@ def register_irls_pyramid(
             initial_transform = initial_transform.to(device="cpu")
 
     resolved_init_type = resolve_init_type(init_type=init_type, default_init_type="centroid")
+
+    reorder = None
+    if src_affine is not None and trg_affine is not None:
+        src, src_mask, src_affine, initial_transform, reorder = _reorient_source(
+            src, src_mask, src_affine, trg_affine, initial_transform
+        )
 
     if isotropic:
         if src_affine is None or trg_affine is None:
@@ -554,6 +648,9 @@ def register_irls_pyramid(
 
     if isotropic:
         T = Rtrg.to(device=T.device, dtype=T.dtype) @ T @ torch.inverse(Rsrc.to(device=T.device, dtype=T.dtype))
+    if reorder is not None:
+        # Back from the reordered source voxels to the caller's.
+        T = (T.double() @ torch.inverse(reorder.to(device=T.device))).to(dtype=T.dtype)
 
     if outliers_name is not None:
         _save_outlier_map(all_info, outliers_name, verbose=verbose)

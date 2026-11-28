@@ -1,9 +1,10 @@
 """Unit tests for robust M-estimator weighting functions (streamlined)."""
 
+import numpy as np
 import pytest
 import torch
 
-from neuroreg.imreg.robust import compute_mad, compute_scale_estimate, huber_weights, tukey_weights
+from neuroreg.imreg.robust import compute_mad, compute_scale_estimate, huber_weights, quantile, tukey_weights
 
 
 class TestTukeyWeights:
@@ -88,3 +89,10 @@ class TestComputeScaleEstimate:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+def test_quantile_beyond_torch_size_limit_matches_numpy():
+    # torch.quantile refuses more than 2**24 elements (anything above 256^3).
+    values = torch.rand(2**24 + 5, generator=torch.Generator().manual_seed(0))
+    for q in (0.25, 0.995):
+        assert float(quantile(values, q)) == pytest.approx(float(np.quantile(values.numpy(), q)), rel=1e-6)

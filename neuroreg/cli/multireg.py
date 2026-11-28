@@ -59,9 +59,10 @@ def _build_parser() -> argparse.ArgumentParser:
         help=(
             "Optional input LTAs, one per --mov image, for example poses to an atlas. The "
             "pre-alignment starts from them and keeps their pose, so the template lands in the "
-            "space they define, on their shared destination grid (only its orientation if its "
-            "voxel size differs from the inputs'). Add --noit to use them exactly as given, as in "
-            "FreeSurfer, or --no-prealign to start the global loop from them directly."
+            "space they define, on their shared destination grid (if its voxel size differs from "
+            "the inputs', only its orientation, with the inputs' voxel size and dimensions). Add "
+            "--noit to use them exactly as given, as in FreeSurfer, or --no-prealign to start the "
+            "global loop from them directly."
         ),
     )
     p.add_argument(
@@ -151,7 +152,8 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "Skip the pre-alignment and register only in the global loop, starting from --ixforms "
-            "or from the image headers. Avoids choosing a target time point. Needs 3 or more time "
+            "or as --init-* says (by default with the intensity centroids aligned). Avoids "
+            "choosing a target time point. Needs 3 or more time "
             "points, since with 2 the pre-alignment is the registration; use --map-only there."
         ),
     )
@@ -197,21 +199,21 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="init_type",
         action="store_const",
         const="header",
-        help="Start each pre-alignment registration from the headers (not with --ixforms).",
+        help="Start from the headers (not with --ixforms).",
     )
     init_group.add_argument(
         "--init-centroid",
         dest="init_type",
         action="store_const",
         const="centroid",
-        help="Start each pre-alignment registration by aligning intensity centroids in RAS (default).",
+        help="Start by aligning intensity centroids in RAS (default; not with --ixforms).",
     )
     init_group.add_argument(
         "--init-center",
         dest="init_type",
         action="store_const",
         const="image_center",
-        help="Start each pre-alignment registration by aligning geometric image centers in RAS.",
+        help="Start by aligning geometric image centers in RAS (not with --ixforms).",
     )
     p.add_argument(
         "--device",
@@ -306,11 +308,9 @@ def main(args=None) -> None:
     skips_prealign = maps_only or ns.prealign is False
     if ns.inittp is not None and skips_prealign:
         parser.error("--inittp chooses the pre-alignment target, and the pre-alignment is skipped here.")
-    if ns.init_type is not None and (ns.ixforms is not None or skips_prealign):
-        # The global loop always starts from the current transforms, so --init-*
-        # only ever chooses how a pre-alignment registration starts.
-        source = "--ixforms gives the starting poses" if ns.ixforms is not None else "there is no pre-alignment"
-        parser.error(f"--init-* chooses how each pre-alignment registration starts, and {source}.")
+    if ns.init_type is not None and (ns.ixforms is not None or maps_only or (skips_prealign and no_global_loop)):
+        source = "--ixforms gives the starting poses" if ns.ixforms is not None else "nothing is registered"
+        parser.error(f"--init-* chooses how the time points start, and {source}.")
     level = logging.DEBUG if ns.debug else (logging.INFO if ns.verbose else logging.WARNING)
     logging.basicConfig(level=level, format="%(levelname)s %(name)s: %(message)s")
     logger = logging.getLogger("neuroreg.cli.multireg")

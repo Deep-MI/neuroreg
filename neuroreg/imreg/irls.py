@@ -37,6 +37,7 @@ import torch.nn.functional as F
 
 from ..transforms.matrices import matrix_sqrt_schur, params_to_rigid_matrix
 from ..transforms.metrics import affine_dist
+from .robust import quantile
 
 logger = logging.getLogger(__name__)
 
@@ -508,7 +509,7 @@ def register_irls(
     # Normalise both images to roughly [0, 1] so that residuals and σ are on a
     # consistent scale regardless of scanner intensity range.  Identical to
     # training_loop's normalise step: divide by the 99.5th percentile of the target.
-    scale = torch.quantile(trg.reshape(-1).abs(), 0.995).clamp(min=1.0)
+    scale = quantile(trg.abs(), 0.995).clamp(min=1.0)
     src_n = src / scale
     trg_n = trg / scale
     # construct_Ab's background/zero-gradient thresholds are calibrated for raw

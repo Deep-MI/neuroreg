@@ -8,6 +8,7 @@ import torch.nn as nn
 from torch.functional import F
 
 from .losses import masked_mean, mi_loss, ncc_loss, nmi_loss
+from .robust import quantile
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +123,7 @@ def training_loop(
     _report_rmse = loss_name in _RMSE_REPORTED_LOSS_NAMES
 
     if normalize and _is_intensity_loss:
-        scale = torch.quantile(trg_image.abs().reshape(-1), 0.995).clamp(min=1.0)
+        scale = quantile(trg_image.abs(), 0.995).clamp(min=1.0)
         src_image = src_image / scale
         trg_image = trg_image / scale
         if loss_beta is not None:

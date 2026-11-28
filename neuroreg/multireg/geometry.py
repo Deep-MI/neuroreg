@@ -128,6 +128,31 @@ def rotation_mean(rotations: Sequence[np.ndarray]) -> np.ndarray:
     return Rotation.from_rotvec(rotvecs.mean(axis=0)).as_matrix()
 
 
+def matched_axes(reference: np.ndarray, current: np.ndarray) -> list[int] | None:
+    """Return, for each axis of ``current``, the reference axis it runs along.
+
+    Parameters
+    ----------
+    reference : numpy.ndarray
+        Reference ``3 x 3`` direction-cosine matrix (columns are voxel axes).
+    current : numpy.ndarray
+        Direction-cosine matrix whose axes are matched.
+
+    Returns
+    -------
+    list of int or None
+        Signed 1-based reference axis for each axis of ``current`` (negative
+        when it runs the opposite way), or ``None`` when two axes would match
+        the same reference axis, as for orientations about 45 degrees apart.
+    """
+    v2v = np.asarray(reference, dtype=np.float64).T @ np.asarray(current, dtype=np.float64)
+    axes = []
+    for column in range(3):
+        row = int(np.argmax(np.abs(v2v[:, column])))
+        axes.append(-(row + 1) if v2v[row, column] < 0.0 else row + 1)
+    return axes if sorted(abs(axis) for axis in axes) == [1, 2, 3] else None
+
+
 def reorder_cosines(reference: np.ndarray, current: np.ndarray) -> np.ndarray:
     """Reorder axis directions to match a reference orientation.
 
@@ -141,24 +166,17 @@ def reorder_cosines(reference: np.ndarray, current: np.ndarray) -> np.ndarray:
     Returns
     -------
     numpy.ndarray
-        Reordered direction-cosine matrix aligned with ``reference`` without
-        introducing a reflection.
+        ``current`` with its axes permuted and flipped onto those of
+        ``reference``, so the two can be averaged.
 
     Raises
     ------
     ValueError
-        If the input orientations cannot be matched by axis reordering alone or
-        if the reordered orientation would be left-handed.
+        If the input orientations cannot be matched by axis reordering alone,
+        or if the two describe mirror images of each other.
     """
-    v2v = reference.T @ current
-    axes: list[int] = []
-    for column in range(3):
-        row = int(np.argmax(np.abs(v2v[:, column])))
-        axis = row + 1
-        if v2v[row, column] < 0.0:
-            axis = -axis
-        axes.append(axis)
-    if sum(abs(axis) for axis in axes) != 6:
+    axes = matched_axes(reference, current)
+    if axes is None:
         raise ValueError(
             "Input voxel orientations are not compatible with FreeSurfer-style axis reordering. "
             "Make sure all inputs use consistent voxel orientation."
@@ -169,7 +187,9 @@ def reorder_cosines(reference: np.ndarray, current: np.ndarray) -> np.ndarray:
     for row, axis in enumerate(axes):
         reorder[row, abs(axis) - 1] = 1.0 if axis > 0 else -1.0
     reordered = current @ reorder
-    if np.linalg.det(reordered) < 0:
+    # Most scanner orientations (LIA, LAS) are left-handed, so the sign itself
+    # says nothing; only a sign that differs from the reference is a mirror.
+    if np.sign(np.linalg.det(reordered)) != np.sign(np.linalg.det(reference)):
         raise ValueError("Input voxel orientations would introduce a reflection after axis reordering.")
     return reordered
 
@@ -185,7 +205,8 @@ def mean_direction_cosines(images: Sequence[Any]) -> np.ndarray:
     Returns
     -------
     numpy.ndarray
-        ``3 x 3`` average direction-cosine matrix.
+        ``3 x 3`` average direction-cosine matrix, with the handedness of the
+        inputs.
 
     Raises
     ------
@@ -198,7 +219,48 @@ def mean_direction_cosines(images: Sequence[Any]) -> np.ndarray:
     if all(np.allclose(first, cosine, atol=1e-9) for cosine in cosines[1:]):
         return first
     reordered = [first] + [reorder_cosines(first, cosine) for cosine in cosines[1:]]
-    return project_to_rotation(np.mean(np.stack(reordered, axis=0), axis=0))
+    # The nearest orthogonal matrix, not the nearest rotation: LIA and LAS
+    # cosines have determinant -1, and forcing +1 onto a mean whose singular
+    # values are all about 1 flips an arbitrary axis.
+    u, _, vt = np.linalg.svd(np.mean(np.stack(reordered, axis=0), axis=0))
+    return u @ vt
+
+
+def fov_along_axes(image: Any, cosines: np.ndarray, r2r: np.ndarray | None = None) -> np.ndarray:
+    """Return an image's field of view in millimeters along the axes of ``cosines``.
+
+    Each of the image's own axes (mapped by ``r2r`` when given) is assigned to
+    the axis of ``cosines`` it runs along, so a sagittal scan contributes its
+    left-right extent to a left-right axis whatever its storage order. Without
+    a clear match (orientations about 45 degrees apart) the image's own axis
+    order is used, as FreeSurfer does.
+
+    Parameters
+    ----------
+    image : Any
+        Image exposing ``shape`` and ``affine``.
+    cosines : numpy.ndarray
+        ``3 x 3`` direction cosines of the grid the extent is wanted on.
+    r2r : numpy.ndarray or None, optional
+        RAS-to-RAS transform applied to the image first.
+
+    Returns
+    -------
+    numpy.ndarray
+        Length-3 extent in millimeters, one per axis of ``cosines``.
+    """
+    affine = np.asarray(image.affine, dtype=np.float64)
+    if r2r is not None:
+        affine = np.asarray(r2r, dtype=np.float64) @ affine
+    sizes = np.linalg.norm(affine[:3, :3], axis=0)
+    fov = np.asarray(image.shape[:3], dtype=np.float64) * sizes
+    axes = matched_axes(cosines, affine[:3, :3] / sizes)
+    if axes is None:
+        return fov
+    out = np.zeros(3, dtype=np.float64)
+    for own, axis in enumerate(axes):
+        out[abs(axis) - 1] = fov[own]
+    return out
 
 
 def image_centroid_voxel(image: Any) -> np.ndarray:
@@ -307,8 +369,9 @@ def create_template_geometry(images: Sequence[Any], center_ras: np.ndarray) -> t
         If the inputs mix 2-D and 3-D image geometries.
     """
     conform_size = template_voxel_size(images)
-    template_shape = template_grid_shape(images, conform_size)
-    return template_shape, grid_affine(mean_direction_cosines(images), conform_size, template_shape, center_ras)
+    cosines = mean_direction_cosines(images)
+    template_shape = template_grid_shape(images, conform_size, cosines)
+    return template_shape, grid_affine(cosines, conform_size, template_shape, center_ras)
 
 
 def template_voxel_size(images: Sequence[Any]) -> float:
@@ -330,8 +393,19 @@ def template_voxel_size(images: Sequence[Any]) -> float:
     return max(float(np.min(voxel_sizes(image))) for image in images)
 
 
-def template_grid_shape(images: Sequence[Any], voxel_size: float) -> tuple[int, int, int]:
+def template_grid_shape(
+    images: Sequence[Any],
+    voxel_size: float,
+    cosines: np.ndarray | None = None,
+    transforms_r2r: Sequence[np.ndarray] | None = None,
+) -> tuple[int, int, int]:
     """Return template dimensions large enough for every input's field of view.
+
+    As FreeSurfer's ``createTemplateGeo``: per template axis, the largest input
+    field of view divided by the template voxel size. With ``cosines`` each
+    input's axes are first matched to the template's (see
+    :func:`fov_along_axes`), so inputs stored in another axis order still add
+    their extent to the right axis.
 
     Parameters
     ----------
@@ -339,6 +413,10 @@ def template_grid_shape(images: Sequence[Any], voxel_size: float) -> tuple[int, 
         Input images.
     voxel_size : float
         Template voxel size in millimeters.
+    cosines : numpy.ndarray or None, optional
+        Template direction cosines. ``None`` takes each input's own axis order.
+    transforms_r2r : sequence of numpy.ndarray or None, optional
+        Timepoint-to-template RAS transforms, applied before matching axes.
 
     Returns
     -------
@@ -356,8 +434,12 @@ def template_grid_shape(images: Sequence[Any], voxel_size: float) -> tuple[int, 
         raise ValueError("Mixing 2-D and 3-D inputs is not supported.")
     eps = 1e-4
     dims = []
-    for image, shape in zip(images, shapes, strict=False):
-        fov = np.asarray(shape, dtype=np.float64) * voxel_sizes(image)
+    transforms = transforms_r2r if transforms_r2r is not None else [None] * len(images)
+    for image, shape, r2r in zip(images, shapes, transforms, strict=False):
+        if cosines is None:
+            fov = np.asarray(shape, dtype=np.float64) * voxel_sizes(image)
+        else:
+            fov = fov_along_axes(image, cosines, r2r)
         dims.append(np.ceil((fov / voxel_size) - eps).astype(int))
     return tuple(int(v) for v in np.max(np.stack(dims, axis=0), axis=0))
 
@@ -399,11 +481,12 @@ def init_transform_template_geometry(
     The transforms' shared destination grid is used as it is when its voxel
     size is the one the inputs call for. Otherwise only its orientation is kept:
     an atlas destination is typically 1 mm, and taking it outright would
-    resample finer inputs onto it. The voxel size then follows the inputs, as
-    for a derived grid, and the grid is centered on the average of the image
-    centers mapped into template space. Its extent along each of its own axes
-    covers every input's field of view as mapped there, so inputs stored in
-    another axis order (a sagittal scan into an LIA grid) are not cropped.
+    resample finer inputs onto it. Voxel size and dimensions then follow the
+    inputs, as for a derived grid (each input's field of view counted along the
+    destination axis it runs along, so a sagittal scan into an LIA grid is not
+    cropped), and the grid is centered on the average of the image centers
+    mapped into template space. Heads sit near the middle of their field of
+    view, so a destination rotated against the inputs only loses empty corners.
 
     Parameters
     ----------
@@ -443,21 +526,7 @@ def init_transform_template_geometry(
         ),
         axis=0,
     )
-    # How far each input's field of view reaches below and above the center,
-    # in voxels along each grid axis: its mapped corners, projected onto them.
-    unit_corners = np.array([[i, j, k] for i in (0, 1) for j in (0, 1) for k in (0, 1)], dtype=np.float64)
-    low = np.zeros(3, dtype=np.float64)
-    high = np.zeros(3, dtype=np.float64)
-    for image, r2r in zip(images, transforms_r2r, strict=False):
-        voxel_corners = unit_corners * np.asarray(image.shape[:3], dtype=np.float64) - 0.5
-        ras = np.asarray(r2r, dtype=np.float64) @ np.asarray(image.affine, dtype=np.float64)
-        mapped = (np.c_[voxel_corners, np.ones(8)] @ ras.T)[:, :3]
-        projected = (mapped - center) @ cosines / size
-        low = np.minimum(low, projected.min(axis=0))
-        high = np.maximum(high, projected.max(axis=0))
-    # The center sits at voxel shape / 2, so the grid covers shape / 2 + 0.5
-    # voxels below it and shape / 2 - 0.5 above.
-    shape = tuple(int(v) for v in np.ceil(np.maximum(-2.0 * low - 1.0, 2.0 * high + 1.0) - 1e-4))
+    shape = template_grid_shape(images, size, cosines, transforms_r2r)
     return shape, grid_affine(cosines, size, shape, center)
 
 
@@ -620,6 +689,36 @@ def check_template_grid_covers_inputs(
             )
 
 
+def sizes_along_reference(image: Any, reference_cosines: np.ndarray) -> np.ndarray:
+    """Return an image's voxel sizes along the axes of a reference orientation.
+
+    The same scan stored in another axis order then has the same sizes, while
+    a scan whose coarse direction differs (a sagittal acquisition and its axial
+    reformat) does not. Without a clear axis match the image's own order is
+    used, as FreeSurfer compares sizes per stored axis.
+
+    Parameters
+    ----------
+    image : Any
+        Image exposing ``affine``.
+    reference_cosines : numpy.ndarray
+        ``3 x 3`` reference direction cosines.
+
+    Returns
+    -------
+    numpy.ndarray
+        Length-3 voxel sizes in millimeters, one per reference axis.
+    """
+    sizes = voxel_sizes(image)
+    axes = matched_axes(reference_cosines, direction_cosines(image))
+    if axes is None:
+        return sizes
+    out = np.zeros(3, dtype=np.float64)
+    for own, axis in enumerate(axes):
+        out[abs(axis) - 1] = sizes[own]
+    return out
+
+
 def validate_input_geometries(
     images: Sequence[Any], *, derives_geometry: bool = True, allow_diff_vox_size: bool = False
 ) -> None:
@@ -645,8 +744,8 @@ def validate_input_geometries(
     Raises
     ------
     ValueError
-        If voxel sizes differ by more than :data:`VOXEL_SIZE_TOLERANCE` and
-        ``allow_diff_vox_size`` is not set. As in FreeSurfer's
+        If voxel sizes along the same direction differ by more than
+        :data:`VOXEL_SIZE_TOLERANCE` and ``allow_diff_vox_size`` is not set. As in FreeSurfer's
         ``mri_robust_template``, time points are expected to share one
         resolution: the template takes the coarsest, so finer ones would be
         downsampled and differ from the rest in noise and detail.
@@ -659,14 +758,13 @@ def validate_input_geometries(
         geometry.
     """
     ref_voxel_sizes = voxel_sizes(images[0])
+    ref_cosines = direction_cosines(images[0])
     for idx, image in enumerate(images[1:], start=1):
-        sizes = voxel_sizes(image)
-        # Sorted, so the same resolution stored in another axis order (an
-        # axial and a sagittal scan of one protocol) is not a difference.
-        if not np.allclose(np.sort(sizes), np.sort(ref_voxel_sizes), atol=VOXEL_SIZE_TOLERANCE):
+        sizes = sizes_along_reference(image, ref_cosines)
+        if not np.allclose(sizes, ref_voxel_sizes, atol=VOXEL_SIZE_TOLERANCE):
             message = (
                 f"Input voxel sizes differ: image 1 has {np.round(ref_voxel_sizes, 6).tolist()} mm and image "
-                f"{idx + 1} has {np.round(sizes, 6).tolist()} mm."
+                f"{idx + 1} has {np.round(sizes, 6).tolist()} mm along the same directions."
             )
             if not allow_diff_vox_size:
                 raise ValueError(
