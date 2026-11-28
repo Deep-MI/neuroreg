@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import warnings
 from collections.abc import Sequence
 from typing import Any
@@ -13,6 +14,12 @@ from scipy.spatial.transform import Rotation
 from ..image import compute_centroid
 from ..image.map import coerce_image_data_3d
 from ..transforms import LTA
+
+logger = logging.getLogger(__name__)
+
+#: Voxel sizes closer than this, in millimeters, count as equal; FreeSurfer's
+#: ``mri_robust_template`` default.
+VOXEL_SIZE_TOLERANCE = 1e-3
 
 
 def voxel_sizes(image: Any) -> np.ndarray:
@@ -299,23 +306,159 @@ def create_template_geometry(images: Sequence[Any], center_ras: np.ndarray) -> t
     ValueError
         If the inputs mix 2-D and 3-D image geometries.
     """
-    image_voxel_sizes = [voxel_sizes(image) for image in images]
-    conform_size = max(float(np.min(sizes)) for sizes in image_voxel_sizes)
+    conform_size = template_voxel_size(images)
+    template_shape = template_grid_shape(images, conform_size)
+    return template_shape, grid_affine(mean_direction_cosines(images), conform_size, template_shape, center_ras)
+
+
+def template_voxel_size(images: Sequence[Any]) -> float:
+    """Return the isotropic template voxel size FreeSurfer derives from the inputs.
+
+    Each image contributes its smallest voxel side, and the largest of those is
+    taken, as in ``MultiRegistration::createTemplateGeo``: no input is upsampled.
+
+    Parameters
+    ----------
+    images : sequence of Any
+        Input images.
+
+    Returns
+    -------
+    float
+        Template voxel size in millimeters.
+    """
+    return max(float(np.min(voxel_sizes(image))) for image in images)
+
+
+def template_grid_shape(images: Sequence[Any], voxel_size: float) -> tuple[int, int, int]:
+    """Return template dimensions large enough for every input's field of view.
+
+    Parameters
+    ----------
+    images : sequence of Any
+        Input images.
+    voxel_size : float
+        Template voxel size in millimeters.
+
+    Returns
+    -------
+    tuple of int
+        Template grid shape, the per-axis maximum over the inputs.
+
+    Raises
+    ------
+    ValueError
+        If the inputs mix 2-D and 3-D image geometries.
+    """
     shapes = [tuple(int(v) for v in image.shape[:3]) for image in images]
     depths = [shape[2] for shape in shapes]
-    has_2d = any(depth == 1 for depth in depths)
-    if has_2d and any(depth != 1 for depth in depths):
+    if any(depth == 1 for depth in depths) and any(depth != 1 for depth in depths):
         raise ValueError("Mixing 2-D and 3-D inputs is not supported.")
     eps = 1e-4
     dims = []
-    for shape, sizes in zip(shapes, image_voxel_sizes, strict=False):
-        fov = np.asarray(shape, dtype=np.float64) * sizes
-        dims.append(np.ceil((fov / conform_size) - eps).astype(int))
-    template_shape = tuple(int(v) for v in np.max(np.stack(dims, axis=0), axis=0))
+    for image, shape in zip(images, shapes, strict=False):
+        fov = np.asarray(shape, dtype=np.float64) * voxel_sizes(image)
+        dims.append(np.ceil((fov / voxel_size) - eps).astype(int))
+    return tuple(int(v) for v in np.max(np.stack(dims, axis=0), axis=0))
+
+
+def grid_affine(
+    cosines: np.ndarray, voxel_size: float, shape: tuple[int, int, int], center_ras: np.ndarray
+) -> np.ndarray:
+    """Build an isotropic voxel-to-RAS affine whose grid center lies at ``center_ras``.
+
+    Parameters
+    ----------
+    cosines : numpy.ndarray
+        ``3 x 3`` direction cosines, one column per voxel axis.
+    voxel_size : float
+        Isotropic voxel size in millimeters.
+    shape : tuple of int
+        Grid shape; its center is taken at ``shape / 2``, the c_ras convention.
+    center_ras : numpy.ndarray
+        RAS coordinate of the grid center.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``4 x 4`` voxel-to-RAS affine.
+    """
     affine = np.eye(4, dtype=np.float64)
-    affine[:3, :3] = mean_direction_cosines(images) * conform_size
-    affine[:3, 3] = np.asarray(center_ras, dtype=np.float64) - affine[:3, :3] @ (np.asarray(template_shape) / 2.0)
-    return template_shape, affine
+    affine[:3, :3] = np.asarray(cosines, dtype=np.float64) * voxel_size
+    affine[:3, 3] = np.asarray(center_ras, dtype=np.float64) - affine[:3, :3] @ (np.asarray(shape) / 2.0)
+    return affine
+
+
+def init_transform_template_geometry(
+    images: Sequence[Any],
+    transforms_r2r: Sequence[np.ndarray],
+    destination: tuple[tuple[int, int, int], np.ndarray],
+) -> tuple[tuple[int, int, int], np.ndarray]:
+    """Return the template grid for inputs given with initial transforms.
+
+    The transforms' shared destination grid is used as it is when its voxel
+    size is the one the inputs call for. Otherwise only its orientation is kept:
+    an atlas destination is typically 1 mm, and taking it outright would
+    resample finer inputs onto it. The voxel size then follows the inputs, as
+    for a derived grid, and the grid is centered on the average of the image
+    centers mapped into template space. Its extent along each of its own axes
+    covers every input's field of view as mapped there, so inputs stored in
+    another axis order (a sagittal scan into an LIA grid) are not cropped.
+
+    Parameters
+    ----------
+    images : sequence of Any
+        Input images.
+    transforms_r2r : sequence of numpy.ndarray
+        Timepoint-to-template RAS transforms aligned with ``images``.
+    destination : tuple
+        ``(shape, affine)`` of the transforms' shared destination grid.
+
+    Returns
+    -------
+    template_shape : tuple of int
+        Template grid shape.
+    template_affine : numpy.ndarray
+        Template voxel-to-RAS affine.
+    """
+    dst_shape, dst_affine = destination
+    dst_affine = np.asarray(dst_affine, dtype=np.float64)
+    dst_sizes = np.linalg.norm(dst_affine[:3, :3], axis=0)
+    size = template_voxel_size(images)
+    if np.allclose(dst_sizes, size, atol=VOXEL_SIZE_TOLERANCE):
+        return tuple(int(v) for v in dst_shape), dst_affine
+    logger.info(
+        "Keeping the orientation of the init_ltas' destination grid, but at the inputs' voxel size %g mm "
+        "instead of its %s mm.",
+        size,
+        np.round(dst_sizes, 6).tolist(),
+    )
+    cosines = dst_affine[:3, :3] / dst_sizes
+    center = np.mean(
+        np.stack(
+            [
+                (np.asarray(r2r, dtype=np.float64) @ np.append(ras_center(image), 1.0))[:3]
+                for image, r2r in zip(images, transforms_r2r, strict=False)
+            ]
+        ),
+        axis=0,
+    )
+    # How far each input's field of view reaches below and above the center,
+    # in voxels along each grid axis: its mapped corners, projected onto them.
+    unit_corners = np.array([[i, j, k] for i in (0, 1) for j in (0, 1) for k in (0, 1)], dtype=np.float64)
+    low = np.zeros(3, dtype=np.float64)
+    high = np.zeros(3, dtype=np.float64)
+    for image, r2r in zip(images, transforms_r2r, strict=False):
+        voxel_corners = unit_corners * np.asarray(image.shape[:3], dtype=np.float64) - 0.5
+        ras = np.asarray(r2r, dtype=np.float64) @ np.asarray(image.affine, dtype=np.float64)
+        mapped = (np.c_[voxel_corners, np.ones(8)] @ ras.T)[:, :3]
+        projected = (mapped - center) @ cosines / size
+        low = np.minimum(low, projected.min(axis=0))
+        high = np.maximum(high, projected.max(axis=0))
+    # The center sits at voxel shape / 2, so the grid covers shape / 2 + 0.5
+    # voxels below it and shape / 2 - 0.5 above.
+    shape = tuple(int(v) for v in np.ceil(np.maximum(-2.0 * low - 1.0, 2.0 * high + 1.0) - 1e-4))
+    return shape, grid_affine(cosines, size, shape, center)
 
 
 #: How to supply a destination geometry when the given transforms carry none.
@@ -477,8 +620,10 @@ def check_template_grid_covers_inputs(
             )
 
 
-def validate_input_geometries(images: Sequence[Any], *, derives_geometry: bool = True) -> None:
-    """Validate the cross-timepoint geometry assumptions used by the current MVP.
+def validate_input_geometries(
+    images: Sequence[Any], *, derives_geometry: bool = True, allow_diff_vox_size: bool = False
+) -> None:
+    """Validate the cross-timepoint geometry assumptions.
 
     Parameters
     ----------
@@ -488,27 +633,49 @@ def validate_input_geometries(images: Sequence[Any], *, derives_geometry: bool =
         Whether the caller will derive the template geometry from these images.
         When ``False`` the geometry comes from elsewhere, so differing input
         orientations are not averaged and are not worth reporting.
+    allow_diff_vox_size : bool, default=False
+        Accept inputs with different voxel sizes, with a warning, instead of
+        rejecting them.
 
     Returns
     -------
     None
         This function returns ``None`` when all input geometries are accepted.
 
+    Raises
+    ------
+    ValueError
+        If voxel sizes differ by more than :data:`VOXEL_SIZE_TOLERANCE` and
+        ``allow_diff_vox_size`` is not set. As in FreeSurfer's
+        ``mri_robust_template``, time points are expected to share one
+        resolution: the template takes the coarsest, so finer ones would be
+        downsampled and differ from the rest in noise and detail.
+
     Warns
     -----
     RuntimeWarning
-        Warns when voxel sizes differ and multireg will rely on the underlying
-        pairwise resampling path, or when image orientations differ and will be
-        averaged for the template geometry.
+        Warns when voxel sizes differ and ``allow_diff_vox_size`` is set, or
+        when image orientations differ and will be averaged for the template
+        geometry.
     """
     ref_voxel_sizes = voxel_sizes(images[0])
     for idx, image in enumerate(images[1:], start=1):
         sizes = voxel_sizes(image)
-        if not np.allclose(sizes, ref_voxel_sizes, atol=1e-6):
+        # Sorted, so the same resolution stored in another axis order (an
+        # axial and a sagittal scan of one protocol) is not a difference.
+        if not np.allclose(np.sort(sizes), np.sort(ref_voxel_sizes), atol=VOXEL_SIZE_TOLERANCE):
+            message = (
+                f"Input voxel sizes differ: image 1 has {np.round(ref_voxel_sizes, 6).tolist()} mm and image "
+                f"{idx + 1} has {np.round(sizes, 6).tolist()} mm."
+            )
+            if not allow_diff_vox_size:
+                raise ValueError(
+                    f"{message} Time points should share one resolution, so conform them to a common voxel "
+                    "size first, or allow it explicitly (--allow-diff-vox-size); the template then takes the "
+                    "coarsest size, and finer time points are downsampled."
+                )
             warnings.warn(
-                "Input voxel sizes differ; multireg will rely on pairwise isotropic resampling during registration "
-                f"and template construction. Image 0 has voxel sizes {ref_voxel_sizes.tolist()} and image {idx} "
-                f"has {sizes.tolist()}.",
+                f"{message} The template takes the coarsest size, so finer time points are downsampled.",
                 RuntimeWarning,
                 stacklevel=2,
             )
