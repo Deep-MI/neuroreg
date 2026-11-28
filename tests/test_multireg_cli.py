@@ -308,7 +308,7 @@ class TestMultiregCli:
             (["--no-prealign"], "Use --map-only"),
             (["--iterate", "3"], "no global loop"),
             (["--map-only", "--inittp", "1"], "--inittp chooses the pre-alignment target"),
-            (["--map-only", "--init-header"], "there is no pre-alignment"),
+            (["--map-only", "--init-header"], "nothing is registered"),
             (["--ixforms", "tp1.lta", "tp2.lta", "--init-header"], "--ixforms gives the starting poses"),
         ],
     )

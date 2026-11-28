@@ -20,6 +20,7 @@ from ..transforms import LTA, affine_dist
 from .geometry import (
     check_template_grid_covers_inputs,
     create_template_geometry,
+    image_centroid_voxel,
     init_transform_template_geometry,
     mean_mapped_centroid,
     project_to_rotation,
@@ -134,6 +135,36 @@ def _load_init_ltas(
         if current_shape != template_shape or not np.allclose(current_affine, template_affine, atol=1e-6):
             raise ValueError("All init_ltas must share identical destination geometry.")
     return transforms_r2r, (template_shape, template_affine)
+
+
+def _common_start(images: Sequence[Any], init_type: InitType, *, registers: bool) -> list[np.ndarray]:
+    """Return start transforms without a pre-alignment or ``init_ltas``.
+
+    Without them the first template is the average of the inputs as their
+    headers place them, so time points whose headers put the head far apart
+    (an origin at a volume corner) would never be registered. ``"centroid"``
+    and ``"image_center"`` translate each time point so its intensity centroid
+    or image center lands on the mean of all of them, as the pre-alignment
+    would start each registration; ``"header"`` and plain mapping keep the
+    headers.
+    """
+    identity = np.eye(4, dtype=np.float64)
+    if not registers or init_type == "header":
+        return [identity.copy() for _ in images]
+    if init_type == "centroid":
+        centers = [
+            (np.asarray(image.affine, dtype=np.float64) @ np.append(image_centroid_voxel(image), 1.0))[:3]
+            for image in images
+        ]
+    else:
+        centers = [ras_center(image) for image in images]
+    mean_center = np.mean(np.stack(centers), axis=0)
+    starts = []
+    for center in centers:
+        start = identity.copy()
+        start[:3, 3] = mean_center - center
+        starts.append(start)
+    return starts
 
 
 def _is_rigid(matrix: np.ndarray) -> bool:
@@ -487,9 +518,13 @@ def multireg(
         instead. Needs the pre-alignment. Mutually exclusive with
         ``use_cras_center``, since no geometry is then derived.
     init_type : InitType or None, optional
-        How each pre-alignment registration starts (default ``"centroid"``).
-        Only applies without ``init_ltas`` and with the pre-alignment: the
-        global loop always starts from the current transforms.
+        How the time points start without ``init_ltas`` (default
+        ``"centroid"``): each pre-alignment registration, or without the
+        pre-alignment each time point's first global loop pass, which then
+        starts from moving its intensity centroid (``"centroid"``) or image
+        center (``"image_center"``) onto the mean of all of them, or from the
+        headers (``"header"``). Not allowed with ``init_ltas``, which give the
+        starting poses, nor when only mapping.
     nmax : int, default=5
         Maximum number of outer IRLS iterations per pairwise registration.
     sat : float, default=6.0
@@ -515,7 +550,7 @@ def multireg(
         Whether to run the pre-alignment. ``None`` runs it, except with
         ``init_ltas`` and ``template_iterations=0``, which use the transforms as
         given. Skipping it registers only in the global loop, starting from
-        ``init_ltas`` or from the image headers, which avoids choosing a target
+        ``init_ltas`` or as ``init_type`` says, which avoids choosing a target
         time point. Two time points have no global loop, so they can skip it
         only to map without registering (``template_iterations=0``).
     allow_diff_vox_size : bool, default=False
@@ -577,13 +612,8 @@ def multireg(
         )
     if init_target_index is not None and not resolved_prealign:
         raise ValueError("init_target_index chooses the pre-alignment target, and the pre-alignment is skipped here.")
-    if init_type is not None and (init_ltas is not None or not resolved_prealign):
-        # Every global-loop registration starts from the previous transform, so
-        # init_type only ever chooses how a pre-alignment registration starts.
-        raise ValueError(
-            "init_type chooses how each pre-alignment registration starts without init_ltas; with init_ltas "
-            "they start from those poses, and without a pre-alignment there is nothing to start."
-        )
+    if init_type is not None and init_ltas is not None:
+        raise ValueError("init_type chooses how the time points start, and init_ltas already give their poses.")
     if mapped_keep_dtype:
         dtypes = sorted({np.dtype(image.get_data_dtype()).name for image in images})
         if len(dtypes) > 1:
@@ -627,6 +657,8 @@ def multireg(
     validate_input_geometries(images, derives_geometry=derives_geometry, allow_diff_vox_size=allow_diff_vox_size)
     resolved_init_type = resolve_init_type(init_type, default_init_type="centroid")
     resolved_template_iterations = _resolve_iterations(template_iterations, len(images), prealign=resolved_prealign)
+    if init_type is not None and not resolved_prealign and resolved_template_iterations == 0:
+        raise ValueError("init_type chooses how registration starts, and these inputs are only mapped.")
 
     init_r2r: list[np.ndarray] | None = None
     destination: tuple[tuple[int, int, int], np.ndarray] | None = None
@@ -669,8 +701,12 @@ def multireg(
             verbose=verbose,
         )
     else:
-        logger.info("Skipping the pre-alignment; starting from %s.", "init_ltas" if init_r2r else "the image headers")
-        current_transforms = [identity.copy() for _ in images] if init_r2r is None else init_r2r
+        if init_r2r is not None:
+            logger.info("Skipping the pre-alignment; starting from init_ltas.")
+            current_transforms = init_r2r
+        else:
+            logger.info("Skipping the pre-alignment; starting from %s.", resolved_init_type)
+            current_transforms = _common_start(images, resolved_init_type, registers=resolved_template_iterations > 0)
         pairwise_r2r = [identity.copy() for _ in images]
         mean_space_from_target_r2r = identity
 
