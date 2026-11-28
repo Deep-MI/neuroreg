@@ -5,7 +5,43 @@ least squares (IRLS) optimization, matching FreeSurfer's mri_robust_register
 approach.
 """
 
+import math
+
 import torch
+
+#: Largest input torch.quantile accepts; a 256^3 volume is exactly this size.
+_TORCH_QUANTILE_LIMIT = 2**24
+
+
+def quantile(values: torch.Tensor, q: float) -> torch.Tensor:
+    """Return the ``q`` quantile of all elements, for inputs of any size.
+
+    ``torch.quantile`` refuses more than 2**24 elements, so anything finer than
+    a 1 mm 256^3 volume failed. Larger inputs get the same linear
+    interpolation, computed from the two neighbouring order statistics.
+
+    Parameters
+    ----------
+    values : torch.Tensor
+        Floating point values of any shape.
+    q : float
+        Quantile in ``[0, 1]``.
+
+    Returns
+    -------
+    torch.Tensor
+        Scalar tensor on the device of ``values``.
+    """
+    flat = values.reshape(-1)
+    if flat.numel() <= _TORCH_QUANTILE_LIMIT:
+        return torch.quantile(flat, q)
+    work = flat if flat.device.type == "cpu" else flat.cpu()
+    position = q * (work.numel() - 1)
+    low = math.floor(position)
+    high = min(low + 1, work.numel() - 1)
+    low_value = torch.kthvalue(work, low + 1).values
+    high_value = torch.kthvalue(work, high + 1).values if high != low else low_value
+    return (low_value + (high_value - low_value) * (position - low)).to(flat.device)
 
 
 def tukey_weights(residuals: torch.Tensor, c: float = 6.0) -> torch.Tensor:
@@ -245,12 +281,12 @@ def compute_scale_estimate(
         if percentile is None:
             raise ValueError("percentile must be specified when method='percentile'")
         r_abs = torch.abs(residuals.flatten())
-        sigma = torch.quantile(r_abs, percentile)
+        sigma = quantile(r_abs, percentile)
         return torch.clamp(sigma, min=1e-10)
     elif method == "iqr":
         r_abs = torch.abs(residuals.flatten())
-        q75 = torch.quantile(r_abs, 0.75)
-        q25 = torch.quantile(r_abs, 0.25)
+        q75 = quantile(r_abs, 0.75)
+        q25 = quantile(r_abs, 0.25)
         # IQR / 1.349 converts to std under normality
         sigma = (q75 - q25) / 1.349
         return torch.clamp(sigma, min=1e-10)

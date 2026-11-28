@@ -370,3 +370,26 @@ def test_register_irls_pyramid_regrids_between_level_affines(monkeypatch: pytest
     legacy_coarsest[:3, 3] = legacy_coarsest[:3, 3] / legacy_scale
     assert not torch.allclose(captured_initials[0], legacy_coarsest, atol=1e-4, rtol=1e-4)
     assert torch.allclose(result, initial_transform, atol=1e-5, rtol=1e-5)
+
+
+@pytest.mark.parametrize("target_axcodes", [("R", "A", "S"), ("P", "S", "R")])
+def test_robreg_registers_images_of_opposite_handedness(target_axcodes):
+    # The same anatomy stored LIA and as RAS (or PSR): the truth is identity.
+    # Without FreeSurfer's source axis reordering the voxel transform between
+    # them has determinant -1, which the rigid IRLS cannot represent.
+    from scipy.ndimage import gaussian_filter
+
+    rng = np.random.default_rng(3)
+    data = gaussian_filter(rng.random((32, 32, 32)).astype(np.float32), 2.0)
+    data[data < np.percentile(data, 40)] = 0.0
+    lia = np.array([[-2.0, 0, 0, 30], [0, 0, 2.0, -34], [0, -2.0, 0, 28], [0, 0, 0, 1]])
+    src = nib.Nifti1Image(data, lia)
+    ornt = nib.orientations.ornt_transform(
+        nib.orientations.io_orientation(lia), nib.orientations.axcodes2ornt(target_axcodes)
+    )
+    trg = src.as_reoriented(ornt)
+
+    r2r = np.asarray(robreg(src, trg, nmax=3).detach().cpu().numpy(), dtype=np.float64)
+
+    assert r2r[:3, :3] == pytest.approx(np.eye(3), abs=1e-3)
+    assert r2r[:3, 3] == pytest.approx(np.zeros(3), abs=0.05)
