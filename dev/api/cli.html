@@ -375,16 +375,20 @@ mapped-image export, and writing the output transform.</p>
 <section id="multireg">
 <h2><code class="docutils literal notranslate"><span class="pre">multireg</span></code><a class="headerlink" href="#multireg" title="Link to this heading">¶</a></h2>
 <p><p>FreeSurfer-style multi-timepoint robust registration.
-Registers all time points to a deterministic initial target,
-constructs an unbiased mean space, and iteratively refines the template.</p>
+A pre-alignment registers all time points to a deterministic initial target
+and constructs an unbiased mean space; a global loop then registers them to
+the template and refines it. With two time points the pre-alignment alone is
+the registration.</p>
 </p>
 <div class="highlight-default notranslate" id="id1"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">multireg</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">--</span><span class="n">mov</span> <span class="n">FILE</span> <span class="p">[</span><span class="n">FILE</span> <span class="o">...</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">mov</span><span class="o">-</span><span class="n">mask</span> <span class="p">[</span><span class="n">FILE</span> <span class="o">...</span><span class="p">]]</span>
                 <span class="o">--</span><span class="n">template</span> <span class="n">FILE</span> <span class="p">[</span><span class="o">--</span><span class="n">lta</span> <span class="p">[</span><span class="n">FILE</span> <span class="o">...</span><span class="p">]]</span> <span class="p">[</span><span class="o">--</span><span class="n">mapmov</span> <span class="p">[</span><span class="n">FILE</span> <span class="o">...</span><span class="p">]]</span>
                 <span class="p">[</span><span class="o">--</span><span class="n">ixforms</span> <span class="p">[</span><span class="n">FILE</span> <span class="o">...</span><span class="p">]]</span> <span class="p">[</span><span class="o">--</span><span class="n">template</span><span class="o">-</span><span class="n">geom</span> <span class="n">FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">average</span> <span class="n">MODE</span><span class="p">]</span>
                 <span class="p">[</span><span class="o">--</span><span class="n">inittp</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">seed</span> <span class="n">INT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">fixtp</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">cras</span><span class="o">-</span><span class="n">center</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">noit</span> <span class="o">|</span>
-                <span class="o">--</span><span class="n">iterate</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">template</span><span class="o">-</span><span class="n">eps</span> <span class="n">FLOAT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">nmax</span> <span class="n">N</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">sat</span> <span class="n">FLOAT</span><span class="p">]</span>
-                <span class="p">[</span><span class="o">--</span><span class="n">nosym</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">header</span> <span class="o">|</span> <span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">centroid</span> <span class="o">|</span> <span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">center</span><span class="p">]</span>
-                <span class="p">[</span><span class="o">--</span><span class="n">device</span> <span class="n">DEVICE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">keep</span><span class="o">-</span><span class="n">dtype</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
+                <span class="o">--</span><span class="n">iterate</span> <span class="n">N</span> <span class="o">|</span> <span class="o">--</span><span class="nb">map</span><span class="o">-</span><span class="n">only</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">prealign</span><span class="p">]</span>
+                <span class="p">[</span><span class="o">--</span><span class="n">allow</span><span class="o">-</span><span class="n">diff</span><span class="o">-</span><span class="n">vox</span><span class="o">-</span><span class="n">size</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">template</span><span class="o">-</span><span class="n">eps</span> <span class="n">FLOAT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">nmax</span> <span class="n">N</span><span class="p">]</span>
+                <span class="p">[</span><span class="o">--</span><span class="n">sat</span> <span class="n">FLOAT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">nosym</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">header</span> <span class="o">|</span> <span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">centroid</span> <span class="o">|</span>
+                <span class="o">--</span><span class="n">init</span><span class="o">-</span><span class="n">center</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">device</span> <span class="n">DEVICE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">keep</span><span class="o">-</span><span class="n">dtype</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">verbose</span><span class="p">]</span>
+                <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="p">]</span>
 </pre></div>
 </div>
 <section id="multireg-named-arguments">
@@ -406,24 +410,24 @@ constructs an unbiased mean space, and iteratively refines the template.</p>
 <dd><p>Optional output paths for mapped per-time-point images in template space, one per –mov image.</p>
 </dd>
 <dt><kbd>--ixforms</kbd></dt>
-<dd><p>Optional input LTAs, one per –mov image. They initialize each registration and supply the template geometry from their (shared) destination geometry, so a coarse pre-alignment is enough. Template iterations refine them, meaning the output LTAs usually differ; add –noit to use them exactly as given.</p>
+<dd><p>Optional input LTAs, one per –mov image, for example poses to an atlas. The pre-alignment starts from them and keeps their pose, so the template lands in the space they define, on their shared destination grid (only its orientation if its voxel size differs from the inputs’). Add –noit to use them exactly as given, as in FreeSurfer, or –no-prealign to start the global loop from them directly.</p>
 </dd>
 <dt><kbd>--template-geom</kbd></dt>
-<dd><p>Image or JSON with a geometry block supplying the output template geometry, replacing the geometry multireg would otherwise derive. Only the header is read. With –ixforms the destination geometry of the input transforms is then ignored and need not be present.</p>
+<dd><p>Image or JSON with a geometry block supplying the output template grid, replacing the one multireg would otherwise derive or take from –ixforms or –fixtp. Only the header is read, and only the grid is chosen: where the time points land is still set by the registration. With –ixforms their destination geometry is then ignored and need not be present.</p>
 </dd>
 <dt><kbd>--average</kbd></dt>
 <dd><p>Template aggregation mode: mean, median, 0 (=mean), or 1 (=median).</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">'median'</span></code></p>
 </dd>
 <dt><kbd>--inittp</kbd></dt>
-<dd><p>1-based initial target time point. When omitted, choose a deterministic pseudo-random target from the inputs.</p>
+<dd><p>1-based pre-alignment target time point. When omitted, choose a deterministic pseudo-random target from the inputs. Needs the pre-alignment.</p>
 </dd>
 <dt><kbd>--seed</kbd></dt>
 <dd><p>Seed used for the deterministic pseudo-random initial target selection. 0 recomputes it from the inputs.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">0</span></code></p>
 </dd>
 <dt><kbd>--fixtp</kbd></dt>
-<dd><p>Keep the chosen initial target as the output space instead of constructing an unbiased mean space. Cannot be combined with –ixforms or –template-geom, which supply the template space themselves.</p>
+<dd><p>Keep the pre-alignment target’s space instead of constructing an unbiased mean space. With –ixforms the template sits where the target’s transform puts it. With –template-geom that space is sampled on the given grid instead of the target’s. Needs the pre-alignment.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
 </dd>
 <dt><kbd>--cras-center</kbd></dt>
@@ -431,11 +435,22 @@ constructs an unbiased mean space, and iteratively refines the template.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
 </dd>
 <dt><kbd>--noit</kbd></dt>
-<dd><p>Stop after the initial mean-space pass instead of iteratively refining the template.</p>
+<dd><p>Skip the global loop and build the template from the pre-alignment; the same as –iterate 0. With –ixforms there is no pre-alignment either, so the inputs are only mapped, as in FreeSurfer.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
 </dd>
 <dt><kbd>--iterate</kbd></dt>
-<dd><p>Maximum number of template-refinement iterations. Defaults to 6 for 3+ time points and 0 for 2, where the initial pass is already exact by symmetry and an explicit count is ignored. Neither applies when –ixforms replaced that pass: refinement then runs, and –noit asks for none.</p>
+<dd><p>Maximum number of global loop iterations, 6 by default; 0 is the same as –noit. Only for 3 or more time points: with 2 the pre-alignment is symmetric and is the registration.</p>
+</dd>
+<dt><kbd>--map-only</kbd></dt>
+<dd><p>Do not register: map each input with its –ixforms transform, or through its header without –ixforms, and build the template from them.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+<dt><kbd>--no-prealign</kbd></dt>
+<dd><p>Skip the pre-alignment and register only in the global loop, starting from –ixforms or from the image headers. Avoids choosing a target time point. Needs 3 or more time points, since with 2 the pre-alignment is the registration; use –map-only there.</p>
+</dd>
+<dt><kbd>--allow-diff-vox-size</kbd></dt>
+<dd><p>Accept inputs with different voxel sizes, with a warning. By default they are rejected: the template takes the coarsest size, so finer time points are downsampled.</p>
+<p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
 </dd>
 <dt><kbd>--template-eps</kbd></dt>
 <dd><p>Stop template refinement when the maximum transform change falls below this threshold.</p>
@@ -453,20 +468,20 @@ constructs an unbiased mean space, and iteratively refines the template.</p>
 <dd><p>Disable symmetric halfway-space pairwise registration.</p>
 </dd>
 <dt><kbd>--init-header</kbd></dt>
-<dd><p>Use header alignment only for the pairwise registrations.</p>
+<dd><p>Start each pre-alignment registration from the headers (not with –ixforms).</p>
 </dd>
 <dt><kbd>--init-centroid</kbd></dt>
-<dd><p>Initialize the pairwise registrations by aligning intensity centroids in RAS.</p>
+<dd><p>Start each pre-alignment registration by aligning intensity centroids in RAS (default).</p>
 </dd>
 <dt><kbd>--init-center</kbd></dt>
-<dd><p>Initialize the pairwise registrations by aligning geometric image centers in RAS.</p>
+<dd><p>Start each pre-alignment registration by aligning geometric image centers in RAS.</p>
 </dd>
 <dt><kbd>--device</kbd></dt>
 <dd><p>Torch device string, e.g. ‘cpu’, ‘cuda’, ‘mps’, or ‘gpu’.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">'gpu'</span></code></p>
 </dd>
 <dt><kbd>--keep-dtype</kbd></dt>
-<dd><p>Write –mapmov outputs in each input’s own dtype and the –template output in the initial target time point’s dtype, instead of float32.</p>
+<dd><p>Write –mapmov outputs in each input’s own dtype and the –template output in the inputs’ dtype, instead of float32. All inputs must share one dtype.</p>
 <p>Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
 </dd>
 <dt><kbd>--verbose</kbd></dt>

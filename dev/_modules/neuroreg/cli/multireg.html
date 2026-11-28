@@ -267,8 +267,10 @@
         <span class="n">prog</span><span class="o">=</span><span class="s2">"multireg"</span><span class="p">,</span>
         <span class="n">description</span><span class="o">=</span><span class="p">(</span>
             <span class="s2">"FreeSurfer-style multi-timepoint robust registration.</span><span class="se">\n</span><span class="s2">"</span>
-            <span class="s2">"Registers all time points to a deterministic initial target,</span><span class="se">\n</span><span class="s2">"</span>
-            <span class="s2">"constructs an unbiased mean space, and iteratively refines the template."</span>
+            <span class="s2">"A pre-alignment registers all time points to a deterministic initial target</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"and constructs an unbiased mean space; a global loop then registers them to</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"the template and refines it. With two time points the pre-alignment alone is</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"the registration."</span>
         <span class="p">),</span>
         <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentDefaultsHelpFormatter</span><span class="p">,</span>
     <span class="p">)</span>
@@ -297,19 +299,21 @@
         <span class="n">nargs</span><span class="o">=</span><span class="s2">"*"</span><span class="p">,</span>
         <span class="n">metavar</span><span class="o">=</span><span class="s2">"FILE"</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="p">(</span>
-            <span class="s2">"Optional input LTAs, one per --mov image. They initialize each registration and "</span>
-            <span class="s2">"supply the template geometry from their (shared) destination geometry, so a coarse "</span>
-            <span class="s2">"pre-alignment is enough. Template iterations refine them, meaning the output LTAs "</span>
-            <span class="s2">"usually differ; add --noit to use them exactly as given."</span>
+            <span class="s2">"Optional input LTAs, one per --mov image, for example poses to an atlas. The "</span>
+            <span class="s2">"pre-alignment starts from them and keeps their pose, so the template lands in the "</span>
+            <span class="s2">"space they define, on their shared destination grid (only its orientation if its "</span>
+            <span class="s2">"voxel size differs from the inputs'). Add --noit to use them exactly as given, as in "</span>
+            <span class="s2">"FreeSurfer, or --no-prealign to start the global loop from them directly."</span>
         <span class="p">),</span>
     <span class="p">)</span>
     <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
         <span class="s2">"--template-geom"</span><span class="p">,</span>
         <span class="n">metavar</span><span class="o">=</span><span class="s2">"FILE"</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="p">(</span>
-            <span class="s2">"Image or JSON with a geometry block supplying the output template geometry, replacing "</span>
-            <span class="s2">"the geometry multireg would otherwise derive. Only the header is read. With "</span>
-            <span class="s2">"--ixforms the destination geometry of the input transforms is then ignored and "</span>
+            <span class="s2">"Image or JSON with a geometry block supplying the output template grid, replacing "</span>
+            <span class="s2">"the one multireg would otherwise derive or take from --ixforms or --fixtp. Only the "</span>
+            <span class="s2">"header is read, and only the grid is chosen: where the time points land is still set "</span>
+            <span class="s2">"by the registration. With --ixforms their destination geometry is then ignored and "</span>
             <span class="s2">"need not be present."</span>
         <span class="p">),</span>
     <span class="p">)</span>
@@ -324,8 +328,8 @@
         <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
         <span class="n">metavar</span><span class="o">=</span><span class="s2">"N"</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="p">(</span>
-            <span class="s2">"1-based initial target time point. When omitted, choose a deterministic "</span>
-            <span class="s2">"pseudo-random target from the inputs."</span>
+            <span class="s2">"1-based pre-alignment target time point. When omitted, choose a deterministic "</span>
+            <span class="s2">"pseudo-random target from the inputs. Needs the pre-alignment."</span>
         <span class="p">),</span>
     <span class="p">)</span>
     <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
@@ -339,9 +343,10 @@
         <span class="s2">"--fixtp"</span><span class="p">,</span>
         <span class="n">action</span><span class="o">=</span><span class="s2">"store_true"</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="p">(</span>
-            <span class="s2">"Keep the chosen initial target as the output space instead of constructing an "</span>
-            <span class="s2">"unbiased mean space. Cannot be combined with --ixforms or --template-geom, which "</span>
-            <span class="s2">"supply the template space themselves."</span>
+            <span class="s2">"Keep the pre-alignment target's space instead of constructing an unbiased mean space. "</span>
+            <span class="s2">"With --ixforms the template sits where the target's transform puts it. With "</span>
+            <span class="s2">"--template-geom that space is sampled on the given grid instead of the target's. "</span>
+            <span class="s2">"Needs the pre-alignment."</span>
         <span class="p">),</span>
     <span class="p">)</span>
     <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
@@ -357,17 +362,47 @@
     <span class="n">iter_group</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
         <span class="s2">"--noit"</span><span class="p">,</span>
         <span class="n">action</span><span class="o">=</span><span class="s2">"store_true"</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">"Stop after the initial mean-space pass instead of iteratively refining the template."</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"Skip the global loop and build the template from the pre-alignment; the same as "</span>
+            <span class="s2">"--iterate 0. With --ixforms there is no pre-alignment either, so the inputs are only "</span>
+            <span class="s2">"mapped, as in FreeSurfer."</span>
+        <span class="p">),</span>
     <span class="p">)</span>
     <span class="n">iter_group</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
         <span class="s2">"--iterate"</span><span class="p">,</span>
         <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
         <span class="n">metavar</span><span class="o">=</span><span class="s2">"N"</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="p">(</span>
-            <span class="s2">"Maximum number of template-refinement iterations. Defaults to 6 for 3+ "</span>
-            <span class="s2">"time points and 0 for 2, where the initial pass is already exact by "</span>
-            <span class="s2">"symmetry and an explicit count is ignored. Neither applies when --ixforms "</span>
-            <span class="s2">"replaced that pass: refinement then runs, and --noit asks for none."</span>
+            <span class="s2">"Maximum number of global loop iterations, 6 by default; 0 is the same as --noit. "</span>
+            <span class="s2">"Only for 3 or more time points: with 2 the pre-alignment is symmetric and is the "</span>
+            <span class="s2">"registration."</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">iter_group</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">"--map-only"</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">"store_true"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"Do not register: map each input with its --ixforms transform, or through its header "</span>
+            <span class="s2">"without --ixforms, and build the template from them."</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">"--no-prealign"</span><span class="p">,</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s2">"prealign"</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">"store_false"</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"Skip the pre-alignment and register only in the global loop, starting from --ixforms "</span>
+            <span class="s2">"or from the image headers. Avoids choosing a target time point. Needs 3 or more time "</span>
+            <span class="s2">"points, since with 2 the pre-alignment is the registration; use --map-only there."</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">"--allow-diff-vox-size"</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">"store_true"</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"Accept inputs with different voxel sizes, with a warning. By default they are "</span>
+            <span class="s2">"rejected: the template takes the coarsest size, so finer time points are downsampled."</span>
         <span class="p">),</span>
     <span class="p">)</span>
     <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
@@ -404,21 +439,21 @@
         <span class="n">dest</span><span class="o">=</span><span class="s2">"init_type"</span><span class="p">,</span>
         <span class="n">action</span><span class="o">=</span><span class="s2">"store_const"</span><span class="p">,</span>
         <span class="n">const</span><span class="o">=</span><span class="s2">"header"</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">"Use header alignment only for the pairwise registrations."</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Start each pre-alignment registration from the headers (not with --ixforms)."</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">init_group</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
         <span class="s2">"--init-centroid"</span><span class="p">,</span>
         <span class="n">dest</span><span class="o">=</span><span class="s2">"init_type"</span><span class="p">,</span>
         <span class="n">action</span><span class="o">=</span><span class="s2">"store_const"</span><span class="p">,</span>
         <span class="n">const</span><span class="o">=</span><span class="s2">"centroid"</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">"Initialize the pairwise registrations by aligning intensity centroids in RAS."</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Start each pre-alignment registration by aligning intensity centroids in RAS (default)."</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">init_group</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
         <span class="s2">"--init-center"</span><span class="p">,</span>
         <span class="n">dest</span><span class="o">=</span><span class="s2">"init_type"</span><span class="p">,</span>
         <span class="n">action</span><span class="o">=</span><span class="s2">"store_const"</span><span class="p">,</span>
         <span class="n">const</span><span class="o">=</span><span class="s2">"image_center"</span><span class="p">,</span>
-        <span class="n">help</span><span class="o">=</span><span class="s2">"Initialize the pairwise registrations by aligning geometric image centers in RAS."</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Start each pre-alignment registration by aligning geometric image centers in RAS."</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
         <span class="s2">"--device"</span><span class="p">,</span>
@@ -431,7 +466,7 @@
         <span class="n">action</span><span class="o">=</span><span class="s2">"store_true"</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="p">(</span>
             <span class="s2">"Write --mapmov outputs in each input's own dtype and the --template "</span>
-            <span class="s2">"output in the initial target time point's dtype, instead of float32."</span>
+            <span class="s2">"output in the inputs' dtype, instead of float32. All inputs must share one dtype."</span>
         <span class="p">),</span>
     <span class="p">)</span>
     <span class="n">p</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--verbose"</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">"store_true"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Enable INFO-level logging."</span><span class="p">)</span>
@@ -471,18 +506,33 @@
         <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--lta requires exactly one output path per --mov input."</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">ixforms</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">ixforms</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">mov</span><span class="p">):</span>
         <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--ixforms requires exactly one input LTA per --mov input."</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">ixforms</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">ns</span><span class="o">.</span><span class="n">fixtp</span><span class="p">:</span>
-        <span class="c1"># Both choose the template space: --fixtp keeps the initial target time</span>
-        <span class="c1"># point's grid, --ixforms takes it from the given LTAs' destination</span>
-        <span class="c1"># geometry. Honouring one would silently discard the other. The</span>
-        <span class="c1"># transforms differ only as a consequence of landing in a different</span>
-        <span class="c1"># space; --inittp is what selects the registration target, and it</span>
-        <span class="c1"># composes with either flag.</span>
-        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--ixforms and --fixtp both determine the template space; pass only one."</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">template_geom</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">ns</span><span class="o">.</span><span class="n">fixtp</span><span class="p">:</span>
-        <span class="c1"># Same reasoning as above: --fixtp keeps the initial target time point's</span>
-        <span class="c1"># grid, --template-geom supplies a grid outright.</span>
-        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--template-geom and --fixtp both determine the template space; pass only one."</span><span class="p">)</span>
+    <span class="c1"># --iterate 0 asks for exactly what --noit does, so every rule below reads</span>
+    <span class="c1"># this rather than either flag.</span>
+    <span class="n">no_global_loop</span> <span class="o">=</span> <span class="n">ns</span><span class="o">.</span><span class="n">noit</span> <span class="ow">or</span> <span class="n">ns</span><span class="o">.</span><span class="n">iterate</span> <span class="o">==</span> <span class="mi">0</span>
+    <span class="n">maps_only</span> <span class="o">=</span> <span class="n">ns</span><span class="o">.</span><span class="n">map_only</span> <span class="ow">or</span> <span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">ixforms</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">no_global_loop</span> <span class="ow">and</span> <span class="n">ns</span><span class="o">.</span><span class="n">prealign</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">map_only</span> <span class="ow">and</span> <span class="n">ns</span><span class="o">.</span><span class="n">prealign</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--map-only already skips the pre-alignment; --no-prealign is redundant."</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">fixtp</span> <span class="ow">and</span> <span class="p">(</span><span class="n">maps_only</span> <span class="ow">or</span> <span class="n">ns</span><span class="o">.</span><span class="n">prealign</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">):</span>
+        <span class="c1"># --fixtp keeps the pre-alignment target's space, so there must be a</span>
+        <span class="c1"># pre-alignment, and --ixforms --noit, like --map-only, has none.</span>
+        <span class="n">source</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">"--no-prealign"</span>
+            <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">prealign</span> <span class="ow">is</span> <span class="kc">False</span>
+            <span class="k">else</span> <span class="s2">"--map-only"</span>
+            <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">map_only</span>
+            <span class="k">else</span> <span class="s2">"--ixforms with --noit (or --iterate 0)"</span>
+        <span class="p">)</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">"--fixtp keeps the space of the pre-alignment target, and </span><span class="si">{</span><span class="n">source</span><span class="si">}</span><span class="s2"> skips the pre-alignment."</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">mov</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">ns</span><span class="o">.</span><span class="n">iterate</span><span class="p">:</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="s2">"--iterate applies to 3 or more time points: with 2 the pre-alignment is symmetric and is the "</span>
+            <span class="s2">"registration, so there is no global loop to iterate."</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">mov</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">ns</span><span class="o">.</span><span class="n">prealign</span> <span class="ow">is</span> <span class="kc">False</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">no_global_loop</span><span class="p">:</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="s2">"With 2 time points the pre-alignment is the registration, so --no-prealign leaves nothing to "</span>
+            <span class="s2">"register. Use --map-only to only map the inputs."</span>
+        <span class="p">)</span>
     <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">cras_center</span> <span class="ow">and</span> <span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">ixforms</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">ns</span><span class="o">.</span><span class="n">template_geom</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">ns</span><span class="o">.</span><span class="n">fixtp</span><span class="p">):</span>
         <span class="c1"># --cras-center only selects how a derived geometry is centered, and none</span>
         <span class="c1"># of these derives one: each supplies a grid, placement included.</span>
@@ -497,6 +547,14 @@
         <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--mapmov requires exactly one output path per --mov input."</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">inittp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="mi">1</span> <span class="o">&lt;=</span> <span class="n">ns</span><span class="o">.</span><span class="n">inittp</span> <span class="o">&lt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">mov</span><span class="p">):</span>
         <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">"--inittp must be in [1, </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">mov</span><span class="p">)</span><span class="si">}</span><span class="s2">]."</span><span class="p">)</span>
+    <span class="n">skips_prealign</span> <span class="o">=</span> <span class="n">maps_only</span> <span class="ow">or</span> <span class="n">ns</span><span class="o">.</span><span class="n">prealign</span> <span class="ow">is</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">inittp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">skips_prealign</span><span class="p">:</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"--inittp chooses the pre-alignment target, and the pre-alignment is skipped here."</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">init_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">ixforms</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">skips_prealign</span><span class="p">):</span>
+        <span class="c1"># The global loop always starts from the current transforms, so --init-*</span>
+        <span class="c1"># only ever chooses how a pre-alignment registration starts.</span>
+        <span class="n">source</span> <span class="o">=</span> <span class="s2">"--ixforms gives the starting poses"</span> <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">ixforms</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">"there is no pre-alignment"</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">"--init-* chooses how each pre-alignment registration starts, and </span><span class="si">{</span><span class="n">source</span><span class="si">}</span><span class="s2">."</span><span class="p">)</span>
     <span class="n">level</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span> <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">debug</span> <span class="k">else</span> <span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span> <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">verbose</span> <span class="k">else</span> <span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span><span class="p">)</span>
     <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">level</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">"</span><span class="si">%(levelname)s</span><span class="s2"> </span><span class="si">%(name)s</span><span class="s2">: </span><span class="si">%(message)s</span><span class="s2">"</span><span class="p">)</span>
     <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">"neuroreg.cli.multireg"</span><span class="p">)</span>
@@ -514,7 +572,7 @@
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ERROR loading image: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
         <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Starting multireg with </span><span class="si">%d</span><span class="s2"> time points."</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">mov_imgs</span><span class="p">))</span>
-    <span class="n">template_iterations</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">noit</span> <span class="k">else</span> <span class="n">ns</span><span class="o">.</span><span class="n">iterate</span>
+    <span class="n">template_iterations</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">noit</span> <span class="ow">or</span> <span class="n">ns</span><span class="o">.</span><span class="n">map_only</span> <span class="k">else</span> <span class="n">ns</span><span class="o">.</span><span class="n">iterate</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">result</span> <span class="o">=</span> <span class="n">multireg</span><span class="p">(</span>
             <span class="n">mov_imgs</span><span class="p">,</span>
@@ -533,6 +591,8 @@
             <span class="n">use_cras_center</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">cras_center</span><span class="p">,</span>
             <span class="n">template_iterations</span><span class="o">=</span><span class="n">template_iterations</span><span class="p">,</span>
             <span class="n">template_eps</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">template_eps</span><span class="p">,</span>
+            <span class="n">prealign</span><span class="o">=</span><span class="kc">False</span> <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">map_only</span> <span class="k">else</span> <span class="n">ns</span><span class="o">.</span><span class="n">prealign</span><span class="p">,</span>
+            <span class="n">allow_diff_vox_size</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">allow_diff_vox_size</span><span class="p">,</span>
             <span class="n">return_mapped</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">mapmov</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span>
             <span class="n">mapped_keep_dtype</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">keep_dtype</span><span class="p">,</span>
             <span class="n">verbose</span><span class="o">=</span><span class="n">ns</span><span class="o">.</span><span class="n">verbose</span> <span class="ow">or</span> <span class="n">ns</span><span class="o">.</span><span class="n">debug</span><span class="p">,</span>
@@ -541,8 +601,9 @@
         <span class="c1"># The template's values are new, built from all time points, so it</span>
         <span class="c1"># inherits nothing; it only records how it was made.</span>
         <span class="n">save_image</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">template_image</span><span class="p">,</span> <span class="n">ns</span><span class="o">.</span><span class="n">template</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">MGHTags</span><span class="p">()</span><span class="o">.</span><span class="n">with_history</span><span class="p">(</span><span class="n">history</span><span class="p">))</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"InitialTP:   </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">initial_target_index</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Seed:        </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">seed</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="n">initial_tp</span> <span class="o">=</span> <span class="s2">"none"</span> <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">initial_target_index</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">result</span><span class="o">.</span><span class="n">initial_target_index</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"InitialTP:   </span><span class="si">{</span><span class="n">initial_tp</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Seed:        </span><span class="si">{</span><span class="s1">'none'</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">result</span><span class="o">.</span><span class="n">seed</span><span class="w"> </span><span class="ow">is</span><span class="w"> </span><span class="kc">None</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="n">result</span><span class="o">.</span><span class="n">seed</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Iterations:  </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">template_iterations_run</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">iteration_distances</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"LastChange:  </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">iteration_distances</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>

@@ -262,11 +262,16 @@ closely-related contrast pairs.</p>
 </section>
 <section id="multireg">
 <h2>multireg<a class="headerlink" href="#multireg" title="Link to this heading">¶</a></h2>
-<p>Longitudinal multi-timepoint template construction with reusable LTAs for later
-template rebuilds, optionally on a caller-defined voxel grid.</p>
+<p>Longitudinal multi-timepoint template construction: a pre-alignment to one time
+point, then a global loop to the template (two time points need only the
+pre-alignment). The registration can start from initial transforms such as
+<code class="docutils literal notranslate"><span class="pre">segreg</span></code> poses to an atlas, keeping their pose, and the resulting LTAs can be
+reused for later template rebuilds, optionally on a caller-defined voxel grid.</p>
 <p>Examples:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">multireg</span> <span class="o">--</span><span class="n">mov</span> <span class="n">tp1</span><span class="o">.</span><span class="n">mgz</span> <span class="n">tp2</span><span class="o">.</span><span class="n">mgz</span> <span class="n">tp3</span><span class="o">.</span><span class="n">mgz</span> <span class="o">--</span><span class="n">template</span> <span class="n">subject_template</span><span class="o">.</span><span class="n">mgz</span> \
          <span class="o">--</span><span class="n">lta</span> <span class="n">tp1</span><span class="o">.</span><span class="n">lta</span> <span class="n">tp2</span><span class="o">.</span><span class="n">lta</span> <span class="n">tp3</span><span class="o">.</span><span class="n">lta</span> <span class="o">--</span><span class="n">average</span> <span class="n">median</span>
+<span class="n">multireg</span> <span class="o">--</span><span class="n">mov</span> <span class="n">tp1_norm</span><span class="o">.</span><span class="n">mgz</span> <span class="n">tp2_norm</span><span class="o">.</span><span class="n">mgz</span> <span class="o">--</span><span class="n">ixforms</span> <span class="n">tp1_pose</span><span class="o">.</span><span class="n">lta</span> <span class="n">tp2_pose</span><span class="o">.</span><span class="n">lta</span> \
+         <span class="o">--</span><span class="n">template</span> <span class="n">base</span><span class="o">.</span><span class="n">mgz</span> <span class="o">--</span><span class="n">lta</span> <span class="n">tp1</span><span class="o">.</span><span class="n">lta</span> <span class="n">tp2</span><span class="o">.</span><span class="n">lta</span>
 <span class="n">multireg</span> <span class="o">--</span><span class="n">mov</span> <span class="n">tp1_orig</span><span class="o">.</span><span class="n">mgz</span> <span class="n">tp2_orig</span><span class="o">.</span><span class="n">mgz</span> <span class="n">tp3_orig</span><span class="o">.</span><span class="n">mgz</span> \
          <span class="o">--</span><span class="n">template</span> <span class="n">subject_template_orig</span><span class="o">.</span><span class="n">mgz</span> \
          <span class="o">--</span><span class="n">ixforms</span> <span class="n">tp1</span><span class="o">.</span><span class="n">lta</span> <span class="n">tp2</span><span class="o">.</span><span class="n">lta</span> <span class="n">tp3</span><span class="o">.</span><span class="n">lta</span> <span class="o">--</span><span class="n">noit</span> <span class="o">--</span><span class="n">average</span> <span class="n">median</span>

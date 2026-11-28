@@ -390,15 +390,27 @@ to lack of double precision support on MPS.</p>
 <h3><code class="docutils literal notranslate"><span class="pre">multireg</span></code> — longitudinal multi-timepoint template building<a class="headerlink" href="#multireg-longitudinal-multi-timepoint-template-building" title="Link to this heading">¶</a></h3>
 <p>Builds a within-subject template from multiple same-contrast time points using
 the robust pairwise <code class="docutils literal notranslate"><span class="pre">robreg</span></code> path as its registration kernel.</p>
+<p>As in FreeSurfer’s <code class="docutils literal notranslate"><span class="pre">mri_robust_template</span></code>, registration has two phases: a
+<strong>pre-alignment</strong>, which registers every time point to one target time point and
+builds an unbiased initial space from the results, and a <strong>global loop</strong>, which
+registers every time point to the current template and rebuilds it. With two
+time points the pre-alignment is the whole registration: it is symmetric, and the
+mean of two images is their median, so there is no global loop.</p>
 <p>This command supports these key workflows:</p>
 <ul class="simple">
 <li><p>full multi-timepoint registration and template construction</p></li>
-<li><p>template rebuilding from precomputed LTAs via <code class="docutils literal notranslate"><span class="pre">--ixforms</span></code>, which is useful for
-the later FastSurfer-style “reuse transforms and just rebuild the template”
-pass</p></li>
+<li><p>registration started from initial transforms via <code class="docutils literal notranslate"><span class="pre">--ixforms</span></code>, for example
+poses to an atlas from <code class="docutils literal notranslate"><span class="pre">segreg</span></code>: the pre-alignment starts from them and the
+template keeps their pose, so the base comes out upright</p></li>
+<li><p>template rebuilding from precomputed LTAs via <code class="docutils literal notranslate"><span class="pre">--ixforms</span> <span class="pre">...</span> <span class="pre">--noit</span></code> (or
+<code class="docutils literal notranslate"><span class="pre">--map-only</span></code>), the FastSurfer-style “reuse transforms and just rebuild the
+template” pass</p></li>
 <li><p>template building on a caller-defined voxel grid via <code class="docutils literal notranslate"><span class="pre">--template-geom</span></code>, for
 example one written by <code class="docutils literal notranslate"><span class="pre">mri</span> <span class="pre">geom</span></code></p></li>
 </ul>
+<p>Time points must share one voxel size; differing ones are rejected unless
+<code class="docutils literal notranslate"><span class="pre">--allow-diff-vox-size</span></code> is given, since the template takes the coarsest and finer
+time points would be downsampled.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">multireg</span> <span class="o">--</span><span class="n">mov</span> <span class="o">&lt;</span><span class="n">tp1</span><span class="o">.</span><span class="n">nii</span><span class="o">.</span><span class="n">gz</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">tp2</span><span class="o">.</span><span class="n">nii</span><span class="o">.</span><span class="n">gz</span><span class="o">&gt;</span> <span class="o">...</span> <span class="o">--</span><span class="n">template</span> <span class="o">&lt;</span><span class="n">template</span><span class="o">.</span><span class="n">nii</span><span class="o">.</span><span class="n">gz</span><span class="o">&gt;</span> <span class="p">[</span><span class="n">options</span><span class="p">]</span>
 </pre></div>
 </div>
@@ -422,7 +434,7 @@ example one written by <code class="docutils literal notranslate"><span class="p
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--ixforms</span> <span class="pre">FILE</span> <span class="pre">...</span></code></p></td>
 <td><p>—</p></td>
-<td><p>Reuse precomputed LTAs as input transforms into template space.</p></td>
+<td><p>Initial transforms into template space. The pre-alignment starts from them and the template keeps their pose, on their shared destination grid (only its orientation if its voxel size differs from the inputs’). Must be rigid unless the inputs are only mapped.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--template-geom</span> <span class="pre">FILE</span></code></p></td>
 <td><p>—</p></td>
@@ -434,11 +446,27 @@ example one written by <code class="docutils literal notranslate"><span class="p
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--noit</span></code></p></td>
 <td><p>off</p></td>
-<td><p>Stop after the initial template build instead of running iterative refinement.</p></td>
+<td><p>Skip the global loop; the same as <code class="docutils literal notranslate"><span class="pre">--iterate</span> <span class="pre">0</span></code>. With <code class="docutils literal notranslate"><span class="pre">--ixforms</span></code> there is no pre-alignment either, so the inputs are only mapped, as in FreeSurfer.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--iterate</span> <span class="pre">N</span></code></p></td>
-<td><p>auto</p></td>
-<td><p>Maximum number of refinement iterations (<code class="docutils literal notranslate"><span class="pre">0</span></code> for 2 TPs, <code class="docutils literal notranslate"><span class="pre">6</span></code> for 3+ by default).</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">6</span></code></p></td>
+<td><p>Maximum number of global loop iterations (<code class="docutils literal notranslate"><span class="pre">0</span></code> is <code class="docutils literal notranslate"><span class="pre">--noit</span></code>); 3 or more time points only.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--map-only</span></code></p></td>
+<td><p>off</p></td>
+<td><p>Do not register: map with <code class="docutils literal notranslate"><span class="pre">--ixforms</span></code>, or through the headers, and build the template.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--no-prealign</span></code></p></td>
+<td><p>off</p></td>
+<td><p>Register only in the global loop, from <code class="docutils literal notranslate"><span class="pre">--ixforms</span></code> or the headers, without choosing a target time point. 3 or more time points only.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--fixtp</span></code></p></td>
+<td><p>off</p></td>
+<td><p>Keep the pre-alignment target’s space instead of the unbiased one; with <code class="docutils literal notranslate"><span class="pre">--template-geom</span></code>, sampled on that grid.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--allow-diff-vox-size</span></code></p></td>
+<td><p>off</p></td>
+<td><p>Accept differing voxel sizes, with a warning.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--template-eps</span> <span class="pre">F</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">0.03</span></code></p></td>
@@ -446,7 +474,7 @@ example one written by <code class="docutils literal notranslate"><span class="p
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--inittp</span> <span class="pre">N</span></code></p></td>
 <td><p>auto</p></td>
-<td><p>1-based initial target time point.</p></td>
+<td><p>1-based pre-alignment target time point; needs the pre-alignment.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--mapmov</span> <span class="pre">FILE</span> <span class="pre">...</span></code></p></td>
 <td><p>—</p></td>
@@ -454,7 +482,7 @@ example one written by <code class="docutils literal notranslate"><span class="p
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--keep-dtype</span></code></p></td>
 <td><p>off</p></td>
-<td><p>Preserve each input’s own dtype for <code class="docutils literal notranslate"><span class="pre">--mapmov</span></code> outputs and the initial target’s dtype for the template.</p></td>
+<td><p>Preserve each input’s own dtype for <code class="docutils literal notranslate"><span class="pre">--mapmov</span></code> outputs and the inputs’ shared dtype for the template; all inputs must share one dtype.</p></td>
 </tr>
 </tbody>
 </table>
@@ -469,9 +497,16 @@ multireg<span class="w"> </span>--mov<span class="w"> </span>tp1_orig.mgz<span c
 <span class="w">         </span>--template<span class="w"> </span>subject_template_orig.mgz<span class="w"> </span><span class="se">\</span>
 <span class="w">         </span>--ixforms<span class="w"> </span>tp1.lta<span class="w"> </span>tp2.lta<span class="w"> </span>tp3.lta<span class="w"> </span>--noit<span class="w"> </span>--average<span class="w"> </span>median
 
-<span class="c1"># Build on a caller-defined grid, here one created with mri geom. The input</span>
-<span class="c1"># poses only initialize the registrations, so they need no destination geometry</span>
-<span class="c1"># (segreg fits them against centroids and marks their destination invalid).</span>
+<span class="c1"># Upright base: start from poses to the MNI centroid target. The template keeps</span>
+<span class="c1"># their orientation, at the inputs' voxel size.</span>
+<span class="k">for</span><span class="w"> </span>tp<span class="w"> </span><span class="k">in</span><span class="w"> </span>tp1<span class="w"> </span>tp2<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">  </span>segreg<span class="w"> </span>--seg<span class="w"> </span><span class="si">${</span><span class="nv">tp</span><span class="si">}</span>_aseg.mgz<span class="w"> </span>--centroids<span class="w"> </span>mni_icbm152_t1_tal_nlin_asym_09c<span class="w"> </span>--dof<span class="w"> </span><span class="m">6</span><span class="w"> </span>--lta<span class="w"> </span><span class="si">${</span><span class="nv">tp</span><span class="si">}</span>_pose.lta
+<span class="k">done</span>
+multireg<span class="w"> </span>--mov<span class="w"> </span>tp1_norm.mgz<span class="w"> </span>tp2_norm.mgz<span class="w"> </span>--ixforms<span class="w"> </span>tp1_pose.lta<span class="w"> </span>tp2_pose.lta<span class="w"> </span><span class="se">\</span>
+<span class="w">         </span>--template<span class="w"> </span>base.mgz<span class="w"> </span>--lta<span class="w"> </span>tp1.lta<span class="w"> </span>tp2.lta
+
+<span class="c1"># Build on a caller-defined grid, here one created with mri geom. The grid comes</span>
+<span class="c1"># from --template-geom, so the poses need no destination geometry of their own.</span>
 mri<span class="w"> </span>geom<span class="w"> </span>--o<span class="w"> </span>std.mgz<span class="w"> </span>--like<span class="w"> </span>tp1_conform.mgz<span class="w"> </span>--orientation<span class="w"> </span>LIA<span class="w"> </span>--cras<span class="w"> </span>-0.1,-16.4,6.2
 multireg<span class="w"> </span>--mov<span class="w"> </span>tp1_norm.mgz<span class="w"> </span>tp2_norm.mgz<span class="w"> </span>tp3_norm.mgz<span class="w"> </span><span class="se">\</span>
 <span class="w">         </span>--ixforms<span class="w"> </span>tp1_pose.lta<span class="w"> </span>tp2_pose.lta<span class="w"> </span>tp3_pose.lta<span class="w"> </span><span class="se">\</span>
